@@ -1,6 +1,7 @@
 package ugeo
 
 import (
+	"bytes"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -50,6 +51,16 @@ func (r FPoint) Sign() FPoint {
 
 func (p FPoint) Length() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y)
+}
+
+func (p *FPoint) Value() (driver.Value, error) {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "POINT(%f %f)", p.Y, p.X)
+	return buf.Bytes(), nil
+}
+
+func (p *FPoint) String() string {
+	return fmt.Sprintf("POINT(%v %v)", p.Y, p.X)
 }
 
 // FRect *****************************************************

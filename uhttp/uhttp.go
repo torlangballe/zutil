@@ -395,7 +395,7 @@ type GetInfo struct {
 	RemoteDomain     string
 }
 
-func TimedGet(surl string, download bool) (info GetInfo, err error) {
+func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
 	s := ztime.Second(-1)
 	info.ConnectSecs = s
 	info.TlsHandshakeSecs = s
@@ -439,9 +439,19 @@ func TimedGet(surl string, download bool) (info GetInfo, err error) {
 		return
 	}
 
-	if download {
-		buf, _ := ioutil.ReadAll(resp.Body)
-		info.ByteCount = int64(len(buf))
+	if downloadBytes != 0 {
+		bytes := make([]byte, 1024)
+		for {
+			n, rerr := resp.Body.Read(bytes)
+			info.ByteCount += int64(n)
+			if rerr != nil && rerr != io.EOF {
+				err = rerr
+				return
+			}
+			if rerr == io.EOF || info.ByteCount >= downloadBytes {
+				break
+			}
+		}
 	}
 	info.DoneSecs = time.Since(start)
 

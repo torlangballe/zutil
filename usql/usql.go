@@ -217,6 +217,7 @@ func (s JSONStringInterfaceMap) Value() (driver.Value, error) {
 }
 
 func (s *JSONStringInterfaceMap) Scan(val interface{}) error {
+	//	fmt.Println("JSONStringInterfaceMap scan")
 	data, ok := val.([]byte)
 	if !ok {
 		return errors.New("JSONStringInterfaceMap unsupported data type")
@@ -476,12 +477,12 @@ func FieldPointersFromStruct(istruct interface{}, skip []string) (pointers []int
 	return
 }
 
-func FieldSettingToParametersFromStruct(istruct interface{}, skip []string, start int) (set string) {
+func FieldSettingToParametersFromStruct(istruct interface{}, skip []string, prefix string, start int) (set string) {
 	for i, item := range getItems(istruct, skip) {
 		if i != 0 {
 			set += ", "
 		}
-		set += fmt.Sprintf("%s=$%d", convertFieldName(item), start+i)
+		set += fmt.Sprintf("%s=$%d", prefix+convertFieldName(item), start+i)
 	}
 	return
 }

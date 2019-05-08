@@ -23,6 +23,7 @@ const (
 	KindStruct TypeKind = "struct"
 	KindTime   TypeKind = "time"
 	KindByte   TypeKind = "byte"
+	KindMap    TypeKind = "map"
 )
 
 type FieldTag struct {
@@ -124,7 +125,9 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous 
 				if e != nil {
 					err = e
 				} else {
-					c.Address = fval.Addr().Interface()
+					if fval.CanAddr() {
+						c.Address = fval.Addr().Interface()
+					}
 					if unnestAnonymous && f.Anonymous {
 						item.Children = append(item.Children, c.Children...)
 					} else {
@@ -155,6 +158,8 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous 
 		item.Interface = val.Float()
 
 	case reflect.Map:
+		item.Kind = KindTime
+		item.Interface = val.Interface()
 		break
 
 	default:
