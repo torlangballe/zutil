@@ -404,6 +404,9 @@ func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
 	info.DoneSecs = s
 
 	req, err := http.NewRequest("GET", surl, nil)
+	if err != nil {
+		return
+	}
 	var start, connect, dns, tlsHandshake time.Time
 	var remoteAddress string
 

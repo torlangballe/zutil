@@ -23,7 +23,7 @@ func Listen(addr *net.UDPAddr, timeoutSecs float64, maxDatagramSize int, handler
 	go func() {
 		<-timer.C
 		//		fmt.Println("umlisten.Listen timeout:", addr, timeoutSecs)
-		gerr = errors.New("timeout")
+		gerr = errors.New("timeout umlisten")
 		conn.Close()
 	}()
 	go func() {
