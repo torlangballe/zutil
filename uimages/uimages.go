@@ -1,7 +1,7 @@
 package uimages
 
 import (
-	"zutil/uhttp"
+	"github.com/torlangballe/zutil/uhttp"
 	"fmt"
 	"net/url"
 	"strconv"

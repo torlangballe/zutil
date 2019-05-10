@@ -1,10 +1,10 @@
 package google
 
 import (
-	"zutil/places"
-	"zutil/ugeo"
-	"zutil/uhttp"
-	"zutil/utime"
+	"github.com/torlangballe/zutil/places"
+	"github.com/torlangballe/zutil/ugeo"
+	"github.com/torlangballe/zutil/uhttp"
+	"github.com/torlangballe/zutil/utime"
 	//	speech "cloud.google.com/go/speech/apiv1"
 	//	"context"
 	"errors"

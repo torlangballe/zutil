@@ -17,8 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"zutil/ustr"
-	"zutil/ztime"
+	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 type ErrJSON struct {

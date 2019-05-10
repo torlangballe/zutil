@@ -2,7 +2,7 @@ package zcache
 
 import (
 	"fmt"
-	"zutil/ztime"
+	"github.com/torlangballe/zutil/ztime"
 
 	"github.com/patrickmn/go-cache"
 )

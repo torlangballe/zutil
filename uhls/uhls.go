@@ -10,8 +10,8 @@ import (
 	"path"
 	"strings"
 	"sync"
-	"zutil/uhtml"
-	"zutil/ustr"
+	"github.com/torlangballe/zutil/uhtml"
+	"github.com/torlangballe/zutil/ustr"
 
 	"githubclones/grafov/m3u8"
 

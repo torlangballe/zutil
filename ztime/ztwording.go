@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"time"
-	"zutil/ustr"
+	"github.com/torlangballe/zutil/ustr"
 )
 
 type TimePreposition uint

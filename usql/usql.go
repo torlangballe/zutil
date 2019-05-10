@@ -13,9 +13,9 @@ import (
 	"reflect"
 	"strings"
 	"time"
-	"zutil/ugeo"
-	"zutil/ureflect"
-	"zutil/ustr"
+	"github.com/torlangballe/zutil/ugeo"
+	"github.com/torlangballe/zutil/ureflect"
+	"github.com/torlangballe/zutil/ustr"
 
 	"github.com/lib/pq"
 	geom "github.com/twpayne/go-geom"

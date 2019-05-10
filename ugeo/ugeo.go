@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"zutil/umath"
-	"zutil/ustr"
-	"zutil/ustr/ulocale"
+	"github.com/torlangballe/zutil/umath"
+	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/ustr/ulocale"
 )
 
 const KDegToMeters = 1113200.0

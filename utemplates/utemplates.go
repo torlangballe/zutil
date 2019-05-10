@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"zutil/urest"
+	"github.com/torlangballe/zutil/urest"
 
 	"github.com/gorilla/mux"
 )

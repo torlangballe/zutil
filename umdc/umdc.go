@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net"
 	"time"
-	"zutil/unet"
+	"github.com/torlangballe/zutil/unet"
 
 	"github.com/pkg/errors"
 )

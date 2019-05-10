@@ -3,7 +3,7 @@ package usql
 import (
 	"database/sql"
 	"fmt"
-	"zutil/ustr"
+	"github.com/torlangballe/zutil/ustr"
 
 	"github.com/lib/pq"
 

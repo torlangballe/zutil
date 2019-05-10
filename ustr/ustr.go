@@ -16,8 +16,8 @@ import (
 	"text/tabwriter"
 	"unicode"
 	"unicode/utf8"
-	"zutil/uinteger"
-	"zutil/umath"
+	"github.com/torlangballe/zutil/uinteger"
+	"github.com/torlangballe/zutil/umath"
 )
 
 var EscBlack string = "\x1B[30m"
