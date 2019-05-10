@@ -2,6 +2,7 @@ package umulticast
 
 import (
 	"btech/mdc/tspacket"
+	"fmt"
 	"net"
 	"time"
 )
@@ -24,8 +25,9 @@ func NewMulticastReader(address net.IP, port int, firstReadTimeoutSecs float64) 
 	reader = &MulticastReader{}
 	reader.connectStart = time.Now()
 	reader.multiAddress = net.UDPAddr{IP: address, Zone: "", Port: port}
-	//	fmt.Printf("NewMulticastReader1 %v %v %v %p\n", address, port, reader.multiAddress, reader)
+	fmt.Printf("NewMulticastReader1 %v %v %v %p\n", address, port, reader.multiAddress, reader)
 
+	first := true
 	reader.multiConn = Listen(&reader.multiAddress, firstReadTimeoutSecs, 8192, func(source *net.UDPAddr, length int, data []byte, err error) {
 		if err != nil {
 			if !reader.stopped {
@@ -39,13 +41,20 @@ func NewMulticastReader(address net.IP, port int, firstReadTimeoutSecs float64) 
 			}
 		}
 		if reader.secTicker == nil {
+			if !first {
+				panic("umsampler.NewMulticastReader called before first=false")
+			}
+			first = false
 			joinlat := time.Since(reader.connectStart)
 			reader.HandleMulticastConnected(*source, reader.multiAddress, joinlat)
 			reader.secTicker = time.NewTicker(time.Second) // do this after handler above for more accurat 1 sec later
 			go func() {
 				for range reader.secTicker.C {
 					//					fmt.Printf("reader.secTicker: %p\n", reader)
-					reader.HandleMulticastBPS(int64(reader.bytesRead))
+					if reader.HandleMulticastBPS != nil {
+						reader.HandleMulticastBPS(int64(reader.bytesRead))
+					}
+					//					fmt.Println("reader.secTicker2")
 					reader.bytesRead = 0
 				}
 			}()

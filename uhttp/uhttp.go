@@ -442,6 +442,7 @@ func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
 		return
 	}
 
+	defer resp.Body.Close()
 	if downloadBytes != 0 {
 		bytes := make([]byte, 1024)
 		for {
