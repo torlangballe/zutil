@@ -359,8 +359,17 @@ func GetDurationHourMinSec(d time.Duration) (hours int, mins int, secs int) {
 	s := int64(d.Seconds())
 	hours = int(s / 3600)
 	mins = int(s / 60 % 60)
-	secs = int(s)
+	secs = int(s % 60)
 
+	return
+}
+
+func GetDurationHourMinSecAsString(d time.Duration) (str string) {
+	h, m, s := GetDurationHourMinSec(d)
+	str = fmt.Sprintf("%02d:%02d", m, s)
+	if h != 0 {
+		str = fmt.Sprintf("%d:%s", h, str)
+	}
 	return
 }
 

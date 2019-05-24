@@ -16,6 +16,7 @@ import (
 	"text/tabwriter"
 	"unicode"
 	"unicode/utf8"
+
 	"github.com/torlangballe/zutil/uinteger"
 	"github.com/torlangballe/zutil/umath"
 )
@@ -235,6 +236,15 @@ func StrIndexInStrings(str string, strs []string) int {
 		}
 	}
 	return -1
+}
+
+func StringsContain(list []string, str string) bool {
+	for _, s := range list {
+		if s == str {
+			return true
+		}
+	}
+	return false
 }
 
 func ContainsDuplicates(strs []string) bool {
@@ -862,6 +872,24 @@ func NiceFloat(f float64, significant int) string {
 		HasSuffix(s, ".", &s)
 	}
 	return s
+}
+
+func SplitIntoLengths(s string, length int) []string {
+	sub := ""
+	subs := []string{}
+
+	runes := bytes.Runes([]byte(s))
+	l := len(runes)
+	for i, r := range runes {
+		sub = sub + string(r)
+		if (i+1)%length == 0 {
+			subs = append(subs, sub)
+			sub = ""
+		} else if (i + 1) == l {
+			subs = append(subs, sub)
+		}
+	}
+	return subs
 }
 
 var EscapeQuoteReplacer = strings.NewReplacer(

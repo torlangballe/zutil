@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/torlangballe/zutil/ustr"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -384,15 +385,16 @@ func GetHeaders(surl string) (header http.Header, err error) {
 }
 
 type GetInfo struct {
-	ConnectSecs      time.Duration
-	DnsSecs          time.Duration
-	TlsHandshakeSecs time.Duration
-	FirstByteSecs    time.Duration
-	DoneSecs         time.Duration
-	ByteCount        int64
-	RemoteAddress    string
-	RemotePort       int
-	RemoteDomain     string
+	ConnectSecs        time.Duration
+	DnsSecs            time.Duration
+	TlsHandshakeSecs   time.Duration
+	FirstByteSecs      time.Duration
+	DoneSecs           time.Duration
+	ByteCount          int64
+	RemoteAddress      string
+	RemotePort         int
+	RemoteDomain       string
+	ContentLengthBytes int64
 }
 
 func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
@@ -441,6 +443,8 @@ func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
 	if err != nil {
 		return
 	}
+
+	info.ContentLengthBytes, _ = strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
 
 	defer resp.Body.Close()
 	if downloadBytes != 0 {

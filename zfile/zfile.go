@@ -186,10 +186,21 @@ func CalcMD5Base64(filePath string) (string, error) {
 	return md5s, nil
 }
 
-func ReadFromUrlToFilepath(url, filePath string) (err error) {
-	response, err := http.Get(url)
+func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, err error) {
+	if filePath == "" {
+		var name string
+		u, err := url.Parse(surl)
+		if err != nil {
+			_, name, ext := Split(surl)
+			name = ustr.HeadUntilString(name, "?") + ext
+		} else {
+			name = strings.Trim(u.Path, "/")
+		}
+		filePath = CreateTempFilePath(name)
+	}
+	response, err := http.Get(surl)
 	if err != nil {
-		fmt.Println("ReadFromUrlToFilepath error getting:", err, url)
+		fmt.Println("ReadFromUrlToFilepath error getting:", err, surl)
 		return
 	}
 	defer response.Body.Close()
@@ -200,12 +211,35 @@ func ReadFromUrlToFilepath(url, filePath string) (err error) {
 		fmt.Println("ReadFromUrlToFilepath error creating file:", err, filePath)
 		return
 	}
-	// Use io.Copy to just dump the response body to the file. This supports huge files
-	_, err = io.Copy(file, response.Body)
-	if err != nil {
-		fmt.Println("ReadFromUrlToFilepath error copying to file:", err, filePath)
-		return
+	if maxBytes != 0 {
+		var size int64
+		buf := make([]byte, maxBytes)
+		for size < maxBytes {
+			var n int
+			n, err = response.Body.Read(buf)
+			if err != nil && err != io.EOF {
+				fmt.Println("Error reading from body:", err)
+				return
+			}
+			_, err = file.Write(buf[:n])
+			if err != nil {
+				fmt.Println("Error writing from body:", err)
+				return
+			}
+			size += int64(n)
+			if n == 0 {
+				break
+			}
+		}
+	} else {
+		// Use io.Copy to just dump the response body to the file. This supports huge files
+		_, err = io.Copy(file, response.Body)
+		if err != nil {
+			fmt.Println("ReadFromUrlToFilepath error copying to file:", err, filePath)
+			return
+		}
 	}
 	file.Close()
+	path = filePath
 	return
 }
