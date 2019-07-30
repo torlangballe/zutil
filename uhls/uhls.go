@@ -2,14 +2,18 @@ package uhls
 
 import (
 	"bufio"
-	"capsulefm/libs/util/uhttp"
+	"fmt"
 	"math/rand"
 	"mime"
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/torlangballe/zutil/uhttp"
+
 	"github.com/torlangballe/zutil/uhtml"
 	"github.com/torlangballe/zutil/ustr"
 
@@ -20,6 +24,7 @@ import (
 
 type Master struct {
 	URL      string
+	RawBytes []byte
 	Variants []*Variant
 }
 
@@ -28,6 +33,8 @@ type Variant struct {
 	SequenceId   int
 	BitsPerSec   int64
 	Resolution   string
+	Width        int
+	Height       int
 	FrameRate    float64
 	Codecs       string
 	Duration     float64
@@ -46,37 +53,51 @@ type Segment struct {
 }
 
 func replaceUrlNameWithPath(surl, spath string) string {
-	u, err := url.Parse(surl)
-	if err != nil {
-		return surl
-	}
-	dir, _ := path.Split(u.Path)
-	u.Path = path.Join(dir, spath)
-	return u.String()
+	// u, err := url.Parse(surl)
+	// if err != nil {
+	// 	return surl
+	// }
+	//	dir, _ := path.Split(u.Path)
+	dir, _ := path.Split(surl)
+	return dir + spath
+	// u.Path = path.Join(dir, spath)
+	// return u.String()
 }
 
-func getSegments(wg *sync.WaitGroup, v *Variant, surl string) {
-	v.Segments, v.Error = GetSegmentsFromUrl(surl)
+func getSegments(wg *sync.WaitGroup, v *Variant, surl string) (body []byte) {
+	v.Segments, body, v.Error = GetSegmentsFromUrl(surl)
 	for _, s := range v.Segments {
 		v.Duration += s.Duration
 	}
 	wg.Done()
+	return
 }
 
 func ReadFromUrl(surl string, getSegs bool) (m *Master, err error) {
-	master, err := getMasterPlaylist(surl)
+	master, body, err := getMasterPlaylist(surl)
 	if err != nil {
 		return
 	}
 	m = &Master{}
+	m.RawBytes = body
 	m.URL = surl
 	wg := new(sync.WaitGroup)
 	for _, mv := range master.Variants {
 		v := &Variant{}
 		v.SequenceId = int(mv.ProgramId)
 		v.BitsPerSec = int64(mv.Bandwidth)
-		v.URL = replaceUrlNameWithPath(surl, mv.URI)
+		u, e := url.Parse(mv.URI)
+		if e == nil && u.Scheme != "" && u.Host != "" {
+			v.URL = mv.URI
+		} else {
+			v.URL = replaceUrlNameWithPath(surl, mv.URI)
+		}
 		v.Resolution = mv.Resolution
+		var sw, sh string
+		if ustr.SplitN(mv.Resolution, "x", &sw, &sh) {
+			v.Width, _ = strconv.Atoi(sw)
+			v.Height, _ = strconv.Atoi(sh)
+		}
 		v.FrameRate = mv.FrameRate
 		v.Codecs = mv.VariantParams.Codecs
 		if getSegs {
@@ -90,8 +111,8 @@ func ReadFromUrl(surl string, getSegs bool) (m *Master, err error) {
 	return
 }
 
-func GetSegmentsFromUrl(surl string) (segs []*Segment, err error) {
-	plist, e := getMediaPlaylist(surl)
+func GetSegmentsFromUrl(surl string) (segs []*Segment, body []byte, err error) {
+	plist, body, e := getMediaPlaylist(surl)
 	if e != nil {
 		err = e
 		return
@@ -119,30 +140,37 @@ func GetSegmentsFromUrl(surl string) (segs []*Segment, err error) {
 	return
 }
 
-func getMasterPlaylist(url string) (plist *m3u8.MasterPlaylist, err error) {
-	resp, err := http.Get(url)
+func getMasterPlaylist(surl string) (plist *m3u8.MasterPlaylist, body []byte, err error) {
+	resp, err := http.Get(surl)
 	if err != nil {
 		return
 	}
-	if resp.StatusCode >= 400 {
-		err = errors.Errorf("Error getting: %d", resp.StatusCode)
+	defer resp.Body.Close()
+	err = uhttp.CheckErrorFromBody(resp)
+	if err != nil {
 		return
 	}
 	strict := false
-	p, listType, err := m3u8.DecodeFrom(bufio.NewReader(resp.Body), strict)
+	//	buf := bytes.NewBuffer(body)
+	p, listType, err := m3u8.DecodeFrom(resp.Body, strict)
 	if err != nil {
 		return
 	}
 	if listType == m3u8.MASTER {
 		plist = p.(*m3u8.MasterPlaylist)
 	} else {
-		err = errors.New("Wrong playlist type for master")
+		err = errors.New(fmt.Sprintf("Wrong playlist type for master %v", listType))
 	}
 	return
 }
 
-func getMediaPlaylist(url string) (plist *m3u8.MediaPlaylist, err error) {
+func getMediaPlaylist(url string) (plist *m3u8.MediaPlaylist, body []byte, err error) {
 	resp, err := http.Get(url)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	err = uhttp.CheckErrorFromBody(resp)
 	if err != nil {
 		return
 	}

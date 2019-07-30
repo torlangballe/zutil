@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+
 	"github.com/torlangballe/zutil/unet"
 
 	"github.com/pkg/errors"
@@ -83,11 +84,11 @@ func (p *Probe) increaseIpRange() {
 			if len(p.newIpRange) > 0 {
 				p.ipRange = p.newIpRange
 				p.newIpRange = p.newIpRange[:0]
-				//				fmt.Println("setnewrange:", len(p.ipRange))
+				fmt.Println("setnewrange:", len(p.ipRange))
 			}
 			p.ipIndex = 0
 		}
-		//		fmt.Println("incrange:", p.ipIndex, "in", len(p.ipRange))
+		fmt.Println("incrange:", p.ipIndex, "in", len(p.ipRange))
 		p.ipNext = p.ipRange[p.ipIndex].start
 		return
 	}
@@ -100,6 +101,7 @@ func (p *Probe) handleIPRange(wrange packet.Reader) {
 	var ipRange []portRangeType
 	for {
 		tag, data := wrange.Read()
+		//		fmt.Println("handleIPRange", tag)
 		if tag == 0 {
 			break
 		}
@@ -117,7 +119,9 @@ func (p *Probe) handleIPRange(wrange packet.Reader) {
 		ipRange = append(ipRange, ip)
 		p.newIpRange = ipRange
 	}
-	p.nextInRange()
+	if len(p.ipRange) != 0 {
+		p.nextInRange()
+	}
 }
 
 func NewProbe(uniqueId uint64, mdcAddress string, mdcPort int) (p *Probe, err error) {

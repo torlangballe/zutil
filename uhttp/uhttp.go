@@ -2,9 +2,10 @@ package uhttp
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,10 +14,13 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/torlangballe/zutil/ustr"
 	"github.com/torlangballe/zutil/ztime"
@@ -46,6 +50,9 @@ func PostAsJsonGetJSON(surl string, otherHeaders map[string]string, bodyDump *st
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return
+	}
+	if response.Body != nil {
+		response.Body.Close()
 	}
 	err = json.Unmarshal(body, receive)
 	if err != nil {
@@ -348,16 +355,62 @@ func GetCopyOfResponseBodyAsString(resp *http.Response) string {
 	return string(body)
 }
 
+func CheckErrorFromBody(resp *http.Response) (err error) {
+	if resp.StatusCode < 400 {
+		return
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	var e ErrorStruct
+	jerr := json.Unmarshal(body, &e)
+	if jerr != nil {
+		if e.Check(&err) {
+			return
+		}
+	}
+	var e2 struct {
+		Result ErrorStruct `json:"result"`
+	}
+	jerr = json.Unmarshal(body, &e2)
+	if e2.Result.Check(&err) {
+		return
+	}
+	var e3 struct {
+		Error ErrorStruct `json:"error"`
+	}
+	jerr = json.Unmarshal(body, &e3)
+	if e3.Error.Check(&err) {
+		return
+	}
+	var e4 struct {
+		Result struct {
+			Error ErrorStruct `json:"error"`
+		} `json:"result"`
+	}
+	jerr = json.Unmarshal(body, &e4)
+	if e4.Result.Error.Check(&err) {
+		return
+	}
+
+	err = errors.New(fmt.Sprintf("Code: %d", resp.StatusCode))
+	return
+}
+
 type ErrorStruct struct {
-	Type    string `json:"type"`
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Type       string          `json:"type"`
+	ObjectType string          `json:"objectType"`
+	Code       json.RawMessage `json:"code"`
+	Message    string          `json:"message"`
 }
 
 func (e ErrorStruct) Check(err *error) bool {
-	if e.Type != "" || e.Code >= 300 || e.Message != "" {
+	if e.Type != "" || e.Message != "" {
 		if err != nil {
-			*err = errors.New(fmt.Sprintf("%s [%d] %s", e.Type, e.Code, e.Message))
+			code := strings.Trim(string(e.Code), `"`)
+			str := ustr.ConcatenateNonEmpty(" ", e.Type, code, e.Message, e.ObjectType)
+			*err = errors.New(str)
 		}
 		return true
 	}
@@ -380,6 +433,9 @@ func GetHeaders(surl string) (header http.Header, err error) {
 	if err != nil {
 		return
 	}
+	if resp.Body != nil {
+		resp.Body.Close()
+	}
 	header = resp.Header
 	return
 }
@@ -398,7 +454,7 @@ type GetInfo struct {
 }
 
 func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
-	s := ztime.Second(-1)
+	s := ztime.SecondsDur(-1)
 	info.ConnectSecs = s
 	info.TlsHandshakeSecs = s
 	info.FirstByteSecs = s
@@ -436,17 +492,24 @@ func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
 		},
 	}
 
-	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	ctx, cancel := context.WithTimeout(req.Context(), 30*time.Second) // context.Background()
+	defer cancel()
+
+	req = req.WithContext(httptrace.WithClientTrace(ctx, trace)) // req.Context()
+
 	start = time.Now()
 
 	resp, err := http.DefaultTransport.RoundTrip(req)
 	if err != nil {
 		return
 	}
-
+	defer resp.Body.Close()
+	err = CheckErrorFromBody(resp)
+	if err != nil {
+		return
+	}
 	info.ContentLengthBytes, _ = strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
 
-	defer resp.Body.Close()
 	if downloadBytes != 0 {
 		bytes := make([]byte, 1024)
 		for {
@@ -474,4 +537,44 @@ func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
 	p, _ := strconv.ParseInt(port, 10, 32)
 	info.RemotePort = int(p)
 	return
+}
+
+func AddPathToURL(surl, add string) string {
+	u, err := url.Parse(surl)
+	if err != nil {
+		return path.Join(surl, add)
+	}
+	u.Path = path.Join(u.Path, add)
+	return u.String()
+}
+
+func PostReaderMakeError(surl, contentType string, reader io.Reader) (resp *http.Response, err error) {
+	resp, err = http.Post(surl, contentType, reader)
+	if err != nil {
+		return
+	}
+	if resp.StatusCode >= 300 {
+		err = errors.New(fmt.Sprintf("%d %s", resp.StatusCode, http.StatusText(resp.StatusCode)))
+		return
+	}
+	return
+}
+
+func PostBytesMakeError(surl, contentType string, body []byte) (resp *http.Response, err error) {
+	return PostReaderMakeError(surl, contentType, bytes.NewReader(body))
+}
+
+func ValsFromURL(surl string) url.Values {
+	u, err := url.Parse(surl)
+	if err == nil {
+		return u.Query()
+	}
+	return url.Values{}
+}
+
+func MakeDataURL(data []byte, mime string) string {
+	if mime == "" {
+		mime = "text/plain;charset=utf-8"
+	}
+	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data)
 }

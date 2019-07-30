@@ -2,22 +2,25 @@ package google
 
 import (
 	"github.com/torlangballe/zutil/places"
-	"github.com/torlangballe/zutil/ugeo"
+	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/uhttp"
 	"github.com/torlangballe/zutil/utime"
+
 	//	speech "cloud.google.com/go/speech/apiv1"
 	//	"context"
 	"errors"
 	"fmt"
+
 	"github.com/kaneshin/pigeon"
 	"github.com/kaneshin/pigeon/credentials"
 	"google.golang.org/api/vision/v1"
+
 	//	speechpb "google.golang.org/genproto/googleapis/cloud/speech/v1"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"encoding/json"
 	"strings"
 	"time"
 )
@@ -39,7 +42,7 @@ type gJSON struct {
 	Status  string     `json:"status"`
 }
 
-func GeocodePlaceName(w io.Writer, placename string) (pos ugeo.FPoint, err error) {
+func GeocodePlaceName(w io.Writer, placename string) (pos zgeo.FPoint, err error) {
 	var geo gJSON
 	surl := "http://maps.googleapis.com/maps/api/geocode/json"
 	u, err := url.Parse(surl)
@@ -76,7 +79,7 @@ type tzJSON struct {
 	TimeZoneId string `json:"timeZoneId"`
 }
 
-func GetTimeZoneFromLocation(pos ugeo.FPoint) (string, error) {
+func GetTimeZoneFromLocation(pos zgeo.FPoint) (string, error) {
 	var tzStruct tzJSON
 	u, err := url.Parse("https://maps.googleapis.com/maps/api/timezone/json")
 	if err != nil {
@@ -111,6 +114,8 @@ func GeocodeLocation(lang string, x, y float64) (gCode Geocode, err error) {
 	if err != nil {
 		return
 	}
+	defer resp.Body.Close()
+
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return
@@ -121,7 +126,7 @@ func GeocodeLocation(lang string, x, y float64) (gCode Geocode, err error) {
 	}
 
 	if gCode.Status != "OK" {
-		err = fmt.Errorf(`ugeo: error response from Google "%s"`, gCode.Status)
+		err = fmt.Errorf(`zgeo: error response from Google "%s"`, gCode.Status)
 		return
 	}
 	return
@@ -176,7 +181,7 @@ func getMapInfo(gCode *Geocode) map[string]string {
 	return names
 }
 
-func GetMapImageUrlFromLocation(pos ugeo.FPoint, size ugeo.FSize, myLocation ugeo.FPoint, langCode string) (url string, err error) {
+func GetMapImageUrlFromLocation(pos zgeo.FPoint, size zgeo.FSize, myLocation zgeo.FPoint, langCode string) (url string, err error) {
 	//	personIcon := "http://maps.google.com/mapfiles/kml/shapes/man.png"
 	args := map[string]string{
 		"size":     fmt.Sprintf("%gx%g", size.W, size.H),
@@ -190,11 +195,11 @@ func GetMapImageUrlFromLocation(pos ugeo.FPoint, size ugeo.FSize, myLocation uge
 	return
 }
 
-func GetMapUrlToLocation(pos ugeo.FPoint, zoom int) string {
+func GetMapUrlToLocation(pos zgeo.FPoint, zoom int) string {
 	return fmt.Sprintf("http://maps.google.com/maps?q=%f,%f&z=%d", pos.Y, pos.X, zoom)
 }
 
-func GetStaticMapUrlToLocations(positions []ugeo.FPoint) string {
+func GetStaticMapUrlToLocations(positions []zgeo.FPoint) string {
 	prefix := "http://maps.google.com/maps/api/staticmap"
 	var postfix string
 	for _, p := range positions {

@@ -2,8 +2,11 @@ package ztime
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"math"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -154,11 +157,11 @@ func Minutes(m int) time.Duration {
 	return time.Duration(m) * time.Minute
 }
 
-func Second(s float64) time.Duration {
+func SecondsDur(s float64) time.Duration {
 	return time.Duration(s * float64(time.Second))
 }
 
-func Seconds(d time.Duration) float64 {
+func DurSeconds(d time.Duration) float64 {
 	return float64(d) / float64(time.Second)
 }
 
@@ -418,4 +421,76 @@ func GetNiceIncsOf(start, stop time.Time, incCount int) (inc time.Duration, firs
 	//	fmt.Println("best:", i, part, u, mod, n, first)
 	inc = time.Duration(i) * part
 	return
+}
+
+type DurationStruct struct {
+	Years   int
+	Weeks   int
+	Months  int
+	Days    int
+	Hours   int
+	Minutes int
+	Seconds float32
+}
+
+func DurationStructFromIso(dur string) (DurationStruct, error) {
+	var regex = regexp.MustCompile(`P((?P<year>\d+)Y)?((?P<month>\d+)M)?((?P<day>\d+)D)?(T((?P<hour>\d+)H)?((?P<minute>\d+)M)?((?P<second>[\d\.]+)S)?)?`)
+	var match []string
+
+	d := DurationStruct{}
+
+	if regex.MatchString(dur) {
+		match = regex.FindStringSubmatch(dur)
+	} else {
+		return d, errors.New("bad format")
+	}
+
+	for i, name := range regex.SubexpNames() {
+		part := match[i]
+		if i == 0 || name == "" || part == "" {
+			continue
+		}
+
+		val, err := strconv.ParseFloat(part, 32)
+		if err != nil {
+			return d, err
+		}
+		switch name {
+		case "year":
+			d.Years = int(val)
+		case "month":
+			d.Months = int(val)
+		case "week":
+			d.Weeks = int(val)
+		case "day":
+			d.Days = int(val)
+		case "hour":
+			d.Hours = int(val)
+		case "minute":
+			d.Minutes = int(val)
+		case "second":
+			d.Seconds = float32(val)
+		default:
+			return d, errors.New(fmt.Sprintf("unknown field %s", name))
+		}
+	}
+
+	return d, nil
+}
+
+func (d DurationStruct) ToDuration() time.Duration {
+	day := time.Hour * 24
+	year := day * 365
+
+	tot := time.Duration(0)
+
+	tot += year * time.Duration(d.Years)
+	tot += day * 7 * time.Duration(d.Weeks)
+	tot += day * 30 * time.Duration(d.Months)
+	tot += day * time.Duration(d.Days)
+	tot += time.Hour * time.Duration(d.Hours)
+	tot += time.Minute * time.Duration(d.Minutes)
+	tot += time.Second * time.Duration(d.Seconds)
+
+	return tot
 }

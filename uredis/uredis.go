@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/garyburd/redigo/redis"
 	log "source.calgoty.com/calgoty/go-logger.git"
-	"time"
 )
 
 var redisPool *redis.Pool
@@ -160,4 +161,17 @@ func Setup(redisServer string) (*redis.Pool, error) {
 	}
 
 	return pool, err
+}
+
+func GetRotatingIndex(redisPool *redis.Pool, key string, len int, inc bool, timeToLive time.Duration) (n int, rotated bool) {
+	Get(redisPool, &n, key)
+	if inc {
+		i := n + 1
+		if i >= len {
+			rotated = true
+			i = 0
+		}
+		Put(redisPool, key, timeToLive, i)
+	}
+	return
 }

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
 	"github.com/torlangballe/zutil/urest"
 
 	"github.com/gorilla/mux"
@@ -113,7 +114,10 @@ func (h *Handler) LoadTemplates() (err error) {
 	spath := h.baseDirectory + "www/templates/"
 
 	filepath.Walk(spath, func(fpath string, info os.FileInfo, err error) error {
-		if err == nil && spath != fpath {
+		if spath != fpath && info.IsDir() {
+			return filepath.SkipDir
+		}
+		if err == nil && spath != fpath && filepath.Ext(fpath) == ".gohtml" {
 			files = append(files, fpath)
 		}
 		return nil

@@ -2,6 +2,7 @@ package zcache
 
 import (
 	"fmt"
+
 	"github.com/torlangballe/zutil/ztime"
 
 	"github.com/patrickmn/go-cache"
@@ -13,8 +14,11 @@ const DefaultExpiration = 0.0
 const NoExpiration = -1.0
 
 func New(ttlSecs float64) *Cache {
+	if ttlSecs == 0 {
+		ttlSecs = 3600 * 24
+	}
 	c := new(Cache)
-	c.cache = cache.New(ztime.Second(ttlSecs), ztime.Second(ttlSecs*2))
+	c.cache = cache.New(ztime.SecondsDur(ttlSecs), ztime.SecondsDur(ttlSecs*2))
 	return c
 }
 
@@ -24,12 +28,12 @@ func (c *Cache) Store(key interface{}, val interface{}) {
 
 func (c *Cache) StoreWithTTL(key interface{}, val interface{}, ttlSecs float64) {
 	if ttlSecs == DefaultExpiration {
-		ttlSecs = ztime.Seconds(cache.DefaultExpiration)
+		ttlSecs = ztime.DurSeconds(cache.DefaultExpiration)
 	} else if ttlSecs == NoExpiration {
-		ttlSecs = ztime.Seconds(cache.NoExpiration)
+		ttlSecs = ztime.DurSeconds(cache.NoExpiration)
 	}
 	skey := fmt.Sprintf("%v", key)
-	c.cache.Set(skey, val, ztime.Second(ttlSecs))
+	c.cache.Set(skey, val, ztime.SecondsDur(ttlSecs))
 }
 
 func (c *Cache) Load(key interface{}) (val interface{}, got bool) {

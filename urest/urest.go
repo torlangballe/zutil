@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var RunningOnServer bool
@@ -38,18 +40,15 @@ func addJSONPCallback(json string, callback string) string {
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	origs := map[string]bool{
-		"http://localhost:3000":      true,
-		"http://localhost:3333":      true,
-		"http://127.0.0.1:8080":      true,
-		"http://127.0.0.1:8081":      true,
-		"http://publish.capsule.fm":  true,
-		"http://control.capsule.fm":  true,
-		"http://edimator.capsule.fm": true,
-		"http://capsule.fm":          true,
+		"http://127.0.0.1:8090":      true,
+		"http://127.0.0.1:5000":      true,
+		"http://127.0.0.1:4000":      true,
+		"https://51.15.138.187:8090": true,
 	}
-	if origs[req.Header.Get("Origin")] {
-		//		fmt.Println("AddCorsHeaders")
-		w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
+	o := req.Header.Get("Origin")
+	if origs[o] {
+		// fmt.Println("AddCorsHeaders:", o)
+		w.Header().Set("Access-Control-Allow-Origin", o)
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Token")
@@ -87,13 +86,13 @@ func ReturnAndPrintError(w http.ResponseWriter, req *http.Request, errorCode int
 	if logger != nil {
 		logger.Print("%s", str)
 	}
-	ReturnError(w, req, []string{str}, errorCode)
+	ReturnError(w, req, str, errorCode)
 }
 
 // Returns HTTP error code and error messages in JSON representation.
-func ReturnError(w http.ResponseWriter, req *http.Request, messages []string, errorCode int) {
+func ReturnError(w http.ResponseWriter, req *http.Request, message string, errorCode int) {
 	resMap := make(map[string][]string)
-	resMap["messages"] = messages
+	resMap["messages"] = []string{message}
 	tmp, _ := json.Marshal(resMap)
 	jsonRep, _ := formatJSON(tmp)
 
@@ -166,4 +165,11 @@ func GetFloatVal(vals url.Values, name string, def float64) float64 {
 		return def
 	}
 	return n
+}
+
+func AddHandle(r *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
+	return r.HandleFunc(pattern, func(w http.ResponseWriter,
+		req *http.Request) {
+		f(w, req)
+	})
 }

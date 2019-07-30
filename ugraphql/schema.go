@@ -363,6 +363,7 @@ func PrintSchemaFromUrl(surl string, isInDataStruct, nest, debug bool) (err erro
 		fmt.Println("Post Error:", err)
 		return
 	}
+	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		fmt.Println("Read Error:", err)

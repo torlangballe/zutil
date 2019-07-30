@@ -3,22 +3,22 @@ package ustr
 import (
 	"bytes"
 	"crypto/md5"
-	"crypto/rand"
+	cryptoRand "crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/torlangballe/zutil/uinteger"
-	"github.com/torlangballe/zutil/umath"
+	"github.com/torlangballe/zutil/zmath"
 )
 
 var EscBlack string = "\x1B[30m"
@@ -74,7 +74,7 @@ func min(a, b int) int {
 }
 
 func GetLevenshteinRatio(a, b string) float64 { // returns distance / min length of a or b
-	len := float64(umath.IntMin(len(a), len(b)))
+	len := float64(uinteger.IntMin(len(a), len(b)))
 	return float64(GetLevenshteinDistance(a, b)) / len
 }
 
@@ -156,6 +156,36 @@ func Head(str string, length int) string {
 	return fmt.Sprintf("%.*s", length, str)
 }
 
+func Body(str string, pos, length int) string {
+	rs := []rune(str)
+	rl := len(rs)
+	if pos < 0 {
+		pos = 0
+	}
+	if pos >= rl {
+		return ""
+	}
+	if length == -1 {
+		length = rl - pos
+	}
+	e := pos + length
+	if e > rl {
+		e = rl
+	}
+	if e-pos == 0 {
+		return ""
+	}
+	return string(rs[pos:e])
+}
+
+func Map(str string, convert func(i int, r rune) string) string {
+	var out string
+	for i, r := range str {
+		out += convert(i, r)
+	}
+	return out
+}
+
 func HeadUntilCharSet(str, chars string) string {
 	i := strings.IndexAny(str, chars)
 	if i == -1 {
@@ -172,9 +202,35 @@ func HeadUntilString(str, sep string) string {
 	return str[:i]
 }
 
+func HeadUntilStringWithRest(str, sep string, rest *string) string {
+	i := strings.Index(str, sep)
+	if i == -1 {
+		return str
+	}
+	*rest = str[i+len(sep):]
+	return str[:i]
+}
+
 func Tail(str string, length int) string {
-	l := umath.IntClamp(length, 0, len(str)) // hack without unicode support
+	l := zmath.IntClamp(length, 0, len(str)) // hack without unicode support
 	return str[len(str)-l:]
+}
+
+func TailUntil(str, sep string) string {
+	i := strings.LastIndex(str, sep)
+	if i == -1 {
+		return str
+	}
+	return str[i+len(sep):]
+}
+
+func TailUntilWithRest(str, sep string, rest *string) string {
+	i := strings.LastIndex(str, sep)
+	if i == -1 {
+		return str
+	}
+	*rest = str[:i]
+	return str[i+len(sep):]
 }
 
 func TruncatedFromEnd(str string, length int, endString string) (s string) {
@@ -184,6 +240,18 @@ func TruncatedFromEnd(str string, length int, endString string) (s string) {
 		if l > length {
 			str = string(r[:length])
 			str += endString
+		}
+	}
+	return str
+}
+
+func TruncatedMiddle(str string, length int, moreString string) (s string) {
+	if str != "" {
+		r := []rune(str)
+		l := len(r)
+		if l > length {
+			m := length / 2
+			str = string(r[:m]) + moreString + string(r[l-m:])
 		}
 	}
 	return str
@@ -211,7 +279,7 @@ func TruncatedAtCharFromEnd(str string, max int, divider, truncateSymbol string)
 }
 
 func TruncatedFromStart(str string, length int, endString string) string {
-	l := umath.IntClamp(length, 0, len(str)-len(endString)) // hack without unicode support
+	l := zmath.IntClamp(length, 0, len(str)-len(endString)) // hack without unicode support
 	return endString + str[l:]
 }
 
@@ -222,6 +290,21 @@ func ConcatenateNonEmpty(divider string, parts ...string) (str string) {
 				str = s
 			} else {
 				str += divider + s
+			}
+		}
+	}
+	return
+}
+
+// Adds not-empty strings to str with divider. No divider on fidst add if initial str is empty.
+func Concat(str *string, divider string, parts ...interface{}) {
+	for _, p := range parts {
+		s := fmt.Sprintf("%v", p)
+		if s != "" {
+			if *str == "" {
+				*str = s
+			} else {
+				*str += divider + s
 			}
 		}
 	}
@@ -363,7 +446,7 @@ func SlicesAreEqual(aset, bset []string) bool {
 	return true
 }
 
-func AddToStringSet(str string, strs *[]string) bool {
+func AddToStringSet(strs *[]string, str string) bool {
 	i := StrIndexInStrings(str, *strs)
 	if i == -1 {
 		*strs = append(*strs, str)
@@ -374,7 +457,7 @@ func AddToStringSet(str string, strs *[]string) bool {
 
 func GenerateRandomBytes(count int) []byte {
 	data := make([]byte, count)
-	n, err := io.ReadFull(rand.Reader, data)
+	n, err := io.ReadFull(cryptoRand.Reader, data)
 	if n != len(data) || err != nil {
 		panic(err)
 	}
@@ -410,6 +493,20 @@ func JoinStringMap(m map[string]string, equal, sep string) (str string) {
 		str += key + equal + val
 	}
 	return
+}
+
+func RandomKVFromSSMap(m map[string]string) (string, string) {
+	n := int(rand.Int31n(int32(len(m))))
+	i := 0
+	for k, v := range m {
+		if i == n {
+			return k, v
+		}
+		i++
+	}
+	panic("RandomKVFromSSMap outside")
+
+	return "", ""
 }
 
 func AreStringMapsEqual(a, b map[string]string) bool {
@@ -667,35 +764,44 @@ func GetMemoryString(b int64, langCode string, maxSignificant int) string {
 	return MakeCount(s, v, langCode, "", maxSignificant)
 }
 
-func SplitByNewLines(str string) []string {
+func SplitByNewLines(str string, skipEmpty bool) []string {
 	str = strings.Replace(str, "\r\n", "\n", -1)
 	str = strings.Replace(str, "\r", "\n", -1)
-	return strings.Split(str, "\n")
+	lines := strings.Split(str, "\n")
+	if !skipEmpty {
+		return lines
+	}
+	nlines := make([]string, 0, len(lines))
+	for _, l := range lines {
+		if l != "" {
+			nlines = append(nlines, l)
+		}
+	}
+	return nlines
 }
 
-func RangeStringLines(str string, f func(s string)) {
-	lines := SplitByNewLines(str)
-	for _, l := range lines {
+func RangeStringLines(str string, skipEmpty bool, f func(s string)) {
+	for _, l := range SplitByNewLines(str, skipEmpty) {
 		f(l)
 	}
 }
 
-func GetStringSliceFromIntBase10(ids []int64) []string {
-	s := make([]string, len(ids))
-	for i := range ids {
-		s[i] = strconv.FormatInt(ids[i], 10)
-	}
-	return s
-}
+// func GetStringSliceFromIntBase10(ids []int64) []string {
+// 	s := make([]string, len(ids))
+// 	for i := range ids {
+// 		s[i] = strconv.FormatInt(ids[i], 10)
+// 	}
+// 	return s
+// }
 
-func MakeFirstLetterUpperCase(str string) (out string) {
+func FirstToUpper(str string) (out string) {
 	r := []rune(str)
 	r[0] = unicode.ToUpper(r[0])
 	out = string(r)
 	return
 }
 
-func MakeFirstLetterLowerCase(str string) (out string) {
+func FirstToLower(str string) (out string) {
 	r := []rune(str)
 	r[0] = unicode.ToLower(r[0])
 	out = string(r)
@@ -824,7 +930,7 @@ func CaselessCompare(a, b string) int {
 
 func NumberToBase64Code(n int) string {
 	const table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-	i := umath.IntMin(umath.IntMax(0, n), 63)
+	i := uinteger.IntMin(uinteger.IntMax(0, n), 63)
 	return string(table[i])
 }
 

@@ -1,4 +1,4 @@
-package ugeo
+package zgeo
 
 import (
 	"bytes"
@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"github.com/torlangballe/zutil/umath"
+
 	"github.com/torlangballe/zutil/ustr"
 	"github.com/torlangballe/zutil/ustr/ulocale"
+	"github.com/torlangballe/zutil/zmath"
 )
 
 const KDegToMeters = 1113200.0
@@ -46,7 +47,7 @@ func (r FPoint) Sub(a FPoint) FPoint {
 }
 
 func (r FPoint) Sign() FPoint {
-	return FPoint{umath.Sign(r.X), umath.Sign(r.Y)}
+	return FPoint{zmath.Sign(r.X), zmath.Sign(r.Y)}
 }
 
 func (p FPoint) Length() float64 {

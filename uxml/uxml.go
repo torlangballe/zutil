@@ -7,6 +7,8 @@ import (
 	"errors"
 	"io"
 	"strings"
+
+	"github.com/torlangballe/zutil/zbytes"
 )
 
 func isCharsetISO88591(charset string) bool {
@@ -63,4 +65,25 @@ func EscapeStringForXML(str string) string {
 	xml.EscapeText(writer, []byte(str))
 	writer.Flush()
 	return buf.String()
+}
+
+func identReader(encoding string, input io.Reader) (io.Reader, error) {
+	return input, nil
+}
+
+func UnmarshalUTF16(b []byte, target interface{}) error {
+	reader := zbytes.MakeUTF16Reader(b)
+	decoder := xml.NewDecoder(reader)
+	decoder.CharsetReader = identReader
+	return decoder.Decode(target)
+}
+
+func UnmarshalWithBOM(b []byte, target interface{}) error {
+	if zbytes.HasUnicodeBOM(b) {
+		reader := zbytes.MakeUTF16Reader(b)
+		decoder := xml.NewDecoder(reader)
+		decoder.CharsetReader = identReader
+		return decoder.Decode(target)
+	}
+	return xml.Unmarshal(b, target)
 }

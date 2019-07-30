@@ -13,7 +13,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
-	"github.com/torlangballe/zutil/ugeo"
+
+	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/ureflect"
 	"github.com/torlangballe/zutil/ustr"
 
@@ -346,7 +347,7 @@ func (p *GisGeoPoint) Value() (driver.Value, error) {
 }
 
 // GisGeoPoint maps against Postgis geographical Point
-type GisGeoPolygon [][]ugeo.FPoint
+type GisGeoPolygon [][]zgeo.FPoint
 
 func (gp *GisGeoPolygon) Scan(val interface{}) error {
 	b, ok := val.([]byte)
@@ -368,10 +369,10 @@ func (gp *GisGeoPolygon) Scan(val interface{}) error {
 	}
 	for _, npoly := range mp1.Coords() {
 		for _, poly := range npoly {
-			var sp []ugeo.FPoint
+			var sp []zgeo.FPoint
 			for _, p := range poly {
 				if len(p) == 2 {
-					sp = append(sp, ugeo.FPoint{p[0], p[1]})
+					sp = append(sp, zgeo.FPoint{p[0], p[1]})
 				}
 			}
 			*gp = append(*gp, sp)
@@ -494,5 +495,26 @@ func FieldParametersFromStruct(istruct interface{}, skip []string, start int) (p
 		}
 		parameters += fmt.Sprintf("$%d", start+i)
 	}
+	return
+}
+
+func SetupPostgres(userName, dbName string) (db *sql.DB, err error) {
+	pqStr := fmt.Sprintf(
+		"host=%s port=%d sslmode=%s dbname=%s user=%s", //  password=%s
+		"127.0.0.1",
+		5432,
+		"disable",
+		dbName,
+		userName,
+	)
+
+	db, err = sql.Open("postgres", pqStr)
+	if err != nil {
+		fmt.Println("setup db err:", err)
+		return
+	}
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+
 	return
 }

@@ -1,28 +1,36 @@
 package zlog
 
 import (
+	"fmt"
+	"os"
+	"path"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/torlangballe/zutil/ustr"
 )
 
-type Priority string
+type Priority int
 
 const (
-	Verbose Priority = "V"
-	Debug            = "D"
-	Info             = "I"
-	Warning          = "W"
-	Error            = "E"
-	Fatal            = "F"
+	Verbose Priority = iota
+	DebugLevel
+	InfoLevel
+	WarningLevel
+	ErrorLevel
+	FatalLevel
 )
+
+var ErrorPriority = Verbose
 
 var logcatMsgRegex = regexp.MustCompile(`([0-9]*)-([0-9]*)\s*([0-9]*):([0-9]*):([0-9]*).([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*([VDIWEF])\s*(.*)`)
 
-type Log struct {
+type LogCatItem struct {
 	TimeStamp time.Time
 	ProcessID int64
 	ThreadID  int64
@@ -32,7 +40,7 @@ type Log struct {
 	Message   string
 }
 
-func ParseLogcatMessage(s string) (log Log, got bool) {
+func ParseLogcatMessage(s string) (log LogCatItem, got bool) {
 	parts := logcatMsgRegex.FindStringSubmatch(s)
 	if parts == nil {
 		return
@@ -55,4 +63,48 @@ func ParseLogcatMessage(s string) (log Log, got bool) {
 	}
 	got = true
 	return
+}
+
+// Error performs Log with ErrorLevel priority
+func Error(err error, parts ...interface{}) error {
+	return log(err, ErrorLevel, parts...)
+}
+
+// Log returns a new error combined with err (if not nil), and parts. Printing done if priority >= ErrorPriority
+func Log(err error, priority Priority, parts ...interface{}) error {
+	return log(err, priority, parts...)
+}
+
+func log(err error, priority Priority, parts ...interface{}) error {
+	finfo := GetCallingFunctionString(4)
+	p := strings.TrimSpace(fmt.Sprintln(parts...))
+	if err != nil {
+		err = errors.Wrap(err, p)
+	} else {
+		err = errors.New(p)
+	}
+	col := ustr.EscMagenta
+	if priority >= ErrorLevel {
+		col = ustr.EscRed
+	}
+	fmt.Println(finfo+": ", col+err.Error()+ustr.EscNoColor)
+	if priority == FatalLevel {
+		os.Exit(-1)
+	}
+	return err
+}
+
+func GetCallingFunctionInfo(pos int) (function, file string, line int) {
+	pc, file, line, ok := runtime.Caller(pos)
+	if ok {
+		function = runtime.FuncForPC(pc).Name()
+	}
+	return
+}
+
+func GetCallingFunctionString(pos int) string {
+	f, file, line := GetCallingFunctionInfo(pos)
+	_, f = path.Split(f)
+	_, file = path.Split(file)
+	return fmt.Sprintf("%s%s()%s @ %s%s:%d%s", ustr.EscCyan, f, ustr.EscNoColor, ustr.EscGreen, file, line, ustr.EscNoColor)
 }

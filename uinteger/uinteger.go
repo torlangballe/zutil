@@ -7,6 +7,51 @@ import (
 	"strings"
 )
 
+func IntMax(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func IntMin(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func IntMaximize(a *int, b int) bool {
+	if *a > b {
+		return false
+	}
+	*a = b
+	return true
+}
+
+func Int64Max(a int64, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func Int64Maximize(a *int64, b int64) bool {
+	if *a > b {
+		return false
+	}
+	*a = b
+	return true
+}
+
+func Int64Minimize(a *int64, b int64) bool {
+	if *a < b {
+		return false
+	}
+	*a = b
+	return true
+}
+
 func IsInt64InSlice(i int64, slice []int64) bool {
 	return IndexOfInt64InSlice(i, slice) != -1
 }

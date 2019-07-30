@@ -2,7 +2,6 @@ package zfile
 
 import (
 	"bufio"
-	"capsulefm/libs/util/ustr"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/torlangballe/zutil/ustr"
 )
 
 var RootFolder = getRootFolder()
@@ -51,6 +51,11 @@ func CreateTempFilePath(name string) string {
 func DoesFileExist(filepath string) bool {
 	_, err := os.Stat(filepath)
 	return err == nil
+}
+
+func SetModified(filepath string, t time.Time) error {
+	err := os.Chtimes(filepath, t, t)
+	return err
 }
 
 func DoesFileNotExist(filepath string) bool { // not same as !DoesFileExist...

@@ -1,4 +1,17 @@
-package umap
+package zmap
+
+import "fmt"
+
+func StringInterfaceMapJoin(m map[string]interface{}, equal, sep string) string {
+	str := ""
+	for k, v := range m {
+		if str != "" {
+			str += sep
+		}
+		str += fmt.Sprint(k, equal, v)
+	}
+	return str
+}
 
 func CopyStringInterfaceMap(m map[string]interface{}) map[string]interface{} {
 	out := map[string]interface{}{}
