@@ -140,7 +140,7 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 	}
 	err := h.LoadTemplates()
 	if err != nil {
-		urest.ReturnAndPrintError(w, req, http.StatusInternalServerError, nil, "templates get error:", req.URL.Path, err)
+		urest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "templates get error:", req.URL.Path, err)
 		return false
 	}
 	name := req.URL.Path[1:] + ".gohtml"

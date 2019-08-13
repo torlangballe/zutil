@@ -20,25 +20,31 @@ const (
 	Edge               = "edge"
 )
 
-func GetAppNameOfBrowser(btype BrowserType) string {
+func GetAppNameOfBrowser(btype BrowserType, fullName bool) string {
 	switch btype {
 	case Safari:
 		return "Safari"
 	case Chrome:
 		return "Google Chrome"
 	case Edge:
-		return "Microsoft Edge Canary"
+		if fullName {
+			return "Microsoft Edge Canary"
+		}
+		return "Microsoft Edge"
 	}
 	return ""
 }
 
 func RunCommand(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
-
 	output, err := cmd.CombinedOutput()
 	str := strings.Replace(string(output), "\n", "", -1)
 	if err != nil {
-		fmt.Println("Run Command", "'"+command+"'", args, "err:", ustr.EscRed, err, str, ustr.EscNoColor)
+		var out string
+		for _, a := range args {
+			out += "'" + a + "' "
+		}
+		fmt.Println("Run Command err", "'"+command+"'", out, "err:", ustr.EscRed, err, str, ustr.EscNoColor)
 	}
 	return str, err
 }
@@ -72,7 +78,7 @@ func OpenUrlInBrowser(surl string, btype BrowserType) (string, error) {
 		str, err := RunCommand(path, "--new-window", surl)
 		return str, err
 	}
-	name := GetAppNameOfBrowser(btype)
+	name := GetAppNameOfBrowser(btype, true)
 	str, err := RunCommand("open", "-F", "-g", "-a", name, surl, "--args", "--new-window")
 	if err != nil {
 		return str, zlog.Error(err, "OpenUrlInBrowser")
@@ -81,24 +87,29 @@ func OpenUrlInBrowser(surl string, btype BrowserType) (string, error) {
 }
 
 func QuitBrowser(btype BrowserType) (string, error) {
-	name := GetAppNameOfBrowser(btype)
+	name := GetAppNameOfBrowser(btype, true)
 	str, err := RunCommand("killall", name)
 	return str, err
 }
 
-func CloseWindowWithTitle(app, title string) error {
+func CloseBrowserWindowWithTitle(btype BrowserType, title string) error {
+	titleName := "title"
+	if btype == Safari {
+		titleName = "name"
+	}
+	app := GetAppNameOfBrowser(btype, true)
 	command :=
 		`tell application "%s"
-		close (every window whose title contains "%s")
+		close (every window whose %s contains "%s")
 		end tell
 `
-	command = fmt.Sprintf(command, app, title)
+	command = fmt.Sprintf(command, app, titleName, title)
 	_, err := RunAppleScript(command)
 	//	fmt.Println("CloseWindowWithTitle:", app, title, str, err, "\n", command)
 	return err
 }
 
-func GetWindowId(app, title string) (string, error) {
+func GetWindowID(app, title string) (string, error) {
 	str, err := RunCommand("getwindowid", app, title)
 	if err != nil {
 		str = strings.TrimSpace(str)

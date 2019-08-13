@@ -494,3 +494,17 @@ func (d DurationStruct) ToDuration() time.Duration {
 
 	return tot
 }
+
+// RepeatFromNow invokes f immediately, and then at intervalSecs until the function returns false
+func RepeatFromNow(intervalSecs float64, f func() bool) {
+	ticker := time.NewTicker(SecondsDur(intervalSecs))
+	if !f() {
+		return
+	}
+	for range ticker.C {
+		if !f() {
+			ticker.Stop()
+			break
+		}
+	}
+}

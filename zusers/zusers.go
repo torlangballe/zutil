@@ -1,17 +1,16 @@
 package zusers
 
 import (
+	"capsulefm/libs/util/uredis"
 	"database/sql"
 	"fmt"
 	"net/http"
 
-	"github.com/torlangballe/zutil/uredis"
-	"github.com/torlangballe/zutil/ustr"
-	"github.com/torlangballe/zutil/ztime"
-
 	"github.com/garyburd/redigo/redis"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 const (

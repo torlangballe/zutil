@@ -67,16 +67,21 @@ func ParseLogcatMessage(s string) (log LogCatItem, got bool) {
 
 // Error performs Log with ErrorLevel priority
 func Error(err error, parts ...interface{}) error {
-	return log(err, ErrorLevel, parts...)
+	return log(err, ErrorLevel, 4, parts...)
+}
+
+// Error performs Log with ErrorLevel priority, getting stack from N
+func ErrorAtStack(err error, stackPos int, parts ...interface{}) error {
+	return log(err, ErrorLevel, stackPos, parts...)
 }
 
 // Log returns a new error combined with err (if not nil), and parts. Printing done if priority >= ErrorPriority
 func Log(err error, priority Priority, parts ...interface{}) error {
-	return log(err, priority, parts...)
+	return log(err, priority, 4, parts...)
 }
 
-func log(err error, priority Priority, parts ...interface{}) error {
-	finfo := GetCallingFunctionString(4)
+func log(err error, priority Priority, pos int, parts ...interface{}) error {
+	finfo := GetCallingFunctionString(pos)
 	p := strings.TrimSpace(fmt.Sprintln(parts...))
 	if err != nil {
 		err = errors.Wrap(err, p)

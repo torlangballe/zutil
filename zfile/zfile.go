@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -38,13 +39,13 @@ func CreateTempFile(name string) (file *os.File, filepath string, err error) {
 
 func CreateTempFilePath(name string) string {
 	stime := time.Now().Format(time.RFC3339Nano)
-	sfold := path.Join(os.TempDir(), stime)
+	sfold := filepath.Join(os.TempDir(), stime)
 	err := os.MkdirAll(sfold, 0775|os.ModeDir)
 	if err != nil {
 		fmt.Println("ufile.CreateTempFilePath:", err)
 		return ""
 	}
-	stemp := path.Join(sfold, SanitizeStringForFilePath(name))
+	stemp := filepath.Join(sfold, SanitizeStringForFilePath(name))
 	return stemp
 }
 

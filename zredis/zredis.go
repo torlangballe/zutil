@@ -1,4 +1,4 @@
-package uredis
+package zredis
 
 import (
 	"encoding/json"

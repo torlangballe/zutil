@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 var RunningOnServer bool
@@ -80,12 +80,9 @@ func ReturnResultWithHeaders(w http.ResponseWriter, req *http.Request, headers m
 }
 
 // Returns HTTP error code and error messages in JSON representation, with string made of args and, printed
-func ReturnAndPrintError(w http.ResponseWriter, req *http.Request, errorCode int, logger *log.Logger, a ...interface{}) {
+func ReturnAndPrintError(w http.ResponseWriter, req *http.Request, errorCode int, a ...interface{}) {
 	str := fmt.Sprintln(a)
-	fmt.Print(str)
-	if logger != nil {
-		logger.Print("%s", str)
-	}
+	zlog.ErrorAtStack(nil, 5, a...)
 	ReturnError(w, req, str, errorCode)
 }
 

@@ -905,12 +905,12 @@ func ReplaceHashTags(text string, f func(tag string) string) string {
 
 func HashTo64Hex(str string) string {
 	h := uinteger.HashTo64(str)
-	return fmt.Sprintf("%8x", h)
+	return fmt.Sprintf("%x", h)
 }
 
 func HashTo32Hex(str string) string {
 	h := uinteger.HashTo32(str)
-	return fmt.Sprintf("%8x", h)
+	return fmt.Sprintf("%x", h)
 }
 
 func ReplaceSpaces(str string, rep rune) string {
