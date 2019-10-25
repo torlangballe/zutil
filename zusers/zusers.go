@@ -1,7 +1,6 @@
 package zusers
 
 import (
-	"capsulefm/libs/util/uredis"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/zredis"
 	"github.com/torlangballe/zutil/ztime"
 )
 
@@ -251,13 +251,13 @@ func Register(db *sql.DB, redisPool *redis.Pool, email, password string, oemId i
 
 func getUserIdFromToken(redisPool *redis.Pool, token string) (id int64, err error) {
 	key := "user." + token
-	_, err = uredis.Get(redisPool, &id, key)
+	_, err = zredis.Get(redisPool, &id, key)
 	return
 }
 
 func setTokenForUserId(redisPool *redis.Pool, token string, id int64) (err error) {
 	key := "user." + token
-	err = uredis.Put(redisPool, key, ztime.Day*30, id)
+	err = zredis.Put(redisPool, key, ztime.Day*30, id)
 	return
 }
 

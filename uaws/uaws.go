@@ -1,7 +1,7 @@
 package uaws
 
 import (
-	"github.com/torlangballe/zutil/ufile"
+	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/ustr"
 	"context"
 	"encoding/json"

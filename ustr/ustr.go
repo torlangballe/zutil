@@ -965,6 +965,15 @@ func Reverse(ss *[]string) {
 	}
 }
 
+func Reversed(ss []string) []string {
+	end := len(ss)
+	out := make([]string, end)
+	for i := 0; i < end; i++ {
+		out[end-i-1] = ss[i]
+	}
+	return out
+}
+
 func NiceFloat(f float64, significant int) string {
 	format := fmt.Sprintf("%%.%df", significant)
 	s := fmt.Sprintf(format, f)

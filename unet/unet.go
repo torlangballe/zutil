@@ -51,3 +51,22 @@ func ParseMACToBigEndian(mac string) (uint64, error) {
 // 	err = p.Run(5)
 // 	return
 // }
+
+func GetMACAddresses() (map[string]string, error) {
+	ifas, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	as := map[string]string{}
+	for _, ifa := range ifas {
+		a := ifa.HardwareAddr.String()
+		if a == "" {
+			continue
+		}
+		if ifa.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		as[ifa.Name] = a
+	}
+	return as, nil
+}

@@ -36,7 +36,7 @@ func Float32Maximize(a *float32, b float32) bool {
 	return true
 }
 
-func Float64Minimize(a *float64, b float64) bool {
+func Minimize(a *float64, b float64) bool {
 	if *a < b {
 		return false
 	}
@@ -44,7 +44,7 @@ func Float64Minimize(a *float64, b float64) bool {
 	return true
 }
 
-func Float64Maximize(a *float64, b float64) bool {
+func Maximize(a *float64, b float64) bool {
 	if *a > b {
 		return false
 	}

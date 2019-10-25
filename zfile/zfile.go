@@ -14,6 +14,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -143,6 +144,9 @@ func CreateSanitizedShortNameWithHash(name string) string {
 }
 
 func ExpandTildeInFilepath(path string) string {
+	if runtime.GOOS == "js" {
+		return ""
+	}
 	usr, err := user.Current()
 	if err == nil {
 		dir := usr.HomeDir

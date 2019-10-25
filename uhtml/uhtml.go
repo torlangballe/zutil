@@ -1,8 +1,9 @@
 package uhtml
 
 import (
-	"code.google.com/p/go.net/html"
 	"strings"
+
+	"golang.org/x/net/html"
 )
 
 func ExtractTextFromHTMLString(str string) (text string, err error) {

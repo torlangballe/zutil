@@ -5,11 +5,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/torlangballe/zutil/ustr"
-
+	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
-
-	"github.com/torlangballe/zgo"
 )
 
 type BrowserType string
@@ -36,6 +33,7 @@ func GetAppNameOfBrowser(btype BrowserType, fullName bool) string {
 }
 
 func RunCommand(command string, args ...string) (string, error) {
+	//	zlog.Info("RunCommand:", command, args)
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	str := strings.Replace(string(output), "\n", "", -1)
@@ -44,7 +42,7 @@ func RunCommand(command string, args ...string) (string, error) {
 		for _, a := range args {
 			out += "'" + a + "' "
 		}
-		fmt.Println("Run Command err", "'"+command+"'", out, "err:", ustr.EscRed, err, str, ustr.EscNoColor)
+		zlog.Error(err, "Run Command err", "'"+command+"'", out, str)
 	}
 	return str, err
 }
@@ -54,7 +52,6 @@ func RunAppleScript(command string) (string, error) {
 }
 
 func CloseUrlInBrowser(surl string, btype BrowserType) error {
-	fmt.Println()
 	command := `
 		display alert "hello"
 		repeat with w in windows
@@ -129,25 +126,25 @@ func CaptureScreen(windowID, outputPath string) error {
 	return err
 }
 
-func CropImage(path string, rect zgo.Rect, maxSize zgo.Size) error {
-	srect := fmt.Sprintf("%dx%d+%d+%d", int(rect.Size.W), int(rect.Size.H), int(rect.Pos.X), int(rect.Pos.Y))
+func CropImage(path string, rect zgeo.FRect, maxSize zgeo.FSize) error {
+	srect := fmt.Sprintf("%dx%d+%d+%d", int(rect.Size().W), int(rect.Size().H), int(rect.Min.X), int(rect.Min.Y))
 	args := []string{
+		"mogrify",
 		path,
 		"-crop",
 		srect,
 	}
-	fmt.Println("CROP:", srect, path)
 	if !maxSize.IsNull() {
 		ssize := fmt.Sprintf("%dx%d", int(maxSize.W), int(maxSize.H))
 		args = append(args, "+repage", "-resize", ssize, "+repage")
 	}
 	args = append(args, path)
-	_, err := RunCommand("convert", args...)
+	_, err := RunCommand("magick", args...)
 	return err
 }
 
 func ProcessImage(inputPath string, commands ...interface{}) error {
-	var args []string
+	var args = []string{"mogrify"}
 	for i := 0; i < len(commands); i++ {
 		v := commands[i]
 		c, got := v.(string)
@@ -158,11 +155,11 @@ func ProcessImage(inputPath string, commands ...interface{}) error {
 		v = commands[i]
 		switch c {
 		case "crop":
-			r := v.(zgo.Rect)
-			srect := fmt.Sprintf("%dx%d+%d+%d", int(r.Size.W), int(r.Size.H), int(r.Pos.X), int(r.Pos.Y))
+			r := v.(zgeo.FRect)
+			srect := fmt.Sprintf("%dx%d+%d+%d", int(r.Size().W), int(r.Size().H), int(r.Min.X), int(r.Min.Y))
 			args = append(args, "-crop", srect)
 		case "resize":
-			s := v.(zgo.Size)
+			s := v.(zgeo.FSize)
 			ssize := fmt.Sprintf("%dx%d", int(s.W), int(s.H))
 			args = append(args, "-resize", ssize)
 		case "comment":
@@ -171,6 +168,6 @@ func ProcessImage(inputPath string, commands ...interface{}) error {
 		}
 	}
 	args = append(args, inputPath)
-	_, err := RunCommand("mogrify", args...)
+	_, err := RunCommand("magick", args...)
 	return err
 }

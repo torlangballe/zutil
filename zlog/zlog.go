@@ -2,8 +2,10 @@ package zlog
 
 import (
 	"fmt"
+	"log/syslog"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -13,9 +15,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/zfile"
 )
 
 type Priority int
+
+type StackAdjust int
 
 const (
 	Verbose Priority = iota
@@ -27,8 +32,11 @@ const (
 )
 
 var ErrorPriority = Verbose
-
+var OutputFilePath = ""
 var logcatMsgRegex = regexp.MustCompile(`([0-9]*)-([0-9]*)\s*([0-9]*):([0-9]*):([0-9]*).([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*([VDIWEF])\s*(.*)`)
+var syslogWriter *syslog.Writer
+var outFile *os.File
+var UseColor = false
 
 type LogCatItem struct {
 	TimeStamp time.Time
@@ -67,20 +75,37 @@ func ParseLogcatMessage(s string) (log LogCatItem, got bool) {
 
 // Error performs Log with ErrorLevel priority
 func Error(err error, parts ...interface{}) error {
-	return log(err, ErrorLevel, 4, parts...)
+	return baseLog(err, ErrorLevel, 4, parts...)
+}
+
+// Fatal performs Log with Fatal priority
+func Fatal(err error, parts ...interface{}) error {
+	return baseLog(err, FatalLevel, 4, parts...)
+}
+
+// Beug performs Log with InfoLevel priority
+func Info(parts ...interface{}) error {
+	return baseLog(nil, InfoLevel, 4, parts...)
 }
 
 // Error performs Log with ErrorLevel priority, getting stack from N
 func ErrorAtStack(err error, stackPos int, parts ...interface{}) error {
-	return log(err, ErrorLevel, stackPos, parts...)
+	return baseLog(err, ErrorLevel, stackPos, parts...)
 }
 
 // Log returns a new error combined with err (if not nil), and parts. Printing done if priority >= ErrorPriority
 func Log(err error, priority Priority, parts ...interface{}) error {
-	return log(err, priority, 4, parts...)
+	return baseLog(err, priority, 4, parts...)
 }
 
-func log(err error, priority Priority, pos int, parts ...interface{}) error {
+func baseLog(err error, priority Priority, pos int, parts ...interface{}) error {
+	if len(parts) != 0 {
+		n, got := parts[0].(StackAdjust)
+		if got {
+			parts = parts[1:]
+			pos += int(n)
+		}
+	}
 	finfo := GetCallingFunctionString(pos)
 	p := strings.TrimSpace(fmt.Sprintln(parts...))
 	if err != nil {
@@ -88,11 +113,37 @@ func log(err error, priority Priority, pos int, parts ...interface{}) error {
 	} else {
 		err = errors.New(p)
 	}
-	col := ustr.EscMagenta
-	if priority >= ErrorLevel {
-		col = ustr.EscRed
+	col := ""
+	endCol := ""
+	if UseColor {
+		col = ustr.EscYellow
+		if priority >= ErrorLevel {
+			col = ustr.EscMagenta
+		}
+		endCol = ustr.EscNoColor
 	}
-	fmt.Println(finfo+": ", col+err.Error()+ustr.EscNoColor)
+	fmt.Println(finfo+": ", col+err.Error()+endCol)
+	if OutputFilePath != "" && outFile == nil {
+		var ferr error
+		fp := zfile.ExpandTildeInFilepath(OutputFilePath)
+		outFile, ferr = os.Create(fp)
+		if ferr != nil {
+			fmt.Println("Error creating output file for zlog:", ferr)
+			OutputFilePath = ""
+		}
+	}
+	str := finfo + ": " + err.Error()
+	if outFile != nil {
+		outFile.WriteString(str + "\n")
+	}
+	if runtime.GOOS != "js" {
+		if syslogWriter == nil {
+			_, name := filepath.Split(os.Args[0])
+			fmt.Println("starting syslog:", name)
+			syslogWriter, _ = syslog.New(syslog.LOG_NOTICE, name)
+		}
+		go syslogWriter.Notice(str)
+	}
 	if priority == FatalLevel {
 		os.Exit(-1)
 	}
@@ -111,5 +162,5 @@ func GetCallingFunctionString(pos int) string {
 	f, file, line := GetCallingFunctionInfo(pos)
 	_, f = path.Split(f)
 	_, file = path.Split(file)
-	return fmt.Sprintf("%s%s()%s @ %s%s:%d%s", ustr.EscCyan, f, ustr.EscNoColor, ustr.EscGreen, file, line, ustr.EscNoColor)
+	return fmt.Sprintf("%s() @ %s:%d", f, file, line)
 }

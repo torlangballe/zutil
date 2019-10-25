@@ -24,6 +24,7 @@ type FPoint struct {
 }
 
 type FPolygon []FPoint
+
 type FSize struct {
 	W float64 `json:"w"`
 	H float64 `json:"h"`
@@ -33,6 +34,24 @@ type FRect struct {
 	Min FPoint `json:"min"`
 	Max FPoint `json:"max"`
 }
+
+// FSize *****************************************************
+
+func (s FSize) IsNull() bool {
+	return s.W == 0 && s.H == 0
+}
+
+func (s FSize) ScaledInto(in FSize) FSize {
+	if s.W == 0 || s.H == 0 || in.W == 0 || in.H == 0 {
+		return FSize{}
+	}
+	min := math.Min(in.W/s.W, in.H/s.H)
+	scaled := FSize{s.W * min, s.H * min}
+
+	return scaled
+}
+
+// FPoint *****************************************************
 
 func (f FPoint) IsNull() bool {
 	return f.X == 0 && f.Y == 0
@@ -65,6 +84,10 @@ func (p *FPoint) String() string {
 }
 
 // FRect *****************************************************
+
+func (r FRect) Size() FSize {
+	return FSize{r.Max.X - r.Min.X, r.Max.Y - r.Min.Y}
+}
 
 func (r FRect) Width() float64 {
 	return r.Max.X - r.Min.X
@@ -106,6 +129,10 @@ func NewFRect(minx, miny, maxx, maxy float64) FRect {
 	return FRect{Min: FPoint{minx, miny}, Max: FPoint{maxx, maxy}}
 }
 
+func NewFRectFromPointSize(pos FPoint, size FSize) FRect {
+	return FRect{Min: pos, Max: FPoint{pos.X + size.W, pos.Y + size.H}}
+}
+
 func (r FRect) Contains(p FPoint) bool {
 	return p.X >= r.Min.X && p.Y >= r.Min.Y && p.X <= r.Max.X && p.Y <= r.Max.Y
 }
@@ -117,6 +144,8 @@ func (r FRect) OverlapWith(a FRect) (out FRect) {
 	out.Max.Y = math.Max(math.Min(r.Max.Y, a.Max.Y), out.Min.Y)
 	return
 }
+
+// Misc ****************************************
 
 func hsin(theta float64) float64 {
 	return math.Pow(math.Sin(theta/2), 2)

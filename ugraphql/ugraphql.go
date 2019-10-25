@@ -1,7 +1,7 @@
 package ugraphql
 
 import (
-	"github.com/torlangballe/zutil/ureflect"
+	"github.com/torlangballe/zutil/zreflect"
 	"context"
 	"encoding/json"
 	"fmt"

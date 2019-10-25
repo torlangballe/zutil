@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/ureflect"
+	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/zgeo"
 
 	"github.com/lib/pq"
 	geom "github.com/twpayne/go-geom"
@@ -509,6 +509,7 @@ func SetupPostgres(userName, dbName string) (db *sql.DB, err error) {
 	)
 
 	db, err = sql.Open("postgres", pqStr)
+	fmt.Println("OPENPSQL:", pqStr, err)
 	if err != nil {
 		fmt.Println("setup db err:", err)
 		return

@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"log"
+
 	"github.com/garyburd/redigo/redis"
-	log "source.calgoty.com/calgoty/go-logger.git"
 )
 
 var redisPool *redis.Pool
