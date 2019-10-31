@@ -12,10 +12,8 @@ import (
 )
 
 var redisPool *redis.Pool
-var logger log.Logger = &log.StdoutLogger{}
 
 func Init(lg log.Logger, rPool *redis.Pool) {
-	logger = lg
 	redisPool = rPool
 }
 
