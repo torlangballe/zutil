@@ -4,82 +4,19 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+
+	"github.com/torlangballe/zutil/zint"
 )
 
-func Float32Max(a, b float32) float32 {
-	if a > b {
-		return a
-	}
-	return b
+const MathDegreesToMeters = (111.32 * 1000)
+const MathMetersToDegrees = 1 / MathDegreesToMeters
+
+func RadToDeg(rad float64) float64 {
+	return rad * 180 / math.Pi
 }
 
-func Float32Min(a, b float32) float32 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func Float32Minimize(a *float32, b float32) bool {
-	if *a < b {
-		return false
-	}
-	*a = b
-	return true
-}
-
-func Float32Maximize(a *float32, b float32) bool {
-	if *a > b {
-		return false
-	}
-	*a = b
-	return true
-}
-
-func Minimize(a *float64, b float64) bool {
-	if *a < b {
-		return false
-	}
-	*a = b
-	return true
-}
-
-func Maximize(a *float64, b float64) bool {
-	if *a > b {
-		return false
-	}
-	*a = b
-	return true
-}
-
-func Float64Max(a, b float64) float64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func Float64Min(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func IntMinimize(a *int, b int) bool {
-	if *a < b {
-		return false
-	}
-	*a = b
-	return true
-}
-func IntClamp(a, min, max int) int {
-	if a < min {
-		a = min
-	} else if a > max {
-		a = max
-	}
-	return a
+func DegToRad(deg float64) float64 {
+	return deg * math.Pi / 180
 }
 
 func CalculateFraction(r float64, max int) (int, int) {
@@ -131,17 +68,6 @@ func CalculateFractionFromString(str string, sep string) float64 {
 	return 0.0
 }
 
-func Round(f float64) int64 {
-	return int64(f + 0.5)
-}
-
-func AbsInt(i int64) int64 {
-	if i >= 0 {
-		return i
-	}
-	return -i
-}
-
 func Sign(f float64) float64 {
 	if f < 0 {
 		return -1
@@ -182,7 +108,7 @@ func AtanDeg(x float64) float64 {
 
 func UniqueRandomNumbersMapInRange(maxValue, count int) (nums map[int]bool) {
 	nums = map[int]bool{}
-	IntMinimize(&count, maxValue)
+	zint.Minimize(&count, maxValue)
 	for len(nums) < count {
 		nums[rand.Intn(maxValue)] = true
 	}

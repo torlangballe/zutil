@@ -1,7 +1,9 @@
-package uhost
+package zhost
 
 import (
 	"io/ioutil"
+	"net"
+	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -80,4 +82,66 @@ func forOSX() (name string, err error) {
 		name = names[1][1]
 	}
 	return
+}
+
+func GetCurrentLocalIPAddress() (address, ip4 string, err error) {
+	name, err := os.Hostname()
+	if err != nil {
+		return
+	}
+	addrs, err := net.LookupHost(name)
+	//	fmt.Println("CurrentLocalIP Stuff:", name, addrs, err)
+	if err != nil {
+		return
+	}
+
+	for _, a := range addrs {
+		if strings.Contains(a, ":") {
+			if address == "" {
+				address = a
+			}
+		} else {
+			if ip4 == "" {
+				ip4 = a
+			}
+
+		}
+	}
+	return
+}
+
+func GetOutboundIP() (ip net.IP, err error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	ip = localAddr.IP
+	return
+}
+
+func GetCurrentIPAddress() (address string, err error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return
+	}
+
+	for _, i := range ifaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			return "", err
+		}
+		for _, addr := range addrs {
+			switch v := addr.(type) {
+			case *net.IPNet:
+				return v.String(), nil
+			case *net.IPAddr:
+				return v.String(), nil
+			}
+			// process IP address
+		}
+	}
+	return "", nil
 }

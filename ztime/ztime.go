@@ -165,21 +165,62 @@ func DurSeconds(d time.Duration) float64 {
 	return float64(d) / float64(time.Second)
 }
 
-func GetSecsAsHMSString(dur float64, subsec bool) string {
-	str := ""
-	h := int(dur) / 3600
-	m := int(dur) / 60
-	if h > 0 {
-		m %= 60
-		str = fmt.Sprint(h)
-	}
-	s := fmt.Sprintf("%02d", int(dur)%60)
-	if subsec {
-		s = fmt.Sprintf("%02.1f", math.Mod(dur, 60))
-	}
-	str += fmt.Sprintf("%02d:%s", m, s)
+func GetSecsAsHMSString(dur float64, hour, min, sec bool, subdigits int) string {
+	var parts []string
 
-	return str
+	h := int(dur) / 3600
+	m := (int(dur) / 60)
+	if hour {
+		parts = append(parts, fmt.Sprint(h))
+	}
+	if min {
+		if h != 0 {
+			m %= 60
+		}
+		format := "%d"
+		if hour {
+			format = "%02d"
+		}
+		parts = append(parts, fmt.Sprintf(format, m))
+	}
+	if sec {
+		s := dur
+		if h != 0 || m != 0 {
+			s = math.Mod(s, 60)
+		}
+		format := "%d"
+		if min {
+			format = "%02d"
+		}
+		format = fmt.Sprint(format, ".", subdigits, "f")
+		parts = append(parts, fmt.Sprintf(format, s))
+		fmt.Println("GetSecsAsHMSString:", dur, hour, min, sec, subdigits, format, parts, h, m)
+	}
+
+	return strings.Join(parts, ":")
+}
+
+func GetSecsFromHMSString(str string, hour, min, sec bool) (float64, error) {
+	var secs float64
+
+	parts := strings.Split(str, ":")
+	for _, p := range parts {
+		n, err := strconv.ParseFloat(strings.TrimSpace(p), 32)
+		if err != nil {
+			return 0, err
+		}
+		if hour {
+			secs += n * 3600
+			hour = false
+		} else if min {
+			secs += n * 60
+			min = false
+		} else if sec {
+			secs += n
+			sec = false
+		}
+	}
+	return secs, nil
 }
 
 var BigTime = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000

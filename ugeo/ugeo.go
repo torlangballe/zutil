@@ -1,4 +1,4 @@
-package zgeo
+package ugeo
 
 import (
 	"bytes"
@@ -74,13 +74,16 @@ func (p FPoint) Length() float64 {
 }
 
 func (p *FPoint) Value() (driver.Value, error) {
+	if p == nil {
+		return nil, nil
+	}
 	buf := new(bytes.Buffer)
-	fmt.Fprintf(buf, "POINT(%f %f)", p.Y, p.X)
+	fmt.Fprintf(buf, "POINT(%f,%f)", p.Y, p.X)
 	return buf.Bytes(), nil
 }
 
 func (p *FPoint) String() string {
-	return fmt.Sprintf("POINT(%v %v)", p.Y, p.X)
+	return fmt.Sprintf("POINT(%f,%f)", p.Y, p.X)
 }
 
 // FRect *****************************************************

@@ -1,6 +1,9 @@
 package zmap
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 func StringInterfaceMapJoin(m map[string]interface{}, equal, sep string) string {
 	str := ""
@@ -31,6 +34,23 @@ func GetStringFromStrInterfaceMap(m map[string]interface{}, key string) string {
 	return s
 }
 
+func GetSortedKeysFromSIMap(m map[string]interface{}) (keys []string) {
+	for k, _ := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	return
+}
+
+func RemoveAllFromSIMap(m map[string]interface{}) {
+	for k := range m {
+		delete(m, k)
+	}
+}
+
+/*
+Use method in zfloat!
 func GetFloat64FromStrInterfaceMap(m map[string]interface{}, key string) float64 { // returns 0 if nothing to get
 	if f64, got := m[key].(float64); got {
 		return f64
@@ -49,3 +69,4 @@ func GetFloat64FromStrInterfaceMap(m map[string]interface{}, key string) float64
 	}
 	return 0
 }
+*/

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -17,8 +18,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/torlangballe/zutil/uinteger"
-	"github.com/torlangballe/zutil/zmath"
+	"github.com/torlangballe/zutil/zint"
 )
 
 var EscBlack string = "\x1B[30m"
@@ -74,7 +74,7 @@ func min(a, b int) int {
 }
 
 func GetLevenshteinRatio(a, b string) float64 { // returns distance / min length of a or b
-	len := float64(uinteger.IntMin(len(a), len(b)))
+	len := float64(zint.Min(len(a), len(b)))
 	return float64(GetLevenshteinDistance(a, b)) / len
 }
 
@@ -212,7 +212,7 @@ func HeadUntilStringWithRest(str, sep string, rest *string) string {
 }
 
 func Tail(str string, length int) string {
-	l := zmath.IntClamp(length, 0, len(str)) // hack without unicode support
+	l := zint.Clamp(length, 0, len(str)) // hack without unicode support
 	return str[len(str)-l:]
 }
 
@@ -231,6 +231,17 @@ func TailUntilWithRest(str, sep string, rest *string) string {
 	}
 	*rest = str[:i]
 	return str[i+len(sep):]
+}
+
+func TruncatedCharsAtEnd(str string, chars int) (s string) {
+	if str != "" {
+		r := []rune(str)
+		l := len(r)
+		if chars < l {
+			str = string(r[:l-chars])
+		}
+	}
+	return str
 }
 
 func TruncatedFromEnd(str string, length int, endString string) (s string) {
@@ -279,7 +290,7 @@ func TruncatedAtCharFromEnd(str string, max int, divider, truncateSymbol string)
 }
 
 func TruncatedFromStart(str string, length int, endString string) string {
-	l := zmath.IntClamp(length, 0, len(str)-len(endString)) // hack without unicode support
+	l := zint.Clamp(length, 0, len(str)-len(endString)) // hack without unicode support
 	return endString + str[l:]
 }
 
@@ -519,15 +530,6 @@ func AreStringMapsEqual(a, b map[string]string) bool {
 		}
 	}
 	return true
-}
-
-func GetKeysFromSIMapSorted(m map[string]interface{}) (keys []string) {
-	for k, _ := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	return
 }
 
 func CountWords(str string) int {
@@ -794,9 +796,9 @@ func RangeStringLines(str string, skipEmpty bool, f func(s string)) {
 // 	return s
 // }
 
-func FirstToUpper(str string) (out string) {
+func FirstToTitleCase(str string) (out string) {
 	r := []rune(str)
-	r[0] = unicode.ToUpper(r[0])
+	r[0] = unicode.ToTitle(r[0])
 	out = string(r)
 	return
 }
@@ -877,19 +879,29 @@ func LastLetter(str string) string {
 }
 
 func PadCamelCase(str, pad string) string {
+	big := ""
 	out := ""
-	was := true
 	for _, r := range str {
 		if r == unicode.ToUpper(r) {
-			if !was {
+			if big == "" && out != "" {
 				out += pad
 			}
-			was = true
+			big += string(r)
 		} else {
-			was = false
+			if len(big) > 0 {
+				if len(big) == 1 {
+					out += big
+				} else {
+					out += big[:len(big)-1]
+					out += pad
+					out += big[len(big)-1:]
+				}
+				big = ""
+			}
+			out += string(r)
 		}
-		out += string(r)
 	}
+	out += big
 	return out
 }
 
@@ -904,12 +916,12 @@ func ReplaceHashTags(text string, f func(tag string) string) string {
 }
 
 func HashTo64Hex(str string) string {
-	h := uinteger.HashTo64(str)
+	h := zint.HashTo64(str)
 	return fmt.Sprintf("%x", h)
 }
 
 func HashTo32Hex(str string) string {
-	h := uinteger.HashTo32(str)
+	h := zint.HashTo32(str)
 	return fmt.Sprintf("%x", h)
 }
 
@@ -930,7 +942,7 @@ func CaselessCompare(a, b string) int {
 
 func NumberToBase64Code(n int) string {
 	const table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-	i := uinteger.IntMin(uinteger.IntMax(0, n), 63)
+	i := zint.Min(zint.Max(0, n), 63)
 	return string(table[i])
 }
 
@@ -943,6 +955,14 @@ func GetArgsAsQuotedParameters(args map[string]string, div string) string {
 		str += k + `="` + v + `"`
 	}
 	return str
+}
+
+func GetArgsAsURLParameters(args map[string]string) string {
+	vals := url.Values{}
+	for k, v := range args {
+		vals.Add(k, v)
+	}
+	return vals.Encode()
 }
 
 func GetParametersFromArgString(str, sep, set string) map[string]string {
@@ -1005,6 +1025,11 @@ func SplitIntoLengths(s string, length int) []string {
 		}
 	}
 	return subs
+}
+
+func SprintSpaced(items ...interface{}) string {
+	str := fmt.Sprintln(items...)
+	return TruncatedCharsAtEnd(str, 1)
 }
 
 var EscapeQuoteReplacer = strings.NewReplacer(

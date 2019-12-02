@@ -13,8 +13,8 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
-	"os"
 	"path"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -30,22 +30,93 @@ type ErrJSON struct {
 	Messages []string `json:"messages"`
 }
 
-// Marshals send to json bytes unless it IS []byte and sends to url, unmarshalling result
-func PostAsJsonGetJSON(surl string, otherHeaders map[string]string, bodyDump *string, send interface{}, receive interface{}) (code int, err error) {
-	bout, got := send.([]byte)
-	if !got {
-		bout, err = json.Marshal(send)
+type HTTPError struct {
+	Err        error
+	StatusCode int
+}
+
+func (e *HTTPError) Error() string {
+	return e.Err.Error()
+}
+
+func (e *HTTPError) Unwrap() error {
+	return e.Err
+}
+
+func MakeHTTPError(err error, code int, message string) error {
+	if message != "" {
 		if err != nil {
-			return
+			message += ": " + err.Error()
+		}
+	} else {
+		if err != nil {
+			message = err.Error()
 		}
 	}
+	if err == nil && code != 0 {
+		message += " " + http.StatusText(code)
+	}
+	e := &HTTPError{}
+	e.Err = errors.New(message)
+	e.StatusCode = code
+	return e
+}
 
-	response, code, err := PostBytesSetContentLength(surl, "application/json", bout, otherHeaders)
-	if err != nil {
+// Post uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
+// receive can be []byte, string or a struct to unmarashal to
+func Post(surl string, sendHeaders map[string]string, printBody bool, send, receive interface{}) (headers http.Header, err error) {
+	var ctype = "application/json"
+	bout, got := send.([]byte)
+	if got {
+		ctype = "raw"
+	} else {
+		m, got := send.(map[string]string)
+		if got {
+			bout = []byte(ustr.GetArgsAsURLParameters(m))
+			ctype = "application/x-www-form-urlencoded"
+		} else {
+			bout, err = json.Marshal(send)
+			if err != nil {
+				return
+			}
+		}
+	}
+	response, code, err := PostBytesSetContentLength(surl, ctype, bout, sendHeaders)
+	if err != nil || code >= 300 {
+		fmt.Println("Post err bout:\n", string(bout))
+		err = MakeHTTPError(err, code, "post")
 		return
 	}
-	if bodyDump != nil {
-		*bodyDump = GetCopyOfResponseBodyAsString(response)
+	return processResponse(surl, response, printBody, receive)
+}
+
+func Get(surl string, sendHeaders map[string]string, printBody bool, args map[string]string, receive interface{}) (headers http.Header, err error) {
+	if args != nil {
+		surl, _ = MakeURLWithArgs(surl, args)
+	}
+	client := http.DefaultClient
+	req, err := http.NewRequest(http.MethodGet, surl, nil)
+	if sendHeaders != nil {
+		for k, v := range sendHeaders {
+			req.Header.Set(k, v)
+		}
+	}
+	response, err := client.Do(req)
+	fmt.Println("GET:", surl, req.Header, err, response)
+	if err != nil || response.StatusCode >= 300 {
+		err = MakeHTTPError(err, response.StatusCode, "client.do")
+		return
+	}
+	return processResponse(surl, response, printBody, receive)
+}
+
+func processResponse(surl string, response *http.Response, printBody bool, receive interface{}) (headers http.Header, err error) {
+	headers = response.Header
+	if printBody {
+		fmt.Println("dump:", response.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(response)+"\n")
+	}
+	if reflect.ValueOf(receive).Kind() != reflect.Ptr {
+		return
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
@@ -54,6 +125,14 @@ func PostAsJsonGetJSON(surl string, otherHeaders map[string]string, bodyDump *st
 	if response.Body != nil {
 		response.Body.Close()
 	}
+	if rbytes, got := receive.(*[]byte); got {
+		*rbytes = body
+		return
+	}
+	if rstring, got := receive.(*string); got {
+		*rstring = string(body)
+		return
+	}
 	err = json.Unmarshal(body, receive)
 	if err != nil {
 		return
@@ -61,7 +140,7 @@ func PostAsJsonGetJSON(surl string, otherHeaders map[string]string, bodyDump *st
 	return
 }
 
-func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorization, authKey string) (ecode int, response *http.Response, err error) {
+func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorization, authKey string) (response *http.Response, err error) {
 	client := http.DefaultClient
 	req, err := http.NewRequest("GET", surl, nil)
 	if err != nil {
@@ -76,17 +155,20 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 	}
 	response, err = client.Do(req)
 	if err != nil {
+		if response != nil {
+			err = MakeHTTPError(err, response.StatusCode, "get")
+		}
 		return
 	}
-	ecode = response.StatusCode
 	if print {
 		sbody := GetCopyOfResponseBodyAsString(response)
 		fmt.Println("UnmarshalFromJSONFromUrlWithBody:\n", sbody)
 	}
 	defer response.Body.Close()
 	defer io.Copy(ioutil.Discard, response.Body)
-	if response.StatusCode > 299 {
-		err = fmt.Errorf("%s %d", response.Status, response.StatusCode)
+	ecode := response.StatusCode
+	if ecode >= 300 {
+		err = MakeHTTPError(nil, ecode, "get")
 		return
 	}
 	body, err := ioutil.ReadAll(response.Body)
@@ -157,12 +239,12 @@ func UnmarshalFromJSONFromPostForm(surl string, vals url.Values, v interface{}, 
 
 func PostBytesSetContentLength(surl, ctype string, body []byte, otherHeaders map[string]string) (response *http.Response, code int, err error) {
 	client := http.DefaultClient
-	req, err := http.NewRequest("POST", surl, bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, surl, bytes.NewReader(body))
 	if err != nil {
 		return
 	}
-	req.Header.Set("Content-Length", fmt.Sprintf("%d", len(body)))
-	req.Header.Set("Content-Type", ctype)
+	req.Header.Set("Content-Length", fmt.Sprintf("%d", len(body))) // will be overriden by otherHeaders
+	req.Header.Set("Content-Type", ctype)                          // will be overriden by otherHeaders
 	if otherHeaders != nil {
 		for k, v := range otherHeaders {
 			req.Header.Set(k, v)
@@ -174,7 +256,7 @@ func PostBytesSetContentLength(surl, ctype string, body []byte, otherHeaders map
 	}
 
 	code = response.StatusCode
-	if response.StatusCode != 200 {
+	if response.StatusCode >= 300 {
 		err = fmt.Errorf("PostBytesSetContentLength: %d %s\n%s", response.StatusCode, response.Status, surl)
 		return
 	}
@@ -233,68 +315,6 @@ func GetDomainFromUrl(surl string) string {
 		return surl
 	}
 	return u.Host
-}
-
-func GetCurrentLocalIPAddress() (address, ip4 string, err error) {
-	name, err := os.Hostname()
-	if err != nil {
-		return
-	}
-	addrs, err := net.LookupHost(name)
-	//	fmt.Println("CurrentLocalIP Stuff:", name, addrs, err)
-	if err != nil {
-		return
-	}
-
-	for _, a := range addrs {
-		if strings.Contains(a, ":") {
-			if address == "" {
-				address = a
-			}
-		} else {
-			if ip4 == "" {
-				ip4 = a
-			}
-
-		}
-	}
-	return
-}
-
-func GetOutboundIP() (ip net.IP, err error) {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		return
-	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	ip = localAddr.IP
-	return
-}
-
-func GetCurrentIPAddress() (address string, err error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return
-	}
-
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
-		if err != nil {
-			return "", err
-		}
-		for _, addr := range addrs {
-			switch v := addr.(type) {
-			case *net.IPNet:
-				return v.String(), nil
-			case *net.IPAddr:
-				return v.String(), nil
-			}
-			// process IP address
-		}
-	}
-	return "", nil
 }
 
 func GetIPAddressAndPortFromRequest(req *http.Request) (ip, port string, err error) {

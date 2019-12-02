@@ -126,8 +126,8 @@ func CaptureScreen(windowID, outputPath string) error {
 	return err
 }
 
-func CropImage(path string, rect zgeo.FRect, maxSize zgeo.FSize) error {
-	srect := fmt.Sprintf("%dx%d+%d+%d", int(rect.Size().W), int(rect.Size().H), int(rect.Min.X), int(rect.Min.Y))
+func CropImage(path string, rect zgeo.Rect, maxSize zgeo.Size) error {
+	srect := fmt.Sprintf("%dx%d+%d+%d", int(rect.Size.W), int(rect.Size.H), int(rect.Min().X), int(rect.Min().Y))
 	args := []string{
 		"mogrify",
 		path,
@@ -155,11 +155,11 @@ func ProcessImage(inputPath string, commands ...interface{}) error {
 		v = commands[i]
 		switch c {
 		case "crop":
-			r := v.(zgeo.FRect)
-			srect := fmt.Sprintf("%dx%d+%d+%d", int(r.Size().W), int(r.Size().H), int(r.Min.X), int(r.Min.Y))
+			r := v.(zgeo.Rect)
+			srect := fmt.Sprintf("%dx%d+%d+%d", int(r.Size.W), int(r.Size.H), int(r.Min().X), int(r.Min().Y))
 			args = append(args, "-crop", srect)
 		case "resize":
-			s := v.(zgeo.FSize)
+			s := v.(zgeo.Size)
 			ssize := fmt.Sprintf("%dx%d", int(s.W), int(s.H))
 			args = append(args, "-resize", ssize)
 		case "comment":

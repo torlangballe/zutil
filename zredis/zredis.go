@@ -6,15 +6,18 @@ import (
 	"fmt"
 	"time"
 
-	"log"
-
 	"github.com/garyburd/redigo/redis"
 )
 
 var redisPool *redis.Pool
+var rootPath string
 
-func Init(lg log.Logger, rPool *redis.Pool) {
+func Init(rPool *redis.Pool, path string) {
+	if rPool == nil {
+		Setup("")
+	}
 	redisPool = rPool
+	rootPath = path
 }
 
 func ScanKeys(regex string, handler func(key string) bool) (err error) {
@@ -78,6 +81,9 @@ func Put(redisPool *redis.Pool, key string, timeToLive time.Duration, v interfac
 	conn := redisPool.Get()
 	defer conn.Close()
 
+	if rootPath != "" {
+		key = rootPath + "/" + key
+	}
 	err = conn.Send("SET", key, bjson)
 	if err != nil {
 		return
@@ -101,6 +107,9 @@ func Get(redisPool *redis.Pool, v interface{}, key string) (got bool, err error)
 	conn := redisPool.Get()
 	defer conn.Close()
 
+	if rootPath != "" {
+		key = rootPath + "/" + key
+	}
 	// Get and parse result.
 	rawCont, err := redis.Bytes(conn.Do("GET", key))
 	if err == redis.ErrNil {
@@ -123,12 +132,19 @@ func Delete(redisPool *redis.Pool, key string) (err error) {
 	conn := redisPool.Get()
 	defer conn.Close()
 
+	if rootPath != "" {
+		key = rootPath + "/" + key
+	}
 	err = conn.Send("DEL", key)
 
 	return
 }
 
+// Setup inits redis with address:port. If empty defaults to "localhost:6379"
 func Setup(redisServer string) (*redis.Pool, error) {
+	if redisServer == "" {
+		redisServer = "localhost:6379"
+	}
 	pool := &redis.Pool{
 		MaxIdle:     750,
 		MaxActive:   750,

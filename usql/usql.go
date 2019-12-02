@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/torlangballe/zutil/zreflect"
+	"github.com/torlangballe/zutil/ugeo"
 	"github.com/torlangballe/zutil/ustr"
-	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zreflect"
 
 	"github.com/lib/pq"
 	geom "github.com/twpayne/go-geom"
@@ -347,7 +347,7 @@ func (p *GisGeoPoint) Value() (driver.Value, error) {
 }
 
 // GisGeoPoint maps against Postgis geographical Point
-type GisGeoPolygon [][]zgeo.FPoint
+type GisGeoPolygon [][]ugeo.FPoint
 
 func (gp *GisGeoPolygon) Scan(val interface{}) error {
 	b, ok := val.([]byte)
@@ -369,10 +369,10 @@ func (gp *GisGeoPolygon) Scan(val interface{}) error {
 	}
 	for _, npoly := range mp1.Coords() {
 		for _, poly := range npoly {
-			var sp []zgeo.FPoint
+			var sp []ugeo.FPoint
 			for _, p := range poly {
 				if len(p) == 2 {
-					sp = append(sp, zgeo.FPoint{p[0], p[1]})
+					sp = append(sp, ugeo.FPoint{p[0], p[1]})
 				}
 			}
 			*gp = append(*gp, sp)
@@ -424,16 +424,17 @@ func MakeNDollarParametersInBrackets(n int, start int) string {
 	return str + ")"
 }
 
-func convertFieldName(i ureflect.Item) string {
+func convertFieldName(i zreflect.Item) string {
 	return strings.ToLower(i.FieldName)
 }
 
-func getItems(istruct interface{}, skip []string) (items []ureflect.Item) {
+func getItems(istruct interface{}, skip []string) (items []zreflect.Item) {
 	unnestAnonymous := true
-	all, _ := ureflect.ItterateStruct(istruct, unnestAnonymous)
+	recursive := false
+	all, _ := zreflect.ItterateStruct(istruct, unnestAnonymous, recursive)
 outer:
 	for _, i := range all.Children {
-		for _, f := range ureflect.GetTagAsFields(i.Tag) {
+		for _, f := range zreflect.GetTagAsFields(i.Tag) {
 			if f.Label == "db" && f.Vars[0] == "-" {
 				continue outer
 			}
@@ -459,6 +460,9 @@ func FieldNamesFromStruct(istruct interface{}, skip []string, prefix string) (fi
 func FieldValuesFromStruct(istruct interface{}, skip []string) (values []interface{}) {
 	for _, item := range getItems(istruct, skip) {
 		v := item.Interface
+		if item.Kind == zreflect.KindStruct && item.IsPointer {
+			v = item.Address
+		}
 		if item.IsArray {
 			v = pq.Array(v)
 		}

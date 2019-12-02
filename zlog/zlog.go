@@ -84,8 +84,8 @@ func Fatal(err error, parts ...interface{}) error {
 }
 
 // Beug performs Log with InfoLevel priority
-func Info(parts ...interface{}) error {
-	return baseLog(nil, InfoLevel, 4, parts...)
+func Info(parts ...interface{}) {
+	baseLog(nil, InfoLevel, 4, parts...)
 }
 
 // Error performs Log with ErrorLevel priority, getting stack from N
@@ -106,13 +106,6 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 			pos += int(n)
 		}
 	}
-	finfo := GetCallingFunctionString(pos)
-	p := strings.TrimSpace(fmt.Sprintln(parts...))
-	if err != nil {
-		err = errors.Wrap(err, p)
-	} else {
-		err = errors.New(p)
-	}
 	col := ""
 	endCol := ""
 	if UseColor {
@@ -122,7 +115,18 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		}
 		endCol = ustr.EscNoColor
 	}
-	fmt.Println(finfo+": ", col+err.Error()+endCol)
+	finfo := ""
+	if priority != InfoLevel {
+		finfo = GetCallingFunctionString(pos) + ": "
+	}
+	p := strings.TrimSpace(fmt.Sprintln(parts...))
+	if err != nil {
+		err = errors.Wrap(err, p)
+	} else {
+		err = errors.New(p)
+	}
+	fmt.Println(finfo + col + err.Error() + endCol)
+
 	if OutputFilePath != "" && outFile == nil {
 		var ferr error
 		fp := zfile.ExpandTildeInFilepath(OutputFilePath)
@@ -132,14 +136,13 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 			OutputFilePath = ""
 		}
 	}
-	str := finfo + ": " + err.Error()
+	str := finfo + err.Error()
 	if outFile != nil {
 		outFile.WriteString(str + "\n")
 	}
 	if runtime.GOOS != "js" {
 		if syslogWriter == nil {
 			_, name := filepath.Split(os.Args[0])
-			fmt.Println("starting syslog:", name)
 			syslogWriter, _ = syslog.New(syslog.LOG_NOTICE, name)
 		}
 		go syslogWriter.Notice(str)
@@ -158,9 +161,30 @@ func GetCallingFunctionInfo(pos int) (function, file string, line int) {
 	return
 }
 
+func GetCallingStackString() string {
+	var parts []string
+	for i := 2; ; i++ {
+		s := GetCallingFunctionString(i)
+		if s == "" {
+			break
+		}
+		parts = append(parts, s)
+	}
+	return strings.Join(parts, "\n")
+}
+
 func GetCallingFunctionString(pos int) string {
 	f, file, line := GetCallingFunctionInfo(pos)
+	if f == "" {
+		return ""
+	}
 	_, f = path.Split(f)
 	_, file = path.Split(file)
 	return fmt.Sprintf("%s() @ %s:%d", f, file, line)
+}
+
+func Assert(success bool) {
+	if !success {
+		Fatal(errors.New("assert failed"), StackAdjust(1))
+	}
 }

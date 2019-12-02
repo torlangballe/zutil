@@ -25,6 +25,7 @@ const (
 	KindByte            = "byte"
 	KindMap             = "map"
 	KindFunc            = "function"
+	KindSlice           = "slice"
 )
 
 type FieldTag struct {
@@ -66,7 +67,8 @@ type Item struct {
 	Children    []Item
 }
 
-func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous bool, val reflect.Value) (item Item, err error) {
+func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous, recursive bool, val reflect.Value) (item Item, err error) {
+	// fmt.Println("itterate:", fieldName, typeName, tagName)
 	item.FieldName = fieldName
 	vtype := val.Type()
 	if typeName == "" {
@@ -88,8 +90,9 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous 
 			val = reflect.Indirect(val)
 		}
 		//		fmt.Println("ptr:", t.Name(), fieldName, t.PkgPath())
-		item, err = itterate(fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, val)
+		item, err = itterate(fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, val)
 		item.IsPointer = true
+		//		item.Address = val.Addr().Interface()
 		return
 
 	case reflect.Slice:
@@ -97,10 +100,11 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous 
 		v := reflect.Zero(t) // something wrong here...
 		if t.Kind() == reflect.Ptr {
 		}
-		//		fmt.Println("slice:", t.Name(), fieldName, t.PkgPath())
-		item, err = itterate(fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, v)
+		//		fmt.Println("slice:", t.Name(), fieldName, t.PkgPath(), v.Kind())
+		item, err = itterate(fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, v)
+		item.Value = val
 		item.IsArray = true
-		item.Kind = KindString
+		item.Kind = KindSlice
 		item.Interface = val.Interface()
 		//		fmt.Println("item slice:", item.IsArray)
 		return
@@ -119,16 +123,21 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous 
 			n := vtype.NumField()
 			for i := 0; i < n; i++ {
 				f := vtype.Field(i)
+				if !(recursive || (unnestAnonymous && isAnonymous) || fieldName == "") { // always go into first level
+					continue
+				}
 				fval := val.Field(i)
 				tag := string(f.Tag) // http://golang.org/pkg/reflect/#StructTag
 				tname := fval.Type().Name()
-				c, e := itterate(f.Name, tname, tag, f.Anonymous, unnestAnonymous, fval)
-				//				fmt.Println("struct:", f.Type, f.Name, f.Type.PkgPath(), tag, c.Tag)
+				c, e := itterate(f.Name, tname, tag, f.Anonymous, unnestAnonymous, recursive, fval)
+				//					fmt.Println("struct:", item.Kind, f.Type, f.Name, f.Type.PkgPath(), tag, c.Tag, c.Value, c.Value.Interface(), fval.Addr())
+				c.Address = fval.Addr().Interface()
 				if e != nil {
 					err = e
 				} else {
-					if fval.CanAddr() {
-						c.Address = fval.Addr().Interface()
+					if c.Value.CanAddr() {
+						c.Address = c.Value.Addr().Interface()
+						//							fmt.Println("Addr:", c.Value, c.Address)
 					}
 					if unnestAnonymous && f.Anonymous {
 						item.Children = append(item.Children, c.Children...)
@@ -178,6 +187,6 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous 
 	return
 }
 
-func ItterateStruct(istruct interface{}, unnestAnonymous bool) (item Item, err error) {
-	return itterate("", "", "", false, unnestAnonymous, reflect.ValueOf(istruct).Elem())
+func ItterateStruct(istruct interface{}, unnestAnonymous, recursive bool) (item Item, err error) {
+	return itterate("", "", "", false, unnestAnonymous, recursive, reflect.ValueOf(istruct).Elem())
 }
