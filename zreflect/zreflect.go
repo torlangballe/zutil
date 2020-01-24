@@ -15,38 +15,33 @@ var timeType = reflect.TypeOf(time.Time{})
 type TypeKind string
 
 const (
-	KindUndef  TypeKind = "undef"
-	KindString          = "string"
-	KindInt             = "int"
-	KindFloat           = "float"
-	KindBool            = "bool"
-	KindStruct          = "struct"
-	KindTime            = "time"
-	KindByte            = "byte"
-	KindMap             = "map"
-	KindFunc            = "function"
-	KindSlice           = "slice"
+	KindUndef     TypeKind = "undef"
+	KindString             = "string"
+	KindInt                = "int"
+	KindFloat              = "float"
+	KindBool               = "bool"
+	KindStruct             = "struct"
+	KindTime               = "time"
+	KindByte               = "byte"
+	KindMap                = "map"
+	KindFunc               = "function"
+	KindSlice              = "slice"
+	KindInterface          = "interface"
 )
 
-type FieldTag struct {
-	Label string
-	Vars  []string
-}
-
-func GetTagAsFields(stag string) []FieldTag {
+// GetTagAsFields returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
+func GetTagAsMap(stag string) map[string][]string {
 	if stag != "" {
+		m := map[string][]string{}
 		re, _ := regexp.Compile(`(\w+)\s*:"([^"]*)"\s*`) // http://regoio.herokuapp.com
 		matches := re.FindAllStringSubmatch(stag, -1)
 		if len(matches) > 0 {
-			fields := make([]FieldTag, len(matches))
-			for i, groups := range matches {
-				var ft FieldTag
-				ft.Label = groups[1]
-				ft.Vars = strings.Split(groups[2], ",")
-				//						fmt.Println("stagmatch:", ft.Label, ft.Vars)
-				fields[i] = ft
+			for _, groups := range matches {
+				label := groups[1]
+				vars := strings.Split(groups[2], ",")
+				m[label] = vars
 			}
-			return fields
+			return m
 		}
 	}
 	return nil
@@ -81,7 +76,11 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 		return
 	}
 	switch val.Kind() {
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Interface:
+		item.Interface = val.Interface()
+		item.Kind = KindInterface
+
+	case reflect.Ptr:
 		t := vtype
 		if val.IsNil() {
 			t = vtype.Elem()
@@ -97,16 +96,16 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 
 	case reflect.Slice:
 		t := reflect.TypeOf(val.Interface()).Elem()
-		v := reflect.Zero(t) // something wrong here...
-		if t.Kind() == reflect.Ptr {
+		v := reflect.Zero(t)
+		if !v.CanAddr() {
+			v = reflect.New(t)
 		}
-		//		fmt.Println("slice:", t.Name(), fieldName, t.PkgPath(), v.Kind())
+		// fmt.Println("slice:", val.Len(), t.Name(), fieldName, t.PkgPath(), v.Kind())
 		item, err = itterate(fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, v)
 		item.Value = val
 		item.IsArray = true
 		item.Kind = KindSlice
 		item.Interface = val.Interface()
-		//		fmt.Println("item slice:", item.IsArray)
 		return
 
 	case reflect.Array:
@@ -129,8 +128,8 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 				fval := val.Field(i)
 				tag := string(f.Tag) // http://golang.org/pkg/reflect/#StructTag
 				tname := fval.Type().Name()
+				// fmt.Println("struct:", item.Kind, fieldName, "/", f.Type, f.Name, f.Type.PkgPath(), tag) //, c.Tag, c.Value, c.Value.Interface(), fval.CanAddr())
 				c, e := itterate(f.Name, tname, tag, f.Anonymous, unnestAnonymous, recursive, fval)
-				//					fmt.Println("struct:", item.Kind, f.Type, f.Name, f.Type.PkgPath(), tag, c.Tag, c.Value, c.Value.Interface(), fval.Addr())
 				c.Address = fval.Addr().Interface()
 				if e != nil {
 					err = e
@@ -158,7 +157,7 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 
 	case reflect.String:
 		item.Kind = KindString
-		item.Interface = val.String()
+		item.Interface = val.Interface()
 
 	case reflect.Bool:
 		item.Kind = KindBool
@@ -169,7 +168,7 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 		item.Interface = val.Float()
 
 	case reflect.Map:
-		item.Kind = KindTime
+		item.Kind = KindMap
 		item.Interface = val.Interface()
 
 	case reflect.Func:
@@ -180,7 +179,7 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 		fmt.Println("marshal.marshalValue: Carefull, unknown type!", val.Kind())
 		item.Kind = KindUndef
 	}
-	item.FieldName = fieldName
+	//item.FieldName = fieldName
 	item.IsAnonymous = isAnonymous
 	item.Tag = tagName
 	item.Value = val

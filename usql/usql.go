@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/ugeo"
-	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zreflect"
 
 	"github.com/lib/pq"
@@ -66,7 +66,7 @@ func SanitizeString(str string) string {
 func printRows(writer io.Writer, rows *sql.Rows, limitWidth bool) {
 	quit := false
 	cols, _ := rows.Columns()
-	header := "" // ustr.EscGreen)
+	header := "" // zstr.EscGreen)
 	for i, c := range cols {
 		if i != 0 {
 			header += "\t"
@@ -88,7 +88,7 @@ func printRows(writer io.Writer, rows *sql.Rows, limitWidth bool) {
 			case reflect.TypeOf([]byte{}):
 				str := string(raw_value.([]uint8))
 				if limitWidth {
-					str = ustr.Head(str, maxWidth)
+					str = zstr.Head(str, maxWidth)
 				}
 				fmt.Fprintf(writer, "%s\t", str)
 			case reflect.TypeOf(time.Time{}):
@@ -434,12 +434,11 @@ func getItems(istruct interface{}, skip []string) (items []zreflect.Item) {
 	all, _ := zreflect.ItterateStruct(istruct, unnestAnonymous, recursive)
 outer:
 	for _, i := range all.Children {
-		for _, f := range zreflect.GetTagAsFields(i.Tag) {
-			if f.Label == "db" && f.Vars[0] == "-" {
-				continue outer
-			}
+		vars := zreflect.GetTagAsMap(i.Tag)["db"]
+		if len(vars) != 0 && vars[0] == "-" {
+			continue outer
 		}
-		if ustr.StrIndexInStrings(convertFieldName(i), skip) == -1 {
+		if zstr.StrIndexInStrings(convertFieldName(i), skip) == -1 {
 			//			fmt.Println("usql getItem:", i.FieldName)
 			items = append(items, i)
 		}

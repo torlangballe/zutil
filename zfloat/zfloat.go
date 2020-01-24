@@ -4,26 +4,49 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 )
 
-func GetAnyFloat(i interface{}) (float64, error) {
+func GetAny(i interface{}) (float64, error) {
 	switch i.(type) {
+	case bool:
+		if i.(bool) {
+			return 1, nil
+		}
+		return 0, nil
 	case int:
 		return float64(i.(int)), nil
+	case int8:
+		return float64(i.(int8)), nil
+	case int16:
+		return float64(i.(int16)), nil
 	case int32:
 		return float64(i.(int32)), nil
 	case int64:
 		return float64(i.(int64)), nil
+	case uint:
+		return float64(i.(uint)), nil
+	case uint8:
+		return float64(i.(uint8)), nil
+	case uint16:
+		return float64(i.(uint16)), nil
+	case uint32:
+		return float64(i.(uint32)), nil
+	case uint64:
+		return float64(i.(uint64)), nil
 	case float32:
 		return float64(i.(float32)), nil
 	case float64:
 		return float64(i.(float64)), nil
+	case string:
+		f, err := strconv.ParseFloat(i.(string), 64)
+		return f, err
 	default:
 		return 0, errors.New(fmt.Sprint("bad type:", reflect.TypeOf(i)))
 	}
 }
 
-func SetAnyFloat(any interface{}, f float64) error {
+func SetAny(any interface{}, f float64) error {
 	switch any.(type) {
 	case float32:
 		*any.(*float32) = float32(f)
@@ -35,7 +58,7 @@ func SetAnyFloat(any interface{}, f float64) error {
 	return nil
 }
 
-func IsFloat64InSlice(n float64, slice []float64) bool {
+func IsInSlice(n float64, slice []float64) bool {
 	for _, s := range slice {
 		if s == n {
 			return true
@@ -44,29 +67,29 @@ func IsFloat64InSlice(n float64, slice []float64) bool {
 	return false
 }
 
-func AddIntFloat64ToSet(n float64, slice *[]float64) bool {
-	if !IsFloat64InSlice(n, *slice) {
+func AddToSet(n float64, slice *[]float64) bool {
+	if !IsInSlice(n, *slice) {
 		*slice = append(*slice, n)
 		return true
 	}
 	return false
 }
 
-func Float32Max(a, b float32) float32 {
+func Max32(a, b float32) float32 {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func Float32Min(a, b float32) float32 {
+func Min32(a, b float32) float32 {
 	if a < b {
 		return a
 	}
 	return b
 }
 
-func Float32Minimize(a *float32, b float32) bool {
+func Minimize32(a *float32, b float32) bool {
 	if *a < b {
 		return false
 	}
@@ -74,7 +97,7 @@ func Float32Minimize(a *float32, b float32) bool {
 	return true
 }
 
-func Float32Maximize(a *float32, b float32) bool {
+func Maximize32(a *float32, b float32) bool {
 	if *a > b {
 		return false
 	}

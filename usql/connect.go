@@ -3,7 +3,7 @@ package usql
 import (
 	"database/sql"
 	"fmt"
-	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/zstr"
 
 	"github.com/lib/pq"
 
@@ -20,7 +20,7 @@ func MakeConnection(connString string, print bool) *sql.DB {
 		connString = parsedStr
 	}
 	if print {
-		fmt.Println(ustr.EscGreen+"Opening DB: ", strings.SplitN(connString, "password", 2)[0], ustr.EscWhite)
+		fmt.Println(zstr.EscGreen+"Opening DB: ", strings.SplitN(connString, "password", 2)[0], zstr.EscWhite)
 	}
 	dbConn, err := sql.Open("postgres", connString)
 	if err != nil {

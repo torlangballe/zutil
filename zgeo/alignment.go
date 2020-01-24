@@ -8,53 +8,55 @@ import (
 type Alignment uint64
 
 const (
-	AlignmentNone                     = Alignment(0)
-	AlignmentLeft                     = Alignment(1)
-	AlignmentHorCenter                = Alignment(2)
-	AlignmentRight                    = Alignment(4)
-	AlignmentTop                      = Alignment(8)
-	AlignmentVertCenter               = Alignment(16)
-	AlignmentBottom                   = Alignment(32)
-	AlignmentHorExpand                = Alignment(64)
-	AlignmentVertExpand               = Alignment(128)
-	AlignmentHorShrink                = Alignment(256)
-	AlignmentVertShrink               = Alignment(512)
-	AlignmentHorOut                   = Alignment(1024)
-	AlignmentVertOut                  = Alignment(2048)
-	AlignmentNonProp                  = Alignment(4096)
-	AlignmentHorJustify               = Alignment(8192)
-	AlignmentMarginIsOffset           = Alignment(16384)
-	AlignmentScaleToFitProportionally = Alignment(32768)
+	AlignmentNone  = Alignment(0)
+	Left           = Alignment(1)
+	HorCenter      = Alignment(2)
+	Right          = Alignment(4)
+	Top            = Alignment(8)
+	VertCenter     = Alignment(16)
+	Bottom         = Alignment(32)
+	HorExpand      = Alignment(64)
+	VertExpand     = Alignment(128)
+	HorShrink      = Alignment(256)
+	VertShrink     = Alignment(512)
+	HorOut         = Alignment(1024)
+	VertOut        = Alignment(2048)
+	Proportional   = Alignment(4096)
+	HorJustify     = Alignment(8192)
+	MarginIsOffset = Alignment(16384)
+	ScaleToFitProp = Alignment(32768)
 
-	AlignmentCenter     = AlignmentHorCenter | AlignmentVertCenter
-	AlignmentExpand     = AlignmentHorExpand | AlignmentVertExpand
-	AlignmentShrink     = AlignmentHorShrink | AlignmentVertShrink
-	AlignmentHorScale   = AlignmentHorExpand | AlignmentHorShrink
-	AlignmentVertScale  = AlignmentVertExpand | AlignmentVertShrink
-	AlignmentScale      = AlignmentHorScale | AlignmentVertScale
-	AlignmentOut        = AlignmentHorOut | AlignmentVertOut
-	AlignmentVertical   = AlignmentTop | AlignmentVertCenter | AlignmentBottom | AlignmentVertExpand | AlignmentVertShrink | AlignmentVertOut
-	AlignmentHorizontal = AlignmentLeft | AlignmentHorCenter | AlignmentRight | AlignmentHorExpand | AlignmentHorShrink | AlignmentHorOut
+	Center     = HorCenter | VertCenter
+	Expand     = HorExpand | VertExpand
+	Shrink     = HorShrink | VertShrink
+	HorScale   = HorExpand | HorShrink
+	VertScale  = VertExpand | VertShrink
+	Scale      = HorScale | VertScale
+	Out        = HorOut | VertOut
+	VertPos    = Top | VertCenter | Bottom
+	HorPos     = Left | HorCenter | Right
+	Vertical   = VertPos | VertScale | VertOut
+	Horizontal = HorPos | HorScale | HorOut
 )
 
 var alignmentNames = map[string]Alignment{
-	"none":                     AlignmentNone,
-	"left":                     AlignmentLeft,
-	"horCenter":                AlignmentHorCenter,
-	"right":                    AlignmentRight,
-	"top":                      AlignmentTop,
-	"vertCenter":               AlignmentVertCenter,
-	"bottom":                   AlignmentBottom,
-	"horExpand":                AlignmentHorExpand,
-	"vertExpand":               AlignmentVertExpand,
-	"horShrink":                AlignmentHorShrink,
-	"vertShrink":               AlignmentVertShrink,
-	"horOut":                   AlignmentHorOut,
-	"vertOut":                  AlignmentVertOut,
-	"nonProp":                  AlignmentNonProp,
-	"horJustify":               AlignmentHorJustify,
-	"marginIsOffset":           AlignmentMarginIsOffset,
-	"scaleToFitProportionally": AlignmentScaleToFitProportionally,
+	"none":           AlignmentNone,
+	"left":           Left,
+	"horCenter":      HorCenter,
+	"right":          Right,
+	"top":            Top,
+	"vertCenter":     VertCenter,
+	"bottom":         Bottom,
+	"horExpand":      HorExpand,
+	"vertExpand":     VertExpand,
+	"horShrink":      HorShrink,
+	"vertShrink":     VertShrink,
+	"horOut":         HorOut,
+	"vertOut":        VertOut,
+	"proportional":   Proportional,
+	"horJustify":     HorJustify,
+	"marginIsOffset": MarginIsOffset,
+	"scaleToFitProp": ScaleToFitProp,
 }
 
 func AlignmentFromVector(fromVector Pos) Alignment {
@@ -64,23 +66,23 @@ func AlignmentFromVector(fromVector Pos) Alignment {
 
 func (a Alignment) FlippedVertical() Alignment {
 	var r = a
-	r.AndWith(AlignmentHorizontal)
-	if a&AlignmentTop != 0 {
-		r.UnionWith(AlignmentBottom)
+	r.AndWith(Horizontal)
+	if a&Top != 0 {
+		r.UnionWith(Bottom)
 	}
-	if a&AlignmentBottom != 0 {
-		r.UnionWith(AlignmentTop)
+	if a&Bottom != 0 {
+		r.UnionWith(Top)
 	}
 	return r
 }
 func (a Alignment) FlippedHorizontal() Alignment {
 	var r = a
-	r.AndWith(AlignmentVertical)
-	if a&AlignmentLeft != 0 {
-		r.UnionWith(AlignmentRight)
+	r.AndWith(Vertical)
+	if a&Left != 0 {
+		r.UnionWith(Right)
 	}
-	if a&AlignmentRight != 0 {
-		r.UnionWith(AlignmentLeft)
+	if a&Right != 0 {
+		r.UnionWith(Left)
 	}
 	return r
 }
@@ -90,20 +92,20 @@ func (a Alignment) Subtracted(sub Alignment) Alignment {
 
 func (a Alignment) Only(vertical bool) Alignment {
 	if vertical {
-		return a.Subtracted(AlignmentHorizontal | AlignmentHorExpand | AlignmentHorShrink | AlignmentHorOut)
+		return a.Subtracted(Horizontal | HorExpand | HorShrink | HorOut)
 	}
-	return a.Subtracted(AlignmentVertical | AlignmentVertExpand | AlignmentVertShrink | AlignmentVertOut)
+	return a.Subtracted(Vertical | VertExpand | VertShrink | VertOut)
 }
 
 func (a Alignment) String() string {
 	var array []string
 
-	center := (a&AlignmentCenter == AlignmentCenter)
+	center := (a&Center == Center)
 	if center {
 		array = append(array, "center")
 	}
 	for k, v := range alignmentNames {
-		if center && v&AlignmentCenter != 0 {
+		if center && v&Center != 0 {
 			continue
 		}
 		if a&v != 0 {
@@ -119,7 +121,7 @@ func AlignmentFromString(str string) Alignment {
 	var a Alignment
 	for _, s := range strings.Split(str, "|") {
 		if s == "center" {
-			a |= AlignmentCenter
+			a |= Center
 		} else {
 			a |= alignmentNames[s]
 		}
@@ -150,23 +152,23 @@ func rawFromVector(vector Pos) uint64 {
 		angle += 360
 	}
 	if angle < 45*0.5 {
-		raw = AlignmentRight
+		raw = Right
 	} else if angle < 45*1.5 {
-		raw = AlignmentRight | AlignmentTop
+		raw = Right | Top
 	} else if angle < 45*2.5 {
-		raw = AlignmentTop
+		raw = Top
 	} else if angle < 45*3.5 {
-		raw = AlignmentTop | AlignmentLeft
+		raw = Top | Left
 	} else if angle < 45*4.5 {
-		raw = AlignmentLeft
+		raw = Left
 	} else if angle < 45*5.5 {
-		raw = AlignmentLeft | AlignmentBottom
+		raw = Left | Bottom
 	} else if angle < 45*6.5 {
-		raw = AlignmentBottom
+		raw = Bottom
 	} else if angle < 45*7.5 {
-		raw = AlignmentBottom | AlignmentRight
+		raw = Bottom | Right
 	} else {
-		raw = AlignmentRight
+		raw = Right
 	}
 	return uint64(raw)
 }

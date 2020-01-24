@@ -14,8 +14,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/torlangballe/zutil/ustr"
 	"github.com/torlangballe/zutil/zfile"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 type Priority int
@@ -65,7 +65,7 @@ func ParseLogcatMessage(s string) (log LogCatItem, got bool) {
 	log.Rest = parts[10]
 
 	log.TimeStamp = time.Date(time.Now().Year(), time.Month(month), day, hour, minute, second, microseconds*1e6, time.Local)
-	if ustr.SplitN(log.Rest, ":", &log.Tag, &log.Message) {
+	if zstr.SplitN(log.Rest, ":", &log.Tag, &log.Message) {
 		log.Tag = strings.TrimSpace(log.Tag)
 		log.Message = strings.TrimSpace(log.Message)
 	}
@@ -83,9 +83,17 @@ func Fatal(err error, parts ...interface{}) error {
 	return baseLog(err, FatalLevel, 4, parts...)
 }
 
-// Beug performs Log with InfoLevel priority
+// Info performs Log with InfoLevel priority
 func Info(parts ...interface{}) {
 	baseLog(nil, InfoLevel, 4, parts...)
+}
+
+func Dummy(parts ...interface{}) {
+}
+
+// Debug performs Log with DebugLevel priority
+func Debug(parts ...interface{}) {
+	baseLog(nil, DebugLevel, 4, parts...)
 }
 
 // Error performs Log with ErrorLevel priority, getting stack from N
@@ -109,11 +117,11 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	col := ""
 	endCol := ""
 	if UseColor {
-		col = ustr.EscYellow
+		col = zstr.EscYellow
 		if priority >= ErrorLevel {
-			col = ustr.EscMagenta
+			col = zstr.EscMagenta
 		}
-		endCol = ustr.EscNoColor
+		endCol = zstr.EscNoColor
 	}
 	finfo := ""
 	if priority != InfoLevel {
@@ -163,7 +171,7 @@ func GetCallingFunctionInfo(pos int) (function, file string, line int) {
 
 func GetCallingStackString() string {
 	var parts []string
-	for i := 2; ; i++ {
+	for i := 3; ; i++ {
 		s := GetCallingFunctionString(i)
 		if s == "" {
 			break
@@ -183,8 +191,24 @@ func GetCallingFunctionString(pos int) string {
 	return fmt.Sprintf("%s() @ %s:%d", f, file, line)
 }
 
-func Assert(success bool) {
+func Assert(success bool, parts ...interface{}) {
 	if !success {
-		Fatal(errors.New("assert failed"), StackAdjust(1))
+		parts = append([]interface{}{StackAdjust(1)}, parts...)
+		Fatal(errors.New("assert failed"), parts...)
+	}
+}
+
+func ErrorIf(check bool, parts ...interface{}) bool {
+	if check {
+		parts = append([]interface{}{StackAdjust(1)}, parts...)
+		Error(errors.New("error if occured:"), parts...)
+	}
+	return check
+}
+
+func AssertNotErr(err error, parts ...interface{}) {
+	if err != nil {
+		parts = append([]interface{}{StackAdjust(1)}, parts...)
+		Fatal(err, parts...)
 	}
 }

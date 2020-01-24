@@ -1,13 +1,16 @@
 package zhost
 
 import (
+	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
-	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/torlangballe/zutil/zlog"
 )
 
 const osxCmd = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
@@ -84,27 +87,29 @@ func forOSX() (name string, err error) {
 	return
 }
 
-func GetCurrentLocalIPAddress() (address, ip4 string, err error) {
-	name, err := os.Hostname()
-	if err != nil {
-		return
-	}
-	addrs, err := net.LookupHost(name)
-	//	fmt.Println("CurrentLocalIP Stuff:", name, addrs, err)
+func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
+	addrs, err := net.InterfaceAddrs()
+	// fmt.Println("CurrentLocalIP Stuff:", addrs, err)
 	if err != nil {
 		return
 	}
 
 	for _, a := range addrs {
-		if strings.Contains(a, ":") {
-			if address == "" {
-				address = a
+		ipnet, ok := a.(*net.IPNet)
+		if ok {
+			if ipnet.IP.IsLoopback() {
+				continue
 			}
-		} else {
-			if ip4 == "" {
-				ip4 = a
+			i16 := ipnet.IP.To16()
+			if i16 != nil {
+				ip16 = i16.String()
 			}
-
+			i4 := ipnet.IP.To4()
+			if i4 != nil {
+				ip4 = i4.String()
+				fmt.Println("IP:", ip4)
+				break
+			}
 		}
 	}
 	return
@@ -144,4 +149,35 @@ func GetCurrentIPAddress() (address string, err error) {
 		}
 	}
 	return "", nil
+}
+
+func ForwardPortToRemote(port int, remoteAddress string) error {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return zlog.Error(err, "listen")
+	}
+	fmt.Println("forwarder running on", port, "to", remoteAddress)
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			return zlog.Error(err, "accept")
+		}
+		forwardPortHandleRequest(conn, remoteAddress)
+	}
+}
+
+func forwardPortHandleRequest(conn net.Conn, remoteAddress string) {
+	proxy, err := net.Dial("tcp", remoteAddress)
+	if err != nil {
+		zlog.Error(err, "dial target")
+		return
+	}
+	go copyIO(conn, proxy)
+	go copyIO(proxy, conn)
+}
+
+func copyIO(src, dest net.Conn) {
+	defer src.Close()
+	defer dest.Close()
+	io.Copy(src, dest)
 }

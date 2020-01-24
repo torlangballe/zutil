@@ -1,12 +1,14 @@
 package zcommand
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 
-	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 type BrowserType string
@@ -32,9 +34,18 @@ func GetAppNameOfBrowser(btype BrowserType, fullName bool) string {
 	return ""
 }
 
-func RunCommand(command string, args ...string) (string, error) {
-	//	zlog.Info("RunCommand:", command, args)
-	cmd := exec.Command(command, args...)
+func RunCommand(command string, timeoutSecs float64, args ...string) (string, error) {
+	var cmd *exec.Cmd
+	// zlog.Info("RunCommand:", command, args)
+	var cancel context.CancelFunc
+	if timeoutSecs != 0 {
+		var ctx context.Context
+		// zlog.Info("RunCommand with timeout:", timeoutSecs)
+		ctx, cancel = context.WithTimeout(context.Background(), ztime.SecondsDur(timeoutSecs))
+		cmd = exec.CommandContext(ctx, command, args...)
+	} else {
+		cmd = exec.Command(command, args...)
+	}
 	output, err := cmd.CombinedOutput()
 	str := strings.Replace(string(output), "\n", "", -1)
 	if err != nil {
@@ -44,11 +55,38 @@ func RunCommand(command string, args ...string) (string, error) {
 		}
 		zlog.Error(err, "Run Command err", "'"+command+"'", out, str)
 	}
+	if cancel != nil {
+		cancel()
+	}
 	return str, err
 }
 
-func RunAppleScript(command string) (string, error) {
-	return RunCommand("osascript", "-s", "o", "-e", command)
+func getAppProgramPath(appName string) string {
+	return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
+}
+func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
+	path := getAppProgramPath(appName)
+	cmd = exec.Command(path, args...)
+	outPipe, err = cmd.StdoutPipe()
+	if err != nil {
+		err = zlog.Error(err, "connect stdout pipe")
+		return
+	}
+	errPipe, err = cmd.StderrPipe()
+	if err != nil {
+		err = zlog.Error(err, "connect stderr pipe")
+		return
+	}
+	err = cmd.Start()
+	if err != nil {
+		err = zlog.Error(err, "run")
+		return
+	}
+	return
+}
+
+func RunAppleScript(command string, timeoutSecs float64) (string, error) {
+	return RunCommand("osascript", timeoutSecs, "-s", "o", "-e", command)
 }
 
 func CloseUrlInBrowser(surl string, btype BrowserType) error {
@@ -65,31 +103,49 @@ func CloseUrlInBrowser(surl string, btype BrowserType) error {
        end repeat
 	`
 	command = fmt.Sprintf(command, surl)
-	_, err := RunAppleScript(command)
+	_, err := RunAppleScript(command, 10.0)
 	return err
 }
 
-func OpenUrlInBrowser(surl string, btype BrowserType) (string, error) {
-	if btype == Chrome {
-		path := "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-		str, err := RunCommand(path, "--new-window", surl)
-		return str, err
-	}
+func RunURLInBrowser(surl string, btype BrowserType, args ...string) (*exec.Cmd, error) {
+	args = append(args, "--new-window", surl)
 	name := GetAppNameOfBrowser(btype, true)
-	str, err := RunCommand("open", "-F", "-g", "-a", name, surl, "--args", "--new-window")
+	cmd, _, _, err := RunApp(name, args...)
 	if err != nil {
-		return str, zlog.Error(err, "OpenUrlInBrowser")
+		return nil, zlog.Error(err, "OpenUrlInBrowser")
 	}
+	return cmd, err
+}
+
+func OpenUrlInBrowser(surl string, btype BrowserType, args ...string) error {
+	name := GetAppNameOfBrowser(btype, true)
+	args = append([]string{"-F", "-g", "-a", name, surl, "--args", "--new-window"}, args...)
+	_, err := RunCommand("open", 0, args...)
+	if err != nil {
+		return zlog.Error(err, "OpenUrlInBrowser")
+	}
+	return err
+}
+
+func SetMacComment(filepath, comment string) (string, error) {
+	format := `tell application "Finder" to set the comment of (the POSIX file "%s" as alias) to "%s"`
+	command := fmt.Sprintf(format, filepath, comment)
+	str, err := RunAppleScript(command, 5.0)
 	return str, err
+}
+
+func CaptureScreen(windowID, outputPath string) error {
+	_, err := RunCommand("screencapture", 0, "-o", "-x", "-l", windowID, outputPath) // -o is no shadow, -x is no sound, -l is window id
+	return err
 }
 
 func QuitBrowser(btype BrowserType) (string, error) {
 	name := GetAppNameOfBrowser(btype, true)
-	str, err := RunCommand("killall", name)
+	str, err := RunCommand("killall", 0, name)
 	return str, err
 }
 
-func CloseBrowserWindowWithTitle(btype BrowserType, title string) error {
+func CloseBrowserWindowWithTitle(btype BrowserType, title string, allExcept bool) error {
 	titleName := "title"
 	if btype == Safari {
 		titleName = "name"
@@ -97,77 +153,16 @@ func CloseBrowserWindowWithTitle(btype BrowserType, title string) error {
 	app := GetAppNameOfBrowser(btype, true)
 	command :=
 		`tell application "%s"
-		close (every window whose %s contains "%s")
+		close (every window whose %s is %s "%s")
 		end tell
 `
-	command = fmt.Sprintf(command, app, titleName, title)
-	_, err := RunAppleScript(command)
-	//	fmt.Println("CloseWindowWithTitle:", app, title, str, err, "\n", command)
-	return err
-}
-
-func GetWindowID(app, title string) (string, error) {
-	str, err := RunCommand("getwindowid", app, title)
-	if err != nil {
-		str = strings.TrimSpace(str)
+	not := ""
+	if allExcept {
+		not = "not"
 	}
-	return str, err
-}
-
-func SetMacComment(filepath, comment string) (string, error) {
-	format := `tell application "Finder" to set the comment of (the POSIX file "%s" as alias) to "%s"`
-	command := fmt.Sprintf(format, filepath, comment)
-	str, err := RunAppleScript(command)
-	return str, err
-}
-
-func CaptureScreen(windowID, outputPath string) error {
-	_, err := RunCommand("screencapture", "-o", "-x", "-l", windowID, outputPath) // -o is no shadow, -x is no sound, -l is window id
-	return err
-}
-
-func CropImage(path string, rect zgeo.Rect, maxSize zgeo.Size) error {
-	srect := fmt.Sprintf("%dx%d+%d+%d", int(rect.Size.W), int(rect.Size.H), int(rect.Min().X), int(rect.Min().Y))
-	args := []string{
-		"mogrify",
-		path,
-		"-crop",
-		srect,
-	}
-	if !maxSize.IsNull() {
-		ssize := fmt.Sprintf("%dx%d", int(maxSize.W), int(maxSize.H))
-		args = append(args, "+repage", "-resize", ssize, "+repage")
-	}
-	args = append(args, path)
-	_, err := RunCommand("magick", args...)
-	return err
-}
-
-func ProcessImage(inputPath string, commands ...interface{}) error {
-	var args = []string{"mogrify"}
-	for i := 0; i < len(commands); i++ {
-		v := commands[i]
-		c, got := v.(string)
-		if !got {
-			return zlog.Error(nil, "didn't get image command", i, v)
-		}
-		i++
-		v = commands[i]
-		switch c {
-		case "crop":
-			r := v.(zgeo.Rect)
-			srect := fmt.Sprintf("%dx%d+%d+%d", int(r.Size.W), int(r.Size.H), int(r.Min().X), int(r.Min().Y))
-			args = append(args, "-crop", srect)
-		case "resize":
-			s := v.(zgeo.Size)
-			ssize := fmt.Sprintf("%dx%d", int(s.W), int(s.H))
-			args = append(args, "-resize", ssize)
-		case "comment":
-			text := v.(string)
-			args = append(args, "-set", "comment", text)
-		}
-	}
-	args = append(args, inputPath)
-	_, err := RunCommand("magick", args...)
+	command = fmt.Sprintf(command, app, titleName, not, title)
+	// fmt.Println("CloseWindowWithTitle:", app, title, "\n", command)
+	_, err := RunAppleScript(command, 5.0)
+	//	fmt.Println("CloseWindowWithTitle done", err)
 	return err
 }

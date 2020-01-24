@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/torlangballe/zutil/urest"
+	zrest "github.com/torlangballe/zutil/urest"
 	"github.com/torlangballe/zutil/zlog"
 
 	"github.com/gorilla/mux"
@@ -34,7 +34,7 @@ func NewHandler(base string) (h *Handler) {
 type HandlerFunc func(http.ResponseWriter, *http.Request, *Handler)
 
 func AddHandler(r *mux.Router, pattern string, handler *Handler, handlerFunc HandlerFunc) *mux.Route {
-	return r.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
+	return r.HandleFunc("/templates/"+pattern, func(w http.ResponseWriter, req *http.Request) {
 		handlerFunc(w, req, handler)
 	})
 }
@@ -93,35 +93,30 @@ var fmap = map[string]interface{}{
 	"either":   Either,
 }
 
-func (h *Handler) GetTemplate(path string) (t *template.Template, err error) {
-	name := path[1:] + ".gohtml"
-	path = h.baseDirectory + "www/templates/" + name
-	/*
-		t = templates[path]
-		if t != nil {
-			return
-		}
-	*/
-	//	fmt.Println("get template:", path, ufile.DoesFileExist(path))
-	t, err = template.New(name).Funcs(fmap).ParseFiles(path)
-	if err != nil {
-		fmt.Println("getTemplate err:", err)
-		return
-	}
-	return
-}
+// func (h *Handler) GetTemplate(path string) (t *template.Template, err error) {
+// 	name := path[1:] + ".gohtml"
+// 	path = h.baseDirectory + "www/templates/" + name
+// 	t, err = template.New(name).Funcs(fmap).ParseFiles(path)
+// 	if err != nil {
+// 		fmt.Println("getTemplate err:", err)
+// 		return
+// 	}
+// 	return
+// }
 
 func (h *Handler) LoadTemplates() (err error) { // https://stackoverflow.com/questions/38686583/golang-parse-all-templates-in-directory-and-subdirectories
-	spath := h.baseDirectory + "www/templates/"
+	spath := h.baseDirectory + "templates/"
 	root := template.New("base")
 	index := len(spath)
+	// fmt.Println("load temps1:", spath)
 	filepath.Walk(spath, func(fpath string, info os.FileInfo, err error) error {
 		if err == nil && spath != fpath && filepath.Ext(fpath) == ".gohtml" {
 			data, errio := ioutil.ReadFile(fpath)
 			if errio != nil {
 				return zlog.Error(errio, "readfile")
 			}
-			name := fpath[index:]
+			name := "templates/" + fpath[index:]
+			// fmt.Println("load temps:", name, spath, fpath)
 			t := root.New(name).Funcs(fmap)
 			t, err = t.Parse(string(data))
 			if err != nil {

@@ -9,7 +9,9 @@ import (
 	"strings"
 )
 
-func Int64Abs(i int64) int64 {
+type Slice []int
+
+func Abs64(i int64) int64 {
 	if i >= 0 {
 		return i
 	}
@@ -195,7 +197,6 @@ func SetAny(any interface{}, i int64) error {
 	switch any.(type) {
 	case *int:
 		*any.(*int) = int(i)
-		fmt.Println("Set Int:", i)
 	case *int8:
 		*any.(*int8) = int8(i)
 	case *int16:
@@ -218,4 +219,53 @@ func SetAny(any interface{}, i int64) error {
 		return err
 	}
 	return nil
+}
+
+func GetAny(i interface{}) (int64, error) {
+	switch i.(type) {
+	case bool:
+		if i.(bool) {
+			return 1, nil
+		}
+		return 0, nil
+	case int:
+		return int64(i.(int)), nil
+	case int8:
+		return int64(i.(int8)), nil
+	case int16:
+		return int64(i.(int16)), nil
+	case int32:
+		return int64(i.(int32)), nil
+	case int64:
+		return int64(i.(int64)), nil
+	case uint:
+		return int64(i.(uint)), nil
+	case uint8:
+		return int64(i.(uint8)), nil
+	case uint16:
+		return int64(i.(uint16)), nil
+	case uint32:
+		return int64(i.(uint32)), nil
+	case uint64:
+		return int64(i.(uint64)), nil
+	case float32:
+		return int64(i.(float32)), nil
+	case float64:
+		return int64(i.(float64)), nil
+	case string:
+		n, err := strconv.ParseInt(i.(string), 10, 64)
+		return n, err
+	default:
+		return 0, errors.New(fmt.Sprint("bad type:", reflect.TypeOf(i)))
+	}
+}
+
+// GetItem makes Slice worth with MenuView MenuItems interface
+func (s Slice) GetItem(i int) (id, name string, value interface{}) {
+	if i >= len(s) {
+		return "", "", nil
+	}
+	n := s[i]
+	str := strconv.Itoa(n)
+	return str, str, n
 }

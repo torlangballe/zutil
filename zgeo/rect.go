@@ -140,20 +140,20 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 	var wa = float64(s.W)
 	var wf = float64(r.Size.W)
 
-	if align&AlignmentMarginIsOffset == 0 {
+	if align&MarginIsOffset == 0 {
 		wf -= float64(marg.W)
-		if align&AlignmentHorCenter != 0 {
+		if align&HorCenter != 0 {
 			wf -= float64(marg.W)
 		}
 	}
 	//        }
 	var ha = float64(s.H)
 	var hf = float64(r.Size.H)
-	//        if (align & (AlignmentVertShrink|AlignmentVertExpand)) {
-	if align&AlignmentMarginIsOffset == 0 {
+	//        if (align & (VertShrink|VertExpand)) {
+	if align&MarginIsOffset == 0 {
 		hf -= float64(marg.H * 2.0)
 	}
-	if align == AlignmentScaleToFitProportionally {
+	if align == ScaleToFitProp {
 		xratio := wf / wa
 		yratio := hf / ha
 		var ns = r.Size
@@ -166,12 +166,12 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 		}
 		return Rect{Size: (ns)}.Centered(r.Center())
 	}
-	if align&AlignmentHorExpand != 0 && align&AlignmentVertExpand != 0 {
-		if align&AlignmentNonProp != 0 {
+	if align&HorExpand != 0 && align&VertExpand != 0 {
+		if align&Proportional == 0 {
 			wa = wf
 			ha = hf
 		} else {
-			zlog.Assert(align&AlignmentHorOut != 0)
+			zlog.Assert(align&HorOut != 0)
 			scalex = wf / wa
 			scaley = hf / ha
 			if scalex > 1 || scaley > 1 {
@@ -184,17 +184,17 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 				}
 			}
 		}
-	} else if align&AlignmentNonProp != 0 {
-		if align&AlignmentHorExpand != 0 && wa < wf {
+	} else if align&Proportional == 0 {
+		if align&HorExpand != 0 && wa < wf {
 			wa = wf
-		} else if align&AlignmentVertExpand != 0 && ha < hf {
+		} else if align&VertExpand != 0 && ha < hf {
 			ha = hf
 		}
 	}
-	if align&AlignmentHorShrink != 0 && align&AlignmentVertShrink != 0 && align&AlignmentNonProp == 0 {
+	if align&HorShrink != 0 && align&VertShrink != 0 && align&Proportional != 0 {
 		scalex = wf / wa
 		scaley = hf / ha
-		if align&AlignmentHorOut != 0 && align&AlignmentVertOut != 0 {
+		if align&HorOut != 0 && align&VertOut != 0 {
 			if scalex < 1 || scaley < 1 {
 				if scalex > scaley {
 					wa = wf
@@ -215,11 +215,11 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 				}
 			}
 		}
-	} else if align&AlignmentHorShrink != 0 && wa > wf {
+	} else if align&HorShrink != 0 && wa > wf {
 		wa = wf
 	}
 	//  else
-	if align&AlignmentVertShrink != 0 && ha > hf {
+	if align&VertShrink != 0 && ha > hf {
 		ha = hf
 	}
 
@@ -229,52 +229,52 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 	if maxSize.H != 0.0 {
 		ha = math.Min(ha, float64(maxSize.H))
 	}
-	if align&AlignmentHorOut != 0 {
-		if align&AlignmentLeft != 0 {
+	if align&HorOut != 0 {
+		if align&Left != 0 {
 			x = float64(r.Pos.X - marg.W - s.W)
-		} else if align&AlignmentHorCenter != 0 {
+		} else if align&HorCenter != 0 {
 			//                x = float64(Pos.X) - wa / 2.0
 			x = float64(r.Pos.X) + (wf-wa)/2.0
 		} else {
 			x = float64(r.Max().X + marg.W)
 		}
 	} else {
-		if align&AlignmentLeft != 0 {
+		if align&Left != 0 {
 			x = float64(r.Pos.X + marg.W)
-		} else if align&AlignmentRight != 0 {
+		} else if align&Right != 0 {
 			x = float64(r.Max().X) - wa - float64(marg.W)
 		} else {
 			x = float64(r.Pos.X)
-			if align&AlignmentMarginIsOffset == 0 {
+			if align&MarginIsOffset == 0 {
 				x += float64(marg.W)
 			}
 			x = x + (wf-wa)/2.0
-			if align&AlignmentMarginIsOffset != 0 {
+			if align&MarginIsOffset != 0 {
 				x += float64(marg.W)
 			}
 		}
 	}
 
-	if align&AlignmentVertOut != 0 {
-		if align&AlignmentTop != 0 {
+	if align&VertOut != 0 {
+		if align&Top != 0 {
 			y = float64(r.Pos.Y-marg.H) - ha
-		} else if align&AlignmentVertCenter != 0 {
+		} else if align&VertCenter != 0 {
 			y = float64(r.Pos.Y) + (hf-ha)/2.0
 		} else {
 			y = float64(r.Pos.Y + marg.H)
 		}
 	} else {
-		if align&AlignmentTop != 0 {
+		if align&Top != 0 {
 			y = float64(r.Pos.Y + marg.H)
-		} else if align&AlignmentBottom != 0 {
+		} else if align&Bottom != 0 {
 			y = float64(r.Max().Y) - ha - float64(marg.H)
 		} else {
 			y = float64(r.Pos.Y)
-			if align&AlignmentMarginIsOffset == 0 {
+			if align&MarginIsOffset == 0 {
 				y += float64(marg.H)
 			}
 			y = y + math.Max(0.0, hf-ha)/2.0
-			if align&AlignmentMarginIsOffset != 0 {
+			if align&MarginIsOffset != 0 {
 				y += float64(marg.H)
 			}
 		}
@@ -291,7 +291,7 @@ func (r *Rect) MoveInto(rect Rect) {
 
 /* #kotlin-raw:
    fun copy() : Rect {
-       var r = Rect()
+       var r = SetRect()
        r.pos = Pos.copy()
        r.size = Size.copy()
        return r

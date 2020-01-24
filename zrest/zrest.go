@@ -170,3 +170,4 @@ func AddHandle(r *mux.Router, pattern string, f func(http.ResponseWriter, *http.
 		f(w, req)
 	})
 }
+

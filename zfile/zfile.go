@@ -3,8 +3,6 @@ package zfile
 import (
 	"bufio"
 	"crypto/md5"
-	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,7 +17,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 var RootFolder = getRootFolder()
@@ -75,10 +73,10 @@ func IsFolder(filepath string) bool {
 	return stat.IsDir()
 }
 
-func ReadFileToString(sfile string) (string, error) {
+func ReadFromFile(sfile string) (string, error) {
 	bytes, err := ioutil.ReadFile(sfile)
 	if err != nil {
-		err = errors.Wrapf(err, "ufile.ReadFileToString: %v", sfile)
+		err = errors.Wrapf(err, "zfile.ReadFileToString: %v", sfile)
 		//		fmt.Println("Error reading file:", sfile, err)
 		return "", err
 	}
@@ -118,25 +116,25 @@ func RemovedExtension(spath string) string {
 	return name
 }
 
-func Split(spath string) (dir, name, ext string) {
+func Split(spath string) (dir, name, stub, ext string) {
 	dir, name = path.Split(spath)
 	ext = path.Ext(name)
-	name = strings.TrimSuffix(name, ext)
+	stub = strings.TrimSuffix(name, ext)
 
 	return
 }
 
 func SanitizeStringForFilePath(s string) string {
 	s = url.QueryEscape(s)
-	s = ustr.FileEscapeReplacer.Replace(s)
+	s = zstr.FileEscapeReplacer.Replace(s)
 
 	return s
 }
 
 func CreateSanitizedShortNameWithHash(name string) string {
-	hash := ustr.HashTo64Hex(name)
-	name = ustr.Head(name, 100)
-	name = ustr.ReplaceSpaces(name, '_')
+	hash := zstr.HashTo64Hex(name)
+	name = zstr.Head(name, 100)
+	name = zstr.ReplaceSpaces(name, '_')
 	name = SanitizeStringForFilePath(name)
 	name = name + "#" + hash
 
@@ -155,15 +153,15 @@ func ExpandTildeInFilepath(path string) string {
 	return ""
 }
 
-func GetSize(filepath string) (size int64, err error) {
+func GetSize(filepath string) int64 {
 	stat, err := os.Stat(filepath)
 	if err == nil {
-		size = stat.Size()
+		return stat.Size()
 	}
-	return
+	return -1
 }
 
-func calcMD5InBytes(filePath string) (data []byte, err error) {
+func CalcMD5(filePath string) (data []byte, err error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return
@@ -178,31 +176,13 @@ func calcMD5InBytes(filePath string) (data []byte, err error) {
 	return
 }
 
-func CalcMD5Hex(filePath string) (string, error) {
-	data, err := calcMD5InBytes(filePath)
-	if err != nil {
-		return "", err
-	}
-	md5s := hex.EncodeToString(data)
-	return md5s, nil
-}
-
-func CalcMD5Base64(filePath string) (string, error) {
-	data, err := calcMD5InBytes(filePath)
-	if err != nil {
-		return "", err
-	}
-	md5s := base64.StdEncoding.EncodeToString(data)
-	return md5s, nil
-}
-
 func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, err error) {
 	if filePath == "" {
 		var name string
 		u, err := url.Parse(surl)
 		if err != nil {
-			_, name, ext := Split(surl)
-			name = ustr.HeadUntilString(name, "?") + ext
+			_, name, _, ext := Split(surl)
+			name = zstr.HeadUntil(name, "?") + ext
 		} else {
 			name = strings.Trim(u.Path, "/")
 		}
@@ -252,4 +232,32 @@ func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, 
 	file.Close()
 	path = filePath
 	return
+}
+
+func Walk(folder, wildcard string, got func(fpath string, info os.FileInfo) error) {
+	filepath.Walk(folder, func(fpath string, info os.FileInfo, err error) error {
+		if err == nil {
+			if wildcard != "" {
+				_, name := filepath.Split(fpath)
+				matched, _ := filepath.Match(wildcard, name)
+				if !matched {
+					return nil
+				}
+				e := got(fpath, info)
+				if e != nil {
+					return e
+				}
+			}
+		}
+		return nil
+	})
+}
+
+func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) {
+	Walk(folder, wildcard, func(fpath string, info os.FileInfo) error {
+		if time.Since(info.ModTime()) > olderThan {
+			os.Remove(fpath)
+		}
+		return nil
+	})
 }

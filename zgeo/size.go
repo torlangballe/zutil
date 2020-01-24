@@ -5,8 +5,8 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/torlangballe/zutil/ustr"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 type Size struct {
@@ -21,6 +21,11 @@ func SizeF(w, h float32) Size {
 
 // SizeI creates a Size from integer w and h
 func SizeI(w, h int) Size {
+	return Size{float64(w), float64(h)}
+}
+
+// SizeI64 creates a Size from int64 w and h
+func SizeI64(w, h int64) Size {
 	return Size{float64(w), float64(h)}
 }
 
@@ -150,13 +155,13 @@ func (s *Size) MakeInteger() {
 	s.H = math.Ceil(s.H)
 }
 
-func (s Size) GetString() string { // we don't use String() since we're doing that as set methods in zui
+func (s Size) String() string { // we don't use String() since we're doing that as set methods in zui
 	return fmt.Sprintf("%gx%g", s.W, s.H)
 }
 
 func (s *Size) FromString(str string) bool { // we don't use String() since that's special in Go
 	var sw, sh string
-	if ustr.SplitN(str, "x", &sw, &sh) {
+	if zstr.SplitN(str, "x", &sw, &sh) {
 		w, err := strconv.ParseFloat(sw, 64)
 		if err != nil {
 			zlog.Error(err, zlog.StackAdjust(1), "parse w", sw)

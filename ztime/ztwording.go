@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"time"
-	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 type TimePreposition uint
@@ -329,7 +329,7 @@ func ExpandTime(tp TimeParameters) (str string, err error) {
 		}
 	}
 	prep := getPreposition(tp)
-	str = ustr.ConcatenateNonEmpty(" ", prep, stime, sdate)
+	str = zstr.ConcatenateNonEmpty(" ", prep, stime, sdate)
 	if tp.ShowTime && elsewhere {
 		str += " " + localTimeExpression[tp.LangCode]
 	}

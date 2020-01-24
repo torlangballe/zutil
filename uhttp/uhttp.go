@@ -22,7 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
 
@@ -72,7 +72,7 @@ func Post(surl string, sendHeaders map[string]string, printBody bool, send, rece
 	} else {
 		m, got := send.(map[string]string)
 		if got {
-			bout = []byte(ustr.GetArgsAsURLParameters(m))
+			bout = []byte(zstr.GetArgsAsURLParameters(m))
 			ctype = "application/x-www-form-urlencoded"
 		} else {
 			bout, err = json.Marshal(send)
@@ -81,9 +81,9 @@ func Post(surl string, sendHeaders map[string]string, printBody bool, send, rece
 			}
 		}
 	}
-	response, code, err := PostBytesSetContentLength(surl, ctype, bout, sendHeaders)
+	response, code, err := PostBytesSetContentLength(surl, ctype, bout, false, false, sendHeaders)
 	if err != nil || code >= 300 {
-		fmt.Println("Post err bout:\n", string(bout))
+		fmt.Println("Post err bout:\n", string(bout), err)
 		err = MakeHTTPError(err, code, "post")
 		return
 	}
@@ -102,7 +102,7 @@ func Get(surl string, sendHeaders map[string]string, printBody bool, args map[st
 		}
 	}
 	response, err := client.Do(req)
-	fmt.Println("GET:", surl, req.Header, err, response)
+	//	fmt.Println("GET:", surl, req.Header, err, response)
 	if err != nil || response.StatusCode >= 300 {
 		err = MakeHTTPError(err, response.StatusCode, "client.do")
 		return
@@ -181,7 +181,7 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 	err = json.Unmarshal(body, v)
 
 	if err != nil {
-		fmt.Println("UnmarshalFromJSONFromURL unmarshal Error:\n", err, surl, ustr.Head(string(body), 2000))
+		fmt.Println("UnmarshalFromJSONFromURL unmarshal Error:\n", err, surl, zstr.Head(string(body), 2000))
 		return
 	}
 	return
@@ -237,8 +237,17 @@ func UnmarshalFromJSONFromPostForm(surl string, vals url.Values, v interface{}, 
 	return
 }
 
-func PostBytesSetContentLength(surl, ctype string, body []byte, otherHeaders map[string]string) (response *http.Response, code int, err error) {
+func PostBytesSetContentLength(surl, ctype string, body []byte, useHTTPS, insecureSkipVerify bool, otherHeaders map[string]string) (response *http.Response, code int, err error) {
 	client := http.DefaultClient
+	if useHTTPS {
+		client = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: insecureSkipVerify,
+				},
+			},
+		}
+	}
 	req, err := http.NewRequest(http.MethodPost, surl, bytes.NewReader(body))
 	if err != nil {
 		return
@@ -265,7 +274,7 @@ func PostBytesSetContentLength(surl, ctype string, body []byte, otherHeaders map
 
 func PostValuesAsForm(surl string, values url.Values, otherHeaders map[string]string) (data *[]byte, reAuth bool, err error) {
 	var response *http.Response
-	response, _, err = PostBytesSetContentLength(surl, "application/x-www-form-urlencoded", []byte(values.Encode()), otherHeaders)
+	response, _, err = PostBytesSetContentLength(surl, "application/x-www-form-urlencoded", []byte(values.Encode()), false, false, otherHeaders)
 	if err != nil {
 		return
 	}
@@ -429,7 +438,7 @@ func (e ErrorStruct) Check(err *error) bool {
 	if e.Type != "" || e.Message != "" {
 		if err != nil {
 			code := strings.Trim(string(e.Code), `"`)
-			str := ustr.ConcatenateNonEmpty(" ", e.Type, code, e.Message, e.ObjectType)
+			str := zstr.ConcatenateNonEmpty(" ", e.Type, code, e.Message, e.ObjectType)
 			*err = errors.New(str)
 		}
 		return true
@@ -547,7 +556,7 @@ func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
 	info.DoneSecs = time.Since(start)
 
 	var port string
-	ustr.SplitN(remoteAddress, ":", &info.RemoteAddress, &port)
+	zstr.SplitN(remoteAddress, ":", &info.RemoteAddress, &port)
 	names, _ := net.LookupAddr(info.RemoteAddress)
 	if len(names) > 0 {
 		info.RemoteDomain = names[0]
@@ -598,3 +607,55 @@ func MakeDataURL(data []byte, mime string) string {
 	}
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data)
 }
+
+/*
+
+func startHttpServer(wg *sync.WaitGroup) *http.Server {
+    srv := &http.Server{Addr: ":8080"}
+
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        io.WriteString(w, "hello world\n")
+    })
+
+    go func() {
+        defer wg.Done() // let main know we are done cleaning up
+
+        // always returns error. ErrServerClosed on graceful close
+        if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+            // unexpected error. port in use?
+            log.Fatalf("ListenAndServe(): %v", err)
+        }
+    }()
+
+    // returning reference so caller can call Shutdown()
+    return srv
+}
+
+func main() {
+    log.Printf("main: starting HTTP server")
+
+    httpServerExitDone := &sync.WaitGroup{}
+
+    httpServerExitDone.Add(1)
+    srv := startHttpServer(httpServerExitDone)
+
+    log.Printf("main: serving for 10 seconds")
+
+    time.Sleep(10 * time.Second)
+
+    log.Printf("main: stopping HTTP server")
+
+    // now close the server gracefully ("shutdown")
+    // timeout could be given with a proper context
+    // (in real world you shouldn't use TODO()).
+    if err := srv.Shutdown(context.TODO()); err != nil {
+        panic(err) // failure/timeout shutting down the server gracefully
+    }
+
+    // wait for goroutine started in startHttpServer() to stop
+    httpServerExitDone.Wait()
+
+    log.Printf("main: done. exiting")
+}
+
+*/

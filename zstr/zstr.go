@@ -1,4 +1,4 @@
-package ustr
+package zstr
 
 import (
 	"bytes"
@@ -21,18 +21,22 @@ import (
 	"github.com/torlangballe/zutil/zint"
 )
 
-var EscBlack string = "\x1B[30m"
-var EscRed string = "\x1B[31m"
-var EscGreen string = "\x1B[32m"
-var EscYellow string = "\x1B[33m"
-var EscBlue string = "\x1B[34m"
-var EscMagenta string = "\x1B[35m"
-var EscCyan string = "\x1B[36m"
-var EscWhite string = "\x1B[37m"
-var EscNoColor = "\x1b[0m"
-var EscBlink string = "\x1b[5m"
-var EscBlinkOff string = "\x1b[25m"
-var EscYellowBlink string = "\033[5m"
+const (
+	EscBlack       = "\x1B[30m"
+	EscRed         = "\x1B[31m"
+	EscGreen       = "\x1B[32m"
+	EscYellow      = "\x1B[33m"
+	EscBlue        = "\x1B[34m"
+	EscMagenta     = "\x1B[35m"
+	EscCyan        = "\x1B[36m"
+	EscWhite       = "\x1B[37m"
+	EscNoColor     = "\x1b[0m"
+	EscBlink       = "\x1b[5m"
+	EscBlinkOff    = "\x1b[25m"
+	EscYellowBlink = "\033[5m"
+)
+
+const Digits = "0123456789"
 
 func GetColorEscapeCode(r, g, b int) string {
 	R := r&128 > 0
@@ -194,7 +198,7 @@ func HeadUntilCharSet(str, chars string) string {
 	return str[:i]
 }
 
-func HeadUntilString(str, sep string) string {
+func HeadUntil(str, sep string) string {
 	i := strings.Index(str, sep)
 	if i == -1 {
 		return str
@@ -475,7 +479,7 @@ func GenerateRandomBytes(count int) []byte {
 	return data
 }
 
-func GenerateRandomHex(byteCount int) string {
+func GenerateRandomHexBytes(byteCount int) string {
 	data := GenerateRandomBytes(byteCount)
 	return hex.EncodeToString(data)
 }
@@ -552,36 +556,46 @@ func HasSuffix(str, suffix string, rest *string) bool {
 	return false
 }
 
+func SliceCommonExtremity(slice []string, head bool) string {
+	length := len(slice)
+	if length == 0 {
+		return ""
+	}
+	if length == 1 {
+		return slice[0]
+	}
+	chars := 1
+	var old, first string
+	for {
+		for i, s := range slice {
+			var h string
+			if head {
+				h = Head(s, chars)
+			} else {
+				h = Tail(s, chars)
+			}
+			if i == 0 {
+				first = h
+				if first == old { // it's full size
+					return first
+				}
+			} else {
+				if h != first {
+					return old
+				}
+			}
+		}
+		old = first
+		chars++
+	}
+}
+
 func HasPrefixNoCase(str, prefix string, rest *string) bool {
 	return HasPrefix(strings.ToLower(str), strings.ToLower(prefix), rest)
 }
 
 func HasSuffixNoCase(str, suffix string, rest *string) bool {
 	return HasSuffix(strings.ToLower(str), strings.ToLower(suffix), rest)
-}
-
-func MakeCount(word string, count float64, langCode, plural string, significant int) string { // maybe just make the plural mandetory
-	str := NiceFloat(count, significant) + " "
-	if int64(count) != 1 {
-		if plural != "" {
-			str += plural
-		} else {
-			str += word
-			switch langCode {
-			case "en", "uk", "us":
-				if strings.HasSuffix(word, "s") {
-					str += "es"
-				} else {
-					str += "s"
-				}
-			case "no", "da", "sv":
-				str += "er"
-			}
-		}
-	} else {
-		str += word
-	}
-	return str
 }
 
 func StrToBool(str string, def bool) bool {
@@ -659,6 +673,19 @@ func CopyToEmpty(dest *string, str string) {
 	}
 }
 
+// SlicesEqual compares if slices have same contents in same order
+func SlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func ReplaceVariablesWithValues(text, prefix string, values map[string]string) (content string) {
 	spairs := make([]string, len(values)*2+2)
 	keys := make([]string, 0, len(values))
@@ -719,51 +746,6 @@ func ToAsciiCode(r rune) rune {
 		return ' '
 	}
 	return '•'
-}
-
-const (
-	KKiloByte  = 1024
-	KMegaByte  = 1024 * 1024
-	KGigaByte  = 1024 * 1024 * 1024
-	KTerraByte = 1024 * 1024 * 1024 * 1024
-)
-
-func GetBandwidthString(b int64, langCode string, maxSignificant int) string {
-	s := "Bit"
-	v := 0.0
-	switch {
-	case b < 1000:
-		v = float64(b)
-	case b < 1000*1000:
-		s = "K" + s
-		v = float64(b) / float64(1000)
-	case b < 1000*1000*1000:
-		s = "M" + s
-		v = float64(b) / float64(1000*1000)
-	default:
-		s = "T" + s
-		v = float64(b) / float64(1000*1000*1000)
-	}
-	return MakeCount(s, v, langCode, "", maxSignificant)
-}
-
-func GetMemoryString(b int64, langCode string, maxSignificant int) string {
-	s := "Byte"
-	v := 0.0
-	switch {
-	case b < KKiloByte:
-		v = float64(b)
-	case b < KMegaByte:
-		s = "K" + s
-		v = float64(b) / float64(KKiloByte)
-	case b < KGigaByte:
-		s = "M" + s
-		v = float64(b) / float64(KMegaByte)
-	default:
-		s = "T" + s
-		v = float64(b) / float64(KGigaByte)
-	}
-	return MakeCount(s, v, langCode, "", maxSignificant)
 }
 
 func SplitByNewLines(str string, skipEmpty bool) []string {
@@ -994,21 +976,6 @@ func Reversed(ss []string) []string {
 	return out
 }
 
-func NiceFloat(f float64, significant int) string {
-	format := fmt.Sprintf("%%.%df", significant)
-	s := fmt.Sprintf(format, f)
-	if strings.ContainsRune(s, '.') {
-		HasSuffix(s, "0", &s)
-		HasSuffix(s, "0", &s)
-		HasSuffix(s, "0", &s)
-		HasSuffix(s, "0", &s)
-		HasSuffix(s, "0", &s)
-		HasSuffix(s, "0", &s)
-		HasSuffix(s, ".", &s)
-	}
-	return s
-}
-
 func SplitIntoLengths(s string, length int) []string {
 	sub := ""
 	subs := []string{}
@@ -1030,6 +997,22 @@ func SplitIntoLengths(s string, length int) []string {
 func SprintSpaced(items ...interface{}) string {
 	str := fmt.Sprintln(items...)
 	return TruncatedCharsAtEnd(str, 1)
+}
+
+func FromInterface(i interface{}) string {
+	s, _ := i.(string)
+	return s
+}
+
+func SplitInTwo(str string, sep string) (string, string) {
+	parts := strings.SplitN(str, sep, 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	if len(parts) == 1 {
+		return parts[0], ""
+	}
+	return "", ""
 }
 
 var EscapeQuoteReplacer = strings.NewReplacer(

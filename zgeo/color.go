@@ -25,6 +25,9 @@ type Color struct {
 	// Tile
 }
 
+var ColorDefaultForeground = ColorBlack
+var ColorDefaultBackground = ColorWhite
+
 func ColorNewGray(white, a float32) (c Color) {
 	c.Valid = true
 	c.Rgba.R = white
@@ -151,6 +154,8 @@ func (c Color) GetContrastingGray() Color {
 var ColorWhite = ColorNewGray(1, 1)
 var ColorBlack = ColorNewGray(0, 1)
 var ColorGray = ColorNewGray(0.5, 1)
+var ColorDarkGray = ColorNewGray(0.25, 1)
+var ColorLightGray = ColorNewGray(0.75, 1)
 var ColorClear = ColorNewGray(0, 0)
 var ColorBlue = ColorNew(0, 0, 1, 1)
 var ColorRed = ColorNew(1, 0, 0, 1)

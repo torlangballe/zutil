@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 const (
@@ -102,10 +102,10 @@ var operators = []Operator{
 
 func getBracketedParts(str string) (got bool, first, middle, last string, err error) {
 	old1 := str
-	first = ustr.ExtractStringTilSeparator(&str, "(")
+	first = zstr.ExtractStringTilSeparator(&str, "(")
 	if old1 != str {
 		old2 := str
-		last = ustr.ExtractStringFromEndTilSeparator(&str, ")")
+		last = zstr.ExtractStringFromEndTilSeparator(&str, ")")
 		if old2 == str {
 			err = errors.New("No matching ')' after ')'")
 			return

@@ -165,6 +165,10 @@ func DurSeconds(d time.Duration) float64 {
 	return float64(d) / float64(time.Second)
 }
 
+func Since(t time.Time) float64 {
+	return DurSeconds(time.Since(t))
+}
+
 func GetSecsAsHMSString(dur float64, hour, min, sec bool, subdigits int) string {
 	var parts []string
 

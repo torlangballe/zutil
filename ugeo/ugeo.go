@@ -9,8 +9,8 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/torlangballe/zutil/ustr"
-	"github.com/torlangballe/zutil/ustr/ulocale"
+	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/zstr/ulocale"
 	"github.com/torlangballe/zutil/zmath"
 )
 
@@ -231,13 +231,13 @@ func GetHemisphereDirectionsFromGeoDirection(dir FPoint, separator string, langC
 		str = ulocale.GetNorth(langCode)
 	}
 	if dir.Y == -1 {
-		ustr.ConcatenateNonEmpty(separator, str, ulocale.GetSouth(langCode))
+		zstr.ConcatenateNonEmpty(separator, str, ulocale.GetSouth(langCode))
 	}
 	if dir.X == -1 {
-		ustr.ConcatenateNonEmpty(separator, str, ulocale.GetWest(langCode))
+		zstr.ConcatenateNonEmpty(separator, str, ulocale.GetWest(langCode))
 	}
 	if dir.X == 1 {
-		ustr.ConcatenateNonEmpty(separator, str, ulocale.GetEast(langCode))
+		zstr.ConcatenateNonEmpty(separator, str, ulocale.GetEast(langCode))
 	}
 	return str
 }

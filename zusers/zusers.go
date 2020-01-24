@@ -8,7 +8,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
-	"github.com/torlangballe/zutil/ustr"
+	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zredis"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -30,11 +30,11 @@ type User struct {
 }
 
 func (u *User) IsAdmin() bool {
-	return ustr.StringsContain(u.Permissions, AdminPermission)
+	return zstr.StringsContain(u.Permissions, AdminPermission)
 }
 
 func (u *User) IsSuper() bool {
-	return ustr.StringsContain(u.Permissions, AdminSuperUser)
+	return zstr.StringsContain(u.Permissions, AdminSuperUser)
 }
 
 var LoginFail error = errors.New("wrong user email or password")
@@ -67,7 +67,7 @@ func InitTable(db *sql.DB) error {
 // }
 
 func makeHash(str, salt string) string {
-	return ustr.Sha1Hex(str + salt + hashKey)
+	return zstr.Sha1Hex(str + salt + hashKey)
 }
 
 func getUsersFromRows(db *sql.DB, rows *sql.Rows) (us []*User, err error) {
@@ -121,7 +121,7 @@ func SetAdminForUser(db *sql.DB, id int64, isAdmin bool) (err error) {
 	if err != nil {
 		return
 	}
-	perm = ustr.RemoveStringFromSlice(perm, AdminPermission)
+	perm = zstr.RemoveStringFromSlice(perm, AdminPermission)
 	if isAdmin {
 		perm = append(perm, AdminPermission)
 	}
@@ -199,7 +199,7 @@ func Login(db *sql.DB, redisPool *redis.Pool, email, password string) (id int64,
 		err = LoginFail
 		return
 	}
-	token = ustr.GenerateUUID()
+	token = zstr.GenerateUUID()
 	id = u.Id
 	err = setTokenForUserId(redisPool, token, id)
 	if err != nil {
@@ -210,9 +210,9 @@ func Login(db *sql.DB, redisPool *redis.Pool, email, password string) (id int64,
 }
 
 func makeSaltyHash(password string) (salt, hash, token string) {
-	salt = ustr.GenerateUUID()
+	salt = zstr.GenerateUUID()
 	hash = makeHash(password, salt)
-	token = ustr.GenerateUUID()
+	token = zstr.GenerateUUID()
 	return
 }
 

@@ -1,11 +1,11 @@
 package uaws
 
 import (
-	"github.com/torlangballe/zutil/zfile"
-	"github.com/torlangballe/zutil/ustr"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -16,7 +16,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pkg/errors"
-	"io"
+	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/zfile"
+
 	// gaws "launchpad.net/goamz/aws" // http://godoc.org/launchpad.net/goamz/aws#Auth
 	// gs3 "launchpad.net/goamz/s3"   // http://godoc.org/github.com/danieltoshea/goamz/s3
 	"net/http"
@@ -44,7 +46,7 @@ const (
 var globalAccessKey, globalSecretKey string
 
 func PutFile(s3s *s3.S3, filepath, path, bucketname, mime, permissions, region string) (size int64, err error) {
-	size, _ = ufile.GetSize(filepath)
+	size, _ = zfile.GetSize(filepath)
 	file, err := os.Open(filepath)
 	if err != nil {
 		err = errors.WrapN(err, "Error opening file to write to S3", filepath)
@@ -180,7 +182,7 @@ func PresignForUploadToBucketItem(s3s *s3.S3, region, bucket, key string, liveMi
 		fmt.Println("error presigning request:", err)
 		return
 	}
-	downloadUrl = ustr.HeadUntilString(surl, "?")
+	downloadUrl = zstr.HeadUntilString(surl, "?")
 	//	fmt.Println("PresignForUploadToBucketItem: headers:", signedHeaders)
 	return
 }
@@ -398,7 +400,7 @@ func CreateDynamoTable(dsess *dynamodb.DynamoDB, name string, attributes map[str
 		a.AttributeName = aws.String(k)
 		e.AttributeName = aws.String(k)
 		var atype, ktype string
-		if ustr.SplitN(v, ":", &atype, &ktype) {
+		if zstr.SplitN(v, ":", &atype, &ktype) {
 			if ktype == "EXPIRY" {
 				ttlField = k
 				continue
