@@ -37,17 +37,13 @@ func addJSONPCallback(json string, callback string) string {
 	return json
 }
 
+var LegalCORSOrigins = map[string]bool{}
+
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
-	origs := map[string]bool{
-		"http://127.0.0.1:8090":      true,
-		"http://127.0.0.1:5000":      true,
-		"http://127.0.0.1:4000":      true,
-		"https://51.15.138.187:8090": true,
-	}
 	o := req.Header.Get("Origin")
-	if origs[o] {
-		// fmt.Println("AddCorsHeaders:", o)
+	if LegalCORSOrigins[o] {
+		//		fmt.Println("AddCorsHeaders:", o)
 		w.Header().Set("Access-Control-Allow-Origin", o)
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -145,11 +141,23 @@ func GetInt64Val(vals url.Values, name string, def int64) int64 {
 	if s == "" {
 		return def
 	}
-	n, err := strconv.ParseInt(s, 10, 32)
+	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return def
 	}
 	return n
+}
+
+func GetTimeVal(vals url.Values, name string) time.Time {
+	s := vals.Get(name)
+	if s == "" {
+		return time.Time{}
+	}
+	t, err := time.Parse(s, time.RFC3339)
+	if err != nil {
+		t, err = time.Parse(s, time.RFC3339Nano)
+	}
+	return t
 }
 
 func GetFloatVal(vals url.Values, name string, def float64) float64 {
@@ -164,10 +172,9 @@ func GetFloatVal(vals url.Values, name string, def float64) float64 {
 	return n
 }
 
-func AddHandle(r *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
+func AddHandler(r *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	return r.HandleFunc(pattern, func(w http.ResponseWriter,
 		req *http.Request) {
 		f(w, req)
 	})
 }
-

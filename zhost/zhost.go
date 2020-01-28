@@ -8,9 +8,11 @@ import (
 	"os/exec"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 const osxCmd = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
@@ -87,7 +89,7 @@ func forOSX() (name string, err error) {
 	return
 }
 
-func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
+func GetCurrentLocalIPAddress2() (ip16, ip4 string, err error) {
 	addrs, err := net.InterfaceAddrs()
 	// fmt.Println("CurrentLocalIP Stuff:", addrs, err)
 	if err != nil {
@@ -107,8 +109,60 @@ func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
 			i4 := ipnet.IP.To4()
 			if i4 != nil {
 				ip4 = i4.String()
-				fmt.Println("IP:", ip4)
+				fmt.Println("IP:", a.String(), ip4)
 				break
+			}
+		}
+	}
+	return
+}
+
+func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return
+	}
+	var oldName string
+	var oldNum int = -1
+	for _, iface := range ifaces {
+		// fmt.Println("CurrentLocalIP Stuff:", iface)
+		addresses, e := iface.Addrs()
+		if e != nil {
+			err = e
+			return
+		}
+		for _, a := range addresses {
+			ipnet, ok := a.(*net.IPNet)
+			if ok {
+				if ipnet.IP.IsLoopback() {
+					continue
+				}
+				get := false
+				name := iface.Name
+				var snum string
+				if oldName == "" || zstr.HasPrefix(name, "en", &snum) || zstr.HasPrefix(name, "eth", &snum) {
+					if oldName == "" || (!strings.HasPrefix(oldName, "en") && !strings.HasPrefix(oldName, "eth")) {
+						oldName = name
+						get = true
+					} else {
+						num, _ := strconv.Atoi(snum)
+						if num >= oldNum {
+							get = true
+						}
+						oldNum = num
+					}
+				}
+				if get {
+					i16 := ipnet.IP.To16()
+					if i16 != nil {
+						ip16 = i16.String()
+					}
+					i4 := ipnet.IP.To4()
+					if i4 != nil {
+						ip4 = i4.String()
+						// fmt.Println("IP:", a.String(), ip4, iface.Name)
+					}
+				}
 			}
 		}
 	}

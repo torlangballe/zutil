@@ -174,16 +174,24 @@ func MapBoolToSlice64(m map[int64]bool) (slice []int64) {
 // 	}
 // }
 
-func HashTo32(str string) uint32 {
+func HashTo32(str string) int32 {
 	h := fnv.New32a()
 	h.Write([]byte(str))
-	return h.Sum32()
+	n := int32(h.Sum32() >> 1)
+	if n < 0 {
+		panic(n)
+	}
+	return n
 }
 
-func HashTo64(str string) uint64 {
+func HashTo64(str string) int64 {
 	h := fnv.New64a()
 	h.Write([]byte(str))
-	return h.Sum64()
+	n := int64(h.Sum64() >> 1)
+	if n < 0 {
+		panic(n)
+	}
+	return n
 }
 
 func Abs(a int) int {
