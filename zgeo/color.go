@@ -46,6 +46,21 @@ func ColorNew(r, g, b, a float32) (c Color) {
 	return
 }
 
+// ColorFromSlice returns a opaque gray for 1 item, graya for 2, opaque rgb for 3, and rgba for 4
+func ColorFromSlice(s []float32) Color {
+	switch len(s) {
+	case 1:
+		return ColorNewGray(s[0], 1)
+	case 2:
+		return ColorNewGray(s[0], s[1])
+	case 3:
+		return ColorNew(s[0], s[1], s[2], 1)
+	case 4:
+		return ColorNew(s[0], s[1], s[2], s[3])
+	}
+	return Color{}
+}
+
 func ColorNewHSBA(h, s, b, a float32) (c Color) {
 	c.Valid = true
 

@@ -721,7 +721,7 @@ func ReplaceVariablesWithValues(text, prefix string, values map[string]string) (
 	return
 }
 
-func ReplaceString(str *string, find, set string) bool {
+func Replace(str *string, find, set string) bool {
 	text := strings.Replace(*str, find, set, -1)
 	if *str != text {
 		*str = text
@@ -779,6 +779,9 @@ func RangeStringLines(str string, skipEmpty bool, f func(s string)) {
 // }
 
 func FirstToTitleCase(str string) (out string) {
+	if str == "" {
+		return ""
+	}
 	r := []rune(str)
 	r[0] = unicode.ToTitle(r[0])
 	out = string(r)
@@ -789,6 +792,25 @@ func FirstToLower(str string) (out string) {
 	r := []rune(str)
 	r[0] = unicode.ToLower(r[0])
 	out = string(r)
+	return
+}
+
+func FirstToLowerWithAcronyms(str string) (out string) {
+	firstLower := -1
+	for i, c := range str {
+		if unicode.ToLower(c) == c {
+			firstLower = i
+			break
+		}
+	}
+	if firstLower <= 0 {
+		return strings.ToLower(str)
+	}
+	if firstLower == 1 {
+		return FirstToLower(str)
+	}
+	out = strings.ToLower(str[:firstLower-1])
+	out += str[firstLower-1:]
 	return
 }
 

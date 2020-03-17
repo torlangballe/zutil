@@ -29,6 +29,7 @@ type PathNode struct {
 	Type   PathPartType
 	Points []Pos
 }
+
 type Path struct {
 	nodes []PathNode
 }
@@ -63,7 +64,7 @@ func (p *Path) IsEmpty() bool {
 	return len(p.nodes) == 0
 }
 
-func (p *Path) GetRect() Rect {
+func (p *Path) Rect() Rect {
 	if p.IsEmpty() {
 		return Rect{}
 	}
@@ -73,7 +74,9 @@ func (p *Path) GetRect() Rect {
 		if first {
 			box.Pos = part.Points[0]
 		} else {
-			box.UnionWithPos(part.Points[0])
+			if part.Type != PathClose {
+				box.UnionWithPos(part.Points[0])
+			}
 		}
 		switch part.Type {
 		case PathQuadCurve:
@@ -142,15 +145,18 @@ func arcControlPoints(angle, delta float64) (Size, Size) {
 }
 
 func (p *Path) ArcTo(rect Rect, degStart, degDelta float64, clockwise bool) {
+	// fmt.Println("ArcTo:", degStart, degDelta, p.IsEmpty())
 	circleCenter := rect.Center()
 	circleRadius := rect.Size.W / 2
-	p0 := polarPoint(circleRadius, degStart).Plus(circleCenter)
+	aStart := zmath.DegToRad(degStart - 90)
+	aDelta := zmath.DegToRad(degDelta)
+	p0 := polarPoint(circleRadius, aStart).Plus(circleCenter)
 	needLineTo := false
 	if p.IsEmpty() || p.nodes[len(p.nodes)-1].Type == PathClose {
-		p.LineTo(p0)
-	} else {
 		p.MoveTo(p0)
 		needLineTo = true
+	} else {
+		p.LineTo(p0)
 	}
 	if degDelta == 0 || circleRadius <= 0 {
 		if needLineTo {
@@ -158,9 +164,9 @@ func (p *Path) ArcTo(rect Rect, degStart, degDelta float64, clockwise bool) {
 		}
 		return
 	}
-	n := math.Ceil(math.Abs(degDelta) / (math.Pi / 2))
-	rm := MatrixIdentity.RotatedAroundPos(circleCenter, degDelta/n)
-	k0, k1 := arcControlPoints(degStart, degDelta/n)
+	n := math.Ceil(math.Abs(aDelta) / (math.Pi / 2))
+	rm := MatrixIdentity.RotatedAroundPos(circleCenter, aDelta/n)
+	k0, k1 := arcControlPoints(aStart, aDelta/n)
 	c0 := Pos{k0.W*circleRadius + circleCenter.X, k0.H*circleRadius + circleCenter.Y}
 	c1 := Pos{k1.W*circleRadius + circleCenter.X, k1.H*circleRadius + circleCenter.Y}
 	for i := 0; i < int(n); i++ {
@@ -193,7 +199,7 @@ func (p *Path) AddPath(addPath *Path, join bool, m *Matrix) {
 func (p *Path) Rotated(deg float64, origin *Pos) *Path {
 	var pos = Pos{}
 	if origin == nil {
-		bounds := p.GetRect()
+		bounds := p.Rect()
 		pos = bounds.Center()
 	} else {
 		pos = *origin

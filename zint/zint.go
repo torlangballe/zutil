@@ -277,3 +277,17 @@ func (s Slice) GetItem(i int) (id, name string, value interface{}) {
 	str := strconv.Itoa(n)
 	return str, str, n
 }
+
+func (s Slice) Count() int {
+	return len(s)
+}
+
+func (s Slice) Minimum() int {
+	var min int
+	for i, n := range s {
+		if i == 0 || min > n {
+			min = n
+		}
+	}
+	return min
+}

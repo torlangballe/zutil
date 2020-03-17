@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -45,6 +46,10 @@ func (e *HTTPError) Unwrap() error {
 
 func MakeHTTPError(err error, code int, message string) error {
 	if message != "" {
+		zstr.Replace(&message, "<p>", "\n")
+		zstr.Replace(&message, "</p>", "\n")
+		for zstr.Replace(&message, "\n\n", "\n") {
+		}
 		if err != nil {
 			message += ": " + err.Error()
 		}
@@ -53,8 +58,8 @@ func MakeHTTPError(err error, code int, message string) error {
 			message = err.Error()
 		}
 	}
-	if err == nil && code != 0 {
-		message += " " + http.StatusText(code)
+	if err == nil && code > 0 {
+		zstr.Concat(&message, " ", http.StatusText(code))
 	}
 	e := &HTTPError{}
 	e.Err = errors.New(message)
@@ -62,9 +67,26 @@ func MakeHTTPError(err error, code int, message string) error {
 	return e
 }
 
+type Parameters struct {
+	Headers               map[string]string
+	SkipVerifyCertificate bool
+	PrintBody             bool
+	Args                  map[string]string
+	TimeoutSecs           float64
+	UseHTTPS              bool
+	Method                string
+	Body                  []byte
+}
+
+func MakeParameters() Parameters {
+	return Parameters{
+		Headers: map[string]string{},
+	}
+}
+
 // Post uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
 // receive can be []byte, string or a struct to unmarashal to
-func Post(surl string, sendHeaders map[string]string, printBody bool, send, receive interface{}) (headers http.Header, err error) {
+func Post(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
 	var ctype = "application/json"
 	bout, got := send.([]byte)
 	if got {
@@ -81,33 +103,83 @@ func Post(surl string, sendHeaders map[string]string, printBody bool, send, rece
 			}
 		}
 	}
-	response, code, err := PostBytesSetContentLength(surl, ctype, bout, false, false, sendHeaders)
+	params.Body = bout
+	response, code, err := PostBytesSetContentLength(surl, params, ctype)
 	if err != nil || code >= 300 {
 		fmt.Println("Post err bout:\n", string(bout), err)
 		err = MakeHTTPError(err, code, "post")
 		return
 	}
-	return processResponse(surl, response, printBody, receive)
+	return processResponse(surl, response, params.PrintBody, receive)
 }
 
-func Get(surl string, sendHeaders map[string]string, printBody bool, args map[string]string, receive interface{}) (headers http.Header, err error) {
-	if args != nil {
-		surl, _ = MakeURLWithArgs(surl, args)
+func MakeRequest(surl string, params Parameters) (request *http.Request, client *http.Client, err error) {
+	if params.Args != nil {
+		surl, _ = MakeURLWithArgs(surl, params.Args)
 	}
-	client := http.DefaultClient
-	req, err := http.NewRequest(http.MethodGet, surl, nil)
-	if sendHeaders != nil {
-		for k, v := range sendHeaders {
+	client = http.DefaultClient
+	if params.SkipVerifyCertificate {
+		client = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+	}
+	if params.TimeoutSecs != 0 {
+		client.Timeout = time.Duration(float64(time.Second) * params.TimeoutSecs)
+	}
+
+	var reader io.Reader
+	if params.Body != nil {
+		reader = bytes.NewReader(params.Body)
+	}
+	req, err := http.NewRequest(params.Method, surl, reader)
+	if err != nil {
+		err = zlog.Error(err, "new request")
+		return
+	}
+	if params.Headers != nil {
+		for k, v := range params.Headers {
 			req.Header.Set(k, v)
 		}
 	}
-	response, err := client.Do(req)
-	//	fmt.Println("GET:", surl, req.Header, err, response)
-	if err != nil || response.StatusCode >= 300 {
-		err = MakeHTTPError(err, response.StatusCode, "client.do")
+
+	return req, client, err
+}
+
+func GetResponseFromReqClient(request *http.Request, client *http.Client) (response *http.Response, err error) {
+	response, err = client.Do(request)
+	// fmt.Println("GetResponseFromReqClient:", request.Header, err, response)
+	if err == nil && response == nil {
+		return nil, errors.New("client.Do gave no response: " + request.URL.String())
+	}
+	if err == nil && response != nil && response.StatusCode >= 300 {
+		// fmt.Println("GetResponseFromReqClient make error:")
+		err = MakeHTTPError(err, response.StatusCode, "")
 		return
 	}
-	return processResponse(surl, response, printBody, receive)
+	return
+}
+
+func GetResponse(surl string, params Parameters) (response *http.Response, err error) {
+	zlog.Assert(params.Method != "", params, surl)
+	req, client, err := MakeRequest(surl, params)
+	// fmt.Println("GetResponse:", err, req != nil, client != nil)
+	if err != nil {
+		return
+	}
+	return GetResponseFromReqClient(req, client)
+}
+
+func Get(surl string, params Parameters, receive interface{}) (headers http.Header, err error) {
+	params.Method = http.MethodGet
+	resp, err := GetResponse(surl, params)
+	if err != nil || resp == nil {
+		return
+	}
+	return processResponse(surl, resp, params.PrintBody, receive)
 }
 
 func processResponse(surl string, response *http.Response, printBody bool, receive interface{}) (headers http.Header, err error) {
@@ -237,44 +309,25 @@ func UnmarshalFromJSONFromPostForm(surl string, vals url.Values, v interface{}, 
 	return
 }
 
-func PostBytesSetContentLength(surl, ctype string, body []byte, useHTTPS, insecureSkipVerify bool, otherHeaders map[string]string) (response *http.Response, code int, err error) {
-	client := http.DefaultClient
-	if useHTTPS {
-		client = &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: insecureSkipVerify,
-				},
-			},
-		}
-	}
-	req, err := http.NewRequest(http.MethodPost, surl, bytes.NewReader(body))
+func PostBytesSetContentLength(surl string, params Parameters, ctype string) (response *http.Response, code int, err error) {
+	zlog.Assert(len(params.Body) != 0, surl)
+	params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
+	params.Headers["Content-Type"] = ctype
+	req, client, err := MakeRequest(surl, params)
 	if err != nil {
 		return
 	}
-	req.Header.Set("Content-Length", fmt.Sprintf("%d", len(body))) // will be overriden by otherHeaders
-	req.Header.Set("Content-Type", ctype)                          // will be overriden by otherHeaders
-	if otherHeaders != nil {
-		for k, v := range otherHeaders {
-			req.Header.Set(k, v)
-		}
-	}
-	response, err = client.Do(req)
+	resp, err := GetResponseFromReqClient(req, client)
 	if err != nil {
 		return
 	}
-
-	code = response.StatusCode
-	if response.StatusCode >= 300 {
-		err = fmt.Errorf("PostBytesSetContentLength: %d %s\n%s", response.StatusCode, response.Status, surl)
-		return
-	}
-	return
+	return resp, resp.StatusCode, nil
 }
 
-func PostValuesAsForm(surl string, values url.Values, otherHeaders map[string]string) (data *[]byte, reAuth bool, err error) {
+func PostValuesAsForm(surl string, params Parameters, values url.Values) (data *[]byte, reAuth bool, err error) {
 	var response *http.Response
-	response, _, err = PostBytesSetContentLength(surl, "application/x-www-form-urlencoded", []byte(values.Encode()), false, false, otherHeaders)
+	params.Body = []byte(values.Encode())
+	response, _, err = PostBytesSetContentLength(surl, params, "application/x-www-form-urlencoded")
 	if err != nil {
 		return
 	}
@@ -446,6 +499,7 @@ func (e ErrorStruct) Check(err *error) bool {
 	return false
 }
 
+/*
 func ServeJSONP(sjson string, w http.ResponseWriter, req *http.Request) {
 	callback := req.FormValue("callback")
 	if callback != "" {
@@ -456,6 +510,7 @@ func ServeJSONP(sjson string, w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte(sjson))
 	}
 }
+*/
 
 func GetHeaders(surl string) (header http.Header, err error) {
 	resp, err := http.Head(surl)
@@ -607,55 +662,3 @@ func MakeDataURL(data []byte, mime string) string {
 	}
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data)
 }
-
-/*
-
-func startHttpServer(wg *sync.WaitGroup) *http.Server {
-    srv := &http.Server{Addr: ":8080"}
-
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        io.WriteString(w, "hello world\n")
-    })
-
-    go func() {
-        defer wg.Done() // let main know we are done cleaning up
-
-        // always returns error. ErrServerClosed on graceful close
-        if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-            // unexpected error. port in use?
-            log.Fatalf("ListenAndServe(): %v", err)
-        }
-    }()
-
-    // returning reference so caller can call Shutdown()
-    return srv
-}
-
-func main() {
-    log.Printf("main: starting HTTP server")
-
-    httpServerExitDone := &sync.WaitGroup{}
-
-    httpServerExitDone.Add(1)
-    srv := startHttpServer(httpServerExitDone)
-
-    log.Printf("main: serving for 10 seconds")
-
-    time.Sleep(10 * time.Second)
-
-    log.Printf("main: stopping HTTP server")
-
-    // now close the server gracefully ("shutdown")
-    // timeout could be given with a proper context
-    // (in real world you shouldn't use TODO()).
-    if err := srv.Shutdown(context.TODO()); err != nil {
-        panic(err) // failure/timeout shutting down the server gracefully
-    }
-
-    // wait for goroutine started in startHttpServer() to stop
-    httpServerExitDone.Wait()
-
-    log.Printf("main: done. exiting")
-}
-
-*/

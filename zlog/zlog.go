@@ -156,7 +156,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		go syslogWriter.Notice(str)
 	}
 	if priority == FatalLevel {
-		os.Exit(-1)
+		panic("zlog.Fatal")
 	}
 	return err
 }
@@ -198,12 +198,26 @@ func Assert(success bool, parts ...interface{}) {
 	}
 }
 
+func AssertMakeError(success bool, parts ...interface{}) error {
+	if !success {
+		parts = append([]interface{}{StackAdjust(1)}, parts...)
+		return Error(errors.New("assert failed"), parts...)
+	}
+	return nil
+}
+
 func ErrorIf(check bool, parts ...interface{}) bool {
 	if check {
 		parts = append([]interface{}{StackAdjust(1)}, parts...)
 		Error(errors.New("error if occured:"), parts...)
 	}
 	return check
+}
+
+func OnError(err error, parts ...interface{}) {
+	if err != nil {
+		Error(err, parts...)
+	}
 }
 
 func AssertNotErr(err error, parts ...interface{}) {

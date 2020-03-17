@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 var timeType = reflect.TypeOf(time.Time{})
@@ -62,8 +63,8 @@ type Item struct {
 	Children    []Item
 }
 
-func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous, recursive bool, val reflect.Value) (item Item, err error) {
-	// fmt.Println("itterate:", fieldName, typeName, tagName)
+func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnestAnonymous, recursive bool, val reflect.Value) (item Item, err error) {
+	//    fmt.Println("itterate:", level, fieldName, typeName, tagName)
 	item.FieldName = fieldName
 	vtype := val.Type()
 	if typeName == "" {
@@ -89,7 +90,7 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 			val = reflect.Indirect(val)
 		}
 		//		fmt.Println("ptr:", t.Name(), fieldName, t.PkgPath())
-		item, err = itterate(fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, val)
+		item, err = itterate(level, fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, val)
 		item.IsPointer = true
 		//		item.Address = val.Addr().Interface()
 		return
@@ -101,7 +102,7 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 			v = reflect.New(t)
 		}
 		// fmt.Println("slice:", val.Len(), t.Name(), fieldName, t.PkgPath(), v.Kind())
-		item, err = itterate(fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, v)
+		item, err = itterate(level, fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, v)
 		item.Value = val
 		item.IsArray = true
 		item.Kind = KindSlice
@@ -120,16 +121,25 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 			item.Interface = val.Interface()
 			item.Kind = KindStruct
 			n := vtype.NumField()
+			// fmt.Println("struct:", fieldName, n, recursive, unnestAnonymous , isAnonymous)
+			if level > 0 && !recursive && (!unnestAnonymous || !isAnonymous) { // always go into first level
+				break
+			}
 			for i := 0; i < n; i++ {
 				f := vtype.Field(i)
-				if !(recursive || (unnestAnonymous && isAnonymous) || fieldName == "") { // always go into first level
-					continue
-				}
 				fval := val.Field(i)
 				tag := string(f.Tag) // http://golang.org/pkg/reflect/#StructTag
 				tname := fval.Type().Name()
+				fname := f.Name
+				// if unnestAnonymous && fieldName == "" {
+				// 	fname = ""
+				// }
 				// fmt.Println("struct:", item.Kind, fieldName, "/", f.Type, f.Name, f.Type.PkgPath(), tag) //, c.Tag, c.Value, c.Value.Interface(), fval.CanAddr())
-				c, e := itterate(f.Name, tname, tag, f.Anonymous, unnestAnonymous, recursive, fval)
+				l := level
+				if !f.Anonymous {
+					l++
+				}
+				c, e := itterate(l, fname, tname, tag, f.Anonymous, unnestAnonymous, recursive, fval)
 				c.Address = fval.Addr().Interface()
 				if e != nil {
 					err = e
@@ -139,6 +149,7 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 						//							fmt.Println("Addr:", c.Value, c.Address)
 					}
 					if unnestAnonymous && f.Anonymous {
+						// fmt.Println("add anon", i, len(item.Children), len(c.Children))
 						item.Children = append(item.Children, c.Children...)
 					} else {
 						item.Children = append(item.Children, c)
@@ -187,5 +198,10 @@ func itterate(fieldName, typeName, tagName string, isAnonymous, unnestAnonymous,
 }
 
 func ItterateStruct(istruct interface{}, unnestAnonymous, recursive bool) (item Item, err error) {
-	return itterate("", "", "", false, unnestAnonymous, recursive, reflect.ValueOf(istruct).Elem())
+	rval := reflect.ValueOf(istruct)
+	if !rval.IsValid() || rval.IsZero() {
+		return
+	}
+	zlog.Assert(rval.Kind() == reflect.Ptr, "not pointer", rval.Kind(), rval)
+	return itterate(0, "", "", "", false, unnestAnonymous, recursive, rval.Elem())
 }

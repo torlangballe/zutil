@@ -195,16 +195,16 @@ function zSetFormValueFromRowId(row, id, formId) {
         document.getElementById(formId).checked = val.checked;
         return
     }
-        if (val.length > 0) {
-            val = val.children[0];
-        }
-        if (val.children.length > 0) {
-            val = val.children[0];
-        }
+    if (val.length > 0) {
+        val = val.children[0];
+    }
+    if (val.children.length > 0) {
+        val = val.children[0];
+    }
     //    console.log("zSetFormValueFromRowIdx:", val.length, val.children.length);
-        val = val.innerHTML;
-    
-//    console.log("zSetFormValueFromRowId:", val, id, formId, c[c.length - 1].children);
+    val = val.innerHTML;
+
+    //    console.log("zSetFormValueFromRowId:", val, id, formId, c[c.length - 1].children);
     document.getElementById(formId).value = val;
 }
 
@@ -227,17 +227,17 @@ function postValue(url, name, value) {
     }];
     var sjson = JSON.stringify(m);
     var info = { method: "POST", body: sjson };
-    makeCorsRequest(url, info, function (obj, headers) {
+    makeCorsRequest(url, info, function(obj, headers) {
         if (obj.url) {
             console.log("result:", obj.url);
         }
-    }, function (code, err) {
+    }, function(code, err) {
         console.log("sendValue err:", code, err);
     });
 }
 
 function sendValue(url, name, value) {
-    console.log("SENDVAL:", name, value);
+    // console.log("SENDVAL:", name, value);
     if (Array.isArray(value) && value.length > 0) {
         console.log("sendValue isArray:", name, value);
         value = value[0];
@@ -247,15 +247,12 @@ function sendValue(url, name, value) {
     url += "&value=" + value;
 
     var info = { method: "GET" };
-    makeCorsRequest(url, info, function (obj, headers) {
-//        console.log("sendValue4:", obj);
+    makeCorsRequest(url, info, function(obj, headers) {
+        //        console.log("sendValue4:", obj);
         if (obj.url) {
             console.log("result:", obj.url);
         }
-    }, function (code, err) {
+    }, function(code, err) {
         console.log("sendValue err:", code, err);
     });
 }
-
-
-

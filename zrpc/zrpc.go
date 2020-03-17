@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	zrest "github.com/torlangballe/zutil/urest"
+	"github.com/torlangballe/zutil/zrest"
 
 	"github.com/torlangballe/zutil/uhttp"
 
@@ -67,7 +67,7 @@ func InitServer(router *mux.Router) (err error) {
 	go http.ListenAndServe(fmt.Sprintf(":%d", Port), router)
 	server = rpc.NewServer()
 	server.RegisterCodec(rpcjson.NewCodec(), "application/json")
-	zrest.AddHandle(router, "/rpc", doServeHTTP).Methods("POST", "OPTIONS")
+	zrest.AddHandler(router, "/rpc", doServeHTTP).Methods("POST", "OPTIONS")
 	return
 }
 
@@ -113,14 +113,15 @@ func CallRemote(method interface{}, args interface{}, reply interface{}) error {
 	message, err := rpcjson.EncodeClientRequest(name, args)
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote encode client request")
-	} //
-	headers := map[string]string{
-		"X-ZUI-Client-Id":  ClientID,
-		"X-ZUI-Auth-Token": AuthToken,
 	}
-	insecureSkipVerify := true
-	useHTTPS := false
-	resp, _, err := uhttp.PostBytesSetContentLength(surl, "application/json", message, useHTTPS, insecureSkipVerify, headers) //, message, map[string]string{
+
+	params := uhttp.MakeParameters()
+	params.UseHTTPS = false
+	params.SkipVerifyCertificate = true
+	params.Headers["X-ZUI-Client-Id"] = ClientID
+	params.Headers["X-ZUI-Auth-Token"] = AuthToken
+	params.Body = message
+	resp, _, err := uhttp.PostBytesSetContentLength(surl, params, "application/json") //, message, map[string]string{
 	// 	"js.fetch:mode": "no-cors",
 	// })
 	// fmt.Println("POST RPC:", err, surl, uhttp.GetCopyOfResponseBodyAsString(resp))
@@ -131,7 +132,9 @@ func CallRemote(method interface{}, args interface{}, reply interface{}) error {
 
 	err = rpcjson.DecodeClientResponse(resp.Body, &reply)
 	if err != nil {
-		return zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
+		zlog.Info("decode error:", err)
+		return err
+		//		return zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
 	}
 	// zlog.Debug("DECODE RPC:", reply)
 	return nil

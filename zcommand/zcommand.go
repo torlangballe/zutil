@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -67,6 +68,7 @@ func getAppProgramPath(appName string) string {
 func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
 	path := getAppProgramPath(appName)
 	cmd = exec.Command(path, args...)
+	// fmt.Println("RunApp:", path, args)
 	outPipe, err = cmd.StdoutPipe()
 	if err != nil {
 		err = zlog.Error(err, "connect stdout pipe")
@@ -107,12 +109,22 @@ func CloseUrlInBrowser(surl string, btype BrowserType) error {
 	return err
 }
 
+func CloseAllWIndowsInApp(app string) error {
+	command := `tell application "%s"
+	activate
+	close every window
+end tell`
+	command = fmt.Sprintf(command, app)
+	_, err := RunAppleScript(command, 10.0)
+	return err
+}
+
 func RunURLInBrowser(surl string, btype BrowserType, args ...string) (*exec.Cmd, error) {
 	args = append(args, "--new-window", surl)
 	name := GetAppNameOfBrowser(btype, true)
 	cmd, _, _, err := RunApp(name, args...)
 	if err != nil {
-		return nil, zlog.Error(err, "OpenUrlInBrowser")
+		return nil, zlog.Error(err, "RunURLInBrowser")
 	}
 	return cmd, err
 }
@@ -121,6 +133,7 @@ func OpenUrlInBrowser(surl string, btype BrowserType, args ...string) error {
 	name := GetAppNameOfBrowser(btype, true)
 	args = append([]string{"-F", "-g", "-a", name, surl, "--args", "--new-window"}, args...)
 	_, err := RunCommand("open", 0, args...)
+	// fmt.Println("OpenUrlInBrowser:", err, args)
 	if err != nil {
 		return zlog.Error(err, "OpenUrlInBrowser")
 	}
@@ -145,14 +158,14 @@ func QuitBrowser(btype BrowserType) (string, error) {
 	return str, err
 }
 
-func CloseBrowserWindowWithTitle(btype BrowserType, title string, allExcept bool) error {
+func CloseAppWindowWithTitle(app, title string, allExcept bool) error {
 	titleName := "title"
-	if btype == Safari {
+	if app == GetAppNameOfBrowser(Safari, true) {
 		titleName = "name"
 	}
-	app := GetAppNameOfBrowser(btype, true)
 	command :=
 		`tell application "%s"
+		activate
 		close (every window whose %s is %s "%s")
 		end tell
 `
@@ -161,6 +174,64 @@ func CloseBrowserWindowWithTitle(btype BrowserType, title string, allExcept bool
 		not = "not"
 	}
 	command = fmt.Sprintf(command, app, titleName, not, title)
+	// fmt.Println("CloseWindowWithTitle:", app, title, "\n", command)
+	_, err := RunAppleScript(command, 5.0)
+	//	fmt.Println("CloseWindowWithTitle done", err)
+	return err
+}
+
+func QuitApp(app string) error {
+	command :=
+		`tell application "%s"
+			quit
+		end tell
+`
+	command = fmt.Sprintf(command, app)
+	_, err := RunAppleScript(command, 3.0)
+	return err
+}
+
+func ResizeAppWindowWithTitle(app, title string, size zgeo.Size) error {
+	titleName := "title"
+	if app == GetAppNameOfBrowser(Safari, true) {
+		titleName = "name"
+	}
+	command :=
+		`tell application "%s"
+		activate
+	    repeat with w in windows
+			if %s of w is "%s" then
+				set b to bounds of w
+				set x to 1st item of b
+				set y to 2nd item of b
+				log b
+				log (title of w)
+				log x
+				log y
+				set bounds of w to {x, y, x + %d, y + %d}
+			end if
+		end repeat
+	end tell
+`
+	command = fmt.Sprintf(command, app, titleName, title, int(size.W), int(size.H))
+	_, err := RunAppleScript(command, 5.0)
+	// fmt.Println("ResizeAppWindowWithTitle", command, str, err)
+	return err
+}
+
+func ResizeBrowserWindowWithTitle(btype BrowserType, title string, rect zgeo.Rect) error {
+	titleName := "title"
+	if btype == Safari {
+		titleName = "name"
+	}
+	app := GetAppNameOfBrowser(btype, true)
+	command :=
+		`tell application "%s"
+		activate
+		set bounds of every window whose %s is "%s" to {%g,%g,%g,%g}
+		end tell
+`
+	command = fmt.Sprintf(command, app, titleName, title, rect.Min().X, rect.Min().Y, rect.Max().X, rect.Max().Y)
 	// fmt.Println("CloseWindowWithTitle:", app, title, "\n", command)
 	_, err := RunAppleScript(command, 5.0)
 	//	fmt.Println("CloseWindowWithTitle done", err)

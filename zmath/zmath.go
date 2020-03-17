@@ -132,6 +132,8 @@ func RoundDownWithRandom(c float32) int {
 	return i
 }
 
+// InterpolatedArrayRatioAtT returns what index in an array t (0-1) is.
+// ratio is how much (0-1) of index value should be used and vs rest in next index value
 func InterpolatedArrayRatioAtT(arrayLength int, t float64) (ratio float64, index int) {
 	if t < 0.0 {
 		return 1.0, 0

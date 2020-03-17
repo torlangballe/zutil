@@ -139,6 +139,7 @@ func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
 				}
 				get := false
 				name := iface.Name
+				// fmt.Println("CurrentLocalIP device:", name)
 				var snum string
 				if oldName == "" || zstr.HasPrefix(name, "en", &snum) || zstr.HasPrefix(name, "eth", &snum) {
 					if oldName == "" || (!strings.HasPrefix(oldName, "en") && !strings.HasPrefix(oldName, "eth")) {
@@ -159,8 +160,12 @@ func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
 					}
 					i4 := ipnet.IP.To4()
 					if i4 != nil {
-						ip4 = i4.String()
-						// fmt.Println("IP:", a.String(), ip4, iface.Name)
+						str := i4.String()
+						// fmt.Println("IP:", a.String(), ip4, iface.Name, str)
+						if strings.HasPrefix(str, "169.") && ip4 != "" {
+							continue
+						}
+						ip4 = str
 					}
 				}
 			}

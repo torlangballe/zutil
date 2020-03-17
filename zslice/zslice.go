@@ -30,7 +30,7 @@ func checkIsSlicePtr(s interface{}) error {
 func RemoveAt(slice interface{}, index int) error {
 	err := checkIsSlicePtr(slice)
 	if err != nil {
-		return zlog.Fatal(err, zlog.StackAdjust(1), "not slice pointer")
+		return zlog.Fatal(err, zlog.StackAdjust(1), "not slice pointer", slice)
 	}
 
 	slicePtrValue := reflect.ValueOf(slice)
@@ -69,4 +69,3 @@ func MixedValueAtTForF64(array []float64, t float64) float64 {
 func Behead(slice interface{}) {
 	RemoveAt(slice, 0)
 }
-

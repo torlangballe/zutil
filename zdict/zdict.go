@@ -184,3 +184,7 @@ func (d Items) GetItem(i int) (id, name string, value interface{}) {
 	}
 	return fmt.Sprint(d[i].Value), d[i].Name, d[i].Value
 }
+
+func (d Items) Count() int {
+	return len(d)
+}

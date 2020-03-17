@@ -60,6 +60,7 @@ func (r *Rect) SetMax(max Pos) {
 func (r Rect) Min() Pos {
 	return r.Pos
 }
+
 func (r *Rect) SetMin(min Pos) {
 	r.Size.W += (r.Pos.X - min.X)
 	r.Size.H += (r.Pos.Y - min.Y)
@@ -69,13 +70,16 @@ func (r *Rect) SetMin(min Pos) {
 func (r *Rect) SetMaxX(x float64) {
 	r.Size.W = x - r.Pos.X
 }
+
 func (r *Rect) SetMaxY(y float64) {
 	r.Size.H = y - r.Pos.Y
 }
+
 func (r *Rect) SetMinX(x float64) {
 	r.Size.W += (r.Pos.X - x)
 	r.Pos.X = x
 }
+
 func (r *Rect) SetMinY(y float64) {
 	r.Size.H += (r.Pos.Y - y)
 	r.Pos.Y = y
@@ -84,6 +88,7 @@ func (r *Rect) SetMinY(y float64) {
 func (r Rect) Center() Pos {
 	return r.Pos.Plus(r.Size.DividedByD(2).Pos())
 }
+
 func (r *Rect) SetCenter(c Pos) {
 	r.Pos = c.Minus(r.Size.Pos().DividedByD(2))
 }
@@ -114,11 +119,39 @@ func MergeAll(rects []Rect) []Rect {
 	return rold
 }
 
-func (r Rect) Expanded(e Size) Rect {
-	return Rect{r.Pos.Minus(e.Pos()), r.Size.Plus(e.TimesD(2))}
+func (r Rect) ExpandedD(n float64) Rect {
+	return r.Expanded(Size{n, n})
 }
-func (r Rect) ExpandedD(n float64) Rect { return r.Expanded(Size{n, n}) }
-func (r Rect) Centered(center Pos) Rect { return Rect{center.Minus(r.Size.Pos().DividedByD(2)), r.Size} }
+
+func (r Rect) Centered(center Pos) Rect {
+	return Rect{center.Minus(r.Size.Pos().DividedByD(2)), r.Size}
+}
+
+func (r Rect) Expanded(s Size) Rect {
+	return Rect{r.Pos.Minus(s.Pos()), r.Size.Plus(s.TimesD(2))}
+}
+
+// AlignmentTransform moves right if Left, left if Right, or shrinks in Center
+func (r Rect) AlignmentTransform(s Size, a Alignment) Rect {
+	if a&Left != 0 {
+		r.Pos.X += s.W
+	} else if a&Right != 0 {
+		r.Pos.X -= s.W
+	} else if a&HorCenter != 0 {
+		r.SetMinX(r.Min().X + s.W)
+		r.SetMaxX(r.Max().X - s.W)
+	}
+	if a&Top != 0 {
+		r.Pos.Y += s.H
+	} else if a&Bottom != 0 {
+		r.Pos.Y -= s.H
+	} else if a&VertCenter != 0 {
+		r.SetMinY(r.Min().Y + s.H)
+		r.SetMaxY(r.Max().Y - s.H)
+	}
+	return r
+}
+
 func (r Rect) Overlaps(rect Rect) bool {
 	min := r.Min()
 	max := r.Max()
@@ -126,11 +159,13 @@ func (r Rect) Overlaps(rect Rect) bool {
 	rmax := rect.Max()
 	return rmin.X < max.X && rmin.Y < max.Y && rmax.X > min.X && rmax.Y > min.Y
 }
+
 func (r Rect) Contains(pos Pos) bool {
 	min := r.Min()
 	max := r.Max()
 	return pos.X >= min.X && pos.X <= max.X && pos.Y >= min.Y && pos.Y <= max.Y
 }
+
 func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 	var x float64
 	var y float64

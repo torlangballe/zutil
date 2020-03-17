@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
@@ -13,6 +14,8 @@ type Size struct {
 	W float64 `json:"w"`
 	H float64 `json:"h"`
 }
+
+type Sizes []Size
 
 // SizeF creates a Size from float64 w and h
 func SizeF(w, h float32) Size {
@@ -159,21 +162,52 @@ func (s Size) String() string { // we don't use String() since we're doing that 
 	return fmt.Sprintf("%gx%g", s.W, s.H)
 }
 
-func (s *Size) FromString(str string) bool { // we don't use String() since that's special in Go
+func (s *Size) FromString(str string) error { // we don't use String() since that's special in Go
 	var sw, sh string
 	if zstr.SplitN(str, "x", &sw, &sh) {
 		w, err := strconv.ParseFloat(sw, 64)
 		if err != nil {
-			zlog.Error(err, zlog.StackAdjust(1), "parse w", sw)
-			return false
+			return zlog.Error(err, zlog.StackAdjust(1), "parse w", sw)
 		}
 		h, err := strconv.ParseFloat(sh, 64)
 		if err != nil {
-			zlog.Error(err, zlog.StackAdjust(1), "parse h", sh)
-			return false
+			return zlog.Error(err, zlog.StackAdjust(1), "parse h", sh)
 		}
 		s.W = w
 		s.H = h
 	}
-	return true
+	return nil
+}
+
+func (s Size) ZFieldString() string {
+	return s.String()
+}
+
+func (s *Size) UnmarshalJSON(b []byte) error {
+	str := string(b)
+	str = strings.Trim(str, `"`)
+	return s.FromString(str)
+}
+
+func (s *Size) MarshalJSON() ([]byte, error) {
+	str := `"` + s.String() + `"`
+	return []byte(str), nil
+}
+
+func (s Sizes) GetItem(i int) (id, name string, value interface{}) {
+	str := s[i].String()
+	return str, str, s[i]
+}
+
+func (s Sizes) Count() int {
+	return len(s)
+}
+
+func (s *Sizes) IndexOf(size Size) int {
+	for i, is := range *s {
+		if is == size {
+			return i
+		}
+	}
+	return -1
 }

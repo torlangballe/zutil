@@ -47,7 +47,7 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", o)
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Token")
+		w.Header().Set("Access-Control-Allow-Headers", "Origin, X-TimeZone-Offset-Hours, X-Requested-With, Content-Type, Accept, Access-Token")
 	}
 }
 
@@ -153,9 +153,12 @@ func GetTimeVal(vals url.Values, name string) time.Time {
 	if s == "" {
 		return time.Time{}
 	}
-	t, err := time.Parse(s, time.RFC3339)
+	t, err := time.Parse(time.RFC3339, s)
 	if err != nil {
-		t, err = time.Parse(s, time.RFC3339Nano)
+		t, err = time.Parse(time.RFC3339Nano, s)
+		if err != nil {
+			zlog.Error(err, s)
+		}
 	}
 	return t
 }

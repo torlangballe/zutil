@@ -5,56 +5,47 @@ import (
 	"hash/fnv"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
 	"github.com/torlangballe/zutil/zcommand"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zredis"
 	"github.com/torlangballe/zutil/zrest"
-	"github.com/torlangballe/zutil/ztime"
 )
 
 var storagePath string
 var getUrl string
-var redisPool *redis.Pool
+var TokenValidHours int
 
-func InitCache(workDir, urlPrefix string, rpool *redis.Pool) {
-	redisPool = rpool
-	storagePath = workDir + "images/cache/"
-	getUrl = urlPrefix + "images/cache/"
+func InitCache(workDir, urlPrefix, cacheName string) {
+	if !strings.HasPrefix(urlPrefix, "/") {
+		zlog.Error(nil, "url should start with /", urlPrefix)
+	}
+	if !strings.HasSuffix(urlPrefix, "/") {
+		zlog.Fatal(nil, "url should end with /", urlPrefix)
+	}
+	storagePath = workDir + cacheName
+	getUrl = urlPrefix + cacheName
 	err := os.MkdirAll(storagePath, 0775|os.ModeDir)
 	if err != nil {
-		zlog.Log(err, zlog.FatalLevel, "images.Init mkdir failed")
+		zlog.Log(err, zlog.FatalLevel, "zimages.Init mkdir failed")
 	}
+	fs := http.FileServer(http.Dir(workDir))
+	http.Handle(getUrl, fs)
+
+	fmt.Println("init image cache:", storagePath, getUrl)
 }
 
 func getToken() string {
-	var token string
-	key := "images.url.token"
-	got, err := zredis.Get(redisPool, &token, key)
-	if err != nil {
-		zlog.Error(err, "redis get")
-		return ""
-	}
-	if !got {
-		token = fmt.Sprintf("%x", rand.Int31())
-		err = zredis.Put(redisPool, key, ztime.Day, token)
-		if err != nil {
-			zlog.Error(err, "redis put")
-			return ""
-		}
-	}
-	return token
+	return ""
 }
 
 func IsTokenValid(t string) bool {
-	return t == getToken()
+	return true
 }
 
 // StoreImageFromReader reads bytes from reader and stores with stype png og jpeg, returning name.png/jpeg
@@ -94,7 +85,7 @@ func GetCachePathForName(name string) string {
 
 func GetCacheUrlForName(name string) string {
 	str := getUrl + name
-	if redisPool != nil {
+	if TokenValidHours != 0 {
 		str += "?token=" + getToken()
 	}
 	return str

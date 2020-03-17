@@ -1,7 +1,7 @@
 package zcache
 
 import (
-	"fmt"
+	"reflect"
 
 	"github.com/torlangballe/zutil/ztime"
 
@@ -10,7 +10,8 @@ import (
 
 // TODO: Allow a redis hookup
 
-const DefaultExpiration = 0.0
+var DefaultExpiration = 3600.0
+
 const NoExpiration = -1.0
 
 func New(ttlSecs float64) *Cache {
@@ -22,29 +23,38 @@ func New(ttlSecs float64) *Cache {
 	return c
 }
 
-func (c *Cache) Store(key interface{}, val interface{}) {
-	c.StoreWithTTL(key, val, DefaultExpiration)
+func (c *Cache) Put(key string, val interface{}) error {
+	c.cache.Set(key, val, cache.DefaultExpiration)
+	return nil
 }
 
-func (c *Cache) StoreWithTTL(key interface{}, val interface{}, ttlSecs float64) {
-	if ttlSecs == DefaultExpiration {
-		ttlSecs = ztime.DurSeconds(cache.DefaultExpiration)
-	} else if ttlSecs == NoExpiration {
+func (c *Cache) PutTTL(key string, val interface{}, ttlSecs float64) error {
+	if ttlSecs == NoExpiration {
 		ttlSecs = ztime.DurSeconds(cache.NoExpiration)
+	} else {
+		ttlSecs = ztime.DurSeconds(cache.DefaultExpiration)
 	}
-	skey := fmt.Sprintf("%v", key)
-	c.cache.Set(skey, val, ztime.SecondsDur(ttlSecs))
+	c.cache.Set(key, val, ztime.SecondsDur(ttlSecs))
+	return nil
 }
 
-func (c *Cache) Load(key interface{}) (val interface{}, got bool) {
-	skey := fmt.Sprintf("%v", key)
-	val, got = c.cache.Get(skey)
+func (c *Cache) Get(key string) (val interface{}, got bool) {
+	val, got = c.cache.Get(key)
 	return
 }
 
-func (c *Cache) Delete(key interface{}) {
-	skey := fmt.Sprintf("%v", key)
-	c.cache.Delete(skey)
+func (c *Cache) GetTo(toPtr interface{}, key string) (got bool) {
+	val, got := c.cache.Get(key)
+	if got {
+		a := reflect.ValueOf(toPtr).Elem()
+		v := reflect.ValueOf(val)
+		a.Set(v)
+	}
+	return
+}
+
+func (c *Cache) Delete(key string) {
+	c.cache.Delete(key)
 }
 
 type Cache struct {
