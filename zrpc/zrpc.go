@@ -51,9 +51,13 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Token, X-ZUI-Client-Id, X-ZUI-Auth-Token")
 
+	defer req.Body.Close()
+
 	if req.Method == "OPTIONS" {
 		return
 	}
+
+	// fmt.Println("zrpc.doServeHTTP:", req.Method, uhttp.GetCopyOfRequestBodyAsString(req))
 	server.ServeHTTP(w, req)
 }
 
@@ -90,21 +94,10 @@ func Register(owners ...interface{}) {
 
 func CallRemote(method interface{}, args interface{}, reply interface{}) error {
 	// https://github.com/golang/go/wiki/WebAssembly#configuring-fetch-options-while-using-nethttp
-	// if Local {
-	// 	fn := reflect.ValueOf(method)
-	// 	vargs := []reflect.Value{
-	// 		reflect.ValueOf(args),
-	// 		reflect.ValueOf(reply),
-	// 	}
-	// 	vals := fn.Call(vargs)
-	// 	if len(vals) == 1 {
-	// 		e, _ := vals[0].Interface().(error)
-	// 		return e
-	// 	}
-	// 	return errors.New("bad values returned")
-	// }
+
 	surl := makeUrl()
 	name, err := getRemoteCallName(method)
+	// fmt.Println("CallRemote:", name, surl, err)
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote get name")
 	}
@@ -121,18 +114,23 @@ func CallRemote(method interface{}, args interface{}, reply interface{}) error {
 	params.Headers["X-ZUI-Client-Id"] = ClientID
 	params.Headers["X-ZUI-Auth-Token"] = AuthToken
 	params.Body = message
-	resp, _, err := uhttp.PostBytesSetContentLength(surl, params, "application/json") //, message, map[string]string{
+	params.ContentType = "application/json"
+
+	// fmt.Println("CallRemote2:", string(params.Body))
+	resp, _, err := uhttp.PostBytesSetContentLength(surl, params) //, message, map[string]string{
 	// 	"js.fetch:mode": "no-cors",
 	// })
 	// fmt.Println("POST RPC:", err, surl, uhttp.GetCopyOfResponseBodyAsString(resp))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote post:", name)
 	}
-	defer resp.Body.Close()
 
 	err = rpcjson.DecodeClientResponse(resp.Body, &reply)
 	if err != nil {
-		zlog.Info("decode error:", err)
+		zlog.Info("zrpc decode error:", err)
 		return err
 		//		return zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
 	}

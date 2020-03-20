@@ -44,7 +44,7 @@ func (p *Path) Copy() *Path {
 	return n
 }
 
-func PathNewFromRect(rect Rect, corner Size) *Path {
+func PathNewRect(rect Rect, corner Size) *Path {
 	p := PathNew()
 	p.AddRect(rect, corner)
 	return p

@@ -10,6 +10,7 @@ var updatedResourcesSentToClient = map[string]map[string]bool{}
 var updatedResourcesMutex sync.Mutex
 
 func SetResourceUpdated(resID, byClientID string) {
+	// fmt.Println("SetResourceUpdated:", resID, "\n", zlog.GetCallingStackString())
 	m := map[string]bool{}
 	if byClientID != "" {
 		m[byClientID] = true

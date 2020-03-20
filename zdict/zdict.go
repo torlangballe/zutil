@@ -188,3 +188,54 @@ func (d Items) GetItem(i int) (id, name string, value interface{}) {
 func (d Items) Count() int {
 	return len(d)
 }
+
+type NamedValues interface {
+	GetItem(i int) (id, name string, value interface{})
+	Count() int
+}
+
+// MenuItemsIndexOfID loops through items and returns index of one with id. -1 if none
+func NamedValuesIndexOfID(m NamedValues, findID string) int {
+	for i := 0; i < m.Count(); i++ {
+		id, _, _ := m.GetItem(i)
+		if findID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func NamedValuesIDForValue(m NamedValues, val interface{}) string {
+	for i := 0; i < m.Count(); i++ {
+		id, _, v := m.GetItem(i)
+		if reflect.DeepEqual(val, v) {
+			return id
+		}
+	}
+	return ""
+}
+
+func NamedValuesAreEqual(a, b NamedValues) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	ac := a.Count()
+	bc := b.Count()
+	if ac != bc {
+		return false
+	}
+	for i := 0; i < ac; i++ {
+		ai, _, av := a.GetItem(i)
+		bi, _, bv := b.GetItem(i)
+		if ai != bi {
+			return false
+		}
+		if !reflect.DeepEqual(av, bv) {
+			return false
+		}
+	}
+	return true
+}

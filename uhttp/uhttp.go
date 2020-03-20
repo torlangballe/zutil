@@ -75,37 +75,49 @@ type Parameters struct {
 	TimeoutSecs           float64
 	UseHTTPS              bool
 	Method                string
+	ContentType           string
 	Body                  []byte
 }
 
 func MakeParameters() Parameters {
 	return Parameters{
-		Headers: map[string]string{},
+		Headers:     map[string]string{},
+		TimeoutSecs: 15,
 	}
 }
 
 // Post uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
 // receive can be []byte, string or a struct to unmarashal to
 func Post(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
-	var ctype = "application/json"
+	params.Method = http.MethodPost
 	bout, got := send.([]byte)
 	if got {
-		ctype = "raw"
+		if params.ContentType == "" {
+			params.ContentType = "raw"
+		}
 	} else {
 		m, got := send.(map[string]string)
 		if got {
 			bout = []byte(zstr.GetArgsAsURLParameters(m))
-			ctype = "application/x-www-form-urlencoded"
+			if params.ContentType == "" {
+				params.ContentType = "application/x-www-form-urlencoded"
+			}
 		} else {
 			bout, err = json.Marshal(send)
 			if err != nil {
+				if params.ContentType == "" {
+					params.ContentType = "application/json"
+				}
 				return
 			}
 		}
 	}
 	params.Body = bout
-	response, code, err := PostBytesSetContentLength(surl, params, ctype)
+	response, code, err := PostBytesSetContentLength(surl, params)
 	if err != nil || code >= 300 {
+		if response != nil {
+			response.Body.Close()
+		}
 		fmt.Println("Post err bout:\n", string(bout), err)
 		err = MakeHTTPError(err, code, "post")
 		return
@@ -150,13 +162,18 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 }
 
 func GetResponseFromReqClient(request *http.Request, client *http.Client) (response *http.Response, err error) {
+	request.Close = true
 	response, err = client.Do(request)
-	// fmt.Println("GetResponseFromReqClient:", request.Header, err, response)
+	// fmt.Println("GetResponseFromReqClient:", err, response != nil, request.URL)
 	if err == nil && response == nil {
 		return nil, errors.New("client.Do gave no response: " + request.URL.String())
 	}
+	if err != nil && response != nil {
+		response.Body.Close()
+		return
+	}
 	if err == nil && response != nil && response.StatusCode >= 300 {
-		// fmt.Println("GetResponseFromReqClient make error:")
+		fmt.Println("GetResponseFromReqClient make error:")
 		err = MakeHTTPError(err, response.StatusCode, "")
 		return
 	}
@@ -187,15 +204,15 @@ func processResponse(surl string, response *http.Response, printBody bool, recei
 	if printBody {
 		fmt.Println("dump:", response.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(response)+"\n")
 	}
-	if reflect.ValueOf(receive).Kind() != reflect.Ptr {
-		return
+	if receive != nil && reflect.ValueOf(receive).Kind() != reflect.Ptr {
+		zlog.Fatal(nil, "not pointer", surl)
+	}
+	if response.Body != nil {
+		defer response.Body.Close()
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return
-	}
-	if response.Body != nil {
-		response.Body.Close()
 	}
 	if rbytes, got := receive.(*[]byte); got {
 		*rbytes = body
@@ -259,6 +276,7 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 	return
 }
 
+/*
 func GetResponseAsStringFromUrl(surl string) (str string, err error) {
 	resp, err := http.Get(surl)
 	if err != nil {
@@ -280,7 +298,9 @@ func GetResponseAsStringFromUrl(surl string) (str string, err error) {
 	fmt.Println("GetResponseAsStringFromUrl:", str, surl)
 	return
 }
+*/
 
+/*
 func UnmarshalFromJSONFromPostForm(surl string, vals url.Values, v interface{}, print bool) (err error) {
 	response, err := http.PostForm(surl, vals)
 	if err != nil {
@@ -308,11 +328,14 @@ func UnmarshalFromJSONFromPostForm(surl string, vals url.Values, v interface{}, 
 	err = json.Unmarshal(body, v)
 	return
 }
+*/
 
-func PostBytesSetContentLength(surl string, params Parameters, ctype string) (response *http.Response, code int, err error) {
+func PostBytesSetContentLength(surl string, params Parameters) (response *http.Response, code int, err error) {
 	zlog.Assert(len(params.Body) != 0, surl)
+	zlog.Assert(params.ContentType != "")
 	params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
-	params.Headers["Content-Type"] = ctype
+	params.Headers["Content-Type"] = params.ContentType
+	params.Method = http.MethodPost
 	req, client, err := MakeRequest(surl, params)
 	if err != nil {
 		return
@@ -327,7 +350,8 @@ func PostBytesSetContentLength(surl string, params Parameters, ctype string) (re
 func PostValuesAsForm(surl string, params Parameters, values url.Values) (data *[]byte, reAuth bool, err error) {
 	var response *http.Response
 	params.Body = []byte(values.Encode())
-	response, _, err = PostBytesSetContentLength(surl, params, "application/x-www-form-urlencoded")
+	params.ContentType = "application/x-www-form-urlencoded"
+	response, _, err = PostBytesSetContentLength(surl, params)
 	if err != nil {
 		return
 	}
@@ -630,22 +654,6 @@ func AddPathToURL(surl, add string) string {
 	}
 	u.Path = path.Join(u.Path, add)
 	return u.String()
-}
-
-func PostReaderMakeError(surl, contentType string, reader io.Reader) (resp *http.Response, err error) {
-	resp, err = http.Post(surl, contentType, reader)
-	if err != nil {
-		return
-	}
-	if resp.StatusCode >= 300 {
-		err = errors.New(fmt.Sprintf("%d %s", resp.StatusCode, http.StatusText(resp.StatusCode)))
-		return
-	}
-	return
-}
-
-func PostBytesMakeError(surl, contentType string, body []byte) (resp *http.Response, err error) {
-	return PostReaderMakeError(surl, contentType, bytes.NewReader(body))
 }
 
 func ValsFromURL(surl string) url.Values {

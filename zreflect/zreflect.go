@@ -49,18 +49,19 @@ func GetTagAsMap(stag string) map[string][]string {
 }
 
 type Item struct {
-	Kind        TypeKind
-	TypeName    string
-	FieldName   string
-	Tag         string
-	IsAnonymous bool
-	IsArray     bool
-	IsPointer   bool
-	Address     interface{}
-	Package     string
-	Value       reflect.Value
-	Interface   interface{}
-	Children    []Item
+	Kind            TypeKind
+	TypeName        string
+	FieldName       string
+	Tag             string
+	IsAnonymous     bool
+	IsArray         bool
+	IsPointer       bool
+	Address         interface{}
+	Package         string
+	Value           reflect.Value
+	Interface       interface{}
+	SimpleInterface interface{}
+	Children        []Item
 }
 
 func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnestAnonymous, recursive bool, val reflect.Value) (item Item, err error) {
@@ -107,6 +108,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 		item.IsArray = true
 		item.Kind = KindSlice
 		item.Interface = val.Interface()
+		item.SimpleInterface = val.Interface()
 		return
 
 	case reflect.Array:
@@ -117,8 +119,10 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 		case timeType:
 			item.Kind = KindTime
 			item.Interface = val.Interface()
+			item.SimpleInterface = val.Interface()
 		default:
 			item.Interface = val.Interface()
+			item.SimpleInterface = val.Interface()
 			item.Kind = KindStruct
 			n := vtype.NumField()
 			// fmt.Println("struct:", fieldName, n, recursive, unnestAnonymous , isAnonymous)
@@ -160,11 +164,13 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		item.Kind = KindInt
-		item.Interface = val.Int()
+		item.SimpleInterface = val.Int()
+		item.Interface = val.Interface()
 
 	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
 		item.Kind = KindInt
-		item.Interface = val.Uint()
+		item.SimpleInterface = val.Uint()
+		item.Interface = val.Interface()
 
 	case reflect.String:
 		item.Kind = KindString
@@ -172,18 +178,22 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 
 	case reflect.Bool:
 		item.Kind = KindBool
-		item.Interface = val.Bool()
+		item.SimpleInterface = val.Bool()
+		item.Interface = val.Interface()
 
 	case reflect.Float32, reflect.Float64:
 		item.Kind = KindFloat
-		item.Interface = val.Float()
+		item.SimpleInterface = val.Float()
+		item.Interface = val.Interface()
 
 	case reflect.Map:
 		item.Kind = KindMap
 		item.Interface = val.Interface()
+		item.SimpleInterface = val.Interface()
 
 	case reflect.Func:
 		item.Kind = KindFunc
+		item.SimpleInterface = val.Interface()
 		item.Interface = val.Interface()
 
 	default:

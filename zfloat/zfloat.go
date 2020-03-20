@@ -7,6 +7,8 @@ import (
 	"strconv"
 )
 
+type Slice []float64
+
 func GetAny(i interface{}) (float64, error) {
 	switch i.(type) {
 	case bool:
@@ -156,4 +158,28 @@ func Float64Min(a, b float64) float64 {
 		return a
 	}
 	return b
+}
+
+// GetItem makes Slice worth with MenuView MenuItems interface
+func (s Slice) GetItem(i int) (id, name string, value interface{}) {
+	if i >= len(s) {
+		return "", "", nil
+	}
+	n := s[i]
+	str := strconv.FormatFloat(n, 'f', -1, 64)
+	return str, str, n
+}
+
+func (s Slice) Count() int {
+	return len(s)
+}
+
+func (s Slice) Minimum() float64 {
+	var min float64
+	for i, n := range s {
+		if i == 0 || min > n {
+			min = n
+		}
+	}
+	return min
 }

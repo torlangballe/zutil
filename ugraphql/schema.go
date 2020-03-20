@@ -332,6 +332,7 @@ func printType(prefix string, t OutType) {
 	fmt.Println(escNoColor + prefix + "}")
 }
 
+// old:
 func postBytesSetContentLength(surl string, ctype string, body []byte) (response *http.Response, err error) {
 	client := http.DefaultClient
 	req, err := http.NewRequest("POST", surl, bytes.NewReader(body))
