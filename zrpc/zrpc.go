@@ -130,7 +130,7 @@ func CallRemote(method interface{}, args interface{}, reply interface{}) error {
 
 	err = rpcjson.DecodeClientResponse(resp.Body, &reply)
 	if err != nil {
-		zlog.Info("zrpc decode error:", err)
+		zlog.Error(err, zlog.StackAdjust(1), "zrpc decode error")
 		return err
 		//		return zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
 	}

@@ -228,9 +228,12 @@ func NamedValuesAreEqual(a, b NamedValues) bool {
 		return false
 	}
 	for i := 0; i < ac; i++ {
-		ai, _, av := a.GetItem(i)
-		bi, _, bv := b.GetItem(i)
+		ai, an, av := a.GetItem(i)
+		bi, bn, bv := b.GetItem(i)
 		if ai != bi {
+			return false
+		}
+		if an != bn {
 			return false
 		}
 		if !reflect.DeepEqual(av, bv) {
@@ -238,4 +241,12 @@ func NamedValuesAreEqual(a, b NamedValues) bool {
 		}
 	}
 	return true
+}
+
+func DumpNamedValues(nv NamedValues) {
+	c := nv.Count()
+	for i := 0; i < c; i++ {
+		id, name, _ := nv.GetItem(i)
+		fmt.Println("Item:", id, name)
+	}
 }

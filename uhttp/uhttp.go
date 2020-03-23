@@ -214,17 +214,19 @@ func processResponse(surl string, response *http.Response, printBody bool, recei
 	if err != nil {
 		return
 	}
-	if rbytes, got := receive.(*[]byte); got {
-		*rbytes = body
-		return
-	}
-	if rstring, got := receive.(*string); got {
-		*rstring = string(body)
-		return
-	}
-	err = json.Unmarshal(body, receive)
-	if err != nil {
-		return
+	if receive != nil {
+		if rbytes, got := receive.(*[]byte); got {
+			*rbytes = body
+			return
+		}
+		if rstring, got := receive.(*string); got {
+			*rstring = string(body)
+			return
+		}
+		err = json.Unmarshal(body, receive)
+		if err != nil {
+			return
+		}
 	}
 	return
 }

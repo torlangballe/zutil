@@ -1,6 +1,13 @@
 package zgeo
 
-import "math"
+import (
+	"math"
+	"strconv"
+	"strings"
+
+	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
+)
 
 //  Created by Tor Langballe on 07-June-2019
 //
@@ -164,6 +171,97 @@ func (c Color) GetContrastingGray() Color {
 		return ColorWhite
 	}
 	return ColorBlack
+}
+
+func getHexAsValue(str string, len int) float32 {
+	n, err := strconv.ParseInt(str, 16, 32)
+	if err != nil {
+		zlog.Error(err, "parse")
+		return -1
+	}
+	if len == 2 {
+		n *= 16
+	}
+	return float32(n) / 255
+}
+
+func ColorFromString(str string) Color {
+	switch str {
+	case "red":
+		return ColorRed
+	case "white":
+		return ColorWhite
+	case "black":
+		return ColorBlack
+	case "gray":
+		return ColorGray
+	case "darkGray":
+		return ColorDarkGray
+	case "lightGray":
+		return ColorLightGray
+	case "clear":
+		return ColorClear
+	case "blue":
+		return ColorBlue
+	case "yellow":
+		return ColorYellow
+	case "green":
+		return ColorGreen
+	case "orange":
+		return ColorOrange
+	case "cyan":
+		return ColorCyan
+	case "magenta":
+		return ColorMagenta
+
+	}
+	if zstr.HasPrefix(str, "rgba(", &str) || zstr.HasPrefix(str, "rgb(", &str) {
+		if !zstr.HasSuffix(str, ")", &str) {
+			return Color{}
+		}
+		parts := strings.Split(str, ",")
+		if len(parts) != 4 && len(parts) != 3 {
+			return Color{}
+		}
+		var cols = make([]float32, len(parts), len(parts))
+		for i, p := range parts {
+			p = strings.TrimSpace(p)
+			f, err := strconv.ParseFloat(p, 32)
+			if err != nil {
+				zlog.Error(err)
+				return Color{}
+			}
+			cols[i] = float32(f) / 255
+			return ColorFromSlice(cols)
+		}
+	} else if zstr.HasPrefix(str, "#", &str) {
+		slen := len(str)
+		switch slen {
+		case 1, 2:
+			g := getHexAsValue(str, slen)
+			return ColorNewGray(g, 1)
+		case 3, 4:
+			var a float32 = 1
+			r := getHexAsValue(str[0:1], 1)
+			g := getHexAsValue(str[1:2], 1)
+			b := getHexAsValue(str[2:3], 1)
+			if slen == 4 {
+				a = getHexAsValue(str[3:4], 1)
+			}
+			return ColorNew(r, g, b, a)
+		case 6, 8:
+			var a float32 = 1
+			r := getHexAsValue(str[0:2], 2)
+			g := getHexAsValue(str[2:4], 2)
+			b := getHexAsValue(str[4:6], 2)
+			if slen == 8 {
+				a = getHexAsValue(str[6:8], 2)
+			}
+			return ColorNew(r, g, b, a)
+		}
+	}
+	zlog.Error(nil, "bad color string", str)
+	return Color{}
 }
 
 var ColorWhite = ColorNewGray(1, 1)
