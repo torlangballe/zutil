@@ -194,6 +194,11 @@ type NamedValues interface {
 	Count() int
 }
 
+// NVStringer implements a method to create an id for using a type as an item in NamedValues
+type NVStringer interface {
+	ZNVID() string
+}
+
 // MenuItemsIndexOfID loops through items and returns index of one with id. -1 if none
 func NamedValuesIndexOfID(m NamedValues, findID string) int {
 	for i := 0; i < m.Count(); i++ {

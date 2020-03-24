@@ -174,9 +174,9 @@ func CloseAppWindowWithTitle(app, title string, allExcept bool) error {
 		not = "not"
 	}
 	command = fmt.Sprintf(command, app, titleName, not, title)
-	// fmt.Println("CloseWindowWithTitle:", app, title, "\n", command)
+	fmt.Println("CloseWindowWithTitle:", "\n", command)
 	_, err := RunAppleScript(command, 5.0)
-	//	fmt.Println("CloseWindowWithTitle done", err)
+	fmt.Println("CloseWindowWithTitle done", err)
 	return err
 }
 

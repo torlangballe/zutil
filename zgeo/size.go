@@ -179,7 +179,11 @@ func (s *Size) FromString(str string) error { // we don't use String() since tha
 	return nil
 }
 
-func (s Size) ZFieldString() string {
+func (s Size) ZNVID() string {
+	return s.String()
+}
+
+func (s Size) ZUIString() string {
 	return s.String()
 }
 

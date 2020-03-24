@@ -197,8 +197,6 @@ func ColorFromString(str string) Color {
 		return ColorGray
 	case "darkGray":
 		return ColorDarkGray
-	case "lightGray":
-		return ColorLightGray
 	case "clear":
 		return ColorClear
 	case "blue":
@@ -213,7 +211,24 @@ func ColorFromString(str string) Color {
 		return ColorCyan
 	case "magenta":
 		return ColorMagenta
-
+	case "silver":
+		return ColorSilver
+	case "maroon":
+		return ColorMaroon
+	case "olive":
+		return ColorOlive
+	case "lime":
+		return ColorLime
+	case "aqua":
+		return ColorAqua
+	case "teal":
+		return ColorTeal
+	case "navy":
+		return ColorNavy
+	case "fuchsia":
+		return ColorFuchsia
+	case "purple":
+		return ColorPurple
 	}
 	if zstr.HasPrefix(str, "rgba(", &str) || zstr.HasPrefix(str, "rgb(", &str) {
 		if !zstr.HasSuffix(str, ")", &str) {
@@ -264,16 +279,25 @@ func ColorFromString(str string) Color {
 	return Color{}
 }
 
-var ColorWhite = ColorNewGray(1, 1)
-var ColorBlack = ColorNewGray(0, 1)
-var ColorGray = ColorNewGray(0.5, 1)
 var ColorDarkGray = ColorNewGray(0.25, 1)
-var ColorLightGray = ColorNewGray(0.75, 1)
 var ColorClear = ColorNewGray(0, 0)
-var ColorBlue = ColorNew(0, 0, 1, 1)
-var ColorRed = ColorNew(1, 0, 0, 1)
-var ColorYellow = ColorNew(1, 1, 0, 1)
-var ColorGreen = ColorNew(0, 1, 0, 1)
 var ColorOrange = ColorNew(1, 0.5, 0, 1)
 var ColorCyan = ColorNew(0, 1, 1, 1)
 var ColorMagenta = ColorNew(1, 0, 1, 1)
+
+var ColorWhite = ColorNewGray(1, 1)
+var ColorSilver = ColorNew(0.75, 0.75, 0.75, 1)
+var ColorGray = ColorNewGray(0.5, 1)
+var ColorBlack = ColorNewGray(0, 1)
+var ColorRed = ColorNew(1, 0, 0, 1)
+var ColorMaroon = ColorNew(0.5, 0, 0, 1)
+var ColorYellow = ColorNew(1, 1, 0, 1)
+var ColorOlive = ColorNew(0.5, 0.5, 0, 1)
+var ColorLime = ColorNew(0, 1, 0, 1)
+var ColorGreen = ColorNew(0, 0.5, 0, 1)
+var ColorAqua = ColorNew(0, 1, 1, 1)
+var ColorTeal = ColorNew(0, 0.5, 0.5, 1)
+var ColorBlue = ColorNew(0, 0, 1, 1)
+var ColorNavy = ColorNew(0, 0, 0.5, 1)
+var ColorFuchsia = ColorNew(1, 0, 1, 1)
+var ColorPurple = ColorNew(0.5, 0, 0.5, 1)
