@@ -246,7 +246,7 @@ function sendValue(url, name, value) {
     url += "&time=" + (new Date()).toISOString();
     url += "&value=" + encodeURIComponent(value);
 
-    var info = { method: "GET" };
+    var info = { method: "PUT" };
     makeCorsRequest(url, info, function(obj, headers) {
         //        console.log("sendValue4:", obj);
         if (obj.url) {

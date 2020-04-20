@@ -49,13 +49,13 @@ func RunCommand(command string, timeoutSecs float64, args ...string) (string, er
 	}
 	output, err := cmd.CombinedOutput()
 	str := strings.Replace(string(output), "\n", "", -1)
-	if err != nil {
-		var out string
-		for _, a := range args {
-			out += "'" + a + "' "
-		}
-		zlog.Error(err, "Run Command err", "'"+command+"'", out, str)
-	}
+	// if err != nil {
+	// 	var out string
+	// 	for _, a := range args {
+	// 		out += "'" + a + "' "
+	// 	}
+	// 	zlog.Error(err, "Run Command err", "'"+command+"'", out, str)
+	// }
 	if cancel != nil {
 		cancel()
 	}
@@ -89,24 +89,6 @@ func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.
 
 func RunAppleScript(command string, timeoutSecs float64) (string, error) {
 	return RunCommand("osascript", timeoutSecs, "-s", "o", "-e", command)
-}
-
-func CloseUrlInBrowser(surl string, btype BrowserType) error {
-	command := `
-		display alert "hello"
-		repeat with w in windows
-			repeat with t in tabs of w
-				set u to URL of t
-				if u is equal to "%s" then 
-					close t
-					return
-				end if
-           end repeat
-       end repeat
-	`
-	command = fmt.Sprintf(command, surl)
-	_, err := RunAppleScript(command, 10.0)
-	return err
 }
 
 func CloseAllWIndowsInApp(app string) error {
@@ -156,28 +138,6 @@ func QuitBrowser(btype BrowserType) (string, error) {
 	name := GetAppNameOfBrowser(btype, true)
 	str, err := RunCommand("killall", 0, name)
 	return str, err
-}
-
-func CloseAppWindowWithTitle(app, title string, allExcept bool) error {
-	titleName := "title"
-	if app == GetAppNameOfBrowser(Safari, true) {
-		titleName = "name"
-	}
-	command :=
-		`tell application "%s"
-		activate
-		close (every window whose %s is %s "%s")
-		end tell
-`
-	not := ""
-	if allExcept {
-		not = "not"
-	}
-	command = fmt.Sprintf(command, app, titleName, not, title)
-	fmt.Println("CloseWindowWithTitle:", "\n", command)
-	_, err := RunAppleScript(command, 5.0)
-	fmt.Println("CloseWindowWithTitle done", err)
-	return err
 }
 
 func QuitApp(app string) error {

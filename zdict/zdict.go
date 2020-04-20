@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zint"
 
 	"github.com/torlangballe/zutil/zfloat"
@@ -60,6 +61,16 @@ func (d Dict) SortedKeys() (keys []string) {
 	sort.Strings(keys)
 
 	return
+}
+
+func (d Dict) Values() []interface{} {
+	values := make([]interface{}, len(d), len(d))
+	i := 0
+	for _, v := range d {
+		values[i] = v
+		i++
+	}
+	return values
 }
 
 func (d Dict) RemoveAll() {
@@ -123,6 +134,15 @@ func (d Dict) ToStruct(structPtr interface{}) {
 				n, err := zint.GetAny(val)
 				zlog.AssertNotErr(err)
 				item.Value.Addr().Elem().SetInt(n)
+			case zreflect.KindBool:
+				b, isBool := val.(bool)
+				if !isBool {
+					str, _ := val.(string)
+					if str != "" {
+						b = zbool.FromString(str, false)
+					}
+				}
+				item.Value.Addr().Elem().SetBool(b)
 			}
 		}
 	}

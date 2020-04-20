@@ -2,10 +2,8 @@ package zlog
 
 import (
 	"fmt"
-	"log/syslog"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -34,7 +32,6 @@ const (
 var ErrorPriority = Verbose
 var OutputFilePath = ""
 var logcatMsgRegex = regexp.MustCompile(`([0-9]*)-([0-9]*)\s*([0-9]*):([0-9]*):([0-9]*).([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*([VDIWEF])\s*(.*)`)
-var syslogWriter *syslog.Writer
 var outFile *os.File
 var UseColor = false
 
@@ -148,13 +145,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	if outFile != nil {
 		outFile.WriteString(str + "\n")
 	}
-	if runtime.GOOS != "js" {
-		if syslogWriter == nil {
-			_, name := filepath.Split(os.Args[0])
-			syslogWriter, _ = syslog.New(syslog.LOG_NOTICE, name)
-		}
-		go syslogWriter.Notice(str)
-	}
+	writeToSyslog(str)
 	if priority == FatalLevel {
 		panic("zlog.Fatal")
 	}

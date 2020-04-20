@@ -118,6 +118,7 @@ func (p *Path) QuadCurveTo(a, b Pos) {
 }
 
 func (p *Path) BezierTo(c1 Pos, c2 Pos, end Pos) {
+	// fmt.Println("p.BezierTo")
 	p.nodes = append(p.nodes, PathNode{PathCurve, []Pos{c1, c2, end}})
 }
 
@@ -145,9 +146,9 @@ func arcControlPoints(angle, delta float64) (Size, Size) {
 }
 
 func (p *Path) ArcTo(rect Rect, degStart, degDelta float64, clockwise bool) {
-	// fmt.Println("ArcTo:", degStart, degDelta, p.IsEmpty())
 	circleCenter := rect.Center()
 	circleRadius := rect.Size.W / 2
+	// fmt.Println("ArcTo:", circleRadius, degStart, degDelta, p.IsEmpty())
 	aStart := zmath.DegToRad(degStart - 90)
 	aDelta := zmath.DegToRad(degDelta)
 	p0 := polarPoint(circleRadius, aStart).Plus(circleCenter)

@@ -598,23 +598,6 @@ func HasSuffixNoCase(str, suffix string, rest *string) bool {
 	return HasSuffix(strings.ToLower(str), strings.ToLower(suffix), rest)
 }
 
-func StrToBool(str string, def bool) bool {
-	if str == "1" || str == "true" || str == "TRUE" {
-		return true
-	}
-	if str == "0" || str == "false" || str == "FALSE" {
-		return false
-	}
-	return def
-}
-
-func BoolToStr(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
-}
-
 func GetQuotedArgs(args string) (parts []string) {
 	RangeQuotedText(args, `"`, func(s string, inQuote bool) {
 		if inQuote {

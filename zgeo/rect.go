@@ -28,6 +28,10 @@ func RectFromMinMax(min, max Pos) Rect {
 	return Rect{min, max.Minus(min).Size()}
 }
 
+func RectFromCenterSize(center Pos, size Size) Rect {
+	return Rect{Size: size}.Centered(center)
+}
+
 func RectFromXY2(x, y, x2, y2 float64) Rect {
 	return Rect{Pos{x, y}, Size{x2 - x, y2 - y}}
 }

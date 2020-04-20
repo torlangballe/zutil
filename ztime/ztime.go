@@ -22,7 +22,6 @@ const (
 
 const Day = time.Hour * time.Duration(24)
 const Week = Day * time.Duration(7)
-const DaySeconds = float64(time.Hour * time.Duration(24) / time.Second)
 
 type JSONTime time.Time
 
@@ -169,36 +168,31 @@ func Since(t time.Time) float64 {
 	return DurSeconds(time.Since(t))
 }
 
-func GetSecsAsHMSString(dur float64, hour, min, sec bool, subdigits int) string {
+func GetSecsAsHMSString(dur float64, sec bool, subdigits int) string {
 	var parts []string
 
 	h := int(dur) / 3600
 	m := (int(dur) / 60)
-	if hour {
+	if h != 0 {
 		parts = append(parts, fmt.Sprint(h))
 	}
-	if min {
-		if h != 0 {
-			m %= 60
-		}
-		format := "%d"
-		if hour {
-			format = "%02d"
-		}
-		parts = append(parts, fmt.Sprintf(format, m))
+	if h != 0 {
+		m %= 60
 	}
+	format := "%d"
+	if h != 0 {
+		format = "%02d"
+	}
+	parts = append(parts, fmt.Sprintf(format, m))
 	if sec {
 		s := dur
 		if h != 0 || m != 0 {
 			s = math.Mod(s, 60)
 		}
-		format := "%d"
-		if min {
-			format = "%02d"
-		}
-		format = fmt.Sprint(format, ".", subdigits, "f")
+		format := "%02"
+		format += fmt.Sprintf(".%df", subdigits)
 		parts = append(parts, fmt.Sprintf(format, s))
-		fmt.Println("GetSecsAsHMSString:", dur, hour, min, sec, subdigits, format, parts, h, m)
+		// fmt.Println("GetSecsAsHMSString:", dur, subdigits, format, parts, h, m)
 	}
 
 	return strings.Join(parts, ":")

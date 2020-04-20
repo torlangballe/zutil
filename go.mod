@@ -3,6 +3,7 @@ module github.com/torlangballe/zutil
 go 1.13
 
 require (
+	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
 	github.com/Azure/azure-event-hubs-go v1.3.1
 	github.com/Azure/azure-sdk-for-go v34.4.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.9.2
@@ -17,6 +18,7 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
 	github.com/graphql-go/graphql v0.7.8
+	github.com/hnakamur/w32syscall v0.0.0-20150329104255-b8b99ed86a56
 	github.com/kaneshin/pigeon v1.0.0
 	github.com/lib/pq v1.2.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible

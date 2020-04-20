@@ -1,6 +1,7 @@
 package zgeo
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -27,30 +28,59 @@ type RGBA struct {
 }
 
 type Color struct {
-	Valid bool
-	Rgba  RGBA
-	// Tile
+	Valid  bool
+	Colors RGBA
 }
 
 var ColorDefaultForeground = ColorBlack
 var ColorDefaultBackground = ColorWhite
 
+// RGBA returns r, g, b, a as 0-255 uint32 values.
+// Makes it conform to image/color Color interface
+func (c Color) RGBA() (r, g, b, a uint32) {
+	af := c.Colors.A * 0xFFFF
+	r = uint32(c.Colors.R * af)
+	g = uint32(c.Colors.G * af)
+	b = uint32(c.Colors.B * af)
+	return r, g, b, uint32(af)
+
+	//	return uint32(c.Colors.R * 0xffff), uint32(c.Colors.G * 255), uint32(c.Colors.B * 255), uint32(c.Colors.A * 255)
+}
+
 func ColorNewGray(white, a float32) (c Color) {
 	c.Valid = true
-	c.Rgba.R = white
-	c.Rgba.G = white
-	c.Rgba.B = white
-	c.Rgba.A = a
+	c.Colors.R = white
+	c.Colors.G = white
+	c.Colors.B = white
+	c.Colors.A = a
 	return
 }
 
 func ColorNew(r, g, b, a float32) (c Color) {
 	c.Valid = true
-	c.Rgba.R = r
-	c.Rgba.G = g
-	c.Rgba.B = b
-	c.Rgba.A = a
+	c.Colors.R = r
+	c.Colors.G = g
+	c.Colors.B = b
+	c.Colors.A = a
 	return
+}
+
+func (c Color) Slice32() []float32 {
+	slice := make([]float32, 4, 4)
+	slice[0] = c.Colors.R
+	slice[1] = c.Colors.G
+	slice[2] = c.Colors.B
+	slice[3] = c.Colors.A
+	return slice
+}
+
+func (c Color) SliceInt255() []int {
+	slice := make([]int, 4, 4)
+	slice[0] = int(c.Colors.R * 255)
+	slice[1] = int(c.Colors.G * 255)
+	slice[2] = int(c.Colors.B * 255)
+	slice[3] = int(c.Colors.A * 255)
+	return slice
 }
 
 // ColorFromSlice returns a opaque gray for 1 item, graya for 2, opaque rgb for 3, and rgba for 4
@@ -79,36 +109,36 @@ func ColorNewHSBA(h, s, b, a float32) (c Color) {
 
 	switch math.Mod(i, 6) {
 	case 0:
-		c.Rgba.R = b
-		c.Rgba.G = t
-		c.Rgba.B = p
+		c.Colors.R = b
+		c.Colors.G = t
+		c.Colors.B = p
 
 	case 1:
-		c.Rgba.R = q
-		c.Rgba.G = b
-		c.Rgba.B = p
+		c.Colors.R = q
+		c.Colors.G = b
+		c.Colors.B = p
 
 	case 2:
-		c.Rgba.R = p
-		c.Rgba.G = b
-		c.Rgba.B = t
+		c.Colors.R = p
+		c.Colors.G = b
+		c.Colors.B = t
 
 	case 3:
-		c.Rgba.R = p
-		c.Rgba.G = q
-		c.Rgba.B = b
+		c.Colors.R = p
+		c.Colors.G = q
+		c.Colors.B = b
 
 	case 4:
-		c.Rgba.R = t
-		c.Rgba.G = p
-		c.Rgba.B = b
+		c.Colors.R = t
+		c.Colors.G = p
+		c.Colors.B = b
 
 	case 5:
-		c.Rgba.R = b
-		c.Rgba.G = p
-		c.Rgba.B = q
+		c.Colors.R = b
+		c.Colors.G = p
+		c.Colors.B = q
 	}
-	c.Rgba.A = a
+	c.Colors.A = a
 	return
 }
 
@@ -123,22 +153,22 @@ func (c Color) GetHSBA() HSBA {
 }
 
 func (c Color) GetRGBA() RGBA {
-	return c.Rgba
+	return c.Colors
 }
 
-func (c Color) GetGrayScaleAndAlpha() (float32, float32) { // white, alpha
-	return c.GetGrayScale(), c.Rgba.A
+func (c Color) GrayScaleAndAlpha() (float32, float32) { // white, alpha
+	return c.GrayScale(), c.Colors.A
 }
 
-func (c Color) GetGrayScale() float32 {
-	return 0.2126*c.Rgba.R + 0.7152*c.Rgba.G + 0722*c.Rgba.B
+func (c Color) GrayScale() float32 {
+	return 0.2126*c.Colors.R + 0.7152*c.Colors.G + 0722*c.Colors.B
 }
 func (c Color) Opacity() float32 {
-	return c.Rgba.A
+	return c.Colors.A
 }
 
 func (c Color) OpacityChanged(opacity float32) Color {
-	return ColorNew(c.Rgba.R, c.Rgba.G, c.Rgba.B, opacity)
+	return ColorNew(c.Colors.R, c.Colors.G, c.Colors.B, opacity)
 }
 
 func (c Color) Mix(withColor Color, amount float32) Color {
@@ -166,7 +196,7 @@ func (c Color) AlteredContrast(contrast float32) Color {
 }
 
 func (c Color) GetContrastingGray() Color {
-	g := c.GetGrayScale()
+	g := c.GrayScale()
 	if g < 0.5 {
 		return ColorWhite
 	}
@@ -183,6 +213,10 @@ func getHexAsValue(str string, len int) float32 {
 		n *= 16
 	}
 	return float32(n) / 255
+}
+
+func (c Color) GetHex() string {
+	return fmt.Sprintf("#%02x%02x%02x%02x", int(c.Colors.R*255), int(c.Colors.G*255), int(c.Colors.B*255), int(c.Colors.A*255))
 }
 
 func ColorFromString(str string) Color {
