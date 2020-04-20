@@ -1,4 +1,5 @@
-// +build !js !windows
+// +build !js
+// +build !windows
 
 package zlog
 
