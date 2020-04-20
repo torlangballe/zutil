@@ -5,7 +5,7 @@ import (
     "strings"
     "syscall"
 
-    "github.com/AllenDang/w32"
+	"github.com/JamesHovious/w32"
     "github.com/hnakamur/w32syscall"
 )
 
