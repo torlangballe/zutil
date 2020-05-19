@@ -54,7 +54,7 @@ func ExtractTextFromHTMLString(str string) (text string, err error) {
 			// }
 		case html.TextToken:
 			text += token.Data
-			//			fmt.Println("token str:", token.Data)
+			//			zlog.Info("token str:", token.Data)
 		case html.EndTagToken: // </tag>
 		case html.SelfClosingTagToken: // <tag/>
 		}

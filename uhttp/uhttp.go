@@ -118,7 +118,7 @@ func Post(surl string, params Parameters, send, receive interface{}) (headers ht
 		if response != nil {
 			response.Body.Close()
 		}
-		fmt.Println("Post err bout:\n", string(bout), err)
+		zlog.Info("Post err bout:\n", string(bout), err)
 		err = MakeHTTPError(err, code, "post")
 		return
 	}
@@ -164,7 +164,7 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 func GetResponseFromReqClient(request *http.Request, client *http.Client) (response *http.Response, err error) {
 	request.Close = true
 	response, err = client.Do(request)
-	// fmt.Println("GetResponseFromReqClient:", err, response != nil, request.URL)
+	// zlog.Info("GetResponseFromReqClient:", err, response != nil, request.URL)
 	if err == nil && response == nil {
 		return nil, errors.New("client.Do gave no response: " + request.URL.String())
 	}
@@ -173,7 +173,7 @@ func GetResponseFromReqClient(request *http.Request, client *http.Client) (respo
 		return
 	}
 	if err == nil && response != nil && response.StatusCode >= 300 {
-		fmt.Println("GetResponseFromReqClient make error:")
+		zlog.Info("GetResponseFromReqClient make error:")
 		err = MakeHTTPError(err, response.StatusCode, "")
 		return
 	}
@@ -183,7 +183,7 @@ func GetResponseFromReqClient(request *http.Request, client *http.Client) (respo
 func GetResponse(surl string, params Parameters) (response *http.Response, err error) {
 	zlog.Assert(params.Method != "", params, surl)
 	req, client, err := MakeRequest(surl, params)
-	// fmt.Println("GetResponse:", err, req != nil, client != nil)
+	// zlog.Info("GetResponse:", err, req != nil, client != nil)
 	if err != nil {
 		return
 	}
@@ -202,7 +202,7 @@ func Get(surl string, params Parameters, receive interface{}) (headers http.Head
 func processResponse(surl string, response *http.Response, printBody bool, receive interface{}) (headers http.Header, err error) {
 	headers = response.Header
 	if printBody {
-		fmt.Println("dump:", response.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(response)+"\n")
+		zlog.Info("dump:", response.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(response)+"\n")
 	}
 	if receive != nil && reflect.ValueOf(receive).Kind() != reflect.Ptr {
 		zlog.Fatal(nil, "not pointer", surl)
@@ -241,7 +241,7 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 		authKey = "Authorization"
 	}
 	if authorization != "" {
-		//		fmt.Println("UnmarshalFromJSONFromUrlWithBody: auth:", authKey, authorization)
+		//		zlog.Info("UnmarshalFromJSONFromUrlWithBody: auth:", authKey, authorization)
 		req.Header.Set(authKey, authorization)
 	}
 	response, err = client.Do(req)
@@ -253,7 +253,7 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 	}
 	if print {
 		sbody := GetCopyOfResponseBodyAsString(response)
-		fmt.Println("UnmarshalFromJSONFromUrlWithBody:\n", sbody)
+		zlog.Info("UnmarshalFromJSONFromUrlWithBody:\n", sbody)
 	}
 	defer response.Body.Close()
 	defer io.Copy(ioutil.Discard, response.Body)
@@ -267,12 +267,12 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 		return
 	}
 	if print {
-		fmt.Println("UnmarshalFromJSONFromURL:", surl, ":\n", string(body))
+		zlog.Info("UnmarshalFromJSONFromURL:", surl, ":\n", string(body))
 	}
 	err = json.Unmarshal(body, v)
 
 	if err != nil {
-		fmt.Println("UnmarshalFromJSONFromURL unmarshal Error:\n", err, surl, zstr.Head(string(body), 2000))
+		zlog.Info("UnmarshalFromJSONFromURL unmarshal Error:\n", err, surl, zstr.Head(string(body), 2000))
 		return
 	}
 	return
@@ -282,7 +282,7 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 func GetResponseAsStringFromUrl(surl string) (str string, err error) {
 	resp, err := http.Get(surl)
 	if err != nil {
-		fmt.Println("Error getting url:", err, surl)
+		zlog.Info("Error getting url:", err, surl)
 		return
 	}
 	defer resp.Body.Close()
@@ -293,11 +293,11 @@ func GetResponseAsStringFromUrl(surl string) (str string, err error) {
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error reading body:", err, surl)
+		zlog.Info("Error reading body:", err, surl)
 		return
 	}
 	str = strings.Trim(string(body), `"`)
-	fmt.Println("GetResponseAsStringFromUrl:", str, surl)
+	zlog.Info("GetResponseAsStringFromUrl:", str, surl)
 	return
 }
 */
@@ -324,7 +324,7 @@ func UnmarshalFromJSONFromPostForm(surl string, vals url.Values, v interface{}, 
 		}
 	}
 	if print {
-		fmt.Println(string(body))
+		zlog.Info(string(body))
 	}
 
 	err = json.Unmarshal(body, v)
@@ -529,10 +529,10 @@ func (e ErrorStruct) Check(err *error) bool {
 func ServeJSONP(sjson string, w http.ResponseWriter, req *http.Request) {
 	callback := req.FormValue("callback")
 	if callback != "" {
-		fmt.Println("ServeJSONP:", fmt.Sprintf("%s(%s)", callback, sjson))
+		zlog.Info("ServeJSONP:", fmt.Sprintf("%s(%s)", callback, sjson))
 		fmt.Fprintf(w, "%s(%s)", callback, sjson)
 	} else {
-		fmt.Println("ServeJSONP direct")
+		zlog.Info("ServeJSONP direct")
 		w.Write([]byte(sjson))
 	}
 }

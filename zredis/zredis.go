@@ -118,7 +118,7 @@ func Get(redisPool *redis.Pool, v interface{}, key string) (got bool, err error)
 	if err != nil {
 		return
 	}
-	//	fmt.Println("redisget:", string(rawCont))
+	//	zlog.Info("redisget:", string(rawCont))
 	err = json.Unmarshal(rawCont, v)
 	if err != nil {
 		return

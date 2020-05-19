@@ -91,7 +91,7 @@ func forOSX() (name string, err error) {
 
 func GetCurrentLocalIPAddress2() (ip16, ip4 string, err error) {
 	addrs, err := net.InterfaceAddrs()
-	// fmt.Println("CurrentLocalIP Stuff:", addrs, err)
+	// zlog.Info("CurrentLocalIP Stuff:", addrs, err)
 	if err != nil {
 		return
 	}
@@ -109,7 +109,7 @@ func GetCurrentLocalIPAddress2() (ip16, ip4 string, err error) {
 			i4 := ipnet.IP.To4()
 			if i4 != nil {
 				ip4 = i4.String()
-				fmt.Println("IP:", a.String(), ip4)
+				zlog.Info("IP:", a.String(), ip4)
 				break
 			}
 		}
@@ -125,7 +125,7 @@ func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
 	var oldName string
 	var oldNum int = -1
 	for _, iface := range ifaces {
-		// fmt.Println("CurrentLocalIP Stuff:", iface)
+		// zlog.Info("CurrentLocalIP Stuff:", iface)
 		addresses, e := iface.Addrs()
 		if e != nil {
 			err = e
@@ -139,9 +139,12 @@ func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
 				}
 				get := false
 				name := iface.Name
-				// fmt.Println("CurrentLocalIP device:", name)
+				// zlog.Info("CurrentLocalIP device:", name)
 				var snum string
-				if oldName == "" || zstr.HasPrefix(name, "en", &snum) || zstr.HasPrefix(name, "eth", &snum) {
+				win := (runtime.GOOS == "windows")
+
+				if oldName == "" || (!win && zstr.HasPrefix(name, "en", &snum) || zstr.HasPrefix(name, "eth", &snum)) ||
+					win && name == "Ethernet" {
 					if oldName == "" || (!strings.HasPrefix(oldName, "en") && !strings.HasPrefix(oldName, "eth")) {
 						oldName = name
 						get = true
@@ -161,7 +164,7 @@ func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
 					i4 := ipnet.IP.To4()
 					if i4 != nil {
 						str := i4.String()
-						// fmt.Println("IP:", a.String(), ip4, iface.Name, str)
+						// zlog.Info("IP:", a.String(), ip4, iface.Name, str)
 						if strings.HasPrefix(str, "169.") && ip4 != "" {
 							continue
 						}
@@ -215,7 +218,7 @@ func ForwardPortToRemote(port int, remoteAddress string) error {
 	if err != nil {
 		return zlog.Error(err, "listen")
 	}
-	fmt.Println("forwarder running on", port, "to", remoteAddress)
+	zlog.Info("forwarder running on", port, "to", remoteAddress)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {

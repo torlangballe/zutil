@@ -2,7 +2,6 @@ package ztemplates
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -11,8 +10,10 @@ import (
 	"path/filepath"
 	"time"
 
-	zrest "github.com/torlangballe/zutil/urest"
+	zrest "github.com/torlangballe/utils/urest"
 	"github.com/torlangballe/zutil/zlog"
+
+	//"github.com/torlangballe/zutil/zrest"
 
 	"github.com/gorilla/mux"
 )
@@ -98,7 +99,7 @@ var fmap = map[string]interface{}{
 // 	path = h.baseDirectory + "www/templates/" + name
 // 	t, err = template.New(name).Funcs(fmap).ParseFiles(path)
 // 	if err != nil {
-// 		fmt.Println("getTemplate err:", err)
+// 		zlog.Info("getTemplate err:", err)
 // 		return
 // 	}
 // 	return
@@ -108,7 +109,7 @@ func (h *Handler) LoadTemplates() (err error) { // https://stackoverflow.com/que
 	spath := h.baseDirectory + "templates/"
 	root := template.New("base")
 	index := len(spath)
-	// fmt.Println("load temps1:", spath)
+	// zlog.Info("load temps1:", spath)
 	filepath.Walk(spath, func(fpath string, info os.FileInfo, err error) error {
 		if err == nil && spath != fpath && filepath.Ext(fpath) == ".gohtml" {
 			data, errio := ioutil.ReadFile(fpath)
@@ -116,7 +117,7 @@ func (h *Handler) LoadTemplates() (err error) { // https://stackoverflow.com/que
 				return zlog.Error(errio, "readfile")
 			}
 			name := "templates/" + fpath[index:]
-			// fmt.Println("load temps:", name, spath, fpath)
+			// zlog.Info("load temps:", name, spath, fpath)
 			t := root.New(name).Funcs(fmap)
 			t, err = t.Parse(string(data))
 			if err != nil {
@@ -140,6 +141,9 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 	} else {
 		zrest.AddCORSHeaders(w, req)
 	}
+	if req.Method == "OPTIONS" {
+		return true
+	}
 	err := h.LoadTemplates()
 	if err != nil {
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "templates get error:", req.URL.Path, err)
@@ -148,7 +152,7 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 	name := req.URL.Path[1:] + ".gohtml"
 	err = h.mainTemplate.ExecuteTemplate(out, name, v)
 	if err != nil {
-		fmt.Println("Web Exe error:", err)
+		zlog.Info("Web Exe error:", err)
 		return false
 	}
 	return true

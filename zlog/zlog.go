@@ -3,6 +3,7 @@ package zlog
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path"
 	"regexp"
 	"runtime"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -31,6 +31,7 @@ const (
 
 var ErrorPriority = Verbose
 var OutputFilePath = ""
+var outputHooks = map[string]func(s string){}
 var logcatMsgRegex = regexp.MustCompile(`([0-9]*)-([0-9]*)\s*([0-9]*):([0-9]*):([0-9]*).([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*([VDIWEF])\s*(.*)`)
 var outFile *os.File
 var UseColor = false
@@ -85,8 +86,13 @@ func Info(parts ...interface{}) {
 	baseLog(nil, InfoLevel, 4, parts...)
 }
 
-func Dummy(parts ...interface{}) {
+// Info performs Log with InfoLevel priority
+func Warn(parts ...interface{}) {
+	baseLog(nil, WarningLevel, 4, parts...)
 }
+
+// func Dummy(parts ...interface{}) {
+// }
 
 // Debug performs Log with DebugLevel priority
 func Debug(parts ...interface{}) {
@@ -103,6 +109,20 @@ func Log(err error, priority Priority, parts ...interface{}) error {
 	return baseLog(err, priority, 4, parts...)
 }
 
+func expandTildeInFilepath(path string) string {
+	if runtime.GOOS == "js" {
+		return ""
+	}
+	usr, err := user.Current()
+	if err == nil {
+		dir := usr.HomeDir
+		return strings.Replace(path, "~", dir, 1)
+	}
+	return ""
+}
+
+var hooking = false
+
 func baseLog(err error, priority Priority, pos int, parts ...interface{}) error {
 	if len(parts) != 0 {
 		n, got := parts[0].(StackAdjust)
@@ -114,11 +134,13 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	col := ""
 	endCol := ""
 	if UseColor {
-		col = zstr.EscYellow
 		if priority >= ErrorLevel {
 			col = zstr.EscMagenta
+			endCol = zstr.EscNoColor
+		} else if priority >= WarningLevel {
+			col = zstr.EscYellow
+			endCol = zstr.EscNoColor
 		}
-		endCol = zstr.EscNoColor
 	}
 	finfo := ""
 	if priority != InfoLevel {
@@ -134,16 +156,23 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 
 	if OutputFilePath != "" && outFile == nil {
 		var ferr error
-		fp := zfile.ExpandTildeInFilepath(OutputFilePath)
+		fp := expandTildeInFilepath(OutputFilePath)
 		outFile, ferr = os.Create(fp)
 		if ferr != nil {
 			fmt.Println("Error creating output file for zlog:", ferr)
 			OutputFilePath = ""
 		}
 	}
-	str := finfo + err.Error()
+	str := finfo + err.Error() + "\n"
 	if outFile != nil {
-		outFile.WriteString(str + "\n")
+		outFile.WriteString(str)
+	}
+	if !hooking {
+		hooking = true
+		for _, f := range outputHooks {
+			f(str)
+		}
+		hooking = false
 	}
 	writeToSyslog(str)
 	if priority == FatalLevel {
@@ -205,15 +234,22 @@ func ErrorIf(check bool, parts ...interface{}) bool {
 	return check
 }
 
-func OnError(err error, parts ...interface{}) {
+func OnError(err error, parts ...interface{}) bool {
 	if err != nil {
+		parts = append([]interface{}{StackAdjust(1)}, parts...)
 		Error(err, parts...)
+		return true
 	}
+	return false
 }
 
-func AssertNotErr(err error, parts ...interface{}) {
+func AssertNotError(err error, parts ...interface{}) {
 	if err != nil {
 		parts = append([]interface{}{StackAdjust(1)}, parts...)
 		Fatal(err, parts...)
 	}
+}
+
+func AddHook(id string, call func(s string)) {
+	outputHooks[id] = call
 }

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/torlangballe/zutil/zcommand"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
@@ -37,7 +36,7 @@ func InitCache(workDir, urlPrefix, cacheName string) {
 	fs := http.FileServer(http.Dir(workDir))
 	http.Handle(getUrl, fs)
 
-	fmt.Println("init image cache:", storagePath, getUrl)
+	zlog.Info("init image cache:", storagePath, getUrl)
 }
 
 func getToken() string {
@@ -95,7 +94,7 @@ func SetCacheCommentForName(name, comment string) error {
 	if zrest.RunningOnServer {
 		return nil
 	}
-	_, err := zcommand.SetMacComment(GetCachePathForName(name), comment)
+	err := zfile.SetComment(GetCachePathForName(name), comment)
 	if err != nil {
 		return zlog.Error(err, "set comment")
 	}

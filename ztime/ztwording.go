@@ -247,9 +247,9 @@ func ExpandTime(tp TimeParameters) (str string, err error) {
 		t := storyTime.In(location)
 		_, ol := t.Zone()
 		n, ot := storyTime.Zone()
-		//fmt.Println("stimezname:", n)
+		//zlog.Info("stimezname:", n)
 		if n != "UTC" && ol != ot {
-			//fmt.Println("Listenerzone:", ol, "storyzone:", ot, tp.ListenerTimeZone, str)
+			//zlog.Info("Listenerzone:", ol, "storyzone:", ot, tp.ListenerTimeZone, str)
 			elsewhere = true
 			now = now.In(location)
 			storyTime = t

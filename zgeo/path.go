@@ -118,7 +118,7 @@ func (p *Path) QuadCurveTo(a, b Pos) {
 }
 
 func (p *Path) BezierTo(c1 Pos, c2 Pos, end Pos) {
-	// fmt.Println("p.BezierTo")
+	// zlog.Info("p.BezierTo")
 	p.nodes = append(p.nodes, PathNode{PathCurve, []Pos{c1, c2, end}})
 }
 
@@ -148,7 +148,7 @@ func arcControlPoints(angle, delta float64) (Size, Size) {
 func (p *Path) ArcTo(rect Rect, degStart, degDelta float64, clockwise bool) {
 	circleCenter := rect.Center()
 	circleRadius := rect.Size.W / 2
-	// fmt.Println("ArcTo:", circleRadius, degStart, degDelta, p.IsEmpty())
+	// zlog.Info("ArcTo:", circleRadius, degStart, degDelta, p.IsEmpty())
 	aStart := zmath.DegToRad(degStart - 90)
 	aDelta := zmath.DegToRad(degDelta)
 	p0 := polarPoint(circleRadius, aStart).Plus(circleCenter)
@@ -218,8 +218,8 @@ func (p *Path) ForEachPart(forPart func(part PathNode)) {
 
 func (p *Path) AddRect(rect Rect, corner Size) {
 	if !rect.Size.IsNull() {
-		p.MoveTo(rect.TopLeft())
 		if corner.IsNull() || rect.Size.W == 0 || rect.Size.H == 0 {
+			p.MoveTo(rect.TopLeft())
 			p.LineTo(rect.TopRight())
 			p.LineTo(rect.BottomRight())
 			p.LineTo(rect.BottomLeft())
@@ -227,6 +227,7 @@ func (p *Path) AddRect(rect Rect, corner Size) {
 		} else {
 			min := rect.Min()
 			max := rect.Max()
+			p.MoveTo(Pos{min.X + corner.W, min.Y})
 			p.LineTo(Pos{max.X - corner.W, min.Y})
 			p.QuadCurveTo(Pos{max.X, min.Y}, Pos{max.X, min.Y + corner.H})
 			p.LineTo(Pos{max.X, max.Y - corner.H})

@@ -1,7 +1,6 @@
 package zreflect
 
 import (
-	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
@@ -65,7 +64,7 @@ type Item struct {
 }
 
 func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnestAnonymous, recursive bool, val reflect.Value) (item Item, err error) {
-	//    fmt.Println("itterate:", level, fieldName, typeName, tagName)
+	//    zlog.Info("itterate:", level, fieldName, typeName, tagName)
 	item.FieldName = fieldName
 	vtype := val.Type()
 	if typeName == "" {
@@ -90,7 +89,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 		} else {
 			val = reflect.Indirect(val)
 		}
-		//		fmt.Println("ptr:", t.Name(), fieldName, t.PkgPath())
+		//		zlog.Info("ptr:", t.Name(), fieldName, t.PkgPath())
 		item, err = itterate(level, fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, val)
 		item.IsPointer = true
 		//		item.Address = val.Addr().Interface()
@@ -102,7 +101,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 		if !v.CanAddr() {
 			v = reflect.New(t)
 		}
-		// fmt.Println("slice:", val.Len(), t.Name(), fieldName, t.PkgPath(), v.Kind())
+		// zlog.Info("slice:", val.Len(), t.Name(), fieldName, t.PkgPath(), v.Kind())
 		item, err = itterate(level, fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, v)
 		item.Value = val
 		item.IsArray = true
@@ -125,7 +124,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 			item.SimpleInterface = val.Interface()
 			item.Kind = KindStruct
 			n := vtype.NumField()
-			// fmt.Println("struct:", fieldName, n, recursive, unnestAnonymous , isAnonymous)
+			// zlog.Info("struct:", fieldName, n, recursive, unnestAnonymous , isAnonymous)
 			if level > 0 && !recursive && (!unnestAnonymous || !isAnonymous) { // always go into first level
 				break
 			}
@@ -138,7 +137,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 				// if unnestAnonymous && fieldName == "" {
 				// 	fname = ""
 				// }
-				// fmt.Println("struct:", item.Kind, fieldName, "/", f.Type, f.Name, f.Type.PkgPath(), tag) //, c.Tag, c.Value, c.Value.Interface(), fval.CanAddr())
+				// zlog.Info("struct:", item.Kind, fieldName, "/", f.Type, f.Name, f.Type.PkgPath(), tag) //, c.Tag, c.Value, c.Value.Interface(), fval.CanAddr())
 				l := level
 				if !f.Anonymous {
 					l++
@@ -150,10 +149,10 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 				} else {
 					if c.Value.CanAddr() {
 						c.Address = c.Value.Addr().Interface()
-						//							fmt.Println("Addr:", c.Value, c.Address)
+						//							zlog.Info("Addr:", c.Value, c.Address)
 					}
 					if unnestAnonymous && f.Anonymous {
-						// fmt.Println("add anon", i, len(item.Children), len(c.Children))
+						// zlog.Info("add anon", i, len(item.Children), len(c.Children))
 						item.Children = append(item.Children, c.Children...)
 					} else {
 						item.Children = append(item.Children, c)
@@ -197,7 +196,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 		item.Interface = val.Interface()
 
 	default:
-		fmt.Println("marshal.marshalValue: Carefull, unknown type!", val.Kind())
+		zlog.Info("marshal.marshalValue: Carefull, unknown type!", val.Kind())
 		item.Kind = KindUndef
 	}
 	//item.FieldName = fieldName

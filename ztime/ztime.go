@@ -107,7 +107,7 @@ func GetFloatingHour(t, base time.Time) float64 {
 	}
 	hour := float64(h) + float64(m)/60.0 + float64(s)/3600.0
 
-	//	fmt.Println("GetFloatingHour:", t, "base:", base, hour, "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+	//	zlog.Info("GetFloatingHour:", t, "base:", base, hour, "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 	return hour
 }
 
@@ -192,7 +192,7 @@ func GetSecsAsHMSString(dur float64, sec bool, subdigits int) string {
 		format := "%02"
 		format += fmt.Sprintf(".%df", subdigits)
 		parts = append(parts, fmt.Sprintf(format, s))
-		// fmt.Println("GetSecsAsHMSString:", dur, subdigits, format, parts, h, m)
+		// zlog.Info("GetSecsAsHMSString:", dur, subdigits, format, parts, h, m)
 	}
 
 	return strings.Join(parts, ":")
@@ -437,7 +437,7 @@ func GetNiceIncsOf(start, stop time.Time, incCount int) (inc time.Duration, firs
 		mult := float64(diff) / (float64(p) * float64(incCount))
 		log := math.Log(mult)
 		delta := math.Abs(log - logInc)
-		//		fmt.Println(i, incCount, mult, delta, log, logInc)
+		//		zlog.Info(i, incCount, mult, delta, log, logInc)
 		if bi == -1 || delta < best {
 			best = delta
 			bi = i
@@ -457,7 +457,7 @@ func GetNiceIncsOf(start, stop time.Time, incCount int) (inc time.Duration, firs
 	mod := u % ui
 	n := u + (ui - mod)
 	first = time.Unix(n, 0).In(start.Location())
-	//	fmt.Println("best:", i, part, u, mod, n, first)
+	//	zlog.Info("best:", i, part, u, mod, n, first)
 	inc = time.Duration(i) * part
 	return
 }

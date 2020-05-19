@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/torlangballe/zutil/zcommand"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -28,20 +30,20 @@ func getRootFolder() string {
 
 func CreateTempFile(name string) (file *os.File, filepath string, err error) {
 	filepath = CreateTempFilePath(name)
-	//	fmt.Println("filepath:", filepath)
+	//	zlog.Info("filepath:", filepath)
 	file, err = os.Create(filepath)
 	if file == nil {
-		fmt.Println("Error creating temporary template edit file", err, filepath)
+		zlog.Info("Error creating temporary template edit file", err, filepath)
 	}
 	return
 }
 
 func CreateTempFilePath(name string) string {
-	stime := time.Now().Format(time.RFC3339Nano)
+	stime := time.Now().Format("2006-01-02T15_04_05_999999Z")
 	sfold := filepath.Join(os.TempDir(), stime)
 	err := os.MkdirAll(sfold, 0775|os.ModeDir)
 	if err != nil {
-		fmt.Println("ufile.CreateTempFilePath:", err)
+		zlog.Info("ufile.CreateTempFilePath:", err)
 		return ""
 	}
 	stemp := filepath.Join(sfold, SanitizeStringForFilePath(name))
@@ -77,7 +79,7 @@ func ReadFromFile(sfile string) (string, error) {
 	bytes, err := ioutil.ReadFile(sfile)
 	if err != nil {
 		err = errors.Wrapf(err, "zfile.ReadFileToString: %v", sfile)
-		//		fmt.Println("Error reading file:", sfile, err)
+		//		zlog.Info("Error reading file:", sfile, err)
 		return "", err
 	}
 	return string(bytes), nil
@@ -86,7 +88,7 @@ func ReadFromFile(sfile string) (string, error) {
 func WriteStringToFile(str, sfile string) (err error) {
 	err = ioutil.WriteFile(sfile, []byte(str), 0644)
 	if err != nil {
-		//		fmt.Println("Error reading file:", sfile, err)
+		//		zlog.Info("Error reading file:", sfile, err)
 		return err
 	}
 	return
@@ -190,7 +192,7 @@ func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, 
 	}
 	response, err := http.Get(surl)
 	if err != nil {
-		fmt.Println("ReadFromUrlToFilepath error getting:", err, surl)
+		zlog.Info("ReadFromUrlToFilepath error getting:", err, surl)
 		return
 	}
 	defer response.Body.Close()
@@ -198,7 +200,7 @@ func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, 
 	//open a file for writing
 	file, err := os.Create(filePath)
 	if err != nil {
-		fmt.Println("ReadFromUrlToFilepath error creating file:", err, filePath)
+		zlog.Info("ReadFromUrlToFilepath error creating file:", err, filePath)
 		return
 	}
 	if maxBytes != 0 {
@@ -208,12 +210,12 @@ func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, 
 			var n int
 			n, err = response.Body.Read(buf)
 			if err != nil && err != io.EOF {
-				fmt.Println("Error reading from body:", err)
+				zlog.Info("Error reading from body:", err)
 				return
 			}
 			_, err = file.Write(buf[:n])
 			if err != nil {
-				fmt.Println("Error writing from body:", err)
+				zlog.Info("Error writing from body:", err)
 				return
 			}
 			size += int64(n)
@@ -225,7 +227,7 @@ func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, 
 		// Use io.Copy to just dump the response body to the file. This supports huge files
 		_, err = io.Copy(file, response.Body)
 		if err != nil {
-			fmt.Println("ReadFromUrlToFilepath error copying to file:", err, filePath)
+			zlog.Info("ReadFromUrlToFilepath error copying to file:", err, filePath)
 			return
 		}
 	}
@@ -260,4 +262,15 @@ func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) 
 		}
 		return nil
 	})
+}
+
+func SetComment(filepath, comment string) error {
+	if runtime.GOOS == "darwin" {
+
+		format := `tell application "Finder" to set the comment of (the POSIX file "%s" as alias) to "%s"`
+		command := fmt.Sprintf(format, filepath, comment)
+		_, err := zcommand.RunAppleScript(command, 5.0)
+		return err
+	}
+	return nil
 }

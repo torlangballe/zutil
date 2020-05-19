@@ -43,7 +43,7 @@ func (t *Timer) check(perform func()) {
 }
 
 func (t *Timer) StartIn(secs float64, onMainThread bool, perform func()) *Timer {
-	// fmt.Println("timer start1:")
+	// zlog.Info("timer start1:")
 	t.Stop()
 	t.timer = time.NewTimer(ztime.SecondsDur(secs))
 	go t.check(perform)

@@ -42,8 +42,9 @@ var LegalCORSOrigins = map[string]bool{}
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	o := req.Header.Get("Origin")
+	// zlog.Info("AddCorsHeaders:", o, req.Header, LegalCORSOrigins[o])
 	if LegalCORSOrigins[o] {
-		//		fmt.Println("AddCorsHeaders:", o)
+		//		zlog.Info("AddCorsHeaders:", o)
 		w.Header().Set("Access-Control-Allow-Origin", o)
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -64,7 +65,7 @@ func ReturnResultWithHeaders(w http.ResponseWriter, req *http.Request, headers m
 	jsonRep, _ := formatJSON(tmp)
 	jsonRep = addJSONPCallback(jsonRep, req.FormValue("callback"))
 
-	//	fmt.Println("ReturnResultWithHeaders:", string(jsonRep))
+	//	zlog.Info("ReturnResultWithHeaders:", string(jsonRep))
 	for hName, hValue := range headers {
 		w.Header().Set(hName, hValue)
 	}
@@ -94,7 +95,7 @@ func ReturnError(w http.ResponseWriter, req *http.Request, message string, error
 	w.Header().Set("Date", time.Now().In(time.UTC).Format(time.RFC3339))
 
 	AddCORSHeaders(w, req)
-	//	fmt.Println("ReturnError:", errorCode, messages)
+	//	zlog.Info("ReturnError:", errorCode, messages)
 	if errorCode == 0 {
 		errorCode = http.StatusInternalServerError
 	}
@@ -122,7 +123,7 @@ func GetTimeZoneFromRequest(req *http.Request) *time.Location {
 	if soff != "" {
 		offset, err := strconv.ParseInt(soff, 10, 32)
 		if err != nil {
-			fmt.Println("zrest.GetTimeZoneFromRequest bad offset:", soff, err)
+			zlog.Info("zrest.GetTimeZoneFromRequest bad offset:", soff, err)
 			return nil
 		}
 		name := fmt.Sprintf("UTC%+d", offset)

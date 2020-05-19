@@ -162,7 +162,7 @@ func Downsample(samples []float64, newSize int) (ns []float64) {
 		}
 		ns[i] = o / count
 		o = samples[index] * (1 - ratio)
-		//		fmt.Println("Sample:", index, count, oi)
+		//		zlog.Info("Sample:", index, count, oi)
 		count = (1 - ratio)
 		oi = index + 1
 	}

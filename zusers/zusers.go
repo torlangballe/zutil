@@ -59,7 +59,7 @@ func InitTable(db *sql.DB) error {
 // 	row := db.QueryRow(squery, u.Email, u.PasswordHash, u.Salt, u.OemId, u.IsAdmin)
 // 	err = row.Scan(&id)
 // 	if err != nil {
-// 		fmt.Println("make user err:", err)
+// 		zlog.Info("make user err:", err)
 // 		err = errors.Wrap(err, "users.MakeFromStruct Query/Scan")
 // 		return
 // 	}
@@ -167,7 +167,7 @@ func getUserFor(db *sql.DB, field, value string) (user User, err error) {
 
 func GetUserFromTokenInRequest(db *sql.DB, redisPool *redis.Pool, req *http.Request) (user User, token string, err error) {
 	t, _ := req.Cookie("token")
-	//	fmt.Println("GetUserFromTokenInRequest:", t.Name, t.Value)
+	//	zlog.Info("GetUserFromTokenInRequest:", t.Name, t.Value)
 	if t == nil {
 		err = errors.New("no token")
 		return
@@ -178,7 +178,7 @@ func GetUserFromTokenInRequest(db *sql.DB, redisPool *redis.Pool, req *http.Requ
 		return
 	}
 	user, err = GetUserFromToken(db, redisPool, token)
-	//	fmt.Println("GetUserFromTokenInRequest2:", err, user)
+	//	zlog.Info("GetUserFromTokenInRequest2:", err, user)
 	if err != nil {
 		return
 	}
@@ -195,7 +195,7 @@ func Login(db *sql.DB, redisPool *redis.Pool, email, password string) (id int64,
 	}
 	hash := makeHash(password, u.Salt)
 	if hash != u.PasswordHash {
-		fmt.Println("calchash:", hash, password, "salt:", u.Salt, "storedhash:", u.PasswordHash)
+		zlog.Info("calchash:", hash, password, "salt:", u.Salt, "storedhash:", u.PasswordHash)
 		err = LoginFail
 		return
 	}
@@ -203,7 +203,7 @@ func Login(db *sql.DB, redisPool *redis.Pool, email, password string) (id int64,
 	id = u.Id
 	err = setTokenForUserId(redisPool, token, id)
 	if err != nil {
-		fmt.Println("login set token error:", err)
+		zlog.Info("login set token error:", err)
 		return
 	}
 	return
@@ -227,7 +227,7 @@ func Register(db *sql.DB, redisPool *redis.Pool, email, password string, oemId i
 		perm = append(perm, AdminPermission)
 	}
 	salt, hash, token := makeSaltyHash(password)
-	//	fmt.Println("register:", hash, password, "salt:", salt)
+	//	zlog.Info("register:", hash, password, "salt:", salt)
 	squery :=
 		`INSERT INTO users 
 	(email, passwordhash, salt, oemid, permissions) VALUES
@@ -236,13 +236,13 @@ func Register(db *sql.DB, redisPool *redis.Pool, email, password string, oemId i
 	row := db.QueryRow(squery, email, hash, salt, oemId, pq.Array(perm))
 	err = row.Scan(&id)
 	if err != nil {
-		fmt.Println("register error:", err)
+		zlog.Info("register error:", err)
 		return
 	}
 	if makeToken {
 		err = setTokenForUserId(redisPool, token, id)
 		if err != nil {
-			fmt.Println("set token error:", err)
+			zlog.Info("set token error:", err)
 			return
 		}
 	}

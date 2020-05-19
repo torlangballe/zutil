@@ -13,6 +13,8 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
 	github.com/aws/aws-lambda-go v1.13.2
 	github.com/aws/aws-sdk-go v1.25.19
+	github.com/disintegration/imaging v1.6.2
+	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3
 	github.com/garyburd/redigo v1.6.0
 	github.com/gobuffalo/envy v1.7.1
 	github.com/gorilla/mux v1.7.3
@@ -20,7 +22,10 @@ require (
 	github.com/graphql-go/graphql v0.7.8
 	github.com/hnakamur/w32syscall v0.0.0-20150329104255-b8b99ed86a56
 	github.com/kaneshin/pigeon v1.0.0
+	github.com/kbinani/screenshot v0.0.0-20191211154542-3a185f1ce18f
 	github.com/lib/pq v1.2.0
+	github.com/lxn/win v0.0.0-20191128105842-2da648fda5b4 // indirect
+	github.com/mitchellh/go-ps v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.8.1
 	github.com/twpayne/go-geom v1.0.5

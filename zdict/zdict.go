@@ -128,11 +128,11 @@ func (d Dict) ToStruct(structPtr interface{}) {
 				item.Value.Addr().Elem().SetString(str)
 			case zreflect.KindFloat:
 				f, err := zfloat.GetAny(val)
-				zlog.AssertNotErr(err, item.FieldName, reflect.ValueOf(val).Kind())
+				zlog.AssertNotError(err, item.FieldName, reflect.ValueOf(val).Kind())
 				item.Value.Addr().Elem().SetFloat(f)
 			case zreflect.KindInt:
 				n, err := zint.GetAny(val)
-				zlog.AssertNotErr(err)
+				zlog.AssertNotError(err)
 				item.Value.Addr().Elem().SetInt(n)
 			case zreflect.KindBool:
 				b, isBool := val.(bool)
@@ -272,6 +272,6 @@ func DumpNamedValues(nv NamedValues) {
 	c := nv.Count()
 	for i := 0; i < c; i++ {
 		id, name, _ := nv.GetItem(i)
-		fmt.Println("Item:", id, name)
+		zlog.Info("Item:", id, name)
 	}
 }
