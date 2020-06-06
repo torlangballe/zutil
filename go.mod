@@ -11,11 +11,13 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.4.0
 	github.com/Azure/go-autorest/autorest/to v0.3.0
 	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
+	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/aws/aws-lambda-go v1.13.2
 	github.com/aws/aws-sdk-go v1.25.19
 	github.com/disintegration/imaging v1.6.2
 	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3
 	github.com/garyburd/redigo v1.6.0
+	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gobuffalo/envy v1.7.1
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
@@ -28,6 +30,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.8.1
+	github.com/shirou/gopsutil v2.20.4+incompatible
 	github.com/twpayne/go-geom v1.0.5
 	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
 	golang.org/x/text v0.3.2

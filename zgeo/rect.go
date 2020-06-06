@@ -1,6 +1,7 @@
 package zgeo
 
 import (
+	"image"
 	"math"
 
 	"github.com/torlangballe/zutil/zlog"
@@ -40,6 +41,10 @@ var RectNull Rect
 
 func (r Rect) IsNull() bool {
 	return r.Pos.X == 0 && r.Pos.Y == 0 && r.Size.W == 0 && r.Size.H == 0
+}
+
+func (r Rect) GoRect() image.Rectangle {
+	return image.Rectangle{Min: r.Min().GoPoint(), Max: r.Max().GoPoint()}
 }
 
 func (r Rect) TopLeft() Pos     { return r.Min() }

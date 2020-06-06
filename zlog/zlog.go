@@ -148,7 +148,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	}
 	p := strings.TrimSpace(fmt.Sprintln(parts...))
 	if err != nil {
-		err = errors.Wrap(err, p)
+	err = errors.Wrap(err, p)
 	} else {
 		err = errors.New(p)
 	}
@@ -252,4 +252,19 @@ func AssertNotError(err error, parts ...interface{}) {
 
 func AddHook(id string, call func(s string)) {
 	outputHooks[id] = call
+}
+
+type WrappedError struct {
+	Text  string
+	Error error
+}
+
+func (w *WrappedError) Unwrap() error {
+	return w.Error
+}
+
+func Wrap(err error, parts ...interface{}) error {
+	p := strings.TrimSpace(fmt.Sprintln(parts...))
+	return errors.Wrap(err, p)
+
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
@@ -187,16 +186,20 @@ func (s Size) ZUIString() string {
 	return s.String()
 }
 
+/*
 func (s *Size) UnmarshalJSON(b []byte) error {
 	str := string(b)
 	str = strings.Trim(str, `"`)
-	return s.FromString(str)
+	err := s.FromString(str)
+	fmt.Println("UNMARSHAL SIZE:", str, s)
+	return err
 }
 
 func (s *Size) MarshalJSON() ([]byte, error) {
 	str := `"` + s.String() + `"`
 	return []byte(str), nil
 }
+*/
 
 func (s Sizes) GetItem(i int) (id, name string, value interface{}) {
 	str := s[i].String()

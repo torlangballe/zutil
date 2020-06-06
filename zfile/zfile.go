@@ -50,7 +50,7 @@ func CreateTempFilePath(name string) string {
 	return stemp
 }
 
-func DoesFileExist(filepath string) bool {
+func FileExist(filepath string) bool {
 	_, err := os.Stat(filepath)
 	return err == nil
 }
@@ -60,7 +60,7 @@ func SetModified(filepath string, t time.Time) error {
 	return err
 }
 
-func DoesFileNotExist(filepath string) bool { // not same as !DoesFileExist...
+func FileNotExist(filepath string) bool { // not same as !DoesFileExist...
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		return true
 	}
@@ -262,6 +262,26 @@ func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) 
 		}
 		return nil
 	})
+}
+
+func RemoveContents(dir string) error {
+	d, err := os.Open(dir)
+	// zlog.Info("RemoveContents:", dir, err)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	names, err := d.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		err = os.RemoveAll(filepath.Join(dir, name))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func SetComment(filepath, comment string) error {

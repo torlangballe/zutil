@@ -8,22 +8,23 @@ import (
 	"github.com/AllenDang/w32"
 	"github.com/hnakamur/w32syscall"
 	"github.com/kbinani/screenshot"
+	"github.com/torlangballe/zutil/uhttp"
 	"github.com/torlangballe/zutil/zcommand"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 )
 
-func GetAppNameOfBrowser(btype BrowserType, fullName bool) string {
+func GetAppNameOfBrowser(btype uhttp.BrowserType, fullName bool) string {
 	switch btype {
-	case Safari:
+	case uhttp.Safari:
 		zlog.Fatal(nil)
 
-	case Chrome:
+	case uhttp.Chrome:
 		if fullName {
 			return "Google Chrome"
 		}
 		return "chrome"
-	case Edge:
+	case uhttp.Edge:
 		if fullName {
 			return "Microsoft Edge"
 		}
@@ -32,7 +33,7 @@ func GetAppNameOfBrowser(btype BrowserType, fullName bool) string {
 	return ""
 }
 
-func OpenURLInBrowser(surl string, btype BrowserType, args ...string) error {
+func OpenURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) error {
 	name := GetAppNameOfBrowser(btype, false)
 	//	_, err := zcommand.RunCommand("start", 5, args...)
 	// zlog.Info("*********** OpenURLInBrowser:", surl)
@@ -110,7 +111,7 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, err
 func ActivateWindow(title, app string) {
 	h := getWindowHandleFromTitle(title, app)
 	if h != 0 {
-		zlog.Info("activate:", title, h)
+		// zlosnipg.Info("activate:", title, h)
 		w32.SetForegroundWindow(h)
 	}
 }
@@ -128,7 +129,16 @@ func CloseWindowForTitle(title, app string) error {
 	return zlog.Error(nil, "no window", title)
 }
 
-func QuitAppsByName(name string) error {
-	_, err := zcommand.RunCommand("cmd", 4, "/c", "taskkill", "/F", "/IM", name+".exe")
-	return err
-}
+// func TerminateAppsByName(name string, force, children bool) error {
+// 	args := []string{"/c", "taskkill"}
+// 	if force {
+// 		args = append(args, "/F")
+// 	}
+// 	if children {
+// 		args = append(args, "/T")
+// 	}
+// 	args = append(args, "/IM", name+".exe")
+// 	_, err := zcommand.RunCommand("cmd", 4, args...)
+// 	zlog.Info("TerminateAppsByName:", args, err)
+// 	return err
+// }

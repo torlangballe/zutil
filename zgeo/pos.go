@@ -1,6 +1,7 @@
 package zgeo
 
 import (
+	"image"
 	"math"
 
 	"github.com/torlangballe/zutil/zmath"
@@ -97,6 +98,10 @@ func (p Pos) RotatedCCW(angle float64) Pos {
 func (p *Pos) MultiplyD(a float64) {
 	p.X *= a
 	p.Y *= a
+}
+
+func (p Pos) GoPoint() image.Point {
+	return image.Pt(int(p.X), int(p.Y))
 }
 
 func (p Pos) PlusD(a float64) Pos      { return Pos{p.X + a, p.Y + a} }

@@ -67,7 +67,7 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote encode client request")
 	}
-
+	// fmt.Println("REMOTECALL2:", name, string(message))
 	params := uhttp.MakeParameters()
 	params.UseHTTPS = false
 	params.SkipVerifyCertificate = true
@@ -76,7 +76,6 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 	params.Body = message
 	params.ContentType = "application/json"
 
-	// zlog.Info("CallRemote2:", string(params.Body))
 	resp, _, err := uhttp.PostBytesSetContentLength(surl, params) //, message, map[string]string{
 	// 	"js.fetch:mode": "no-cors",
 	// })
@@ -90,7 +89,7 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 
 	err = rpcjson.DecodeClientResponse(resp.Body, &reply)
 	if err != nil {
-		zlog.Error(err, zlog.StackAdjust(1), "zrpc decode error")
+		zlog.Error(err, zlog.StackAdjust(2), "zrpc decode error")
 		return err
 		//		return zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
 	}

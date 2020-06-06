@@ -59,6 +59,7 @@ NSScreen *getBestScreenForBounds(CGRect bounds) {
     CGFloat bestArea = 0.0;
     NSArray *screens = [NSScreen screens];
     for (NSScreen *s in screens) {
+        // NSLog(@"screen: %f %f\n", s.frame.size.width, s.backingScaleFactor);
         CGRect inter = CGRectIntersection(s.frame, bounds);
         CGFloat a = inter.size.width * inter.size.height;
         if (a > bestArea) {
@@ -83,7 +84,7 @@ BOOL findTitle(void *data, struct WinInfo w) {
         bounds.size.width = (CGFloat)[(NSNumber *)w.boundsDict[@"Width"] floatValue];
         bounds.size.height = (CGFloat)[(NSNumber *)w.boundsDict[@"Height"] floatValue];
         find->scale = getBestScreenForBounds(bounds).backingScaleFactor;
-//        NSLog(@"scale:%d bounds: %f,%f %fx%f\n", find->scale, bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height);
+        // NSLog(@"scale:%d bounds: %f,%f %fx%f\n", find->scale, bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height);
         return NO;
     }
     return YES;
@@ -96,19 +97,19 @@ typedef struct WinIDInfo {
 } WinIDInfo;
 
 WinIDInfo WindowGetIDAndScaleForTitle(const char *title, long pid) {
-    NSLog(@"WindowGetIDAndScaleForTitle1\n");
+    // NSLog(@"WindowGetIDAndScaleForTitle1\n");
     struct WinInfo find;
     struct WinIDInfo got;    
     find.wid = 0;
     find.scale = 0;
     find.title = [NSString stringWithUTF8String: title];
     find.pid = pid;
-    NSLog(@"WindowGetIDAndScaleForTitle2\n");
+    // NSLog(@"WindowGetIDAndScaleForTitle2\n");
     got.err = getWindowIDs(&find, NO, findTitle);
-    NSLog(@"WindowGetIDAndScaleForTitle3: %p\n", got.err);
-    if (strlen(got.err) != 0) {
-        getWindowIDs(&find, YES, findTitle);
-    }
+    // NSLog(@"WindowGetIDAndScaleForTitle3: %p\n", got.err);
+    // if (strlen(got.err) != 0) {
+    //     getWindowIDs(&find, YES, findTitle);
+    // }
     got.winID = find.wid;
     got.scale = find.scale;
     CFRelease(find.title);

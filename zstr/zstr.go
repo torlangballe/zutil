@@ -358,21 +358,15 @@ func ContainsDuplicates(strs []string) bool {
 }
 
 func ExtractStringTilSeparator(str *string, sep string) (got string) {
-	for {
-		i := strings.Index(*str, sep)
-		switch i {
-		//		case 0:
-		//			*str = (*str)[len(sep):]
-		case -1:
-			got = *str
-			*str = ""
-			return
-		default:
-			got = (*str)[:i]
-			*str = (*str)[i+len(sep):]
-			return
-		}
+	i := strings.Index(*str, sep)
+	if i == -1 {
+		got = *str
+		*str = ""
+		return
 	}
+	got = (*str)[:i]
+	*str = (*str)[i+len(sep):]
+	return
 }
 
 func ExtractStringFromEndTilSeparator(str *string, sep string) (got string) {

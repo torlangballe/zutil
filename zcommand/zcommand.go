@@ -29,7 +29,6 @@ func RunCommand(command string, timeoutSecs float64, args ...string) (string, er
 	}
 	output, err := cmd.CombinedOutput()
 	str := string(output) // strings.Replace(, "\n", "", -1)
-	// zlog.Info("RunCommand:", command, args, err, str)
 	// if err != nil {
 	// 	var out string
 	// 	for _, a := range args {
@@ -49,7 +48,6 @@ func getAppProgramPath(appName string) string {
 func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
 	path := getAppProgramPath(appName)
 	cmd = exec.Command(path, args...)
-	// zlog.Info("RunApp:", path, args)
 	outPipe, err = cmd.StdoutPipe()
 	if err != nil {
 		err = zlog.Error(err, "connect stdout pipe")
@@ -65,6 +63,7 @@ func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.
 		err = zlog.Error(err, "run")
 		return
 	}
+	// zlog.Info("RunApp:", path, cmd.Process.Pid, args)
 	return
 }
 

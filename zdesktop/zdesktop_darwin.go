@@ -21,24 +21,23 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"syscall"
 
 	"github.com/disintegration/imaging"
-	"github.com/mitchellh/go-ps"
 
+	"github.com/torlangballe/zutil/uhttp"
 	"github.com/torlangballe/zutil/zcommand"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 )
 
-func GetAppNameOfBrowser(btype BrowserType, fullName bool) string {
+func GetAppNameOfBrowser(btype uhttp.BrowserType, fullName bool) string {
 	switch btype {
-	case Safari:
+	case uhttp.Safari:
 		return "Safari"
-	case Chrome:
+	case uhttp.Chrome:
 		return "Google Chrome"
-	case Edge:
+	case uhttp.Edge:
 		if fullName {
 			return "Microsoft Edge Canary"
 		}
@@ -47,9 +46,14 @@ func GetAppNameOfBrowser(btype BrowserType, fullName bool) string {
 	return ""
 }
 
-func OpenURLInBrowser(surl string, btype BrowserType, args ...string) error {
+func OpenURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) error {
 	name := GetAppNameOfBrowser(btype, true)
-	args = append([]string{"-F", "-g", "-a", name, surl, "--args"}, args...)
+	args = append([]string{
+		"-g", // Don't bring app to foreground
+		"-F", // fresh, don't open old windows. Doesn't work for safari that has been force-quit
+		"-a", name,
+		surl,
+		"--args"}, args...)
 	_, err := zcommand.RunCommand("open", 5, args...)
 	if err != nil {
 		return zlog.Error(err, "OpenURLInBrowser")
@@ -57,7 +61,7 @@ func OpenURLInBrowser(surl string, btype BrowserType, args ...string) error {
 	return err
 }
 
-func RunURLInBrowser(surl string, btype BrowserType, args ...string) (*exec.Cmd, error) {
+func RunURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) (*exec.Cmd, error) {
 	args = append(args, surl)
 	name := GetAppNameOfBrowser(btype, true)
 	cmd, _, _, err := zcommand.RunApp(name, args...)
@@ -80,8 +84,9 @@ func WindowWithTitleExists(title, app string) bool {
 
 func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err error) {
 	// title = getTitleWithApp(title, app)
+	// fmt.Println("GetIDAndScaleForWindowTitle title, app:", title, app)
 	for _, pid := range GetPIDsForAppName(app) {
-		fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
+		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
 		w := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
 		serr := C.GoString(w.err)
 		if serr != "" {
@@ -100,11 +105,11 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, err
 
 	winID, scale, err := GetIDAndScaleForWindowTitle(title, app)
 	if err != nil {
-		return nil, err
+		return nil, zlog.Error(err, "get id scale")
 	}
 	_, err = zcommand.RunCommand("screencapture", 0, "-o", "-x", "-l", winID, filepath) // -o is no shadow, -x is no sound, -l is window id
 	if err != nil {
-		return nil, err
+		return nil, zlog.Error(err, "call screen capture", winID)
 	}
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -151,93 +156,8 @@ func SetWindowSizeForTitle(title, app string, size zgeo.Size) error {
 	return errors.New("not found")
 }
 
-func QuitAppsByName(app string) error {
-	var err error
-	for _, pid := range GetPIDsForAppName(app) {
-		zlog.Info("QuitAppsByName:", pid, app)
-		syscall.Kill(int(-pid), syscall.SIGKILL)
-	}
+func SendQuitCommandToApp(app string) error {
+	script := fmt.Sprintf(`quit app "%s"`, app)
+	_, err := zcommand.RunAppleScript(script, 10)
 	return err
 }
-
-func GetPIDsForAppName(app string) []int64 {
-	var pids []int64
-	procs, _ := ps.Processes()
-	for _, p := range procs {
-		// fmt.Println("PROC:", app, "=", p.Executable())
-		if p.Executable() == app {
-			pids = append(pids, int64(p.Pid()))
-		}
-	}
-	return pids
-}
-
-/*
-
-
-func ResizeWindowForAppAndTitle(app, title string, size zgeo.Size) error {
-	titleName := "title"
-	if app == "Safari" {
-		titleName = "name"
-	}
-	command :=
-		`tell application "%s"
-		activate
-	    repeat with w in windows
-			if %s of w is "%s" then
-				set b to bounds of w
-				set x to 1st item of b
-				set y to 2nd item of b
-				log b
-				log (title of w)
-				log x
-				log y
-				set bounds of w to {x, y, x + %d, y + %d}
-			end if
-		end repeat
-	end tell
-`
-	command = fmt.Sprintf(command, app, titleName, title, int(size.W), int(size.H))
-	_, err := zcommand.RunAppleScript(command, 5.0)
-	// zlog.Info("ResizeAppWindowWithTitle", command, str, err)
-	return err
-}
-
-func CloseUrlInBrowser(surl string, btype BrowserType) error {
-	command := `
-		display alert "hello"
-		repeat with w in windows
-			repeat with t in tabs of w
-				set u to URL of t
-				if u is equal to "%s" then
-					close t
-					return
-				end if
-           end repeat
-       end repeat
-	`
-	command = fmt.Sprintf(command, surl)
-	_, err := RunAppleScript(command, 10.0)
-	return err
-}
-
-func ResizeBrowserWindowWithTitle(btype BrowserType, title string, rect zgeo.Rect) error {
-	titleName := "title"
-	if btype == Safari {
-		titleName = "name"
-	}
-	app := GetAppNameOfBrowser(btype, true)
-	command :=
-		`tell application "%s"
-		activate
-		set bounds of every window whose %s is "%s" to {%g,%g,%g,%g}
-		end tell
-`
-	command = fmt.Sprintf(command, app, titleName, title, rect.Min().X, rect.Min().Y, rect.Max().X, rect.Max().Y)
-	// zlog.Info("CloseWindowWithTitle:", app, title, "\n", command)
-	_, err := RunAppleScript(command, 5.0)
-	//	zlog.Info("CloseWindowWithTitle done", err)
-	return err
-}
-
-*/
