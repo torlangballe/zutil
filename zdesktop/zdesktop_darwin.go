@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"sync"
 
 	"github.com/disintegration/imaging"
 
@@ -99,9 +100,14 @@ func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err e
 	return
 }
 
+var screenLock sync.Mutex
+
 func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, error) {
 	_, filepath, err := zfile.CreateTempFile("win.png")
 	zlog.Assert(err == nil)
+
+	screenLock.Lock()
+	defer screenLock.Unlock()
 
 	winID, scale, err := GetIDAndScaleForWindowTitle(title, app)
 	if err != nil {

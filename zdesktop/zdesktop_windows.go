@@ -6,7 +6,6 @@ import (
 	"syscall"
 
 	"github.com/AllenDang/w32"
-	"github.com/hnakamur/w32syscall"
 	"github.com/kbinani/screenshot"
 	"github.com/torlangballe/zutil/uhttp"
 	"github.com/torlangballe/zutil/zcommand"
@@ -48,38 +47,49 @@ func OpenURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) erro
 }
 
 func WindowWithTitleExists(title, app string) bool {
-	zlog.Fatal(nil, "not implemented")
-	return false
+	handle := getWindowHandleFromTitle(title, app)
+	return handle != 0
+}
+
+func getWindows(hwnd syscall.Handle, lparam uintptr) bool {
+	return true
 }
 
 var getWindowLock sync.Mutex
 var getWindowTitle string
 var getWindowHandle w32.HWND
 
-func getWindows(hwnd syscall.Handle, lparam uintptr) bool {
-	h := w32.HWND(hwnd)
-	title := w32.GetWindowText(h)
-	// if strings.Contains(title, "Google") {
-	// 	fmt.Println("WIN:", title)
-	// }
-	if title == getWindowTitle {
-		getWindowHandle = h
-		return false
+func makeWindowCallback() uintptr {
+	cb := func(hwnd syscall.Handle, lparam uintptr) int {
+		h := w32.HWND(hwnd)
+		wtitle := w32.GetWindowText(h)
+		if wtitle == getWindowTitle {
+			// zlog.Info("WIN:", wtitle, h)
+			getWindowHandle = h
+			return 0
+		}
+		return 1
 	}
-	return true
+	return syscall.NewCallback(cb)
 }
+
+var moduser32 = syscall.NewLazyDLL("user32.dll")
+var procEnumWindows = moduser32.NewProc("EnumWindows")
+var winCB = makeWindowCallback()
 
 func getWindowHandleFromTitle(title, app string) w32.HWND {
 	getWindowLock.Lock()
+	defer getWindowLock.Unlock()
 	getWindowTitle = title + " - " + app
 	getWindowHandle = 0
 	// zlog.Info("getWindowHandleFromTitle:", getWindowTitle)
-	err := w32syscall.EnumWindows(getWindows, 0)
-	if err != nil {
-		zlog.Error(err, "enum windows")
+	r1, _, e1 := syscall.Syscall(procEnumWindows.Addr(), 2, winCB, 0, 0)
+	if r1 != 0 {
+		if e1 != 0 {
+			zlog.Error(error(e1), "enum windows")
+			return 0
+		}
 	}
-	// Doing this with fixed function and global variables to avoid "fatal error: too many callback functions" in windows enumerating
-	getWindowLock.Unlock()
 	return getWindowHandle
 }
 
@@ -94,14 +104,15 @@ func SetWindowSizeForTitle(title, app string, size zgeo.Size) error {
 	return zlog.Error(nil, "no window", title)
 }
 
+var screenLock sync.Mutex
+
 func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, error) {
+	screenLock.Lock()
 	ActivateWindow(title, app)
-	bounds := image.Rectangle{}
-	bounds.Min.X = int(crop.Min().X)
-	bounds.Min.Y = int(crop.Min().Y)
-	bounds.Max.X = int(crop.Max().X)
-	bounds.Max.Y = int(crop.Max().Y)
+	bounds := image.Rect(int(crop.Min().X), int(crop.Min().Y), int(crop.Max().X), int(crop.Max().Y))
 	nimage, err := screenshot.CaptureRect(bounds)
+	screenLock.Unlock()
+	zlog.Info("IMAGE:", bounds, err)
 	if err != nil {
 		return nil, zlog.Error(err, "capture rect")
 	}
@@ -110,8 +121,8 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, err
 
 func ActivateWindow(title, app string) {
 	h := getWindowHandleFromTitle(title, app)
+	zlog.Info("activate:", title, app, h)
 	if h != 0 {
-		// zlosnipg.Info("activate:", title, h)
 		w32.SetForegroundWindow(h)
 	}
 }
@@ -127,6 +138,10 @@ func CloseWindowForTitle(title, app string) error {
 		return nil
 	}
 	return zlog.Error(nil, "no window", title)
+}
+
+func SendQuitCommandToApp(app string) error {
+	return nil
 }
 
 // func TerminateAppsByName(name string, force, children bool) error {

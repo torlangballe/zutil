@@ -47,6 +47,10 @@ func (r Rect) GoRect() image.Rectangle {
 	return image.Rectangle{Min: r.Min().GoPoint(), Max: r.Max().GoPoint()}
 }
 
+func RectFromGoRect(rect image.Rectangle) Rect {
+	return RectFromMinMax(PosFromGoPoint(rect.Min), PosFromGoPoint(rect.Max))
+}
+
 func (r Rect) TopLeft() Pos     { return r.Min() }
 func (r Rect) TopRight() Pos    { return Pos{r.Max().X, r.Min().Y} }
 func (r Rect) BottomLeft() Pos  { return Pos{r.Min().X, r.Max().Y} }

@@ -104,6 +104,10 @@ func (p Pos) GoPoint() image.Point {
 	return image.Pt(int(p.X), int(p.Y))
 }
 
+func PosFromGoPoint(point image.Point) Pos {
+	return Pos{float64(point.X), float64(point.Y)}
+}
+
 func (p Pos) PlusD(a float64) Pos      { return Pos{p.X + a, p.Y + a} }
 func (p Pos) MinusD(a float64) Pos     { return Pos{p.X - a, p.Y - a} }
 func (p Pos) TimesD(a float64) Pos     { return Pos{p.X * a, p.Y * a} }

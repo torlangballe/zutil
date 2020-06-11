@@ -66,13 +66,18 @@ func (c *Cache) IsTokenValid(t string) bool {
 	return true
 }
 
-// StoreImageFromReader reads bytes from reader and stores with stype png og jpeg, returning name.png/jpeg
+// CacheImageFromReader reads bytes from reader and stores with stype png og jpeg, returning name.png/jpeg
 // This name is used to get a path or a url for getting
 func (c *Cache) CacheImageFromReader(reader io.Reader, stype string) (string, error) {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return "", zlog.Error(err, "read from reader")
 	}
+	return c.CacheImageFromData(data, stype)
+}
+
+func (c *Cache) CacheImageFromData(data []byte, stype string) (string, error) {
+	var err error
 	h := fnv.New64a()
 	h.Write(data)
 
@@ -82,7 +87,7 @@ func (c *Cache) CacheImageFromReader(reader io.Reader, stype string) (string, er
 	path := c.GetCachePathForName(name)
 	// outUrl := GetUrlForName(name)
 
-	zlog.Info("CacheImageFromReader path:", path)
+	// zlog.Info("CacheImageFromReader path:", path)
 	if zfile.FileExist(path) {
 		err = zfile.SetModified(path, time.Now())
 		return name, err
