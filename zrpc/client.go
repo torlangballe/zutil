@@ -60,7 +60,6 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 	// https://github.com/golang/go/wiki/WebAssembly#configuring-fetch-options-while-using-nethttp
 
 	surl := c.makeUrl()
-	// zlog.Info("CallRemote:", name, surl, err)
 	// zlog.Info("CALL:", name, args)
 
 	message, err := rpcjson.EncodeClientRequest(name, args)
@@ -77,6 +76,7 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 	params.ContentType = "application/json"
 
 	resp, _, err := uhttp.PostBytesSetContentLength(surl, params) //, message, map[string]string{
+	// zlog.Info("CallRemote:", name, surl, err)
 	// 	"js.fetch:mode": "no-cors",
 	// })
 	// zlog.Info("POST RPC:", err, surl, uhttp.GetCopyOfResponseBodyAsString(resp))

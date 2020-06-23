@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	cryptoRand "crypto/rand"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -488,12 +488,12 @@ func GenerateUUID() string {
 	return hex.EncodeToString(data)
 }
 
-func MD5Hex(str string) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(str)))
+func MD5Hex(data []byte) string {
+	return fmt.Sprintf("%x", md5.Sum(data))
 }
 
-func Sha1Hex(str string) string {
-	return fmt.Sprintf("%x", sha1.Sum([]byte(str)))
+func SHA256Hex(data []byte) string {
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
 func JoinStringMap(m map[string]string, equal, sep string) (str string) {

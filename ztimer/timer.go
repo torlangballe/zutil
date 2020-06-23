@@ -18,9 +18,9 @@ func TimerNew() *Timer {
 	return &Timer{}
 }
 
-func StartIn(secs float64, onMainThread bool, perform func()) *Timer {
+func StartIn(secs float64, perform func()) *Timer {
 	t := TimerNew()
-	t.StartIn(secs, onMainThread, perform)
+	t.StartIn(secs, perform)
 	return t
 }
 
@@ -42,7 +42,7 @@ func (t *Timer) check(perform func()) {
 	}
 }
 
-func (t *Timer) StartIn(secs float64, onMainThread bool, perform func()) *Timer {
+func (t *Timer) StartIn(secs float64, perform func()) *Timer {
 	// zlog.Info("timer start1:")
 	t.Stop()
 	t.timer = time.NewTimer(ztime.SecondsDur(secs))

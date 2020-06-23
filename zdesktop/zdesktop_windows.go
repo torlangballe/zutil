@@ -93,12 +93,11 @@ func getWindowHandleFromTitle(title, app string) w32.HWND {
 	return getWindowHandle
 }
 
-func SetWindowSizeForTitle(title, app string, size zgeo.Size) error {
+func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 	// fmt.Println("SetWindowSizeForTitle:", title)
 	h := getWindowHandleFromTitle(title, app)
 	if h != 0 {
-		w32.MoveWindow(h, -7, 0, int(size.W), int(size.H), true)
-		// w32.SetWindowPos(h, 0, -7, 0, int(size.W), int(size.H), 0x400)
+		w32.MoveWindow(h, int(rect.Pos.X), int(rect.Pos.Y), int(rect.Size.W), int(rect.Size.H), true)
 		return nil
 	}
 	return zlog.Error(nil, "no window", title)

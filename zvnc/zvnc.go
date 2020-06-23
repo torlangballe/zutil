@@ -57,13 +57,51 @@ func Connect(address, password string, updateSecs float64, got func(i *zui.Image
 		ErrorCh: errorCh,
 		QuitCh:  quitCh,
 	}
+	var screenImage *vnc.VncCanvas
+	var cc *vnc.ClientConn
 
-	cc, err := vnc.Connect(context.Background(), nc, ccfg)
-	zlog.Info("Here", err)
+	go func() { // because vnc2video.Connect puts error on error channel during setup, we need to do for/select to pop it before calling:
+		for {
+			select {
+			case <-quitCh:
+				// zlog.Info("quit")
+				return
+			case err := <-errorCh:
+				// zlog.Info(err, "error received on channel")
+				if got != nil {
+					got(nil, err)
+				}
+				return
+			case msg := <-cchClient:
+				fmt.Printf("Received client message type:%v msg:%v\n", msg.Type(), msg)
+			case msg := <-cchServer:
+				// fmt.Println("MSG:", msg)
+				if msg.Type() == vnc.FramebufferUpdateMsgType {
+					// secsPassed := time.Now().Sub(timeStart).Seconds()
+					// frameBufferReq++
+					// reqPerSec := float64(frameBufferReq) / secsPassed
+					// fmt.Println("New screen!", screenImage.Bounds())
+					if got != nil {
+						image := zui.ImageFromNative(screenImage)
+						got(image, nil)
+					}
+					// zlog.Info("Start new vnc fetch", updateSecs)
+					ztimer.StartIn(updateSecs, func() {
+						reqMsg := vnc.FramebufferUpdateRequest{Inc: 1, X: 0, Y: 0, Width: cc.Width(), Height: cc.Height()}
+						//cc.ResetAllEncodings()
+						reqMsg.Write(cc)
+					})
+				}
+			}
+		}
+	}()
+
+	cc, err = vnc.Connect(context.Background(), nc, ccfg)
+	//	zlog.Info("Here:", err)
 	if err != nil {
 		return nil, zlog.Error(err, "connect")
 	}
-	screenImage := cc.Canvas
+	screenImage = cc.Canvas
 	for _, enc := range ccfg.Encodings {
 		myRenderer, ok := enc.(vnc.Renderer)
 
@@ -85,41 +123,6 @@ func Connect(address, password string, updateSecs float64, got func(i *zui.Image
 		//vnc.EncZlib,
 		//vnc.EncRRE,
 	})
-
-	go func() {
-		for {
-			select {
-			case <-quitCh:
-				return
-			case err := <-errorCh:
-				zlog.Info(err, "error")
-				if got != nil {
-					got(nil, err)
-				}
-				return
-			case msg := <-cchClient:
-				fmt.Printf("Received client message type:%v msg:%v\n", msg.Type(), msg)
-			case msg := <-cchServer:
-				// fmt.Println("MSG:", msg)
-				if msg.Type() == vnc.FramebufferUpdateMsgType {
-					// secsPassed := time.Now().Sub(timeStart).Seconds()
-					// frameBufferReq++
-					// reqPerSec := float64(frameBufferReq) / secsPassed
-					// fmt.Println("New screen!", screenImage.Bounds())
-					if got != nil {
-						image := zui.ImageFromNative(screenImage)
-						got(image, nil)
-					}
-					// zlog.Info("Start new vnc fetch", updateSecs)
-					ztimer.StartIn(updateSecs, true, func() {
-						reqMsg := vnc.FramebufferUpdateRequest{Inc: 1, X: 0, Y: 0, Width: cc.Width(), Height: cc.Height()}
-						//cc.ResetAllEncodings()
-						reqMsg.Write(cc)
-					})
-				}
-			}
-		}
-	}()
 	c := &Client{client: cc}
 	return c, err
 	//cc.Wait()

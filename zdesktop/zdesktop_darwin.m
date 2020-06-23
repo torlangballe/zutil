@@ -187,17 +187,22 @@ int CloseWindowForTitle(const char *title, long pid) {
     return 1;
 }
 
-int SetWindowSizeForTitle(const char *title, long pid, int w, int h) {
+int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h) {
     // NSLog(@"PlaceWindowForTitle %s %s\n", title, app);
-    AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, NO);
+    AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, YES);
     if (winRef == nil) {
         return 0;
     }
     NSSize winSize;
     winSize.width = w;
     winSize.height = h;
+    CGPoint winPos;
+    winPos.x = x;
+    winPos.y = y;
     CFTypeRef size = (CFTypeRef)(AXValueCreate(kAXValueCGSizeType, (const void *)&winSize));
+    CFTypeRef pos = (CFTypeRef)(AXValueCreate(kAXValueCGPointType, (const void *)&winPos));
     AXUIElementSetAttributeValue(winRef, (__bridge CFStringRef)NSAccessibilitySizeAttribute, (CFTypeRef *)size);
+    AXUIElementSetAttributeValue(winRef, (__bridge CFStringRef)NSAccessibilityPositionAttribute, (CFTypeRef *)pos);
     CFRelease(size);
 
     return 1;

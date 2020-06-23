@@ -29,24 +29,6 @@ const (
 	KindInterface          = "interface"
 )
 
-// GetTagAsFields returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
-func GetTagAsMap(stag string) map[string][]string {
-	if stag != "" {
-		m := map[string][]string{}
-		re, _ := regexp.Compile(`(\w+)\s*:"([^"]*)"\s*`) // http://regoio.herokuapp.com
-		matches := re.FindAllStringSubmatch(stag, -1)
-		if len(matches) > 0 {
-			for _, groups := range matches {
-				label := groups[1]
-				vars := strings.Split(groups[2], ",")
-				m[label] = vars
-			}
-			return m
-		}
-	}
-	return nil
-}
-
 type Item struct {
 	Kind            TypeKind
 	TypeName        string
@@ -108,6 +90,17 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 		item.Kind = KindSlice
 		item.Interface = val.Interface()
 		item.SimpleInterface = val.Interface()
+		if recursive {
+			for i := 0; i < val.Len(); i++ {
+				v := val.Index(i)
+				sliceItem, serr := itterate(level+1, "", t.Name(), "", isAnonymous, unnestAnonymous, true, v)
+				if serr != nil {
+					zlog.Error(serr, "slice item itterate")
+					continue
+				}
+				item.Children = append(item.Children, sliceItem)
+			}
+		}
 		return
 
 	case reflect.Array:
@@ -213,4 +206,22 @@ func ItterateStruct(istruct interface{}, unnestAnonymous, recursive bool) (item 
 	}
 	zlog.Assert(rval.Kind() == reflect.Ptr, "not pointer", rval.Kind(), rval)
 	return itterate(0, "", "", "", false, unnestAnonymous, recursive, rval.Elem())
+}
+
+// GetTagAsFields returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
+func GetTagAsMap(stag string) map[string][]string {
+	if stag != "" {
+		m := map[string][]string{}
+		re, _ := regexp.Compile(`(\w+)\s*:"([^"]*)"\s*`) // http://regoio.herokuapp.com
+		matches := re.FindAllStringSubmatch(stag, -1)
+		if len(matches) > 0 {
+			for _, groups := range matches {
+				label := groups[1]
+				vars := strings.Split(groups[2], ",")
+				m[label] = vars
+			}
+			return m
+		}
+	}
+	return nil
 }

@@ -51,10 +51,7 @@ func InitCache(workDir, urlPrefix, cacheName string) *Cache {
 		zlog.Log(err, zlog.FatalLevel, "zimages.Init mkdir failed")
 	}
 	http.Handle(c.getUrl, c)
-	// fs := http.FileServer(http.Dir(workDir))
-	// http.Handle(c.getUrl, fs)
-
-	zlog.Info("init image cache:", c.workDir+c.cacheName, c.getUrl)
+	// zlog.Info("init image cache:", c.workDir+c.cacheName, c.getUrl)
 	return c
 }
 
@@ -66,7 +63,7 @@ func (c *Cache) IsTokenValid(t string) bool {
 	return true
 }
 
-// CacheImageFromReader reads bytes from reader and stores with stype png og jpeg, returning name.png/jpeg
+// CacheImageFromReader reads bytes from reader with stype png or jpeg and caches is with CacheImageFromData
 // This name is used to get a path or a url for getting
 func (c *Cache) CacheImageFromReader(reader io.Reader, stype string) (string, error) {
 	data, err := ioutil.ReadAll(reader)
@@ -76,6 +73,8 @@ func (c *Cache) CacheImageFromReader(reader io.Reader, stype string) (string, er
 	return c.CacheImageFromData(data, stype)
 }
 
+// CacheImageFromData reads a stype png or jpeg image in data saving with name png/jpeg
+// This name is a hash of data, used to get a path or a url for getting
 func (c *Cache) CacheImageFromData(data []byte, stype string) (string, error) {
 	var err error
 	h := fnv.New64a()

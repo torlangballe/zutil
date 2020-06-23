@@ -11,7 +11,7 @@ package zdesktop
 // WinIDInfo WindowGetIDAndScaleForTitle(const char *title, long pid);
 // int TerminateAppForPID(long *pid);
 // int CloseWindowForTitle(const char *title, long pid);
-// int SetWindowSizeForTitle(const char *title, long pid, int w, int h);
+// int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h);
 import "C"
 
 import (
@@ -89,6 +89,7 @@ func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err e
 	for _, pid := range GetPIDsForAppName(app) {
 		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
 		w := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
+		// fmt.Println("GetIDAndScaleForWindowTitle2 go:", w)
 		serr := C.GoString(w.err)
 		if serr != "" {
 			err = errors.New(serr)
@@ -115,7 +116,7 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, err
 	}
 	_, err = zcommand.RunCommand("screencapture", 0, "-o", "-x", "-l", winID, filepath) // -o is no shadow, -x is no sound, -l is window id
 	if err != nil {
-		return nil, zlog.Error(err, "call screen capture", winID)
+		return nil, zlog.Error(err, "call screen capture. id:", winID)
 	}
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -150,11 +151,12 @@ func getTitleWithApp(title, app string) string {
 	return title
 }
 
-func SetWindowSizeForTitle(title, app string, size zgeo.Size) error {
+func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 	title = getTitleWithApp(title, app)
 	pids := GetPIDsForAppName(app)
 	for _, pid := range pids {
-		r := C.SetWindowSizeForTitle(C.CString(title), C.long(pid), C.int(size.W), C.int(size.H))
+		zlog.Info("SetWindowRectForTitle:", title, app, pid)
+		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
 		if r != 0 {
 			return nil
 		}

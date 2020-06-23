@@ -209,7 +209,7 @@ func getHexAsValue(str string, len int) float32 {
 		zlog.Error(err, "parse")
 		return -1
 	}
-	if len == 2 {
+	if len == 1 {
 		n *= 16
 	}
 	return float32(n) / 255
@@ -220,6 +220,7 @@ func (c Color) GetHex() string {
 }
 
 func ColorFromString(str string) Color {
+	// zlog.Info("ColorFromString:", str)
 	switch str {
 	case "red":
 		return ColorRed
@@ -281,8 +282,8 @@ func ColorFromString(str string) Color {
 				return Color{}
 			}
 			cols[i] = float32(f) / 255
-			return ColorFromSlice(cols)
 		}
+		return ColorFromSlice(cols)
 	} else if zstr.HasPrefix(str, "#", &str) {
 		slen := len(str)
 		switch slen {

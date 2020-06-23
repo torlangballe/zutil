@@ -22,6 +22,7 @@ require (
 	github.com/gobuffalo/envy v1.7.1
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
+	github.com/gorilla/websocket v1.4.2
 	github.com/graphql-go/graphql v0.7.8
 	github.com/hnakamur/w32syscall v0.0.0-20150329104255-b8b99ed86a56
 	github.com/kaneshin/pigeon v1.0.0

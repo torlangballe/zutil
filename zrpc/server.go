@@ -37,6 +37,7 @@ func InitServer(router *mux.Router, port int) error {
 	registeredOwners = map[string]bool{}
 	updatedResourcesSentToClient = map[string]map[string]bool{}
 	go http.ListenAndServe(fmt.Sprintf(":%d", ServerPort), router)
+	zlog.Info("Serve RPC On:", ServerPort)
 	server.RegisterCodec(rpcjson.NewCodec(), "application/json")
 	zrest.AddHandler(router, "/rpc", doServeHTTP).Methods("POST", "OPTIONS")
 	return nil

@@ -43,7 +43,7 @@ func CreateTempFilePath(name string) string {
 	sfold := filepath.Join(os.TempDir(), stime)
 	err := os.MkdirAll(sfold, 0775|os.ModeDir)
 	if err != nil {
-		zlog.Info("ufile.CreateTempFilePath:", err)
+		zlog.Info("zfile.CreateTempFilePath:", err)
 		return ""
 	}
 	stemp := filepath.Join(sfold, SanitizeStringForFilePath(name))

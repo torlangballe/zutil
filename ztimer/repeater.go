@@ -16,13 +16,19 @@ func RepeaterNew() *Repeater {
 	return &Repeater{}
 }
 
-func Repeat(secs float64, now, onMainThread bool, perform func() bool) *Repeater {
+func RepeatIn(secs float64, perform func() bool) *Repeater {
 	r := RepeaterNew()
-	r.Set(secs, now, onMainThread, perform)
+	r.Set(secs, false, perform)
 	return r
 }
 
-func (r *Repeater) Set(secs float64, now, onMainThread bool, perform func() bool) {
+func RepeatNow(secs float64, perform func() bool) *Repeater {
+	r := RepeaterNew()
+	r.Set(secs, true, perform)
+	return r
+}
+
+func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	r.Stop()
 	if now {
 		if !perform() {
