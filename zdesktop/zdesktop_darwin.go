@@ -107,17 +107,23 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, err
 	_, filepath, err := zfile.CreateTempFile("win.png")
 	zlog.Assert(err == nil)
 
+	// start := time.Now()
+	// zlog.Info("GetImageForWindowTitle Since1:", time.Since(start))
+
 	screenLock.Lock()
 	defer screenLock.Unlock()
 
+	// zlog.Info("GetImageForWindowTitle Since2:", time.Since(start))
 	winID, scale, err := GetIDAndScaleForWindowTitle(title, app)
 	if err != nil {
 		return nil, zlog.Error(err, "get id scale")
 	}
+	// zlog.Info("GetImageForWindowTitle Since3:", time.Since(start))
 	_, err = zcommand.RunCommand("screencapture", 0, "-o", "-x", "-l", winID, filepath) // -o is no shadow, -x is no sound, -l is window id
 	if err != nil {
 		return nil, zlog.Error(err, "call screen capture. id:", winID)
 	}
+	// zlog.Info("GetImageForWindowTitle Since4:", time.Since(start))
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, zlog.Error(err, "open", filepath)
@@ -126,9 +132,11 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, err
 	if err != nil {
 		return nil, zlog.Error(err, "decode", filepath)
 	}
+	// zlog.Info("GetImageForWindowTitle Since5:", time.Since(start))
 	rect := crop.TimesD(float64(scale))
 	r := image.Rect(int(rect.Min().X), int(rect.Min().Y), int(rect.Max().X), int(rect.Max().Y))
 	newImage := imaging.Crop(goimage, r)
+	// zlog.Info("GetImageForWindowTitle Since6:", time.Since(start))
 	// TODO: set image scale
 	return newImage, nil
 }
@@ -155,7 +163,7 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 	title = getTitleWithApp(title, app)
 	pids := GetPIDsForAppName(app)
 	for _, pid := range pids {
-		zlog.Info("SetWindowRectForTitle:", title, app, pid)
+		// zlog.Info("SetWindowRectForTitle:", title, app, pid)
 		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
 		if r != 0 {
 			return nil

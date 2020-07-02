@@ -115,6 +115,7 @@ func Post(surl string, params Parameters, send, receive interface{}) (headers ht
 			bout, err = json.Marshal(send)
 			// zlog.Info("POST:", err, string(bout))
 			if err != nil {
+				err = zlog.Error(err, "marshal")
 				return
 			}
 			if params.ContentType == "" {
@@ -128,7 +129,7 @@ func Post(surl string, params Parameters, send, receive interface{}) (headers ht
 		if response != nil {
 			response.Body.Close()
 		}
-		zlog.Info("Post err bout:\n", string(bout), err)
+		err = zlog.Error(err, "post bytes")
 		err = MakeHTTPError(err, code, "post")
 		return
 	}
@@ -183,7 +184,7 @@ func GetResponseFromReqClient(request *http.Request, client *http.Client) (respo
 		return
 	}
 	if err == nil && response != nil && response.StatusCode >= 300 {
-		zlog.Info("GetResponseFromReqClient make error:")
+		// zlog.Info("GetResponseFromReqClient make error:")
 		err = MakeHTTPError(err, response.StatusCode, "")
 		return
 	}
@@ -222,6 +223,7 @@ func processResponse(surl string, response *http.Response, printBody bool, recei
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
+		err = zlog.Error(err, "readall")
 		return
 	}
 	if receive != nil {
@@ -235,6 +237,7 @@ func processResponse(surl string, response *http.Response, printBody bool, recei
 		}
 		err = json.Unmarshal(body, receive)
 		if err != nil {
+			err = zlog.Error(err, "unmarshal")
 			return
 		}
 	}

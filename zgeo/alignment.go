@@ -37,6 +37,11 @@ const (
 	HorPos     = Left | HorCenter | Right
 	Vertical   = VertPos | VertScale | VertOut
 	Horizontal = HorPos | HorScale | HorOut
+
+	BottomLeft  = Bottom | Left
+	BottomRight = Bottom | Right
+	TopLeft     = Top | Left
+	TopRight    = Top | Right
 )
 
 var alignmentNames = map[string]Alignment{

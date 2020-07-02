@@ -35,7 +35,6 @@ func InitServer(router *mux.Router, port int) error {
 	ServerPort = port
 	server = rpc.NewServer()
 	registeredOwners = map[string]bool{}
-	updatedResourcesSentToClient = map[string]map[string]bool{}
 	go http.ListenAndServe(fmt.Sprintf(":%d", ServerPort), router)
 	zlog.Info("Serve RPC On:", ServerPort)
 	server.RegisterCodec(rpcjson.NewCodec(), "application/json")
@@ -85,7 +84,7 @@ func AuthenticateRequest(req *http.Request) (client string, err error) {
 }
 
 func SetResourceUpdated(resID, byClientID string) {
-	// zlog.Info("SetResourceUpdated:", resID, "\n", zlog.GetCallingStackString())
+	// zlog.Info("SetResourceUpdated:", resID) //, "\n", zlog.GetCallingStackString())
 	m := map[string]bool{}
 	if byClientID != "" {
 		m[byClientID] = true
@@ -109,7 +108,6 @@ func (c *RPCCalls) GetUpdatedResources(req *http.Request, args *Any, reply *[]st
 	if err != nil {
 		return err
 	}
-	// zlog.Info("GetUpdatedResources", clientID)
 	*reply = []string{}
 	updatedResourcesMutex.Lock()
 	for res, m := range updatedResourcesSentToClient {
@@ -119,6 +117,7 @@ func (c *RPCCalls) GetUpdatedResources(req *http.Request, args *Any, reply *[]st
 		}
 	}
 	updatedResourcesMutex.Unlock()
+	// zlog.Info("GetUpdatedResources", *reply)
 	return nil
 }
 

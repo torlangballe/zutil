@@ -46,7 +46,7 @@ type Item struct {
 }
 
 func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnestAnonymous, recursive bool, val reflect.Value) (item Item, err error) {
-	//    zlog.Info("itterate:", level, fieldName, typeName, tagName)
+	// zlog.Info("itterate:", level, fieldName, typeName, tagName)
 	item.FieldName = fieldName
 	vtype := val.Type()
 	if typeName == "" {
@@ -58,6 +58,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 		err = errors.Errorf("marshalValue: val.IsValid() failed")
 		return
 	}
+	// zlog.Info("zref.Itterate:", fieldName, val.Kind())
 	switch val.Kind() {
 	case reflect.Interface:
 		item.Interface = val.Interface()
@@ -65,17 +66,21 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 
 	case reflect.Ptr:
 		t := vtype
+		var v reflect.Value
 		if val.IsNil() {
 			t = vtype.Elem()
-			val = reflect.Zero(t)
+			v = reflect.Zero(t)
 		} else {
-			val = reflect.Indirect(val)
+			v = reflect.Indirect(val)
 		}
-		//		zlog.Info("ptr:", t.Name(), fieldName, t.PkgPath())
-		item, err = itterate(level, fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, val)
+		pItem, perr := itterate(level, fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, v)
+		err = perr
+		item.Interface = val.Interface()
 		item.IsPointer = true
+		item.Kind = pItem.Kind
+		item.Children = pItem.Children
+		// zlog.Info("ptr:", t.Name(), fieldName, t.PkgPath(), item.IsPointer)
 		//		item.Address = val.Addr().Interface()
-		return
 
 	case reflect.Slice:
 		t := reflect.TypeOf(val.Interface()).Elem()
@@ -136,7 +141,9 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 					l++
 				}
 				c, e := itterate(l, fname, tname, tag, f.Anonymous, unnestAnonymous, recursive, fval)
-				c.Address = fval.Addr().Interface()
+				if fval.CanAddr() {
+					c.Address = fval.Addr().Interface()
+				}
 				if e != nil {
 					err = e
 				} else {
@@ -202,6 +209,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 func ItterateStruct(istruct interface{}, unnestAnonymous, recursive bool) (item Item, err error) {
 	rval := reflect.ValueOf(istruct)
 	if !rval.IsValid() || rval.IsZero() {
+		zlog.Info("ItterateStruct1")
 		return
 	}
 	zlog.Assert(rval.Kind() == reflect.Ptr, "not pointer", rval.Kind(), rval)
