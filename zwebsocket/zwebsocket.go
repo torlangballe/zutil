@@ -57,8 +57,8 @@ func Init(prefix string, port int, got func(c *Client, id string, data []byte, c
 					fmt.Println("ws.ping failed, closing:", str)
 					client.mutex.Lock()
 					// let's see if it keeps happening...
-					// conn.Close()
-					// delete(client.connections, str)
+					conn.Close()
+					delete(client.connections, str)
 					client.mutex.Unlock()
 					//					got(client, str, nil, true, nil)
 					return false

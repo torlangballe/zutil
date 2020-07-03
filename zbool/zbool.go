@@ -1,5 +1,9 @@
 package zbool
 
+import (
+	"strings"
+)
+
 // BoolInd is a bool which also has an indeterminate, or unknown  state
 type BoolInd int
 
@@ -39,4 +43,44 @@ func ToString(b bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+type BitSetStringer interface {
+	FromStringToBits(str string)
+	String() string
+}
+
+type BitsetItem struct {
+	Name string
+	Mask int64
+}
+
+func StrToInt64FromList(str string, list []BitsetItem) (n int64) {
+	// zlog.Info("checkxxx:", list)
+	for _, p := range strings.Split(str, "|") {
+		for _, b := range list {
+			if b.Name == p {
+				n |= b.Mask
+				break
+			}
+		}
+	}
+	return
+}
+
+func Int64ToStringFromList(n int64, list []BitsetItem) string {
+	var str string
+	for i := len(list) - 1; i >= 0; i-- {
+		m := list[i].Mask
+		// zlog.Info("check:", i, n, m, list[i].Name)
+		if n&m == m {
+			if str != "" {
+				str += "|"
+			}
+			str += list[i].Name
+			// zlog.Info("parts:", list[i].Name, n, m)
+			n &= ^m
+		}
+	}
+	return str
 }
