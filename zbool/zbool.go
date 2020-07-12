@@ -8,16 +8,16 @@ import (
 type BoolInd int
 
 const (
-	BoolTrue    BoolInd = 1
-	BoolFalse           = 0
-	BoolUnknown         = -1
+	True    BoolInd = 1
+	False           = 0
+	Unknown         = -1
 )
 
 func ToBoolInd(b bool) BoolInd {
 	if b {
-		return BoolTrue
+		return True
 	}
-	return BoolFalse
+	return False
 }
 
 func (b BoolInd) Value() bool {
