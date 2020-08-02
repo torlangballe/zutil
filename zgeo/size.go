@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -201,13 +202,11 @@ func (s *Size) MarshalJSON() ([]byte, error) {
 }
 */
 
-func (s Sizes) GetItem(i int) (id, name string, value interface{}) {
-	str := s[i].String()
-	return str, str, s[i]
-}
-
-func (s Sizes) Count() int {
-	return len(s)
+func (s Sizes) GetItems() (items zdict.Items) {
+	for _, size := range s {
+		items = append(items, zdict.Item{size.String(), size})
+	}
+	return
 }
 
 func (s *Sizes) IndexOf(size Size) int {

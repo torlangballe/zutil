@@ -75,6 +75,9 @@ func Int64ToStringFromList(n int64, list []BitsetItem) string {
 		// zlog.Info("check:", i, n, m, list[i].Name)
 		if n&m == m {
 			if str != "" {
+				if m == 0 { // don't add 0-mask name if others
+					continue
+				}
 				str += "|"
 			}
 			str += list[i].Name

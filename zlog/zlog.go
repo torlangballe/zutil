@@ -148,25 +148,14 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	}
 	p := strings.TrimSpace(fmt.Sprintln(parts...))
 	if err != nil {
-	err = errors.Wrap(err, p)
+		err = errors.Wrap(err, p)
 	} else {
 		err = errors.New(p)
 	}
 	fmt.Println(finfo + col + err.Error() + endCol)
-
-	if OutputFilePath != "" && outFile == nil {
-		var ferr error
-		fp := expandTildeInFilepath(OutputFilePath)
-		outFile, ferr = os.Create(fp)
-		if ferr != nil {
-			fmt.Println("Error creating output file for zlog:", ferr)
-			OutputFilePath = ""
-		}
-	}
 	str := finfo + err.Error() + "\n"
-	if outFile != nil {
-		outFile.WriteString(str)
-	}
+	WriteToTheLogFile(str)
+
 	if !hooking {
 		hooking = true
 		for _, f := range outputHooks {
@@ -179,6 +168,21 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		panic("zlog.Fatal")
 	}
 	return err
+}
+
+func WriteToTheLogFile(str string) {
+	if OutputFilePath != "" && outFile == nil {
+		var ferr error
+		fp := expandTildeInFilepath(OutputFilePath)
+		outFile, ferr = os.Create(fp)
+		if ferr != nil {
+			fmt.Println("Error creating output file for zlog:", ferr)
+			OutputFilePath = ""
+		}
+	}
+	if outFile != nil {
+		outFile.WriteString(str)
+	}
 }
 
 func GetCallingFunctionInfo(pos int) (function, file string, line int) {
@@ -268,3 +272,24 @@ func Wrap(err error, parts ...interface{}) error {
 	return errors.Wrap(err, p)
 
 }
+
+// func logOnRecover() {
+// 	str := string(debug.Stack())
+// 	fmt.Println("panic:\n", str)
+// 	WriteToTheLogFile(str)
+// }
+
+// func LogRecover() {
+// 	r := recover()
+// 	if r != nil {
+// 		logOnRecover()
+// 	}
+// }
+
+// func LogRecoverAndExit() {
+// 	r := recover()
+// 	if r != nil {
+// 		logOnRecover()
+// 		os.Exit(-1)
+// 	}
+// }

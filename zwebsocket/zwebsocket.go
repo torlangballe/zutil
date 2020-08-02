@@ -14,7 +14,7 @@ import (
 
 type connection struct {
 	Connection *websocket.Conn
-	Ponger     *ztimer.Repeater
+	Pinger     *ztimer.Repeater
 }
 
 type Client struct {
@@ -30,7 +30,7 @@ var upgrader = websocket.Upgrader{} // use default options
 // close: true if connection just closed.
 // data: typically json data. nil if this is initial opening call or close.
 
-func Init(prefix string, port int, got func(c *Client, id string, data []byte, close bool, err error)) *Client { // "/ws"
+func Init(prefix string, port int, ping bool, got func(c *Client, id string, data []byte, close bool, err error)) *Client { // "/ws"
 	client := &Client{}
 	client.connections = map[string]*connection{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
@@ -40,6 +40,11 @@ func Init(prefix string, port int, got func(c *Client, id string, data []byte, c
 			got(client, "", nil, false, zlog.Error(err, "upgrade"))
 			return
 		}
+		conn.SetPongHandler(func(string) error {
+			zlog.Info("ws.Pong!")
+			conn.SetReadDeadline(time.Now().Add(15))
+			return nil
+		})
 		mt, message, err := conn.ReadMessage()
 		if err != nil {
 			got(client, "", nil, false, zlog.Error(err, "read message"))
@@ -50,32 +55,34 @@ func Init(prefix string, port int, got func(c *Client, id string, data []byte, c
 			str := string(message)
 			c := &connection{}
 			c.Connection = conn
-			c.Ponger = ztimer.RepeatIn(20, func() bool {
-				// fmt.Println("ws.ping:", str)
-				werr := conn.WriteControl(websocket.PongMessage, nil, time.Now().Add(time.Second*15))
-				if werr != nil {
-					fmt.Println("ws.ping failed, closing:", str)
-					client.mutex.Lock()
-					// let's see if it keeps happening...
-					conn.Close()
-					delete(client.connections, str)
-					client.mutex.Unlock()
-					//					got(client, str, nil, true, nil)
-					return false
-				}
-				return true
-			})
+			if ping {
+				c.Pinger = ztimer.RepeatIn(20, func() bool {
+					werr := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(time.Second*15))
+					if werr != nil {
+						client.mutex.Lock()
+						// let's see if it keeps happening...
+						conn.Close()
+						delete(client.connections, str)
+						client.mutex.Unlock()
+						//					got(client, str, nil, true, nil)
+						return false
+					}
+					return true
+				})
+			}
 			client.mutex.Lock()
 			client.connections[str] = c
 			client.mutex.Unlock()
 			got(client, str, nil, false, nil)
-			// fmt.Println("ws.connect:", mt, str)
+			fmt.Println("ws.connect:", mt, str)
 		case websocket.CloseMessage:
-			// fmt.Println("ws.disconnect:", conn)
+			fmt.Println("ws.disconnect:", conn)
 			str, c1 := client.findConnection(conn)
 			if c1 != nil {
 				client.mutex.Lock()
-				c1.Ponger.Stop()
+				if c1.Pinger != nil {
+					c1.Pinger.Stop()
+				}
 				delete(client.connections, str)
 				client.mutex.Unlock()
 				got(client, str, nil, true, nil)

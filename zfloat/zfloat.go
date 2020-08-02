@@ -92,7 +92,7 @@ func IsInSlice(n float64, slice []float64) bool {
 	return false
 }
 
-func AddToSet(n float64, slice *[]float64) bool {
+func AddToSet(slice *[]float64, n float64) bool {
 	if !IsInSlice(n, *slice) {
 		*slice = append(*slice, n)
 		return true
@@ -182,4 +182,24 @@ func (s Slice) Minimum() float64 {
 		}
 	}
 	return min
+}
+
+func Clamped(v, min, max float64) float64 {
+	if v < min {
+		v = min
+	}
+	if v > max {
+		v = max
+	}
+	return v
+}
+
+func Clamped32(v, min, max float32) float32 {
+	if v < min {
+		v = min
+	}
+	if v > max {
+		v = max
+	}
+	return v
 }

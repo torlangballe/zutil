@@ -61,6 +61,7 @@ func Connect(address, password string, updateSecs float64, got func(i *zui.Image
 	var cc *vnc.ClientConn
 
 	go func() { // because vnc2video.Connect puts error on error channel during setup, we need to do for/select to pop it before calling:
+		// defer zlog.LogRecover()
 		for {
 			select {
 			case <-quitCh:

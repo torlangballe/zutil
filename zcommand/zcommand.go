@@ -3,10 +3,12 @@ package zcommand
 import (
 	"context"
 	"io"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 
+	"github.com/torlangballe/zutil/zjson"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -45,7 +47,13 @@ func RunCommand(command string, timeoutSecs float64, args ...string) (string, er
 func getAppProgramPath(appName string) string {
 	return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
 }
+
 func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
+	path := getAppProgramPath(appName)
+	return RunCommandContinuous(path, args...)
+}
+
+func RunCommandContinuous(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
 	path := getAppProgramPath(appName)
 	cmd = exec.Command(path, args...)
 	outPipe, err = cmd.StdoutPipe()
@@ -69,4 +77,29 @@ func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.
 
 func RunAppleScript(command string, timeoutSecs float64) (string, error) {
 	return RunCommand("osascript", timeoutSecs, "-s", "o", "-e", command)
+}
+
+type SpawnerConfig struct {
+	BinaryPath          string
+	Arguments           []string
+	LogPath             string
+	Print               string // Print out/err to stdout as well. Only really makes sense if running one app only
+	CrashEmailAddresses []string
+}
+
+func SpawnSelf() error {
+	path := os.Args[0] + "-spawn.json"
+	var config SpawnerConfig
+	err := zjson.UnmarshalFromFile(&config, path)
+	if err != nil {
+		return zlog.Error(err, "unmarshal configs")
+	}
+	config.BinaryPath = os.Args[0]
+	go config.spawnProcess()
+	return nil
+}
+
+func (c SpawnerConfig) spawnProcess() error {
+	// cmd, outPipe, errPipe, err := RunCommandContinuous(c.BinaryPath, c.Arguments...)
+	return nil
 }

@@ -78,8 +78,8 @@ func (a *Alignment) FromStringToBits(str string) {
 	*a = AlignmentFromString(str)
 }
 
-func (a *Alignment) String() string {
-	return zbool.Int64ToStringFromList(int64(*a), alignmentList)
+func (a Alignment) String() string {
+	return zbool.Int64ToStringFromList(int64(a), alignmentList)
 }
 
 func (a *Alignment) UnmarshalJSON(b []byte) error {

@@ -47,7 +47,10 @@ func (t *Timer) StartIn(secs float64, perform func()) *Timer {
 	// zlog.Info("timer start1:")
 	t.Stop()
 	t.timer = time.NewTimer(ztime.SecondsDur(secs))
-	go t.check(perform)
+	go func() {
+		// defer zlog.LogRecoverAndExit()
+		t.check(perform)
+	}()
 	return t
 }
 

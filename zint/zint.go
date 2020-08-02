@@ -222,7 +222,7 @@ func SetAny(any interface{}, i int64) error {
 	case *uint64:
 		*any.(*uint64) = uint64(i)
 	default:
-		err := errors.New(fmt.Sprint("bad type:", reflect.TypeOf(any)))
+		err := errors.New(fmt.Sprint("bad type:", reflect.TypeOf(any))) // don't use zlog, will be import cycle
 		fmt.Println("zint.SetAny err:", err)
 		return err
 	}

@@ -35,7 +35,7 @@ type Item struct {
 	FieldName       string
 	Tag             string
 	IsAnonymous     bool
-	IsArray         bool
+	IsSlice         bool
 	IsPointer       bool
 	Address         interface{}
 	Package         string
@@ -45,7 +45,13 @@ type Item struct {
 	Children        []Item
 }
 
-func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnestAnonymous, recursive bool, val reflect.Value) (item Item, err error) {
+type Options struct {
+	UnnestAnonymous        bool
+	Recursive              bool
+	MakeSliceElementIfNone bool
+}
+
+func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, val reflect.Value, options Options) (item Item, err error) {
 	// zlog.Info("itterate:", level, fieldName, typeName, tagName)
 	item.FieldName = fieldName
 	vtype := val.Type()
@@ -73,7 +79,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 		} else {
 			v = reflect.Indirect(val)
 		}
-		pItem, perr := itterate(level, fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, v)
+		pItem, perr := itterate(level, fieldName, t.Name(), tagName, isAnonymous, v, options)
 		err = perr
 		item.Interface = val.Interface()
 		item.IsPointer = true
@@ -83,22 +89,27 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 		//		item.Address = val.Addr().Interface()
 
 	case reflect.Slice:
+		// zlog.Info("slice1:", val.Len(), fieldName)
 		t := reflect.TypeOf(val.Interface()).Elem()
 		v := reflect.Zero(t)
+		length := val.Len()
 		if !v.CanAddr() {
 			v = reflect.New(t)
 		}
-		// zlog.Info("slice:", val.Len(), t.Name(), fieldName, t.PkgPath(), v.Kind())
-		item, err = itterate(level, fieldName, t.Name(), tagName, isAnonymous, unnestAnonymous, recursive, v)
+		item, err = itterate(level, fieldName, t.Name(), tagName, isAnonymous, v, options)
+		if length == 0 && !options.MakeSliceElementIfNone {
+			item.Children = item.Children[:0]
+		}
 		item.Value = val
-		item.IsArray = true
+		// zlog.Info("slice:", item.Value.Len(), t.Name(), fieldName, t.PkgPath(), v.Kind())
+		item.IsSlice = true
 		item.Kind = KindSlice
 		item.Interface = val.Interface()
 		item.SimpleInterface = val.Interface()
-		if recursive {
-			for i := 0; i < val.Len(); i++ {
+		if options.Recursive { // !MakeSliceElementIfNone, wont happen if length is 0 anyway
+			for i := 0; i < length; i++ {
 				v := val.Index(i)
-				sliceItem, serr := itterate(level+1, "", t.Name(), "", isAnonymous, unnestAnonymous, true, v)
+				sliceItem, serr := itterate(level+1, "", t.Name(), "", isAnonymous, v, options)
 				if serr != nil {
 					zlog.Error(serr, "slice item itterate")
 					continue
@@ -122,8 +133,8 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 			item.SimpleInterface = val.Interface()
 			item.Kind = KindStruct
 			n := vtype.NumField()
-			// zlog.Info("struct:", fieldName, n, recursive, unnestAnonymous , isAnonymous)
-			if level > 0 && !recursive && (!unnestAnonymous || !isAnonymous) { // always go into first level
+			// fmt.Printf("struct: %s %+v\n", fieldName, val.Interface())
+			if level > 0 && !options.Recursive && (!options.UnnestAnonymous || !isAnonymous) { // always go into first level
 				break
 			}
 			for i := 0; i < n; i++ {
@@ -140,7 +151,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 				if !f.Anonymous {
 					l++
 				}
-				c, e := itterate(l, fname, tname, tag, f.Anonymous, unnestAnonymous, recursive, fval)
+				c, e := itterate(l, fname, tname, tag, f.Anonymous, fval, options)
 				if fval.CanAddr() {
 					c.Address = fval.Addr().Interface()
 				}
@@ -151,10 +162,13 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 						c.Address = c.Value.Addr().Interface()
 						//							zlog.Info("Addr:", c.Value, c.Address)
 					}
-					if unnestAnonymous && f.Anonymous {
+					if options.UnnestAnonymous && f.Anonymous {
 						// zlog.Info("add anon", i, len(item.Children), len(c.Children))
 						item.Children = append(item.Children, c.Children...)
 					} else {
+						// if c.Kind == KindSlice {
+						// 	zlog.Info("zreflect add slice child", i, c.FieldName, c.Interface, c.Value.Len, fval.Len())
+						// }
 						item.Children = append(item.Children, c)
 					}
 				}
@@ -206,14 +220,14 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous, unnes
 	return
 }
 
-func ItterateStruct(istruct interface{}, unnestAnonymous, recursive bool) (item Item, err error) {
+func ItterateStruct(istruct interface{}, options Options) (item Item, err error) {
 	rval := reflect.ValueOf(istruct)
 	if !rval.IsValid() || rval.IsZero() {
 		zlog.Info("ItterateStruct1")
 		return
 	}
 	zlog.Assert(rval.Kind() == reflect.Ptr, "not pointer", rval.Kind(), rval)
-	return itterate(0, "", "", "", false, unnestAnonymous, recursive, rval.Elem())
+	return itterate(0, "", "", "", false, rval.Elem(), options)
 }
 
 // GetTagAsFields returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
@@ -232,4 +246,28 @@ func GetTagAsMap(stag string) map[string][]string {
 		}
 	}
 	return nil
+}
+
+func FindFieldWithNameInStruct(name string, structure interface{}, anonymous bool) (reflect.Value, bool) {
+	val := reflect.ValueOf(structure)
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+	vtype := val.Type()
+	n := vtype.NumField()
+	for i := 0; i < n; i++ {
+		f := vtype.Field(i)
+		fval := val.Field(i)
+		// zlog.Info("FindFieldWithNameInStruct:", name, f.Name)
+		if f.Name == name {
+			return fval, true
+		}
+		if anonymous && fval.Kind() == reflect.Struct && f.Anonymous {
+			v, found := FindFieldWithNameInStruct(name, val.Field(i).Interface(), anonymous)
+			if found {
+				return v, true
+			}
+		}
+	}
+	return reflect.Value{}, false
 }

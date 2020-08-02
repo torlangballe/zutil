@@ -95,6 +95,7 @@ func SetResourceUpdated(resID, byClientID string) {
 }
 
 func ClearResourceUpdated(resID, clientID string) {
+	// zlog.Info("ClearResourceUpdated:", resID, clientID) //, "\n", zlog.GetCallingStackString())
 	updatedResourcesMutex.Lock()
 	if updatedResourcesSentToClient[resID] == nil {
 		updatedResourcesSentToClient[resID] = map[string]bool{}
@@ -108,6 +109,7 @@ func (c *RPCCalls) GetUpdatedResources(req *http.Request, args *Any, reply *[]st
 	if err != nil {
 		return err
 	}
+	// zlog.Info("GetUpdatedResources", clientID, updatedResourcesSentToClient)
 	*reply = []string{}
 	updatedResourcesMutex.Lock()
 	for res, m := range updatedResourcesSentToClient {
@@ -117,7 +119,7 @@ func (c *RPCCalls) GetUpdatedResources(req *http.Request, args *Any, reply *[]st
 		}
 	}
 	updatedResourcesMutex.Unlock()
-	// zlog.Info("GetUpdatedResources", *reply)
+	// zlog.Info("GetUpdatedResources Got", *reply)
 	return nil
 }
 

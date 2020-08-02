@@ -23,7 +23,24 @@ type Item struct {
 	Name  string
 	Value interface{}
 }
+
 type Items []Item
+
+type ItemsGetter interface {
+	GetItems() Items
+}
+
+func (items Items) Equal(to Items) bool {
+	if len(items) != len(to) {
+		return false
+	}
+	for i := range items {
+		if items[i] != to[i] {
+			return false
+		}
+	}
+	return true
+}
 
 func (d Dict) Join(equal, sep string) string {
 	str := ""
@@ -85,9 +102,8 @@ func (d Dict) AsURLParameters() string {
 
 func FromStruct(structure interface{}, lowerFirst bool) Dict {
 	d := Dict{}
-	unnestAnon := true
-	recursive := false
-	rootItems, err := zreflect.ItterateStruct(structure, unnestAnon, recursive)
+	options := zreflect.Options{UnnestAnonymous: true, Recursive: true}
+	rootItems, err := zreflect.ItterateStruct(structure, options)
 	if err != nil {
 		panic(err)
 	}
@@ -102,9 +118,8 @@ func FromStruct(structure interface{}, lowerFirst bool) Dict {
 }
 
 func (d Dict) ToStruct(structPtr interface{}) {
-	unnestAnon := true
-	recursive := false
-	rootItems, err := zreflect.ItterateStruct(structPtr, unnestAnon, recursive)
+	options := zreflect.Options{UnnestAnonymous: true, Recursive: true}
+	rootItems, err := zreflect.ItterateStruct(structPtr, options)
 	if err != nil {
 		panic(err)
 	}
@@ -197,7 +212,7 @@ func (d *Items) AddAtStart(name string, value interface{}) {
 	*d = append([]Item{Item{name, value}}, (*d)...)
 }
 
-// GetItem get's an item at index i. Used to be compliant with MenuItem interface
+// GetItem get's an item at index i. Used to be compliant with NamedValues interface
 func (d Items) GetItem(i int) (id, name string, value interface{}) {
 	if i >= len(d) {
 		return "", "", nil

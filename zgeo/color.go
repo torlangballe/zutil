@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -49,19 +50,20 @@ func (c Color) RGBA() (r, g, b, a uint32) {
 
 func ColorNewGray(white, a float32) (c Color) {
 	c.Valid = true
-	c.Colors.R = white
-	c.Colors.G = white
-	c.Colors.B = white
-	c.Colors.A = a
+	w := zfloat.Clamped32(white, 0, 1)
+	c.Colors.R = w
+	c.Colors.G = w
+	c.Colors.B = w
+	c.Colors.A = zfloat.Clamped32(a, 0, 1)
 	return
 }
 
 func ColorNew(r, g, b, a float32) (c Color) {
 	c.Valid = true
-	c.Colors.R = r
-	c.Colors.G = g
-	c.Colors.B = b
-	c.Colors.A = a
+	c.Colors.R = zfloat.Clamped32(r, 0, 1)
+	c.Colors.G = zfloat.Clamped32(g, 0, 1)
+	c.Colors.B = zfloat.Clamped32(b, 0, 1)
+	c.Colors.A = zfloat.Clamped32(a, 0, 1)
 	return
 }
 

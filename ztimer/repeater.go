@@ -37,6 +37,7 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	}
 	r.ticker = time.NewTicker(ztime.SecondsDur(secs))
 	go func() {
+		// defer zlog.LogRecoverAndExit()
 		for range r.ticker.C {
 			if !perform() {
 				r.ticker.Stop()

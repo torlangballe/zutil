@@ -632,6 +632,28 @@ func SplitN(str, sep string, parts ...*string) bool {
 	return false
 }
 
+func SplitByAnyOf(str string, seps []string, skipEmpty bool) []string {
+	parts := []string{str}
+	for _, sep := range seps {
+		var splits []string
+		for _, p := range parts {
+			split := strings.Split(p, sep)
+			splits = append(splits, split...)
+		}
+		parts = splits
+	}
+	if skipEmpty {
+		for i := 0; i < len(parts); {
+			if parts[i] == "" {
+				parts = append(parts[:i], parts[i+1:]...)
+			} else {
+				i++
+			}
+		}
+	}
+	return parts
+}
+
 func AddMapToMap(m *map[string]string, add map[string]string) {
 	for k, v := range add {
 		(*m)[k] = v
@@ -728,19 +750,7 @@ func ToAsciiCode(r rune) rune {
 }
 
 func SplitByNewLines(str string, skipEmpty bool) []string {
-	str = strings.Replace(str, "\r\n", "\n", -1)
-	str = strings.Replace(str, "\r", "\n", -1)
-	lines := strings.Split(str, "\n")
-	if !skipEmpty {
-		return lines
-	}
-	nlines := make([]string, 0, len(lines))
-	for _, l := range lines {
-		if l != "" {
-			nlines = append(nlines, l)
-		}
-	}
-	return nlines
+	return SplitByAnyOf(str, []string{"\r\n", "\n", "\r"}, skipEmpty)
 }
 
 func RangeStringLines(str string, skipEmpty bool, f func(s string)) {

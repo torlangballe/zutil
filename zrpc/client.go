@@ -49,6 +49,7 @@ func (c *Client) SetAddressFromURL(surl string) {
 }
 
 func (c *Client) CallRemote(method interface{}, args interface{}, reply interface{}) error {
+	// defer zlog.LogRecoverAndExit()
 	name, err := getRemoteCallName(method)
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote get name")
