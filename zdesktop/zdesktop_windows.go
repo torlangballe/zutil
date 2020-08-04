@@ -8,7 +8,7 @@ import (
 	"github.com/AllenDang/w32"
 	"github.com/kbinani/screenshot"
 	"github.com/torlangballe/zutil/uhttp"
-	"github.com/torlangballe/zutil/zcommand"
+	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 )
@@ -34,12 +34,12 @@ func GetAppNameOfBrowser(btype uhttp.BrowserType, fullName bool) string {
 
 func OpenURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) error {
 	name := GetAppNameOfBrowser(btype, false)
-	//	_, err := zcommand.RunCommand("start", 5, args...)
+	//	_, err := zprocess.RunCommand("start", 5, args...)
 	// zlog.Info("*********** OpenURLInBrowser:", surl)
 	//	zlog.Info("OpenUrlInBrowser:", name, btype, args)
 
 	args = append([]string{"/c", "start", name, surl}, args...)
-	_, err := zcommand.RunCommand("cmd", 4, args...)
+	_, err := zprocess.RunCommand("cmd", 4, args...)
 	if err != nil {
 		return zlog.Error(err, "OpenURLInBrowser")
 	}
@@ -152,7 +152,7 @@ func SendQuitCommandToApp(app string) error {
 // 		args = append(args, "/T")
 // 	}
 // 	args = append(args, "/IM", name+".exe")
-// 	_, err := zcommand.RunCommand("cmd", 4, args...)
+// 	_, err := zprocess.RunCommand("cmd", 4, args...)
 // 	zlog.Info("TerminateAppsByName:", args, err)
 // 	return err
 // }

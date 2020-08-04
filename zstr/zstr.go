@@ -22,18 +22,15 @@ import (
 )
 
 const (
-	EscBlack       = "\x1B[30m"
-	EscRed         = "\x1B[31m"
-	EscGreen       = "\x1B[32m"
-	EscYellow      = "\x1B[33m"
-	EscBlue        = "\x1B[34m"
-	EscMagenta     = "\x1B[35m"
-	EscCyan        = "\x1B[36m"
-	EscWhite       = "\x1B[37m"
-	EscNoColor     = "\x1b[0m"
-	EscBlink       = "\x1b[5m"
-	EscBlinkOff    = "\x1b[25m"
-	EscYellowBlink = "\033[5m"
+	EscBlack   = "\x1B[30m"
+	EscRed     = "\x1B[31m"
+	EscGreen   = "\x1B[32m"
+	EscYellow  = "\x1B[33m"
+	EscBlue    = "\x1B[34m"
+	EscMagenta = "\x1B[35m"
+	EscCyan    = "\x1B[36m"
+	EscWhite   = "\x1B[37m"
+	EscNoColor = "\x1b[0m"
 )
 
 const Digits = "0123456789"
@@ -1042,4 +1039,16 @@ var FileEscapeReplacer = strings.NewReplacer(
 	`\`, "%5c",
 	"/", "%2f",
 	":", "%3a",
+)
+
+var ColorRemover = strings.NewReplacer(
+	EscBlack, "",
+	EscRed, "",
+	EscGreen, "",
+	EscYellow, "",
+	EscBlue, "",
+	EscMagenta, "",
+	EscCyan, "",
+	EscWhite, "",
+	EscNoColor, "",
 )

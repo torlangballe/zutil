@@ -97,8 +97,7 @@ func MakeParameters() Parameters {
 
 // Post uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
 // receive can be []byte, string or a struct to unmarashal to
-func Post(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
-	params.Method = http.MethodPost
+func SendBody(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
 	bout, got := send.([]byte)
 	if got {
 		if params.ContentType == "" {
@@ -124,13 +123,13 @@ func Post(surl string, params Parameters, send, receive interface{}) (headers ht
 		}
 	}
 	params.Body = bout
-	response, code, err := PostBytesSetContentLength(surl, params)
+	response, code, err := SendBytesSetContentLength(surl, params)
 	if err != nil || code >= 300 {
 		if response != nil {
 			response.Body.Close()
 		}
-		err = zlog.Error(err, "post bytes")
-		err = MakeHTTPError(err, code, "post")
+		err = zlog.Error(err, "send bytes")
+		err = MakeHTTPError(err, code, params.Method)
 		return
 	}
 	return processResponse(surl, response, params.PrintBody, receive)
@@ -345,12 +344,13 @@ func UnmarshalFromJSONFromPostForm(surl string, vals url.Values, v interface{}, 
 }
 */
 
-func PostBytesSetContentLength(surl string, params Parameters) (response *http.Response, code int, err error) {
+func SendBytesSetContentLength(surl string, params Parameters) (response *http.Response, code int, err error) {
 	zlog.Assert(len(params.Body) != 0, surl)
 	zlog.Assert(params.ContentType != "")
+	zlog.Assert(params.Method != "")
 	params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
 	params.Headers["Content-Type"] = params.ContentType
-	params.Method = http.MethodPost
+	// zlog.Info("SendBytesSetContentLength:", params.Method, surl)
 	req, client, err := MakeRequest(surl, params)
 	if err != nil {
 		return
@@ -366,7 +366,8 @@ func PostValuesAsForm(surl string, params Parameters, values url.Values) (data *
 	var response *http.Response
 	params.Body = []byte(values.Encode())
 	params.ContentType = "application/x-www-form-urlencoded"
-	response, _, err = PostBytesSetContentLength(surl, params)
+	params.Method = http.MethodPost
+	response, _, err = SendBytesSetContentLength(surl, params)
 	if err != nil {
 		return
 	}
@@ -681,7 +682,7 @@ func ValsFromURL(surl string) url.Values {
 
 func MakeDataURL(data []byte, mime string) string {
 	if mime == "" {
-		mime = "text/plain;charset=utf-8"
+		mime = "text/html"
 	}
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data)
 }

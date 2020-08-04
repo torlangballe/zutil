@@ -2,6 +2,7 @@ package zrpc
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"reflect"
 	"runtime"
@@ -75,8 +76,9 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 	params.Headers["X-ZUI-Auth-Token"] = c.AuthToken
 	params.Body = message
 	params.ContentType = "application/json"
+	params.Method = http.MethodPost
 
-	resp, _, err := uhttp.PostBytesSetContentLength(surl, params) //, message, map[string]string{
+	resp, _, err := uhttp.SendBytesSetContentLength(surl, params) //, message, map[string]string{
 	// zlog.Info("CallRemote:", name, surl, err)
 	// 	"js.fetch:mode": "no-cors",
 	// })
@@ -88,9 +90,10 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote post:", name)
 	}
 
+	// sbody := uhttp.GetCopyOfResponseBodyAsString(resp)
 	err = rpcjson.DecodeClientResponse(resp.Body, &reply)
 	if err != nil {
-		zlog.Error(err, zlog.StackAdjust(2), "zrpc decode error")
+		zlog.Error(err, zlog.StackAdjust(2), "zrpc decode error") //, sbody)
 		return err
 		//		return zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
 	}

@@ -26,7 +26,7 @@ import (
 	"github.com/disintegration/imaging"
 
 	"github.com/torlangballe/zutil/uhttp"
-	"github.com/torlangballe/zutil/zcommand"
+	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
@@ -55,7 +55,7 @@ func OpenURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) erro
 		"-a", name,
 		surl,
 		"--args"}, args...)
-	_, err := zcommand.RunCommand("open", 5, args...)
+	_, err := zprocess.RunCommand("open", 5, args...)
 	if err != nil {
 		return zlog.Error(err, "OpenURLInBrowser")
 	}
@@ -65,7 +65,7 @@ func OpenURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) erro
 func RunURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) (*exec.Cmd, error) {
 	args = append(args, surl)
 	name := GetAppNameOfBrowser(btype, true)
-	cmd, _, _, err := zcommand.RunApp(name, args...)
+	cmd, _, _, err := zprocess.RunApp(name, args...)
 	if err != nil {
 		return nil, zlog.Error(err, "RunURLInBrowser")
 	}
@@ -119,10 +119,11 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, err
 		return nil, zlog.Error(err, "get id scale")
 	}
 	// zlog.Info("GetImageForWindowTitle Since3:", time.Since(start))
-	_, err = zcommand.RunCommand("screencapture", 0, "-o", "-x", "-l", winID, filepath) // -o is no shadow, -x is no sound, -l is window id
+	_, err = zprocess.RunCommand("screencapture", 0, "-o", "-x", "-l", winID, filepath) // -o is no shadow, -x is no sound, -l is window id
 	if err != nil {
 		return nil, zlog.Error(err, "call screen capture. id:", winID)
 	}
+	defer os.Remove(filepath)
 	// zlog.Info("GetImageForWindowTitle Since4:", time.Since(start))
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -174,6 +175,6 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 
 func SendQuitCommandToApp(app string) error {
 	script := fmt.Sprintf(`quit app "%s"`, app)
-	_, err := zcommand.RunAppleScript(script, 10)
+	_, err := zprocess.RunAppleScript(script, 10)
 	return err
 }

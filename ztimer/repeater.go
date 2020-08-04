@@ -30,14 +30,14 @@ func RepeatNow(secs float64, perform func() bool) *Repeater {
 
 func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	r.Stop()
-	if now {
-		if !perform() {
-			return
-		}
-	}
 	r.ticker = time.NewTicker(ztime.SecondsDur(secs))
 	go func() {
 		// defer zlog.LogRecoverAndExit()
+		if now {
+			if !perform() {
+				return
+			}
+		}
 		for range r.ticker.C {
 			if !perform() {
 				r.ticker.Stop()

@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/torlangballe/zutil/zcommand"
+	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -39,14 +39,16 @@ func CreateTempFile(name string) (file *os.File, filepath string, err error) {
 }
 
 func CreateTempFilePath(name string) string {
-	stime := time.Now().Format("2006-01-02T15_04_05_999999Z")
-	sfold := filepath.Join(os.TempDir(), stime)
+	now := time.Now()
+	sdate := now.Format("2006-01-02")
+	sfold := filepath.Join(os.TempDir(), sdate)
 	err := os.MkdirAll(sfold, 0775|os.ModeDir)
 	if err != nil {
 		zlog.Info("zfile.CreateTempFilePath:", err)
 		return ""
 	}
-	stemp := filepath.Join(sfold, SanitizeStringForFilePath(name))
+	stime := now.Format("150405_999999")
+	stemp := filepath.Join(sfold, SanitizeStringForFilePath(stime+"_"+name))
 	return stemp
 }
 
@@ -289,7 +291,7 @@ func SetComment(filepath, comment string) error {
 
 		format := `tell application "Finder" to set the comment of (the POSIX file "%s" as alias) to "%s"`
 		command := fmt.Sprintf(format, filepath, comment)
-		_, err := zcommand.RunAppleScript(command, 5.0)
+		_, err := zprocess.RunAppleScript(command, 5.0)
 		return err
 	}
 	return nil

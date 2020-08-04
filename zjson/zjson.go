@@ -3,6 +3,8 @@ package zjson
 import (
 	"encoding/json"
 	"os"
+
+	"github.com/torlangballe/zutil/zlog"
 )
 
 func UnmarshalFromFile(to interface{}, fpath string) error {
@@ -27,7 +29,7 @@ func MarshalToFile(from interface{}, fpath string) error {
 	encoder := json.NewEncoder(file)
 	err = encoder.Encode(from)
 	if err != nil {
-		return err
+		return zlog.Error(err, "marshal", from)
 	}
 	return nil
 }
