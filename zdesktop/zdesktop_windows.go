@@ -7,23 +7,23 @@ import (
 
 	"github.com/AllenDang/w32"
 	"github.com/kbinani/screenshot"
-	"github.com/torlangballe/zutil/uhttp"
+	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 )
 
-func GetAppNameOfBrowser(btype uhttp.BrowserType, fullName bool) string {
+func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
 	switch btype {
-	case uhttp.Safari:
+	case zhttp.Safari:
 		zlog.Fatal(nil)
 
-	case uhttp.Chrome:
+	case zhttp.Chrome:
 		if fullName {
 			return "Google Chrome"
 		}
 		return "chrome"
-	case uhttp.Edge:
+	case zhttp.Edge:
 		if fullName {
 			return "Microsoft Edge"
 		}
@@ -32,7 +32,7 @@ func GetAppNameOfBrowser(btype uhttp.BrowserType, fullName bool) string {
 	return ""
 }
 
-func OpenURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) error {
+func OpenURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) error {
 	name := GetAppNameOfBrowser(btype, false)
 	//	_, err := zprocess.RunCommand("start", 5, args...)
 	// zlog.Info("*********** OpenURLInBrowser:", surl)

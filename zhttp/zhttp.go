@@ -1,4 +1,4 @@
-package uhttp
+package zhttp
 
 import (
 	"bytes"

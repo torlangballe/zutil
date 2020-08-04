@@ -25,20 +25,20 @@ import (
 
 	"github.com/disintegration/imaging"
 
-	"github.com/torlangballe/zutil/uhttp"
+	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 )
 
-func GetAppNameOfBrowser(btype uhttp.BrowserType, fullName bool) string {
+func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
 	switch btype {
-	case uhttp.Safari:
+	case zhttp.Safari:
 		return "Safari"
-	case uhttp.Chrome:
+	case zhttp.Chrome:
 		return "Google Chrome"
-	case uhttp.Edge:
+	case zhttp.Edge:
 		if fullName {
 			return "Microsoft Edge Canary"
 		}
@@ -47,7 +47,7 @@ func GetAppNameOfBrowser(btype uhttp.BrowserType, fullName bool) string {
 	return ""
 }
 
-func OpenURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) error {
+func OpenURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) error {
 	name := GetAppNameOfBrowser(btype, true)
 	args = append([]string{
 		"-g", // Don't bring app to foreground
@@ -62,7 +62,7 @@ func OpenURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) erro
 	return err
 }
 
-func RunURLInBrowser(surl string, btype uhttp.BrowserType, args ...string) (*exec.Cmd, error) {
+func RunURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) (*exec.Cmd, error) {
 	args = append(args, surl)
 	name := GetAppNameOfBrowser(btype, true)
 	cmd, _, _, err := zprocess.RunApp(name, args...)

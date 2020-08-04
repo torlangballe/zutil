@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/torlangballe/zutil/uhttp"
+	"github.com/torlangballe/zutil/zhttp"
 
 	rpcjson "github.com/gorilla/rpc/json"
 
@@ -69,7 +69,7 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote encode client request")
 	}
 	// fmt.Println("REMOTECALL2:", name, string(message))
-	params := uhttp.MakeParameters()
+	params := zhttp.MakeParameters()
 	params.UseHTTPS = false
 	params.SkipVerifyCertificate = true
 	params.Headers["X-ZUI-Client-Id"] = c.ID
@@ -78,11 +78,11 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 	params.ContentType = "application/json"
 	params.Method = http.MethodPost
 
-	resp, _, err := uhttp.SendBytesSetContentLength(surl, params) //, message, map[string]string{
+	resp, _, err := zhttp.SendBytesSetContentLength(surl, params) //, message, map[string]string{
 	// zlog.Info("CallRemote:", name, surl, err)
 	// 	"js.fetch:mode": "no-cors",
 	// })
-	// zlog.Info("POST RPC:", err, surl, uhttp.GetCopyOfResponseBodyAsString(resp))
+	// zlog.Info("POST RPC:", err, surl, zhttp.GetCopyOfResponseBodyAsString(resp))
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -90,7 +90,7 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote post:", name)
 	}
 
-	// sbody := uhttp.GetCopyOfResponseBodyAsString(resp)
+	// sbody := zhttp.GetCopyOfResponseBodyAsString(resp)
 	err = rpcjson.DecodeClientResponse(resp.Body, &reply)
 	if err != nil {
 		zlog.Error(err, zlog.StackAdjust(2), "zrpc decode error") //, sbody)

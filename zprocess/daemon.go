@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/torlangballe/zutil/uhttp"
+	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zjson"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
@@ -68,11 +68,11 @@ func DaemonizeSelf(adjustConfig func(c *DaemonConfig)) error {
 func (c *DaemonConfig) putBuffer() {
 	if c.logBuffer != "" && ztime.Since(c.StartTime) >= float64(c.SendLogWaitSecs) {
 		if c.AddLogURL != "" {
-			params := uhttp.MakeParameters()
+			params := zhttp.MakeParameters()
 			params.Method = http.MethodPut
 			str := zstr.ColorRemover.Replace(c.logBuffer)
 			zlog.Assert(str != "")
-			_, err := uhttp.SendBody(c.AddLogURL, params, []byte(str), nil)
+			_, err := zhttp.SendBody(c.AddLogURL, params, []byte(str), nil)
 			// zlog.Info("putBuffer:", c.AddLogURL)
 			if err != nil {
 				zlog.Error(err, "put", c.BinaryPath, c.AddLogURL)
