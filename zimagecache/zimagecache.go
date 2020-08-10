@@ -116,17 +116,6 @@ func (c *Cache) GetCacheUrlForName(name string) string {
 	return str
 }
 
-func (c *Cache) SetCacheCommentForName(name, comment string) error {
-	if zrest.RunningOnServer {
-		return nil
-	}
-	err := zfile.SetComment(c.GetCachePathForName(name), comment)
-	if err != nil {
-		return zlog.Error(err, "set comment")
-	}
-	return nil
-}
-
 func (c *Cache) CheckCacheToken(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		t := req.URL.Query().Get("token")

@@ -338,3 +338,11 @@ var ColorBlue = ColorNew(0, 0, 1, 1)
 var ColorNavy = ColorNew(0, 0, 0.5, 1)
 var ColorFuchsia = ColorNew(1, 0, 1, 1)
 var ColorPurple = ColorNew(0.5, 0, 0.5, 1)
+
+type DropShadow struct {
+	Delta Size
+	Blur  float32
+	Color Color
+}
+
+var DropShadowDefault = DropShadow{Delta: Size{3, 3}, Blur: 3, Color: ColorBlack}

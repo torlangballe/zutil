@@ -25,11 +25,11 @@ import (
 
 	"github.com/disintegration/imaging"
 
-	"github.com/torlangballe/zutil/zhttp"
-	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zprocess"
 )
 
 func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
@@ -104,8 +104,7 @@ func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err e
 var screenLock sync.Mutex
 
 func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, error) {
-	_, filepath, err := zfile.CreateTempFile("win.png")
-	zlog.Assert(err == nil)
+	filepath := zfile.CreateTempFilePath("win.png")
 
 	// start := time.Now()
 	// zlog.Info("GetImageForWindowTitle Since1:", time.Since(start))

@@ -32,6 +32,8 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.8.1
+	github.com/sendgrid/rest v2.6.0+incompatible // indirect
+	github.com/sendgrid/sendgrid-go v3.6.0+incompatible
 	github.com/shirou/gopsutil v2.20.4+incompatible
 	github.com/twpayne/go-geom v1.0.5
 	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582

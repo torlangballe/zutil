@@ -24,7 +24,7 @@ type Client struct {
 
 var upgrader = websocket.Upgrader{} // use default options
 
-// Init opens a websocket server on a goroutine,on prefix, typically /ws for single one
+// Init opens a websocket server on a goroutine, on prefix, typically /ws for single one
 // got contains:
 // n: The client-sendt id sent on connect as a text message, or empty if couldn't make websocket protocol of request
 // close: true if connection just closed.

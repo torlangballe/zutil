@@ -3,7 +3,6 @@ package zfile
 import (
 	"bufio"
 	"crypto/md5"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -17,7 +16,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -157,12 +155,20 @@ func ExpandTildeInFilepath(path string) string {
 	return ""
 }
 
-func GetSize(filepath string) int64 {
+func Size(filepath string) int64 {
 	stat, err := os.Stat(filepath)
 	if err == nil {
 		return stat.Size()
 	}
 	return -1
+}
+
+func Modified(filepath string) time.Time {
+	stat, err := os.Stat(filepath)
+	if err == nil {
+		return stat.ModTime()
+	}
+	return time.Time{}
 }
 
 func CalcMD5(filePath string) (data []byte, err error) {
@@ -286,13 +292,3 @@ func RemoveContents(dir string) error {
 	return nil
 }
 
-func SetComment(filepath, comment string) error {
-	if runtime.GOOS == "darwin" {
-
-		format := `tell application "Finder" to set the comment of (the POSIX file "%s" as alias) to "%s"`
-		command := fmt.Sprintf(format, filepath, comment)
-		_, err := zprocess.RunAppleScript(command, 5.0)
-		return err
-	}
-	return nil
-}
