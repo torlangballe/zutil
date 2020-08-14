@@ -13,7 +13,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 type Priority int
@@ -122,6 +124,7 @@ func expandTildeInFilepath(path string) string {
 }
 
 var hooking = false
+var datePrinted time.Time
 
 func baseLog(err error, priority Priority, pos int, parts ...interface{}) error {
 	if len(parts) != 0 {
@@ -143,6 +146,10 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		}
 	}
 	finfo := ""
+	if time.Since(datePrinted) > time.Minute {
+		datePrinted = time.Now()
+		finfo += "[" + ztime.GetNice(time.Now().Local(), true) + "]\n"
+	}
 	if priority != InfoLevel {
 		finfo = GetCallingFunctionString(pos) + ": "
 	}
@@ -206,13 +213,16 @@ func GetCallingStackString() string {
 }
 
 func GetCallingFunctionString(pos int) string {
-	f, file, line := GetCallingFunctionInfo(pos)
-	if f == "" {
+	function, file, line := GetCallingFunctionInfo(pos)
+	if function == "" {
 		return ""
 	}
-	_, f = path.Split(f)
-	_, file = path.Split(file)
-	return fmt.Sprintf("%s() @ %s:%d", f, file, line)
+	_, function = path.Split(function)
+
+	home, _ := os.Getwd()
+	file = zfile.MakePathRelativeTo(file, home)
+
+	return fmt.Sprintf("%s:%d %s()", file, line, function)
 }
 
 func Assert(success bool, parts ...interface{}) {

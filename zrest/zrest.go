@@ -177,6 +177,7 @@ func GetFloatVal(vals url.Values, name string, def float64) float64 {
 }
 
 func AddHandler(r *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
+	http.Handle(pattern, r) // do we need this????
 	return r.HandleFunc(pattern, func(w http.ResponseWriter,
 		req *http.Request) {
 		f(w, req)

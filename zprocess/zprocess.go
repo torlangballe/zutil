@@ -77,3 +77,13 @@ func StartCommand(command string, start bool, args ...string) (cmd *exec.Cmd, ou
 func RunAppleScript(command string, timeoutSecs float64) (string, error) {
 	return RunCommand("osascript", timeoutSecs, "-s", "o", "-e", command)
 }
+
+func FindParameterAfterFlag(got *string, args []string, flag string) bool {
+	for i := range args {
+		if args[i] == flag && i < len(args)-1 {
+			*got = args[i+1]
+			return true
+		}
+	}
+	return false
+}

@@ -3,6 +3,7 @@ package zfile
 import (
 	"bufio"
 	"crypto/md5"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,7 +17,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -28,10 +28,10 @@ func getRootFolder() string {
 
 func CreateTempFile(name string) (file *os.File, filepath string, err error) {
 	filepath = CreateTempFilePath(name)
-	//	zlog.Info("filepath:", filepath)
+	//	fmt.Println("filepath:", filepath)
 	file, err = os.Create(filepath)
 	if file == nil {
-		zlog.Info("Error creating temporary template edit file", err, filepath)
+		fmt.Println("Error creating temporary template edit file", err, filepath)
 	}
 	return
 }
@@ -42,7 +42,7 @@ func CreateTempFilePath(name string) string {
 	sfold := filepath.Join(os.TempDir(), sdate)
 	err := os.MkdirAll(sfold, 0775|os.ModeDir)
 	if err != nil {
-		zlog.Info("zfile.CreateTempFilePath:", err)
+		fmt.Println("zfile.CreateTempFilePath:", err)
 		return ""
 	}
 	stime := now.Format("150405_999999")
@@ -79,7 +79,7 @@ func ReadFromFile(sfile string) (string, error) {
 	bytes, err := ioutil.ReadFile(sfile)
 	if err != nil {
 		err = errors.Wrapf(err, "zfile.ReadFileToString: %v", sfile)
-		//		zlog.Info("Error reading file:", sfile, err)
+		//		fmt.Println("Error reading file:", sfile, err)
 		return "", err
 	}
 	return string(bytes), nil
@@ -88,7 +88,7 @@ func ReadFromFile(sfile string) (string, error) {
 func WriteStringToFile(str, sfile string) (err error) {
 	err = ioutil.WriteFile(sfile, []byte(str), 0644)
 	if err != nil {
-		//		zlog.Info("Error reading file:", sfile, err)
+		//		fmt.Println("Error reading file:", sfile, err)
 		return err
 	}
 	return
@@ -145,7 +145,7 @@ func CreateSanitizedShortNameWithHash(name string) string {
 
 func ExpandTildeInFilepath(path string) string {
 	if runtime.GOOS == "js" {
-		return ""
+		return path
 	}
 	usr, err := user.Current()
 	if err == nil {
@@ -153,6 +153,22 @@ func ExpandTildeInFilepath(path string) string {
 		return strings.Replace(path, "~", dir, 1)
 	}
 	return ""
+}
+
+func ReplaceHomeDirPrefixWithTilde(path string) string {
+	var rest string
+	if runtime.GOOS == "js" {
+		return path
+	}
+	usr, err := user.Current()
+	if err != nil {
+		return path
+	}
+	dir := usr.HomeDir + "/"
+	if zstr.HasPrefix(path, dir, &rest) {
+		return "~/" + rest
+	}
+	return path
 }
 
 func Size(filepath string) int64 {
@@ -186,7 +202,7 @@ func CalcMD5(filePath string) (data []byte, err error) {
 	return
 }
 
-func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, err error) {
+func ReadFromURLToFilepath(surl, filePath string, maxBytes int64) (path string, err error) {
 	if filePath == "" {
 		var name string
 		u, err := url.Parse(surl)
@@ -200,7 +216,7 @@ func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, 
 	}
 	response, err := http.Get(surl)
 	if err != nil {
-		zlog.Info("ReadFromUrlToFilepath error getting:", err, surl)
+		fmt.Println("ReadFromUrlToFilepath error getting:", err, surl)
 		return
 	}
 	defer response.Body.Close()
@@ -208,7 +224,7 @@ func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, 
 	//open a file for writing
 	file, err := os.Create(filePath)
 	if err != nil {
-		zlog.Info("ReadFromUrlToFilepath error creating file:", err, filePath)
+		fmt.Println("ReadFromUrlToFilepath error creating file:", err, filePath)
 		return
 	}
 	if maxBytes != 0 {
@@ -218,12 +234,12 @@ func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, 
 			var n int
 			n, err = response.Body.Read(buf)
 			if err != nil && err != io.EOF {
-				zlog.Info("Error reading from body:", err)
+				fmt.Println("Error reading from body:", err)
 				return
 			}
 			_, err = file.Write(buf[:n])
 			if err != nil {
-				zlog.Info("Error writing from body:", err)
+				fmt.Println("Error writing from body:", err)
 				return
 			}
 			size += int64(n)
@@ -235,7 +251,7 @@ func ReadFromUrlToFilepath(surl, filePath string, maxBytes int64) (path string, 
 		// Use io.Copy to just dump the response body to the file. This supports huge files
 		_, err = io.Copy(file, response.Body)
 		if err != nil {
-			zlog.Info("ReadFromUrlToFilepath error copying to file:", err, filePath)
+			fmt.Println("ReadFromUrlToFilepath error copying to file:", err, filePath)
 			return
 		}
 	}
@@ -274,7 +290,7 @@ func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) 
 
 func RemoveContents(dir string) error {
 	d, err := os.Open(dir)
-	// zlog.Info("RemoveContents:", dir, err)
+	// fmt.Println("RemoveContents:", dir, err)
 	if err != nil {
 		return err
 	}
@@ -292,3 +308,29 @@ func RemoveContents(dir string) error {
 	return nil
 }
 
+func MakePathRelativeTo(path, rel string) string {
+	origPath := path
+	path = strings.TrimLeft(path, "/")
+	rel = strings.TrimLeft(rel, "/")
+	// fmt.Println("MakePathRelativeTo1:", path, rel)
+	for {
+		p := zstr.HeadUntil(path, "/")
+		r := zstr.HeadUntil(rel, "/")
+		if p != r || p == "" {
+			break
+		}
+		l := len(p)
+		path = zstr.Body(path, l+1, -1)
+		rel = zstr.Body(rel, l+1, -1)
+	}
+	// fmt.Println("MakePathRelativeTo:", path, rel)
+	count := strings.Count(rel, "/")
+	if count != 0 {
+		count++
+	}
+	str := strings.Repeat("../", count) + path
+	if count > 2 || len(str) > len(origPath) {
+		return ReplaceHomeDirPrefixWithTilde(origPath)
+	}
+	return str
+}

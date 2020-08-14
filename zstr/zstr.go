@@ -203,6 +203,14 @@ func HeadUntil(str, sep string) string {
 	return str[:i]
 }
 
+func HeadUntilIncluding(str, sep string) string {
+	i := strings.Index(str, sep)
+	if i == -1 {
+		return str
+	}
+	return str[:i] + sep
+}
+
 func HeadUntilStringWithRest(str, sep string, rest *string) string {
 	i := strings.Index(str, sep)
 	if i == -1 {
@@ -547,6 +555,21 @@ func HasSuffix(str, suffix string, rest *string) bool {
 		return true
 	}
 	return false
+}
+
+func TrimCommonExtremity(slice []string, head bool) string {
+	stub := SliceCommonExtremity(slice, head)
+	//	fmt.Println("TrimCommonExtremity:", stub, head)
+	if stub != "" {
+		for i, s := range slice {
+			if head {
+				slice[i] = strings.TrimPrefix(s, stub)
+			} else {
+				slice[i] = strings.TrimSuffix(s, stub)
+			}
+		}
+	}
+	return stub
 }
 
 func SliceCommonExtremity(slice []string, head bool) string {

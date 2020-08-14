@@ -13,6 +13,7 @@ import (
 
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zhttp"
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zjson"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmail"
@@ -88,16 +89,16 @@ func (c *DaemonConfig) putBuffer() {
 	c.bufferLock.Lock()
 	if c.logBuffer != "" && ztime.Since(c.StartTime) >= float64(c.SendLogWaitSecs) {
 		if len(c.crashBuffer)+len(c.logBuffer) > maxCrashBufferSize {
-			c.crashBuffer = c.crashBuffer[:maxCrashBufferSize-len(c.logBuffer)]
+			c.crashBuffer = c.crashBuffer[:zint.Max(0, maxCrashBufferSize-len(c.logBuffer))]
 		}
 		c.crashBuffer += c.logBuffer
 		cbuf := c.crashBuffer
 		c.logBuffer = ""
 		c.bufferLock.Unlock()
-		if c.AddLogURL != "" {
+		str := zstr.ColorRemover.Replace(cbuf)
+		if str != "" {
 			params := zhttp.MakeParameters()
 			params.Method = http.MethodPut
-			str := zstr.ColorRemover.Replace(cbuf)
 			_, err := zhttp.SendBody(c.AddLogURL, params, []byte(str), nil)
 			// zlog.Info("putBuffer:", c.AddLogURL)
 			if err != nil {
@@ -128,7 +129,7 @@ func (c *DaemonConfig) readFromPipe(pipe io.Reader) {
 		if c.AddLogURL != "" {
 			c.bufferLock.Lock()
 			c.logBuffer += str
-			c.bufferLock.Lock()
+			c.bufferLock.Unlock()
 			if len(c.logBuffer) > 2048 {
 				c.putBuffer()
 			} else {
@@ -154,36 +155,43 @@ func (c *DaemonConfig) sendCrashEmail() {
 func (c *DaemonConfig) Spawn() error {
 	zlog.Info("daemon:", c.BinaryPath)
 	for {
+		sendCrash := true
 		c.binaryModifiedTime = zfile.Modified(c.BinaryPath)
 		cmd, outPipe, errPipe, err := StartCommand(c.BinaryPath, false, c.Arguments...)
 		if err != nil {
 			return zlog.Error(err, "start command", c.BinaryPath, c.Arguments)
 		}
 		c.StartTime = time.Now()
+		var lastMod time.Time
 		if c.RestartModifiedBinary {
-			ztimer.RepeatIn(1, func() bool {
+			ztimer.RepeatIn(3, func() bool {
 				mod := zfile.Modified(c.BinaryPath)
 				if mod != c.binaryModifiedTime {
-					zlog.Info("Binary", c.BinaryPath, "time modified to", ztime.GetNice(mod, true)+". retarting.")
-					time.Sleep(time.Second) // just in case
-					kerr := cmd.Process.Kill()
-					zlog.OnError(kerr, "process kill")
-					return false
+					if !lastMod.IsZero() && lastMod == mod {
+						zlog.Info(zstr.EscCyan+"#### Binary", c.BinaryPath, "time modified to", ztime.GetNice(mod, true)+". retarting. ####"+zstr.EscNoColor)
+						time.Sleep(time.Second) // maybe we need this to flush out print
+						kerr := cmd.Process.Kill()
+						sendCrash = false
+						zlog.OnError(kerr, "process kill")
+						return false
+					}
+					lastMod = mod
 				}
 				return true
 			})
 		}
 		go c.readFromPipe(outPipe)
 		go c.readFromPipe(errPipe)
-		str := "zprocess daemon: restarting after error in run"
 		err = cmd.Run()
+		str := "zprocess daemon: restarting after error in run"
 		if err != nil {
 			c.logBuffer += str + "\n"
 			str += " " + err.Error()
 		}
 		c.putBuffer()
-		c.sendCrashEmail()
-
+		if sendCrash {
+			c.sendCrashEmail()
+		}
 		time.Sleep(time.Second) // so we don't go completely nuts if something crashes immediately
 		fmt.Println(zstr.EscCyan+"#####", str, "#####"+zstr.EscNoColor)
 	}

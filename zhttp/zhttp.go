@@ -351,6 +351,9 @@ func SendBytesSetContentLength(surl string, params Parameters) (response *http.R
 	params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
 	params.Headers["Content-Type"] = params.ContentType
 	// zlog.Info("SendBytesSetContentLength:", params.Method, surl)
+	if params.PrintBody {
+		zlog.Info("zhttp.SendBytesSetContentLength:", surl, "\n", string(params.Body))
+	}
 	req, client, err := MakeRequest(surl, params)
 	if err != nil {
 		return

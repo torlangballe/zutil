@@ -13,6 +13,14 @@ const (
 	Unknown         = -1
 )
 
+func IS(_ string) bool {
+	return true
+}
+
+func NOT(_ string) bool {
+	return false
+}
+
 func ToBoolInd(b bool) BoolInd {
 	if b {
 		return True
@@ -20,7 +28,7 @@ func ToBoolInd(b bool) BoolInd {
 	return False
 }
 
-func (b BoolInd) Value() bool {
+func (b BoolInd) BoolValue() bool {
 	return b == 1
 }
 
