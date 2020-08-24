@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -15,11 +16,9 @@ import (
 
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zstr"
-	"github.com/torlangballe/zutil/ztime"
 )
 
 type Priority int
-
 type StackAdjust int
 
 const (
@@ -31,12 +30,14 @@ const (
 	FatalLevel
 )
 
-var ErrorPriority = Verbose
-var OutputFilePath = ""
-var outputHooks = map[string]func(s string){}
-var logcatMsgRegex = regexp.MustCompile(`([0-9]*)-([0-9]*)\s*([0-9]*):([0-9]*):([0-9]*).([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*([VDIWEF])\s*(.*)`)
-var outFile *os.File
-var UseColor = false
+var (
+	ErrorPriority  = Verbose
+	OutputFilePath = ""
+	outputHooks    = map[string]func(s string){}
+	logcatMsgRegex = regexp.MustCompile(`([0-9]*)-([0-9]*)\s*([0-9]*):([0-9]*):([0-9]*).([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*([VDIWEF])\s*(.*)`)
+	outFile        *os.File
+	UseColor       = false
+)
 
 type LogCatItem struct {
 	TimeStamp time.Time
@@ -148,7 +149,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	finfo := ""
 	if time.Since(datePrinted) > time.Minute {
 		datePrinted = time.Now()
-		finfo += "[" + ztime.GetNice(time.Now().Local(), true) + "]\n"
+		finfo += "[" + time.Now().Local().Format("15:04 06-Jan") + "]\n"
 	}
 	if priority != InfoLevel {
 		finfo = GetCallingFunctionString(pos) + ": "
@@ -281,6 +282,20 @@ func Wrap(err error, parts ...interface{}) error {
 	p := strings.TrimSpace(fmt.Sprintln(parts...))
 	return errors.Wrap(err, p)
 
+}
+
+func PrintStartupInfo(version, commitHash, builtAt, builtBy, builtOn string) {
+	_, name := filepath.Split(os.Args[0])
+	Info("\n"+zstr.EscYellow+"START:",
+		name,
+		"v"+version,
+		"Build:",
+		commitHash,
+		builtAt,
+		builtBy,
+		builtOn,
+		zstr.EscNoColor,
+	)
 }
 
 // func logOnRecover() {

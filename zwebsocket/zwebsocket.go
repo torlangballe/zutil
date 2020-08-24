@@ -74,7 +74,7 @@ func Init(prefix string, port int, ping bool, got func(c *Client, id string, dat
 			client.connections[str] = c
 			client.mutex.Unlock()
 			got(client, str, nil, false, nil)
-			fmt.Println("ws.connect:", mt, str)
+			// fmt.Println("ws.connect:", mt, str)
 		case websocket.CloseMessage:
 			fmt.Println("ws.disconnect:", conn)
 			str, c1 := client.findConnection(conn)

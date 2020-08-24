@@ -68,7 +68,7 @@ func MakeHTTPError(err error, code int, message string) error {
 		}
 	}
 	if err == nil && code > 0 {
-		zstr.Concat(&message, " ", http.StatusText(code))
+		message = zstr.Concat(" ", message, http.StatusText(code))
 	}
 	e := &HTTPError{}
 	e.Err = errors.New(message)
@@ -399,7 +399,10 @@ func MakeURLWithArgs(surl string, args map[string]string) (string, error) {
 }
 
 func GetRedirectedURL(surl string) (string, error) {
-	resp, err := http.Get(surl)
+	params := MakeParameters()
+	params.Method = http.MethodGet
+	params.Headers["jsFetchRedirect"] = "follow"
+	resp, err := GetResponse(surl, params)
 	if err != nil {
 		return surl, errors.New(fmt.Sprint("getRedirectedURL: ", surl, " ", err))
 	}
@@ -534,7 +537,7 @@ func (e ErrorStruct) Check(err *error) bool {
 	if e.Type != "" || e.Message != "" {
 		if err != nil {
 			code := strings.Trim(string(e.Code), `"`)
-			str := zstr.ConcatenateNonEmpty(" ", e.Type, code, e.Message, e.ObjectType)
+			str := zstr.Concat(" ", e.Type, code, e.Message, e.ObjectType)
 			*err = errors.New(str)
 		}
 		return true

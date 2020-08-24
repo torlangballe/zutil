@@ -75,7 +75,7 @@ func IsFolder(filepath string) bool {
 	return stat.IsDir()
 }
 
-func ReadFromFile(sfile string) (string, error) {
+func ReadStringFromFile(sfile string) (string, error) {
 	bytes, err := ioutil.ReadFile(sfile)
 	if err != nil {
 		err = errors.Wrapf(err, "zfile.ReadFileToString: %v", sfile)

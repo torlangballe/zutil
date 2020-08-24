@@ -329,7 +329,7 @@ func ExpandTime(tp TimeParameters) (str string, err error) {
 		}
 	}
 	prep := getPreposition(tp)
-	str = zstr.ConcatenateNonEmpty(" ", prep, stime, sdate)
+	str = zstr.Concat(" ", prep, stime, sdate)
 	if tp.ShowTime && elsewhere {
 		str += " " + localTimeExpression[tp.LangCode]
 	}

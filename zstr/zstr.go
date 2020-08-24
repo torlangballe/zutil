@@ -14,7 +14,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"text/tabwriter"
 	"unicode"
 	"unicode/utf8"
 
@@ -32,8 +31,12 @@ const (
 	EscWhite   = "\x1B[37m"
 	EscNoColor = "\x1b[0m"
 )
-
 const Digits = "0123456789"
+
+type StrInt struct {
+	String string
+	Int    int64
+}
 
 func GetColorEscapeCode(r, g, b int) string {
 	R := r&128 > 0
@@ -66,14 +69,6 @@ func GetColorEscapeCode(r, g, b int) string {
 	return ""
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	} // if
-
-	return b
-}
-
 func GetLevenshteinRatio(a, b string) float64 { // returns distance / min length of a or b
 	len := float64(zint.Min(len(a), len(b)))
 	return float64(GetLevenshteinDistance(a, b)) / len
@@ -91,11 +86,11 @@ func GetLevenshteinDistance(a, b string) int {
 		fj1 := f[0] // fj1 is the value of f[j - 1] in last iteration
 		f[0]++
 		for _, cb := range b {
-			mn := min(f[j]+1, f[j-1]+1) // delete & insert
+			mn := zint.Min(f[j]+1, f[j-1]+1) // delete & insert
 			if cb != ca {
-				mn = min(mn, fj1+1) // change
+				mn = zint.Min(mn, fj1+1) // change
 			} else {
-				mn = min(mn, fj1) // matched
+				mn = zint.Min(mn, fj1) // matched
 			} // else
 
 			fj1, f[j] = f[j], mn // save f[j] to fj1(j is about to increase), update f[j] to mn
@@ -104,53 +99,6 @@ func GetLevenshteinDistance(a, b string) int {
 	} // for ca
 
 	return f[len(f)-1]
-}
-
-type MoreLines struct {
-	height int
-	index  int
-	header string
-	Writer *tabwriter.Writer
-}
-
-func NewMoreLines(h int, header string, writer *tabwriter.Writer) MoreLines {
-	m := MoreLines{}
-	m.height = h
-	m.header = header
-	m.Writer = writer
-
-	return m
-}
-
-func WriteColoredHeaderToTabWriter(writer *tabwriter.Writer, col string, words ...string) {
-	for _, w := range words {
-		fmt.Fprint(writer, col, w, "\t")
-	}
-	fmt.Fprintln(writer, EscNoColor)
-}
-
-func (m *MoreLines) Check(quit *bool, typed *string) bool {
-	if m.index == 0 && m.Writer != nil && m.header != "" {
-		fmt.Fprintf(m.Writer, EscGreen+"\n"+m.header+EscWhite+"\n")
-	}
-	if m.index >= m.height {
-		var sline string
-		if m.Writer != nil {
-			m.Writer.Flush()
-		}
-		fmt.Print(EscYellow + "press key or q and <return>:" + EscWhite)
-		fmt.Scan(&sline)
-		if sline == "q" {
-			*quit = true
-		}
-		if typed != nil {
-			*typed = sline
-		}
-		m.index = 0
-		return false
-	}
-	m.index++
-	return true
 }
 
 func Head(str string, length int) string {
@@ -303,8 +251,11 @@ func TruncatedFromStart(str string, length int, endString string) string {
 	return endString + str[l:]
 }
 
-func ConcatenateNonEmpty(divider string, parts ...string) (str string) {
-	for _, s := range parts {
+// Concatinates parts, adding divider if prev or current added is not empty
+func Concat(divider string, parts ...interface{}) string {
+	var str string
+	for _, p := range parts {
+		s := fmt.Sprintf("%v", p)
 		if s != "" {
 			if str == "" {
 				str = s
@@ -313,22 +264,7 @@ func ConcatenateNonEmpty(divider string, parts ...string) (str string) {
 			}
 		}
 	}
-	return
-}
-
-// Adds not-empty strings to str with divider. No divider on fidst add if initial str is empty.
-func Concat(str *string, divider string, parts ...interface{}) {
-	for _, p := range parts {
-		s := fmt.Sprintf("%v", p)
-		if s != "" {
-			if *str == "" {
-				*str = s
-			} else {
-				*str += divider + s
-			}
-		}
-	}
-	return
+	return str
 }
 
 func StrIndexInStrings(str string, strs []string) int {

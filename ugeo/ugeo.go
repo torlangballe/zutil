@@ -231,13 +231,13 @@ func GetHemisphereDirectionsFromGeoDirection(dir FPoint, separator string, langC
 		str = ulocale.GetNorth(langCode)
 	}
 	if dir.Y == -1 {
-		zstr.ConcatenateNonEmpty(separator, str, ulocale.GetSouth(langCode))
+		zstr.Concat(separator, str, ulocale.GetSouth(langCode))
 	}
 	if dir.X == -1 {
-		zstr.ConcatenateNonEmpty(separator, str, ulocale.GetWest(langCode))
+		zstr.Concat(separator, str, ulocale.GetWest(langCode))
 	}
 	if dir.X == 1 {
-		zstr.ConcatenateNonEmpty(separator, str, ulocale.GetEast(langCode))
+		zstr.Concat(separator, str, ulocale.GetEast(langCode))
 	}
 	return str
 }
