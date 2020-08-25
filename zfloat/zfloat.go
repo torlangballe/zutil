@@ -43,6 +43,41 @@ func GetAny(i interface{}) (float64, error) {
 	case string:
 		f, err := strconv.ParseFloat(i.(string), 64)
 		return f, err
+	}
+	val := reflect.ValueOf(i)
+	switch val.Kind() {
+	case reflect.Bool:
+		if i.(bool) {
+			return 1, nil
+		}
+		return 0, nil
+	case reflect.Int:
+		return float64(val.Int()), nil
+	case reflect.Int8:
+		return float64(val.Int()), nil
+	case reflect.Int16:
+		return float64(val.Int()), nil
+	case reflect.Int32:
+		return float64(val.Int()), nil
+	case reflect.Int64:
+		return float64(val.Int()), nil
+	case reflect.Uint:
+		return float64(val.Int()), nil
+	case reflect.Uint8:
+		return float64(val.Int()), nil
+	case reflect.Uint16:
+		return float64(val.Int()), nil
+	case reflect.Uint32:
+		return float64(val.Int()), nil
+	case reflect.Uint64:
+		return float64(val.Int()), nil
+	case reflect.Float32:
+		return float64(val.Float()), nil
+	case reflect.Float64:
+		return float64(val.Float()), nil
+	case reflect.String:
+		n, err := strconv.ParseFloat(val.String(), 64)
+		return n, err
 	default:
 		return 0, errors.New(fmt.Sprint("bad type:", reflect.TypeOf(i)))
 	}

@@ -200,6 +200,16 @@ func (d Items) FindName(name string) *Item {
 	return nil
 }
 
+func (d Items) FindValue(v interface{}) *Item {
+	for i, di := range d {
+		// zlog.Info("FV:", di.Value, "==", v, reflect.DeepEqual(di.Value, v), reflect.ValueOf(di.Value).Type(), reflect.ValueOf(v).Type())
+		if reflect.DeepEqual(di.Value, v) {
+			return &d[i]
+		}
+	}
+	return nil
+}
+
 func (d *Items) RemoveAll() {
 	*d = (*d)[:0]
 }

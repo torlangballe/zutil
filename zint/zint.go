@@ -230,6 +230,9 @@ func SetAny(any interface{}, i int64) error {
 }
 
 func GetAny(i interface{}) (int64, error) {
+	if i == nil {
+		return 0, errors.New("is nil")
+	}
 	switch i.(type) {
 	case bool:
 		if i.(bool) {
@@ -263,9 +266,44 @@ func GetAny(i interface{}) (int64, error) {
 	case string:
 		n, err := strconv.ParseInt(i.(string), 10, 64)
 		return n, err
-	default:
-		return 0, errors.New(fmt.Sprint("bad type:", reflect.TypeOf(i)))
 	}
+	val := reflect.ValueOf(i)
+	switch val.Kind() {
+	case reflect.Bool:
+		if val.Bool() {
+			return 1, nil
+		}
+		return 0, nil
+	case reflect.Int:
+		return int64(val.Int()), nil
+	case reflect.Int8:
+		return int64(val.Int()), nil
+	case reflect.Int16:
+		return int64(val.Int()), nil
+	case reflect.Int32:
+		return int64(val.Int()), nil
+	case reflect.Int64:
+		return int64(val.Int()), nil
+	case reflect.Uint:
+		return int64(val.Int()), nil
+	case reflect.Uint8:
+		return int64(val.Int()), nil
+	case reflect.Uint16:
+		return int64(val.Int()), nil
+	case reflect.Uint32:
+		return int64(val.Int()), nil
+	case reflect.Uint64:
+		return int64(val.Int()), nil
+	case reflect.Float32:
+		return int64(val.Float()), nil
+	case reflect.Float64:
+		return int64(val.Float()), nil
+	case reflect.String:
+		n, err := strconv.ParseInt(val.String(), 10, 64)
+		return n, err
+	}
+	return 0, fmt.Errorf("bad kind %v", reflect.ValueOf(i).Kind())
+
 }
 
 // GetItem makes Slice worth with MenuView MenuItems interface
