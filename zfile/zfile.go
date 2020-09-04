@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,12 +27,12 @@ func getRootFolder() string {
 	return ExpandTildeInFilepath("~/caproot/")
 }
 
-func CreateTempFile(name string) (file *os.File, filepath string, err error) {
-	filepath = CreateTempFilePath(name)
-	//	fmt.Println("filepath:", filepath)
-	file, err = os.Create(filepath)
+func CreateTempFile(name string) (file *os.File, fpath string, err error) {
+	fpath = CreateTempFilePath(name)
+	//	fmt.Println("fpath:", fpath)
+	file, err = os.Create(fpath)
 	if file == nil {
-		fmt.Println("Error creating temporary template edit file", err, filepath)
+		fmt.Println("Error creating temporary template edit file", err, fpath)
 	}
 	return
 }
@@ -50,25 +51,25 @@ func CreateTempFilePath(name string) string {
 	return stemp
 }
 
-func FileExist(filepath string) bool {
-	_, err := os.Stat(filepath)
+func FileExist(fpath string) bool {
+	_, err := os.Stat(fpath)
 	return err == nil
 }
 
-func SetModified(filepath string, t time.Time) error {
-	err := os.Chtimes(filepath, t, t)
+func SetModified(fpath string, t time.Time) error {
+	err := os.Chtimes(fpath, t, t)
 	return err
 }
 
-func FileNotExist(filepath string) bool { // not same as !DoesFileExist...
-	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+func FileNotExist(fpath string) bool { // not same as !DoesFileExist...
+	if _, err := os.Stat(fpath); os.IsNotExist(err) {
 		return true
 	}
 	return false
 }
 
-func IsFolder(filepath string) bool {
-	stat, err := os.Stat(filepath)
+func IsFolder(fpath string) bool {
+	stat, err := os.Stat(fpath)
 	if err != nil {
 		return false
 	}
@@ -85,13 +86,11 @@ func ReadStringFromFile(sfile string) (string, error) {
 	return string(bytes), nil
 }
 
-func WriteStringToFile(str, sfile string) (err error) {
-	err = ioutil.WriteFile(sfile, []byte(str), 0644)
-	if err != nil {
-		//		fmt.Println("Error reading file:", sfile, err)
+func WriteStringToFile(str, sfile string) error {
+	return WriteToFileAtomically(sfile, func(file io.Writer) error {
+		_, err := file.Write([]byte(str))
 		return err
-	}
-	return
+	})
 }
 
 func ForAllFileLines(path string, f func(str string) bool) error {
@@ -171,24 +170,24 @@ func ReplaceHomeDirPrefixWithTilde(path string) string {
 	return path
 }
 
-func Size(filepath string) int64 {
-	stat, err := os.Stat(filepath)
+func Size(fpath string) int64 {
+	stat, err := os.Stat(fpath)
 	if err == nil {
 		return stat.Size()
 	}
 	return -1
 }
 
-func Modified(filepath string) time.Time {
-	stat, err := os.Stat(filepath)
+func Modified(fpath string) time.Time {
+	stat, err := os.Stat(fpath)
 	if err == nil {
 		return stat.ModTime()
 	}
 	return time.Time{}
 }
 
-func CalcMD5(filePath string) (data []byte, err error) {
-	file, err := os.Open(filePath)
+func CalcMD5(fpath string) (data []byte, err error) {
+	file, err := os.Open(fpath)
 	if err != nil {
 		return
 	}
@@ -202,8 +201,8 @@ func CalcMD5(filePath string) (data []byte, err error) {
 	return
 }
 
-func ReadFromURLToFilepath(surl, filePath string, maxBytes int64) (path string, err error) {
-	if filePath == "" {
+func ReadFromURLToFilepath(surl, fpath string, maxBytes int64) (path string, err error) {
+	if fpath == "" {
 		var name string
 		u, err := url.Parse(surl)
 		if err != nil {
@@ -212,7 +211,7 @@ func ReadFromURLToFilepath(surl, filePath string, maxBytes int64) (path string, 
 		} else {
 			name = strings.Trim(u.Path, "/")
 		}
-		filePath = CreateTempFilePath(name)
+		fpath = CreateTempFilePath(name)
 	}
 	response, err := http.Get(surl)
 	if err != nil {
@@ -222,9 +221,9 @@ func ReadFromURLToFilepath(surl, filePath string, maxBytes int64) (path string, 
 	defer response.Body.Close()
 
 	//open a file for writing
-	file, err := os.Create(filePath)
+	file, err := os.Create(fpath)
 	if err != nil {
-		fmt.Println("ReadFromUrlToFilepath error creating file:", err, filePath)
+		fmt.Println("ReadFromUrlToFilepath error creating file:", err, fpath)
 		return
 	}
 	if maxBytes != 0 {
@@ -251,24 +250,32 @@ func ReadFromURLToFilepath(surl, filePath string, maxBytes int64) (path string, 
 		// Use io.Copy to just dump the response body to the file. This supports huge files
 		_, err = io.Copy(file, response.Body)
 		if err != nil {
-			fmt.Println("ReadFromUrlToFilepath error copying to file:", err, filePath)
+			fmt.Println("ReadFromUrlToFilepath error copying to file:", err, fpath)
 			return
 		}
 	}
 	file.Close()
-	path = filePath
+	path = fpath
 	return
 }
 
-func Walk(folder, wildcard string, got func(fpath string, info os.FileInfo) error) {
+func Walk(folder, wildcards string, got func(fpath string, info os.FileInfo) error) {
+	wcards := strings.Split(wildcards, "\t")
 	filepath.Walk(folder, func(fpath string, info os.FileInfo, err error) error {
 		if err == nil {
-			if wildcard != "" {
+			matched := true
+			if len(wcards) > 0 {
 				_, name := filepath.Split(fpath)
-				matched, _ := filepath.Match(wildcard, name)
-				if !matched {
-					return nil
+				matched = false
+				for _, w := range wcards {
+					m, _ := filepath.Match(w, name)
+					if m {
+						matched = true
+						break
+					}
 				}
+			}
+			if matched {
 				e := got(fpath, info)
 				if e != nil {
 					return e
@@ -333,4 +340,101 @@ func MakePathRelativeTo(path, rel string) string {
 		return ReplaceHomeDirPrefixWithTilde(origPath)
 	}
 	return str
+}
+
+// WriteToFileAtomically  opens a temporary file in same directory as fpath, calls write with it's file,
+// closes it, and renames it to fpath
+func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error {
+	tempPath := fpath + fmt.Sprintf("_%x_ztemp", rand.Int31())
+	file, err := os.Create(tempPath)
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+	err = write(file)
+	if err != nil {
+		os.Remove(tempPath)
+		fmt.Println(err, "call write func")
+		return err
+	}
+	err = os.Rename(tempPath, fpath)
+	if err != nil {
+		fmt.Println(err, "rename", tempPath, fpath)
+		return err
+	}
+	return nil
+}
+
+// TruncateFile removes bytes from start or end of a file at fpath, so it is max maxBytes large.
+// This method is not atomical, more bytes can be added to fpath as it is working, and these will be lost,
+// so a mutex or something should be used for appending to fpath if possible.
+func TruncateFile(fpath string, maxBytes int64, fromEnd bool) error {
+	if fromEnd {
+		panic("not implemented, though easy case")
+	}
+	size := Size(fpath)
+	if size == -1 {
+		return errors.New("bad size  for:  " + fpath)
+	}
+	diff := size - maxBytes
+	if diff <= 0 {
+		return nil
+	}
+	file, err := os.Open(fpath)
+	if err != nil {
+		return err
+	}
+	file.Seek(diff, os.SEEK_SET)
+	err = WriteToFileAtomically(fpath, func(writeTo io.Writer) error {
+		_, cerr := io.Copy(writeTo, file)
+		return cerr
+	})
+	file.Close()
+	return err
+}
+
+// ReadLastLine reads a file from end, until it encounters ascii 10/13, consuming them too.
+// It returns the position they or last characterrr read was at.
+// if pos is not zero, it starts at pos
+func ReadLastLine(fpath string, pos int64) (string, int64, error) {
+	file, err := os.Open(fpath)
+	if err != nil {
+		return "", -1, err
+	}
+	defer file.Close()
+
+	line := ""
+	stat, _ := file.Stat()
+	filesize := stat.Size()
+	if pos == 0 {
+		pos = filesize
+	}
+	found := false
+	first := true
+	for {
+		pos--
+		file.Seek(pos, io.SeekStart)
+		char := make([]byte, 1)
+		file.Read(char)
+		if char[0] == 10 || char[0] == 13 { // stop if we find a line
+			if first {
+				continue
+			}
+			found = true
+		} else {
+			if found {
+				pos++
+				break
+			}
+			first = false
+		}
+		if !found {
+			line = string(char) + line
+		}
+		if pos == 0 {
+			break
+		}
+	}
+
+	return line, pos, nil
 }

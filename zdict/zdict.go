@@ -201,13 +201,21 @@ func (d Items) FindName(name string) *Item {
 }
 
 func (d Items) FindValue(v interface{}) *Item {
+	var empty *Item
 	for i, di := range d {
-		// zlog.Info("FV:", di.Value, "==", v, reflect.DeepEqual(di.Value, v), reflect.ValueOf(di.Value).Type(), reflect.ValueOf(v).Type())
+		// zlog.Info("FV:", di.Value, "==", v, reflect.DeepEqual(di.Value, v), di.Value == nil, v == nil, reflect.ValueOf(v).Kind(), reflect.ValueOf(v).Type())
 		if reflect.DeepEqual(di.Value, v) {
+			// zlog.Info("zdict.Items FindValue: Found value for", v, i)
 			return &d[i]
 		}
+		if di.Name == "" {
+			empty = &d[i]
+		}
 	}
-	return nil
+	// if empty == nil {
+	// 	zlog.Info("zdict.Items FindValue: No value for", v, len(d))
+	// }
+	return empty
 }
 
 func (d *Items) RemoveAll() {

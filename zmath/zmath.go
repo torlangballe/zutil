@@ -173,17 +173,25 @@ func Sigmoid(n float64) float64 {
 	return 1 - (1 / (1 + math.Pow(math.E, n*8-4)))
 }
 
-func GetNiceIncsOf(d float64, incCount int, isMemory bool) float64 {
+// GetNiceDividesOf divides d into at most max parts.
+// Good for dividing a graph into lines to show values on x and y-axis
+func GetNiceDividesOf(d float64, max int, isMemory bool) float64 {
 	l := math.Floor(math.Log10(d))
 	n := math.Pow(10.0, l)
 	if isMemory {
 		n = math.Pow(1024.0, math.Ceil(l/3.0))
-		for d/n > float64(incCount) {
+		for d/n > float64(max) {
 			n = n * 2.0
 		}
 	}
-	for d/n < float64(incCount) {
+	for d/n < float64(max) {
 		n = n / 2.0
 	}
 	return n
+}
+
+// EaseInOut makes t "ease in" gradually at 0, and easy out, flattening off near 1.
+// Good for animations
+func EaseInOut(t float64) float64 {
+	return 1 - math.Cos(t*math.Pi)
 }

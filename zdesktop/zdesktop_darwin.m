@@ -173,9 +173,9 @@ AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL de
 
 int CloseWindowForTitle(const char *title, long pid) {
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, false);
-    if (winRef == 0) {
-        getAXElementOfWindowForTitle(title, pid, true);
-    }
+    // if (winRef == 0) {
+    //     getAXElementOfWindowForTitle(title, pid, true);
+    // }
     // NSLog(@"CloseWindowForTitle1 %s %p\n", title, winRef);
     if (winRef == nil) {
         return 0;
@@ -188,8 +188,8 @@ int CloseWindowForTitle(const char *title, long pid) {
 }
 
 int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h) {
-    // NSLog(@"PlaceWindowForTitle %s %s\n", title, app);
-    AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, YES);
+    NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
+    AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, NO);
     if (winRef == nil) {
         return 0;
     }
@@ -197,14 +197,21 @@ int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int 
     winSize.width = w;
     winSize.height = h;
     CGPoint winPos;
+    AXError err;
     winPos.x = x;
     winPos.y = y;
     CFTypeRef size = (CFTypeRef)(AXValueCreate(kAXValueCGSizeType, (const void *)&winSize));
     CFTypeRef pos = (CFTypeRef)(AXValueCreate(kAXValueCGPointType, (const void *)&winPos));
-    AXUIElementSetAttributeValue(winRef, (__bridge CFStringRef)NSAccessibilitySizeAttribute, (CFTypeRef *)size);
-    AXUIElementSetAttributeValue(winRef, (__bridge CFStringRef)NSAccessibilityPositionAttribute, (CFTypeRef *)pos);
+    err = AXUIElementSetAttributeValue(winRef, (__bridge CFStringRef)NSAccessibilitySizeAttribute, (CFTypeRef *)size);
+    if (err != 0) {
+        NSLog(@"SetWindowRectForTitle set size error: %s %d\n", title, err);
+    }
+    err = AXUIElementSetAttributeValue(winRef, (__bridge CFStringRef)NSAccessibilityPositionAttribute, (CFTypeRef *)pos);
+    if (err != 0) {
+        NSLog(@"SetWindowRectForTitle set pos error: %s %d\n", title, err);
+    }
     CFRelease(size);
 
-    return 1;
+    return (err == 0) ? 1 : 0;
 }
 

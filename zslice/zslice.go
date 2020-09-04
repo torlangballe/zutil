@@ -69,3 +69,21 @@ func MixedValueAtTForF64(array []float64, t float64) float64 {
 func Behead(slice interface{}) {
 	RemoveAt(slice, 0)
 }
+
+func RemoveIf(slice interface{}, remove func(i int) bool) {
+	for {
+		val := reflect.ValueOf(slice).Elem()
+		len := val.Len()
+		found := false
+		for i := 0; i < len; i++ {
+			if remove(i) {
+				RemoveAt(slice, i)
+				found = true
+				break
+			}
+		}
+		if !found {
+			break
+		}
+	}
+}

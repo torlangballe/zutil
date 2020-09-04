@@ -55,7 +55,10 @@ func OpenURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) erro
 		"-a", name,
 		surl,
 		"--args"}, args...)
-	_, err := zprocess.RunCommand("open", 5, args...)
+	str, err := zprocess.RunCommand("open", 5, args...)
+	if str != "" {
+		zlog.Info("OpenURLInBrowser:", str)
+	}
 	if err != nil {
 		return zlog.Error(err, "OpenURLInBrowser")
 	}

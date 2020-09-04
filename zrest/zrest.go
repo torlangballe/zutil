@@ -42,9 +42,9 @@ var LegalCORSOrigins = map[string]bool{}
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	o := req.Header.Get("Origin")
-	// zlog.Info("AddCorsHeaders:", o, req.Header, LegalCORSOrigins[o])
+	// zlog.Info("AddCorsHeaders:", o, LegalCORSOrigins) // req.Header,
 	if LegalCORSOrigins[o] {
-		//		zlog.Info("AddCorsHeaders:", o)
+		// zlog.Info("AddCorsHeaders:", o, "allowed:", LegalCORSOrigins)
 		w.Header().Set("Access-Control-Allow-Origin", o)
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")

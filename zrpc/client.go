@@ -61,6 +61,7 @@ func (c *Client) CallRemote(method interface{}, args interface{}, reply interfac
 func (c *Client) CallRemoteWithName(name string, args interface{}, reply interface{}) error {
 	// https://github.com/golang/go/wiki/WebAssembly#configuring-fetch-options-while-using-nethttp
 
+	// start := time.Now()
 	surl := c.makeUrl()
 	// zlog.Info("CALL:", name, args)
 
@@ -68,7 +69,7 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote encode client request")
 	}
-	// fmt.Println("REMOTECALL2:", name, string(message))
+	// fmt.Println("REMOTECALL2:", name, time.Since(start))
 	params := zhttp.MakeParameters()
 	params.UseHTTPS = false
 	params.SkipVerifyCertificate = true
@@ -93,11 +94,9 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 	// sbody := zhttp.GetCopyOfResponseBodyAsString(resp)
 	err = rpcjson.DecodeClientResponse(resp.Body, &reply)
 	if err != nil {
-		zlog.Error(err, zlog.StackAdjust(2), "zrpc decode error") //, sbody)
 		return err
 		//		return zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
 	}
-	// zlog.Debug("DECODE RPC:", reply)
 	return nil
 }
 

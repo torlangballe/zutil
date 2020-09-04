@@ -14,6 +14,10 @@ type Timer struct {
 	mutex sync.Mutex
 }
 
+type Stopper interface {
+	Stop()
+}
+
 func TimerNew() *Timer {
 	return &Timer{}
 }

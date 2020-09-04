@@ -192,7 +192,7 @@ func (c *DaemonConfig) Spawn() error {
 		if sendCrash {
 			c.sendCrashEmail()
 		}
-		time.Sleep(time.Second) // so we don't go completely nuts if something crashes immediately
+		time.Sleep(time.Second * 3) // so we don't go completely nuts if something crashes immediately, also to make listeners flush out or we get error on restart
 		fmt.Println(zstr.EscCyan+"#####", str, "#####"+zstr.EscNoColor)
 	}
 	return nil

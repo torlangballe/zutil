@@ -126,6 +126,7 @@ func expandTildeInFilepath(path string) string {
 
 var hooking = false
 var datePrinted time.Time
+var linesPrintedSinceTimeStamp int
 
 func baseLog(err error, priority Priority, pos int, parts ...interface{}) error {
 	if len(parts) != 0 {
@@ -147,14 +148,24 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		}
 	}
 	finfo := ""
-	if time.Since(datePrinted) > time.Minute {
-		datePrinted = time.Now()
-		finfo += "[" + time.Now().Local().Format("15:04 06-Jan") + "]\n"
+	if runtime.GOOS != "js" {
+		linesPrintedSinceTimeStamp++
+		if time.Since(datePrinted) > time.Minute || linesPrintedSinceTimeStamp > 25 {
+			datePrinted = time.Now()
+			finfo += zstr.EscCyan + "[" + time.Now().Local().Format("15:04 06-Jan") + "]" + zstr.EscNoColor + "\n"
+			linesPrintedSinceTimeStamp = 0
+		}
 	}
 	if priority != InfoLevel {
 		finfo = GetCallingFunctionString(pos) + ": "
 	}
+
 	p := strings.TrimSpace(fmt.Sprintln(parts...))
+
+	pnew := zstr.ColorSetter.Replace(p)
+	if pnew != p {
+		p = pnew + zstr.EscNoColor
+	}
 	if err != nil {
 		err = errors.Wrap(err, p)
 	} else {

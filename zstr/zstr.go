@@ -982,6 +982,39 @@ func SplitInTwo(str string, sep string) (string, string) {
 	return "", ""
 }
 
+func BreakIntoRuneLines(str, breakChars string, columns int) (lines [][]rune) {
+	if breakChars == "" {
+		breakChars = "\n\r –-\t"
+	}
+	runes := []rune(str)
+	lastBreak := -1
+	for {
+		added := false
+		for i, r := range runes {
+			if strings.IndexRune(breakChars, r) != -1 {
+				lastBreak = i
+			}
+			if i >= columns {
+				if lastBreak == -1 || i-lastBreak > columns/3 {
+					lastBreak = i
+				}
+				line := runes[:lastBreak]
+				runes = runes[lastBreak:]
+				lines = append(lines, line)
+				added = true
+				break
+			}
+		}
+		if !added {
+			break
+		}
+	}
+	if len(runes) > 0 {
+		lines = append(lines, runes)
+	}
+	return
+}
+
 var EscapeQuoteReplacer = strings.NewReplacer(
 	"\r\n", "\\n",
 	"\n", "\\n",
@@ -1010,4 +1043,12 @@ var ColorRemover = strings.NewReplacer(
 	EscCyan, "",
 	EscWhite, "",
 	EscNoColor, "",
+)
+
+var ColorSetter = strings.NewReplacer(
+	"🟥", EscRed,
+	"🟩", EscGreen,
+	"🟨", EscYellow,
+	"🟦", EscBlue,
+	"🟪", EscMagenta,
 )

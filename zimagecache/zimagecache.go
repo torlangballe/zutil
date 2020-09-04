@@ -15,13 +15,15 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
+	"github.com/torlangballe/zutil/ztimer"
 )
 
 type Cache struct {
-	workDir         string
-	cacheName       string
-	getUrl          string
-	TokenValidHours int
+	workDir   string
+	cacheName string
+	getURL    string
+	Valid     time.Duration
+	UseToken  bool
 }
 
 func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -43,15 +45,26 @@ func InitCache(workDir, urlPrefix, cacheName string) *Cache {
 		zlog.Fatal(nil, "url should end with /", urlPrefix)
 	}
 	c := &Cache{}
+	c.Valid = time.Hour * 24
 	c.workDir = workDir
 	c.cacheName = cacheName
-	c.getUrl = urlPrefix + cacheName
+	c.getURL = urlPrefix + cacheName
 	err := os.MkdirAll(c.workDir+cacheName, 0775|os.ModeDir)
 	if err != nil {
 		zlog.Log(err, zlog.FatalLevel, "zimages.Init mkdir failed")
 	}
-	http.Handle(c.getUrl, c)
-	// zlog.Info("init image cache:", c.workDir+c.cacheName, c.getUrl)
+	http.Handle(c.getURL, c)
+	ztimer.RepeatIn(3600, func() bool {
+		dir := c.workDir + c.cacheName
+		zfile.Walk(dir, "*.jpeg\t*.png", func(fpath string, info os.FileInfo) error {
+			if time.Since(info.ModTime()) > c.Valid {
+				os.Remove(fpath)
+			}
+			return nil
+		})
+		return true
+	})
+	// zlog.Info("init image cache:", c.workDir+c.cacheName, c.getURL)
 	return c
 }
 
@@ -84,7 +97,7 @@ func (c *Cache) CacheImageFromData(data []byte, stype string) (string, error) {
 	name := fmt.Sprintf("%x.%s", hash, stype)
 
 	path := c.GetCachePathForName(name)
-	// outUrl := GetUrlForName(name)
+	// outUrl := getURLForName(name)
 
 	// zlog.Info("CacheImageFromReader path:", path)
 	if zfile.FileExist(path) {
@@ -109,8 +122,8 @@ func (c *Cache) GetCachePathForName(name string) string {
 }
 
 func (c *Cache) GetCacheUrlForName(name string) string {
-	str := c.getUrl + name
-	if c.TokenValidHours != 0 {
+	str := c.getURL + name
+	if c.UseToken {
 		str += "?token=" + c.getToken()
 	}
 	return str
