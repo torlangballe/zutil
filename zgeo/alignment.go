@@ -164,3 +164,24 @@ func rawFromVector(vector Pos) uint64 {
 	}
 	return uint64(raw)
 }
+
+// For an Alignment that has multiple x/y alignments (i.e Left and Right),
+// SplitIntoIndividual returns a slice of all combinations of them with only a single x/y combination each
+func (a Alignment) SplitIntoIndividual() (all []Alignment) {
+	mask := ^(TopLeft | Center | BottomRight | Out)
+	outs := []Alignment{AlignmentNone}
+	useOut := (a&Out != 0)
+	if useOut {
+		outs = []Alignment{HorOut, VertOut}
+	}
+	for _, o := range outs {
+		for _, x := range []Alignment{Right, Left, HorCenter} {
+			for _, y := range []Alignment{Top, Bottom, VertCenter} {
+				if a&x != 0 && a&y != 0 && (a&o != 0 || !useOut) {
+					all = append(all, (a&mask)|x|y|o)
+				}
+			}
+		}
+	}
+	return
+}

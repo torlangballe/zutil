@@ -16,6 +16,7 @@ const (
 	Iso8601DateFormat = "2006-01-02"
 	ShortFormat       = "2006-01-02 15:04"
 	JavascriptFormat  = "2006-01-02T15:04:05-07:00"
+	JavascriptISO     = "2006-01-02T15:04:05.999Z"
 )
 
 // https://github.com/jinzhu/now -- interesting library for getting start of this minute etc

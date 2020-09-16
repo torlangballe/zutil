@@ -2,12 +2,14 @@ package zlog
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/user"
 	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -152,7 +154,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		linesPrintedSinceTimeStamp++
 		if time.Since(datePrinted) > time.Minute || linesPrintedSinceTimeStamp > 25 {
 			datePrinted = time.Now()
-			finfo += zstr.EscCyan + "[" + time.Now().Local().Format("15:04 06-Jan") + "]" + zstr.EscNoColor + "\n"
+			finfo += zstr.EscCyan + "[" + time.Now().Local().Format("15:04 02-Jan") + "]" + zstr.EscNoColor + "\n"
 			linesPrintedSinceTimeStamp = 0
 		}
 	}
@@ -329,3 +331,20 @@ func PrintStartupInfo(version, commitHash, builtAt, builtBy, builtOn string) {
 // 		os.Exit(-1)
 // 	}
 // }
+
+func StartCPUProfiling() *os.File {
+	f, err := os.Create("cpu.pprof")
+	if err != nil {
+		log.Fatal("could not open cpu profile file: ", err)
+	}
+	err = pprof.StartCPUProfile(f)
+	if err != nil {
+		log.Fatal("could not start CPU profile: ", err)
+	}
+	return f
+}
+
+func StopCPUProfiling(file *os.File) {
+	file.Close()
+	pprof.StopCPUProfile()
+}

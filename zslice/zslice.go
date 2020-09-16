@@ -42,30 +42,6 @@ func RemoveAt(slice interface{}, index int) error {
 	return nil
 }
 
-func MixedValueAtIndexF64(array []float64, index float64) float64 {
-	if index < 0.0 {
-		return array[0]
-	}
-	if index >= float64(len(array))-1 {
-		return array[len(array)-1]
-	}
-	n := index
-	f := (index - n)
-	var v = array[int(n)] * (1 - f)
-	if int(n) < len(array) {
-		v += array[int(n+1)] * f
-		return v
-	}
-	if len(array) > 0 {
-		return array[len(array)-1]
-	}
-	return 0
-}
-
-func MixedValueAtTForF64(array []float64, t float64) float64 {
-	return MixedValueAtIndexF64(array, float64(len(array)-1)*t)
-}
-
 func Behead(slice interface{}) {
 	RemoveAt(slice, 0)
 }
@@ -86,4 +62,11 @@ func RemoveIf(slice interface{}, remove func(i int) bool) {
 			break
 		}
 	}
+}
+
+func CopyTo(slice, to interface{}) {
+	toVal := reflect.ValueOf(to)
+	sliceVal := reflect.ValueOf(slice)
+	toVal.SetCap(sliceVal.Len())
+	reflect.Copy(toVal, sliceVal)
 }

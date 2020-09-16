@@ -187,6 +187,19 @@ int CloseWindowForTitle(const char *title, long pid) {
     return 1;
 }
 
+int ActivateWindowForTitle(const char *title, long pid) {
+    NSRunningApplication* app = [NSRunningApplication runningApplicationWithProcessIdentifier: pid];
+    [app activateWithOptions: NSApplicationActivateIgnoringOtherApps];
+
+    AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, false);
+    AXError err = AXUIElementPerformAction(winRef, kAXRaiseAction);
+    if (err != 0) {
+        NSLog(@"ActivateWindowForTitle error: %s %d\n", title, err);
+        return 0;
+    }
+    return 1;
+}
+
 int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h) {
     NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, NO);

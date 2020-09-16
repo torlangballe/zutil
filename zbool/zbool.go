@@ -21,6 +21,13 @@ func NOT(_ string) bool {
 	return false
 }
 
+func StringFor(val bool, strue, sfalse string) string {
+	if val {
+		return strue
+	}
+	return sfalse
+}
+
 func ToBoolInd(b bool) BoolInd {
 	if b {
 		return True
@@ -37,11 +44,22 @@ func (b BoolInd) IsUndetermined() bool {
 }
 
 func FromString(str string, def bool) bool {
+	bind := FromStringWithInd(str, Unknown)
+	if bind == Unknown {
+		return def
+	}
+	return bind.BoolValue()
+}
+
+func FromStringWithInd(str string, def BoolInd) BoolInd {
+	if str == "-1" {
+		return Unknown
+	}
 	if str == "1" || str == "true" || str == "TRUE" {
-		return true
+		return True
 	}
 	if str == "0" || str == "false" || str == "FALSE" {
-		return false
+		return False
 	}
 	return def
 }

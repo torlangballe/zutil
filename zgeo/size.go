@@ -87,6 +87,9 @@ func (s Size) EqualSided() Size {
 
 // Area returns the product of W, H (WxH)
 func (s Size) Area() float64 {
+	if s.W < 0 || s.H < 0 {
+		return 0
+	}
 	return s.W * s.H
 }
 

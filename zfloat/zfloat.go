@@ -238,3 +238,31 @@ func Clamped32(v, min, max float32) float32 {
 	}
 	return v
 }
+
+// MixedValueAtT returns the mix beween the values t lies within using MixedValueAtIndex
+// t is 0-1, corresponding to 0 as 100% of [0] and 1 as 100% the last slice element.
+func MixedValueAtT(slice []float64, t float64) float64 {
+	return MixedValueAtIndex(slice, float64(len(slice)-1)*t)
+}
+
+// MixedValueAtIndex returns a mix of the value before and after index;
+// So if index is 4.25, it will return a mix of 75% [4] and 25% [5]
+func MixedValueAtIndex(slice []float64, index float64) float64 {
+	if index < 0.0 {
+		return slice[0]
+	}
+	if index >= float64(len(slice))-1 {
+		return slice[len(slice)-1]
+	}
+	n := index
+	f := (index - n)
+	var v = slice[int(n)] * (1 - f)
+	if int(n) < len(slice) {
+		v += slice[int(n+1)] * f
+		return v
+	}
+	if len(slice) > 0 {
+		return slice[len(slice)-1]
+	}
+	return 0
+}

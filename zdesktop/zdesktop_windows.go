@@ -7,10 +7,10 @@ import (
 
 	"github.com/AllenDang/w32"
 	"github.com/kbinani/screenshot"
-	"github.com/torlangballe/zutil/zhttp"
-	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zprocess"
 )
 
 func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
@@ -105,9 +105,11 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 
 var screenLock sync.Mutex
 
-func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, error) {
+func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bool) (image.Image, error) {
 	screenLock.Lock()
-	ActivateWindow(title, app)
+	if activateWindow {
+		ActivateWindow(title, app)
+	}
 	bounds := image.Rect(int(crop.Min().X), int(crop.Min().Y), int(crop.Max().X), int(crop.Max().Y))
 	nimage, err := screenshot.CaptureRect(bounds)
 	screenLock.Unlock()

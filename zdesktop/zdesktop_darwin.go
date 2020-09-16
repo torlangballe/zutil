@@ -12,6 +12,7 @@ package zdesktop
 // int TerminateAppForPID(long *pid);
 // int CloseWindowForTitle(const char *title, long pid);
 // int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h);
+// int ActivateWindowForTitle(const char *title, long pid);
 import "C"
 
 import (
@@ -106,7 +107,7 @@ func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err e
 
 var screenLock sync.Mutex
 
-func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, error) {
+func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bool) (image.Image, error) {
 	filepath := zfile.CreateTempFilePath("win.png")
 
 	// start := time.Now()
@@ -119,6 +120,9 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, err
 	winID, scale, err := GetIDAndScaleForWindowTitle(title, app)
 	if err != nil {
 		return nil, zlog.Error(err, "get id scale")
+	}
+	if activateWindow {
+		ActivateWindow(title, app)
 	}
 	// zlog.Info("GetImageForWindowTitle Since3:", time.Since(start))
 	_, err = zprocess.RunCommand("screencapture", 0, "-o", "-x", "-l", winID, filepath) // -o is no shadow, -x is no sound, -l is window id
@@ -179,4 +183,12 @@ func SendQuitCommandToApp(app string) error {
 	script := fmt.Sprintf(`quit app "%s"`, app)
 	_, err := zprocess.RunAppleScript(script, 10)
 	return err
+}
+
+func ActivateWindow(title, app string) {
+	title = getTitleWithApp(title, app)
+	pids := GetPIDsForAppName(app)
+	for _, pid := range pids {
+		C.ActivateWindowForTitle(C.CString(title), C.long(pid))
+	}
 }

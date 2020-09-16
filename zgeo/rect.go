@@ -177,6 +177,12 @@ func (r Rect) Overlaps(rect Rect) bool {
 	return rmin.X < max.X && rmin.Y < max.Y && rmax.X > min.X && rmax.Y > min.Y
 }
 
+func (r Rect) Intersected(rect Rect) Rect {
+	max := r.Max().Min(rect.Max())
+	min := r.Min().Max(rect.Min())
+	return RectFromMinMax(min, max)
+}
+
 func (r Rect) Contains(pos Pos) bool {
 	min := r.Min()
 	max := r.Max()
@@ -313,7 +319,7 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 		} else if align&VertCenter != 0 {
 			y = float64(r.Pos.Y) + (hf-ha)/2.0
 		} else {
-			y = float64(r.Pos.Y + marg.H)
+			y = float64(r.Max().Y + marg.H)
 		}
 	} else {
 		if align&Top != 0 {
@@ -334,11 +340,13 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 	return Rect{Pos{x, y}, Size{wa, ha}}
 }
 
-func (r *Rect) MoveInto(rect Rect) {
-	r.Pos.X = math.Max(r.Pos.X, rect.Pos.X)
-	r.Pos.Y = math.Max(r.Pos.Y, rect.Pos.Y)
-	min := r.Max().Min(rect.Max())
-	r.Pos.Add(min.Minus(r.Max()))
+func (r Rect) MovedInto(rect Rect) (m Rect) {
+	m = r
+	m.Pos.X = math.Max(r.Pos.X, rect.Pos.X)
+	m.Pos.Y = math.Max(r.Pos.Y, rect.Pos.Y)
+	min := m.Max().Min(rect.Max())
+	m.Pos.Add(min.Minus(m.Max()))
+	return
 }
 
 /* #kotlin-raw:
@@ -398,8 +406,9 @@ func (r *Rect) UnionWithPos(pos Pos) {
 	}
 }
 
-func (r Rect) Plus(a Rect) Rect  { return RectFromMinMax(r.Pos.Plus(a.Pos), r.Max().Plus(a.Max())) }
-func (r Rect) Minus(a Rect) Rect { return RectFromMinMax(r.Pos.Minus(a.Pos), r.Max().Minus(a.Max())) }
+func (r Rect) Plus(a Rect) Rect     { return RectFromMinMax(r.Pos.Plus(a.Pos), r.Max().Plus(a.Max())) }
+func (r Rect) PlusPos(pos Pos) Rect { n := r; n.Pos.Add(pos); return n }
+func (r Rect) Minus(a Rect) Rect    { return RectFromMinMax(r.Pos.Minus(a.Pos), r.Max().Minus(a.Max())) }
 func (r Rect) DividedBy(a Size) Rect {
 	return RectFromMinMax(r.Min().DividedBy(a.Pos()), r.Max().DividedBy(a.Pos()))
 }

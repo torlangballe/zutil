@@ -7,12 +7,9 @@ import (
 	"sort"
 
 	"github.com/torlangballe/zutil/zbool"
-	"github.com/torlangballe/zutil/zint"
-
 	"github.com/torlangballe/zutil/zfloat"
-
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
-
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 )

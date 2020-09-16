@@ -296,6 +296,7 @@ func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) 
 }
 
 func RemoveContents(dir string) error {
+	dir = ExpandTildeInFilepath(dir)
 	d, err := os.Open(dir)
 	// fmt.Println("RemoveContents:", dir, err)
 	if err != nil {
