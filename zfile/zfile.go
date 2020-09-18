@@ -51,7 +51,7 @@ func CreateTempFilePath(name string) string {
 	return stemp
 }
 
-func FileExist(fpath string) bool {
+func Exists(fpath string) bool {
 	_, err := os.Stat(fpath)
 	return err == nil
 }
@@ -61,7 +61,7 @@ func SetModified(fpath string, t time.Time) error {
 	return err
 }
 
-func FileNotExist(fpath string) bool { // not same as !DoesFileExist...
+func NotExist(fpath string) bool { // not same as !DoesFileExist...
 	if _, err := os.Stat(fpath); os.IsNotExist(err) {
 		return true
 	}

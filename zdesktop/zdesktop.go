@@ -17,7 +17,15 @@ func GetPIDsForAppName(app string) []int64 {
 	for _, p := range procs {
 		// fmt.Println("PROC:", app, "=", p.Executable())
 		if p.Executable() == app {
-			pids = append(pids, int64(p.Pid()))
+			proc, err := process.NewProcess(int32(p.Pid())) // Specify process id of parent
+			status, err := proc.Status()
+			if err != nil {
+				zlog.Error(err, "get status")
+				continue
+			}
+			if status != "Z" {
+				pids = append(pids, int64(p.Pid()))
+			}
 		}
 	}
 	return pids
@@ -25,10 +33,11 @@ func GetPIDsForAppName(app string) []int64 {
 
 func terminateProcess(p *process.Process, force, children bool) (oerr error) {
 	var err error
+	status, err := p.Status()
+	zlog.Info("terminateProcess:", p.Pid, status, err)
 	if children {
 		kids, _ := p.Children()
 		for _, k := range kids {
-			// zlog.Info("terminateProcess kids:", p.Pid, k.Pid)
 			err = terminateProcess(k, force, children)
 			if err != nil {
 				oerr = err
@@ -40,7 +49,7 @@ func terminateProcess(p *process.Process, force, children bool) (oerr error) {
 	} else {
 		err = p.Terminate() // Kill the parent process
 	}
-	// zlog.Info("TerminateAppsByName2", err)
+	zlog.Info("TerminateAppsByName2", force, err)
 	if err != nil {
 		oerr = zlog.Wrap(err, "kill main process")
 	}

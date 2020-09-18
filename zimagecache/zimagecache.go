@@ -30,7 +30,7 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	spath := req.URL.Path[1:]
 	file := path.Join(c.workDir, spath)
 	// zlog.Info("FileCache serve:", file)
-	if !zfile.FileExist(file) {
+	if !zfile.Exists(file) {
 		zlog.Info("Serve empty cached image:", file)
 		file = "www/images/empty.png"
 	}
@@ -100,7 +100,7 @@ func (c *Cache) CacheImageFromData(data []byte, stype string) (string, error) {
 	// outUrl := getURLForName(name)
 
 	// zlog.Info("CacheImageFromReader path:", path)
-	if zfile.FileExist(path) {
+	if zfile.Exists(path) {
 		err = zfile.SetModified(path, time.Now())
 		return name, err
 	}

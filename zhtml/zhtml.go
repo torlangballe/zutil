@@ -64,3 +64,4 @@ func ExtractTextFromHTMLString(str string) (text string, err error) {
 func StringIsHTML(str string) bool {
 	return strings.HasPrefix(str, "<!DOCTYPE HTML ")
 }
+

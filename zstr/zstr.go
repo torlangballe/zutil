@@ -298,6 +298,17 @@ func ContainsDuplicates(strs []string) bool {
 	return false
 }
 
+func RemoveDuplicates(strs []string) (out []string) {
+	m := map[string]bool{}
+	for _, s := range strs {
+		if !m[s] {
+			out = append(out, s)
+			m[s] = true
+		}
+	}
+	return
+}
+
 func ExtractStringTilSeparator(str *string, sep string) (got string) {
 	i := strings.Index(*str, sep)
 	if i == -1 {
