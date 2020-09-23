@@ -692,3 +692,7 @@ func MakeDataURL(data []byte, mime string) string {
 	}
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data)
 }
+
+func StringStartsWithHTTPX(str string) bool {
+	return strings.HasPrefix(str, "http:") || strings.HasPrefix(str, "https:")
+}

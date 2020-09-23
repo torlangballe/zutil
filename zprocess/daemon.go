@@ -1,3 +1,5 @@
+// +build !js
+
 package zprocess
 
 import (
@@ -33,20 +35,20 @@ func init() {
 }
 
 type DaemonConfig struct {
-	BinaryPath            string
+	BinaryPath            string `json:",omitempty"`
 	Arguments             []string
-	LogPath               string
-	AddLogURL             string
-	Print                 bool // Print out/err to stdout as well. Only really makes sense if running one app only
+	LogPath               string `json:",omitempty"`
+	AddLogURL             string `json:",omitempty"`
+	Print                 bool   // Print out/err to stdout as well. Only really makes sense if running one app only
 	EmailToAddresses      []string
-	EmailServer           string
-	EmailUserID           string
-	EmailPassword         string
-	EmailFromAddress      string
-	EmailFromName         string
-	EmailPort             int
-	SendLogWaitSecs       int
-	StartTime             time.Time
+	EmailServer           string    `json:",omitempty"`
+	EmailUserID           string    `json:",omitempty"`
+	EmailPassword         string    `json:",omitempty"`
+	EmailFromAddress      string    `json:",omitempty"`
+	EmailFromName         string    `json:",omitempty"`
+	EmailPort             int       `json:",omitempty"`
+	SendLogWaitSecs       int       `json:",omitempty"`
+	StartTime             time.Time `json:"-"`
 	RestartModifiedBinary bool
 
 	binaryModifiedTime time.Time
@@ -54,6 +56,22 @@ type DaemonConfig struct {
 	logBuffer          string
 	crashBuffer        string
 	postLogTimer       *ztimer.Timer
+}
+
+func makeConfigPath() string {
+	return os.Args[0] + "-daemon.json"
+}
+
+func loadConfig(config *DaemonConfig) error {
+	path := makeConfigPath()
+	stat, _ := os.Stat(path)
+	if stat != nil {
+		err := zjson.UnmarshalFromFile(&config, path)
+		if err != nil {
+			return zlog.Error(err, "unmarshal configs")
+		}
+	}
+	return nil
 }
 
 func DaemonizeSelf(adjustConfig func(c *DaemonConfig)) error {
@@ -65,16 +83,12 @@ func DaemonizeSelf(adjustConfig func(c *DaemonConfig)) error {
 	if *noDaemon {
 		return nil
 	}
+	err := loadConfig(&config)
+	if err != nil {
+		return err
+	}
 	config.Print = true
 	config.RestartModifiedBinary = true
-	path := os.Args[0] + "-daemon.json"
-	stat, _ := os.Stat(path)
-	if stat != nil {
-		err := zjson.UnmarshalFromFile(&config, path)
-		if err != nil {
-			return zlog.Error(err, "unmarshal configs")
-		}
-	}
 	// fmt.Printf("READ DAEMON: %+v\n", config)
 	config.BinaryPath = os.Args[0]
 	config.Arguments = append(config.Arguments, "-znodaemon")
@@ -82,6 +96,31 @@ func DaemonizeSelf(adjustConfig func(c *DaemonConfig)) error {
 		adjustConfig(&config)
 	}
 	config.Spawn()
+	return nil
+}
+
+func ReplaceArgAndResaveConfig(arg, value string) error {
+	var config DaemonConfig
+	err := loadConfig(&config)
+	if err != nil {
+		return err
+	}
+	found := false
+	for i, a := range config.Arguments {
+		if a == arg && i < len(config.Arguments)-1 {
+			config.Arguments[i+1] = value
+			found = true
+			break
+		}
+	}
+	if !found {
+		config.Arguments = append(config.Arguments, arg, value)
+	}
+	path := makeConfigPath()
+	err = zjson.MarshalToFile(config, path)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

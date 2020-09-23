@@ -78,7 +78,7 @@ func RunURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) (*exe
 
 func WindowWithTitleExists(title, app string) bool {
 	title = getTitleWithApp(title, app)
-	for _, pid := range GetPIDsForAppName(app) {
+	for _, pid := range zprocess.GetPIDsForAppName(app) {
 		wInfo := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
 		if int(wInfo.winID) != 0 {
 			return true
@@ -90,7 +90,7 @@ func WindowWithTitleExists(title, app string) bool {
 func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err error) {
 	// title = getTitleWithApp(title, app)
 	// fmt.Println("GetIDAndScaleForWindowTitle title, app:", title, app)
-	for _, pid := range GetPIDsForAppName(app) {
+	for _, pid := range zprocess.GetPIDsForAppName(app) {
 		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
 		w := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
 		// fmt.Println("GetIDAndScaleForWindowTitle2 go:", w)
@@ -150,7 +150,7 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 
 func CloseWindowForTitle(title, app string) error {
 	title = getTitleWithApp(title, app)
-	for _, pid := range GetPIDsForAppName(app) {
+	for _, pid := range zprocess.GetPIDsForAppName(app) {
 		r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
 		if r == 1 {
 			return nil
@@ -168,7 +168,7 @@ func getTitleWithApp(title, app string) string {
 
 func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 	title = getTitleWithApp(title, app)
-	pids := GetPIDsForAppName(app)
+	pids := zprocess.GetPIDsForAppName(app)
 	for _, pid := range pids {
 		// zlog.Info("SetWindowRectForTitle:", title, app, pid)
 		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
@@ -187,7 +187,7 @@ func SendQuitCommandToApp(app string) error {
 
 func ActivateWindow(title, app string) {
 	title = getTitleWithApp(title, app)
-	pids := GetPIDsForAppName(app)
+	pids := zprocess.GetPIDsForAppName(app)
 	for _, pid := range pids {
 		C.ActivateWindowForTitle(C.CString(title), C.long(pid))
 	}

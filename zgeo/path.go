@@ -264,5 +264,6 @@ func (p *Path) AddStar(rect Rect, points int, inRatio float32) {
 func (p *Path) ArcDegFromCenter(center Pos, radius Size, degStart float64, degEnd float64) {
 	clockwise := !(degStart > degEnd)
 	rect := Rect{Size: radius.TimesD(2)}.Centered(center)
+	rect.MakeInteger()
 	p.ArcTo(rect, degStart, degEnd-degStart, clockwise)
 }
