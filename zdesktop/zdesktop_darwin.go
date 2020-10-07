@@ -3,6 +3,8 @@ package zdesktop
 // #cgo LDFLAGS: -framework CoreVideo
 // #cgo LDFLAGS: -framework Foundation
 // #cgo LDFLAGS: -framework AppKit
+// #cgo LDFLAGS: -framework CoreGraphics
+// #include <CoreGraphics/CoreGraphics.h>
 // typedef struct WinIDInfo {
 //     long       winID;
 //     int        scale;
@@ -13,20 +15,25 @@ package zdesktop
 // int CloseWindowForTitle(const char *title, long pid);
 // int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h);
 // int ActivateWindowForTitle(const char *title, long pid);
+// void ConvertARGBToRGBAOpaque(int w, int h, int stride, unsigned char *img);
+// typedef struct Image {
+//   int width;
+//   int height;
+//   char *data;
+// } Image;
+// CGImageRef GetWindowImage(long winID);
 import "C"
 
 import (
 	"errors"
 	"fmt"
 	"image"
-	"os"
+	_ "image/jpeg"
 	"os/exec"
 	"strconv"
 	"sync"
+	"unsafe"
 
-	"github.com/disintegration/imaging"
-
-	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
@@ -108,15 +115,30 @@ func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err e
 var screenLock sync.Mutex
 
 func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bool) (image.Image, error) {
-	filepath := zfile.CreateTempFilePath("win.png")
+	// crop.Pos = zgeo.Pos{0, 100}
+	// screenLock.Lock() -- for windows
+	// defer screenLock.Unlock()
+	winID, _, err := GetIDAndScaleForWindowTitle(title, app)
+	if err != nil {
+		return nil, zlog.Error(err, "get id scale")
+	}
+	if activateWindow {
+		ActivateWindow(title, app)
+	}
+	return GetWindowImage(winID, crop)
+}
 
-	// start := time.Now()
-	// zlog.Info("GetImageForWindowTitle Since1:", time.Since(start))
+/*
+func GetImageForWindowTitle2(title, app string, crop zgeo.Rect, activateWindow bool) (image.Image, error) {
+	filepath := zfile.CreateTempFilePath("win.jpeg")
+
+	start := time.Now()
+	zlog.Info("GetImageForWindowTitle Since1:", time.Since(start), filepath)
 
 	screenLock.Lock()
 	defer screenLock.Unlock()
 
-	// zlog.Info("GetImageForWindowTitle Since2:", time.Since(start))
+	zlog.Info("GetImageForWindowTitle Since2:", time.Since(start))
 	winID, scale, err := GetIDAndScaleForWindowTitle(title, app)
 	if err != nil {
 		return nil, zlog.Error(err, "get id scale")
@@ -124,13 +146,13 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 	if activateWindow {
 		ActivateWindow(title, app)
 	}
-	// zlog.Info("GetImageForWindowTitle Since3:", time.Since(start))
+	zlog.Info("GetImageForWindowTitle Since3:", time.Since(start))
 	_, err = zprocess.RunCommand("screencapture", 0, "-o", "-x", "-l", winID, filepath) // -o is no shadow, -x is no sound, -l is window id
 	if err != nil {
 		return nil, zlog.Error(err, "call screen capture. id:", winID)
 	}
-	defer os.Remove(filepath)
-	// zlog.Info("GetImageForWindowTitle Since4:", time.Since(start))
+	// defer os.Remove(filepath)
+	zlog.Info("GetImageForWindowTitle Since4:", time.Since(start))
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, zlog.Error(err, "open", filepath)
@@ -139,15 +161,15 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 	if err != nil {
 		return nil, zlog.Error(err, "decode", filepath)
 	}
-	// zlog.Info("GetImageForWindowTitle Since5:", time.Since(start))
+	zlog.Info("GetImageForWindowTitle Since5:", time.Since(start), goimage.Bounds())
 	rect := crop.TimesD(float64(scale))
 	r := image.Rect(int(rect.Min().X), int(rect.Min().Y), int(rect.Max().X), int(rect.Max().Y))
 	newImage := imaging.Crop(goimage, r)
-	// zlog.Info("GetImageForWindowTitle Since6:", time.Since(start))
+	zlog.Info("GetImageForWindowTitle Since6:", time.Since(start))
 	// TODO: set image scale
 	return newImage, nil
 }
-
+*/
 func CloseWindowForTitle(title, app string) error {
 	title = getTitleWithApp(title, app)
 	for _, pid := range zprocess.GetPIDsForAppName(app) {
@@ -191,4 +213,84 @@ func ActivateWindow(title, app string) {
 	for _, pid := range pids {
 		C.ActivateWindowForTitle(C.CString(title), C.long(pid))
 	}
+}
+
+func AddExecutableToLoginItems(exePath, name string, hidden bool) error {
+	command := `tell application "System Events" to make new login item at end with properties {path:"%s", name:"%s", hidden:%v}`
+	command = fmt.Sprintf(command, exePath, name, hidden)
+	str, err := zprocess.RunAppleScript(command, 10)
+	if err != nil {
+		return zlog.Error(err, "🟨error adding executable", exePath, "to login items:", str)
+	}
+	return nil
+}
+
+func createColorspace() C.CGColorSpaceRef {
+	return C.CGColorSpaceCreateWithName(C.kCGColorSpaceSRGB)
+}
+
+func createBitmapContext(width int, height int, data *C.uint32_t, bytesPerRow int) C.CGContextRef {
+	colorSpace := createColorspace()
+	if colorSpace == 0 {
+		return 0
+	}
+	defer C.CGColorSpaceRelease(colorSpace)
+
+	return C.CGBitmapContextCreate(unsafe.Pointer(data),
+		C.size_t(width),
+		C.size_t(height),
+		8, // bits per component
+		C.size_t(bytesPerRow),
+		colorSpace,
+		C.kCGImageAlphaNoneSkipFirst)
+}
+
+func CGImageToGoImage(cgimage C.CGImageRef, crop zgeo.Rect) (image.Image, error) {
+	cw := int(crop.Size.W)
+	ch := int(crop.Size.H)
+	img := image.NewRGBA(image.Rect(0, 0, cw, ch))
+	if img == nil {
+		return nil, zlog.Error(nil, "NewRGBA returned nil", cw, ch)
+	}
+	iw := int(C.CGImageGetWidth(cgimage))
+	ih := int(C.CGImageGetHeight(cgimage))
+
+	// zlog.Info("CGImageToGoImage:", CGImageGetWidth(cgimage), CGImageGetHeight(cgimage))
+	ctx := createBitmapContext(cw, ch, (*C.uint32_t)(unsafe.Pointer(&img.Pix[0])), img.Stride)
+
+	diff := float64(ih - ch)
+	x := C.CGFloat(-crop.Pos.X)
+	y := C.CGFloat(-diff + crop.Pos.Y)
+	cgDrawRect := C.CGRectMake(x, y, C.CGFloat(iw), C.CGFloat(ih))
+	// zlog.Info("CGImageToGoImage draw into:", diff, cgDrawRect)
+	C.CGContextDrawImage(ctx, cgDrawRect, cgimage)
+
+	C.ConvertARGBToRGBAOpaque(C.int(cw), C.int(ch), C.int(img.Stride), (*C.uchar)(unsafe.Pointer(&img.Pix[0])))
+	// i := 0
+	// for iy := 0; iy < ch; iy++ {
+	// 	j := i
+	// 	for ix := 0; ix < cw; ix++ {
+	// 		// ARGB => RGBA, and set A to 255
+	// 		img.Pix[j], img.Pix[j+1], img.Pix[j+2], img.Pix[j+3] = img.Pix[j+1], img.Pix[j+2], img.Pix[j+3], 255
+	// 		j += 4
+	// 	}
+	// 	i += img.Stride
+	// }
+
+	return img, nil
+}
+
+func GetWindowImage(winID string, crop zgeo.Rect) (image.Image, error) {
+	wid, _ := strconv.ParseInt(winID, 10, 64)
+	zlog.Assert(wid != 0)
+	// start := time.Now()
+	cgimage := C.GetWindowImage(C.long(wid))
+	if cgimage == C.CGImageRef(0) {
+		return nil, zlog.Error(nil, "get window image returned nil", wid)
+	}
+	// zlog.Info("GetWindowImage:", time.Since(start))
+	img, err := CGImageToGoImage(cgimage, crop)
+	// zlog.Info("GetWindowImage Make Go Image:", time.Since(start))
+	C.CGImageRelease(cgimage)
+	return img, err
 }

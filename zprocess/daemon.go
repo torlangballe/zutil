@@ -10,10 +10,11 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/sasha-s/go-deadlock"
 	"github.com/torlangballe/zutil/zfile"
+	"github.com/torlangballe/zutil/zfilelog"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zjson"
@@ -50,11 +51,13 @@ type DaemonConfig struct {
 	SendLogWaitSecs       int       `json:",omitempty"`
 	StartTime             time.Time `json:"-"`
 	RestartModifiedBinary bool
+	infoLock              deadlock.Mutex
 
 	binaryModifiedTime time.Time
-	bufferLock         sync.Mutex
+	bufferLock         deadlock.Mutex
 	logBuffer          string
 	crashBuffer        string
+	postLogTimerLock   deadlock.Mutex
 	postLogTimer       *ztimer.Timer
 }
 
@@ -148,12 +151,14 @@ func (c *DaemonConfig) putBuffer() {
 	} else {
 		c.bufferLock.Unlock()
 	}
+	c.postLogTimerLock.Lock()
 	c.postLogTimer = nil
+	c.postLogTimerLock.Unlock()
 }
 
-func (c *DaemonConfig) readFromPipe(pipe io.Reader) {
+func (c *DaemonConfig) readFromPipe(pipe io.Reader, quit *bool) {
 	reader := bufio.NewReader(pipe)
-	for {
+	for !*quit {
 		str, err := reader.ReadString('\n')
 		// zlog.Info("daemon: read from pipe", str, err, len(c.logBuffer))
 		if err == io.EOF {
@@ -169,25 +174,27 @@ func (c *DaemonConfig) readFromPipe(pipe io.Reader) {
 			c.bufferLock.Lock()
 			c.logBuffer += str
 			c.bufferLock.Unlock()
-			if len(c.logBuffer) > 2048 {
-				c.putBuffer()
-			} else {
-				if c.postLogTimer == nil {
-					c.postLogTimer = ztimer.StartIn(5, func() {
-						c.putBuffer()
-					})
-				}
+			c.postLogTimerLock.Lock()
+			if c.postLogTimer == nil {
+				c.postLogTimer = ztimer.StartIn(5, func() {
+					c.putBuffer()
+				})
 			}
+			c.postLogTimerLock.Unlock()
+		}
+		if c.LogPath != "" {
+			zfilelog.AddToLogFile(c.LogPath, str)
 		}
 	}
 }
 
 func (c *DaemonConfig) sendCrashEmail() {
 	subject := "Bridgetech QTT " + strings.Trim(c.BinaryPath, " ./") + " crash"
+	fmt.Println("{nolog}SEND CRASH EMAIL1:", subject)
 	c.bufferLock.Lock()
 	str := c.crashBuffer
 	c.bufferLock.Unlock()
-	zlog.Info("SEND CRASH EMAIL:", subject, len(str))
+	fmt.Println("{nolog}SEND CRASH EMAIL:", subject, len(str), "\n")
 	c.SendEmail(str, subject)
 }
 
@@ -195,7 +202,9 @@ func (c *DaemonConfig) Spawn() error {
 	zlog.Info("daemon:", c.BinaryPath)
 	for {
 		sendCrash := true
+		c.infoLock.Lock()
 		c.binaryModifiedTime = zfile.Modified(c.BinaryPath)
+		c.infoLock.Unlock()
 		cmd, outPipe, errPipe, err := StartCommand(c.BinaryPath, false, c.Arguments...)
 		if err != nil {
 			return zlog.Error(err, "start command", c.BinaryPath, c.Arguments)
@@ -205,7 +214,10 @@ func (c *DaemonConfig) Spawn() error {
 		if c.RestartModifiedBinary {
 			ztimer.RepeatIn(3, func() bool {
 				mod := zfile.Modified(c.BinaryPath)
-				if mod != c.binaryModifiedTime {
+				c.infoLock.Lock()
+				mtime := c.binaryModifiedTime
+				c.infoLock.Unlock()
+				if mod != mtime {
 					if !lastMod.IsZero() && lastMod == mod {
 						zlog.Info(zstr.EscCyan+"#### Binary", c.BinaryPath, "time modified to", ztime.GetNice(mod, true)+". retarting. ####"+zstr.EscNoColor)
 						time.Sleep(time.Second) // maybe we need this to flush out print
@@ -219,15 +231,21 @@ func (c *DaemonConfig) Spawn() error {
 				return true
 			})
 		}
-		go c.readFromPipe(outPipe)
-		go c.readFromPipe(errPipe)
+		var quitRead bool
+		go c.readFromPipe(outPipe, &quitRead)
+		go c.readFromPipe(errPipe, &quitRead)
 		err = cmd.Run()
 		str := "zprocess daemon: restarting after error in run"
+		quitRead = true
+		c.putBuffer()
 		if err != nil {
+			c.bufferLock.Lock()
 			c.logBuffer += str + "\n"
+			c.bufferLock.Unlock()
 			str += " " + err.Error()
 		}
-		c.putBuffer()
+		cmd.Process.Kill()
+		fmt.Println("HERE!")
 		if sendCrash {
 			c.sendCrashEmail()
 		}

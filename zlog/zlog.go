@@ -2,20 +2,20 @@ package zlog
 
 import (
 	"fmt"
-	"log"
+	"net/http/pprof"
 	"os"
 	"os/user"
 	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"runtime/pprof"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
-
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -126,7 +126,9 @@ func expandTildeInFilepath(path string) string {
 	return ""
 }
 
+var hookingLock sync.Mutex
 var hooking = false
+var timeLock sync.Mutex
 var datePrinted time.Time
 var linesPrintedSinceTimeStamp int
 
@@ -151,19 +153,20 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	}
 	finfo := ""
 	if runtime.GOOS != "js" {
+		timeLock.Lock()
 		linesPrintedSinceTimeStamp++
 		if time.Since(datePrinted) > time.Minute || linesPrintedSinceTimeStamp > 25 {
 			datePrinted = time.Now()
-			finfo += zstr.EscCyan + "[" + time.Now().Local().Format("15:04 02-Jan") + "]" + zstr.EscNoColor + "\n"
+			finfo += fmt.Sprint(zstr.EscCyan, "[", time.Now().Local().Format("15:04 02-Jan"), "] ", runtime.NumGoroutine(), "g", zstr.EscNoColor, "\n")
 			linesPrintedSinceTimeStamp = 0
 		}
+		timeLock.Unlock()
 	}
 	if priority != InfoLevel {
-		finfo = GetCallingFunctionString(pos) + ": "
+		finfo += GetCallingFunctionString(pos) + ": "
 	}
 
 	p := strings.TrimSpace(fmt.Sprintln(parts...))
-
 	pnew := zstr.ColorSetter.Replace(p)
 	if pnew != p {
 		p = pnew + zstr.EscNoColor
@@ -177,6 +180,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	str := finfo + err.Error() + "\n"
 	WriteToTheLogFile(str)
 
+	hookingLock.Lock()
 	if !hooking {
 		hooking = true
 		for _, f := range outputHooks {
@@ -184,6 +188,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		}
 		hooking = false
 	}
+	hookingLock.Unlock()
 	writeToSyslog(str)
 	if priority == FatalLevel {
 		panic("zlog.Fatal")
@@ -332,19 +337,40 @@ func PrintStartupInfo(version, commitHash, builtAt, builtBy, builtOn string) {
 // 	}
 // }
 
-func StartCPUProfiling() *os.File {
-	f, err := os.Create("cpu.pprof")
-	if err != nil {
-		log.Fatal("could not open cpu profile file: ", err)
-	}
-	err = pprof.StartCPUProfile(f)
-	if err != nil {
-		log.Fatal("could not start CPU profile: ", err)
-	}
-	return f
-}
+// var profilingFile *os.File
 
-func StopCPUProfiling(file *os.File) {
-	file.Close()
-	pprof.StopCPUProfile()
+// func StartCPUProfiling() bool {
+// 	var err error
+
+// 	if profilingFile != nil {
+// 		Info("Allready profiling")
+// 		return false
+// 	}
+// 	profilingFile, err = os.Create("cpu.pprof")
+// 	if err != nil {
+// 		Fatal(err, "could not open cpu profile file: ", err)
+// 	}
+// 	err = pprof.StartCPUProfile(profilingFile)
+// 	if err != nil {
+// 		Fatal(err, "could not start CPU profile: ", err)
+// 	}
+// 	return true
+// }
+
+// func StopCPUProfiling() bool {
+// 	if profilingFile != nil {
+// 		pprof.StopCPUProfile()
+// 		profilingFile.Close()
+// 		profilingFile = nil
+// 		return true
+// 	}
+// 	return false
+// }
+
+func SetProfilingHandle(r *mux.Router) {
+	//	r.HandleFunc("/debug/pprof/", pprof.Index)
+	//	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	//	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	//	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
 }

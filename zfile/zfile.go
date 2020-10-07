@@ -355,39 +355,44 @@ func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error
 	err = write(file)
 	if err != nil {
 		os.Remove(tempPath)
-		fmt.Println(err, "call write func")
+		fmt.Println(err, "{nolog}WriteToFileAtomically call write func")
 		return err
 	}
 	err = os.Rename(tempPath, fpath)
 	if err != nil {
-		fmt.Println(err, "rename", tempPath, fpath)
+		os.Remove(tempPath)
+		fmt.Println("{nolog}WriteToFileAtomically rename", err, tempPath, fpath)
 		return err
 	}
 	return nil
 }
 
-// TruncateFile removes bytes from start or end of a file at fpath, so it is max maxBytes large.
-// This method is not atomical, more bytes can be added to fpath as it is working, and these will be lost,
+// if a file is > maxBytes, TruncateFile removes bytes from start or end to make it maxBytes*reduce large.
+// This method is not atomical, more bytes can be added to fpath while it is working, and these will be lost,
 // so a mutex or something should be used for appending to fpath if possible.
-func TruncateFile(fpath string, maxBytes int64, fromEnd bool) error {
+func TruncateFile(fpath string, maxBytes int64, reduce float64, fromEnd bool) error {
+	if reduce >= 1 {
+		panic("TruncateFile: reduce must be less that 1")
+	}
 	if fromEnd {
 		panic("not implemented, though easy case")
 	}
 	size := Size(fpath)
 	if size == -1 {
-		return errors.New("bad size  for:  " + fpath)
+		return errors.New("zfile.TruncateFile: bad size  for:  " + fpath)
 	}
-	diff := size - maxBytes
-	if diff <= 0 {
+	if size-maxBytes <= 0 {
 		return nil
 	}
+	diff := size - int64(float64(maxBytes)*reduce)
 	file, err := os.Open(fpath)
 	if err != nil {
 		return err
 	}
 	file.Seek(diff, os.SEEK_SET)
 	err = WriteToFileAtomically(fpath, func(writeTo io.Writer) error {
-		_, cerr := io.Copy(writeTo, file)
+		n, cerr := io.Copy(writeTo, file)
+		fmt.Println("{nolog}TruncateFile write:", n, cerr)
 		return cerr
 	})
 	file.Close()
@@ -395,20 +400,23 @@ func TruncateFile(fpath string, maxBytes int64, fromEnd bool) error {
 }
 
 // ReadLastLine reads a file from end, until it encounters ascii 10/13, consuming them too.
-// It returns the position they or last characterrr read was at.
-// if pos is not zero, it starts at pos
-func ReadLastLine(fpath string, pos int64) (string, int64, error) {
+// *startpos* is where it started reading at.
+// *newpos* is where it ended.
+// if pos is not zero, it starts at pos. zero means start from end.
+func ReadLastLine(fpath string, pos int64) (line string, startpos, newpos int64, err error) {
 	file, err := os.Open(fpath)
 	if err != nil {
-		return "", -1, err
+		return "", 0, 0, err
 	}
 	defer file.Close()
 
-	line := ""
 	stat, _ := file.Stat()
 	filesize := stat.Size()
 	if pos == 0 {
 		pos = filesize
+		startpos = filesize
+	} else {
+		startpos = pos
 	}
 	found := false
 	first := true
@@ -436,6 +444,7 @@ func ReadLastLine(fpath string, pos int64) (string, int64, error) {
 			break
 		}
 	}
+	newpos = pos
 
-	return line, pos, nil
+	return
 }

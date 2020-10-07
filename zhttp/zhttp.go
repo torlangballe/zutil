@@ -98,6 +98,7 @@ func MakeParameters() Parameters {
 // Post uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
 // receive can be []byte, string or a struct to unmarashal to
 func SendBody(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
+	start := time.Now()
 	bout, got := send.([]byte)
 	if got {
 		if params.ContentType == "" {
@@ -128,31 +129,47 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (header
 		if response != nil {
 			response.Body.Close()
 		}
-		err = zlog.Error(err, "send bytes")
+		err = zlog.Error(err, "send bytes", time.Since(start), params.TimeoutSecs)
 		err = MakeHTTPError(err, code, params.Method)
 		return
 	}
 	return processResponse(surl, response, params.PrintBody, receive)
 }
 
+var normalClient = &http.Client{
+	Timeout: 15 * time.Second,
+	// Transport: &http.Transport{
+	// 	MaxIdleConnsPerHost: 100,
+	// },
+}
+
+var noVerifyClient = &http.Client{
+	Timeout: 15 * time.Second,
+	Transport: &http.Transport{
+		//		MaxIdleConnsPerHost: 100,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	},
+}
+
 func MakeRequest(surl string, params Parameters) (request *http.Request, client *http.Client, err error) {
 	if params.Args != nil {
 		surl, _ = MakeURLWithArgs(surl, params.Args)
 	}
-	client = http.DefaultClient
-	if params.SkipVerifyCertificate {
-		client = &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
+	client = &http.Client{
+		Timeout: 15 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: 100,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: params.SkipVerifyCertificate,
 			},
-		}
+		},
 	}
 	if params.TimeoutSecs != 0 {
-		client.Timeout = time.Duration(float64(time.Second) * params.TimeoutSecs)
+		client.Timeout = ztime.SecondsDur(params.TimeoutSecs)
 	}
-
+	// zlog.Info("MakeRequest:", client.Timeout, surl)
 	var reader io.Reader
 	if params.Body != nil {
 		reader = bytes.NewReader(params.Body)
@@ -171,7 +188,18 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 	return req, client, err
 }
 
+var sendCount int64
+
 func GetResponseFromReqClient(request *http.Request, client *http.Client) (response *http.Response, err error) {
+	// atomic.AddInt64(&sendCount, 1)
+	// defer func() {
+	// 	atomic.AddInt64(&sendCount, -1)
+	// 	var sc int64
+	// 	atomic.StoreInt64(&sc, sendCount)
+	// 	if sc > 100 {
+	// 		zlog.Info("too many zhttp sends:", sendCount, request.URL)
+	// 	}
+	// }()
 	request.Close = true
 	response, err = client.Do(request)
 	// zlog.Info("GetResponseFromReqClient:", err, response != nil, request.URL)
@@ -204,6 +232,9 @@ func Get(surl string, params Parameters, receive interface{}) (headers http.Head
 	params.Method = http.MethodGet
 	resp, err := GetResponse(surl, params)
 	if err != nil || resp == nil {
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
 		return
 	}
 	return processResponse(surl, resp, params.PrintBody, receive)
@@ -289,60 +320,6 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 	}
 	return
 }
-
-/*
-func GetResponseAsStringFromUrl(surl string) (str string, err error) {
-	resp, err := http.Get(surl)
-	if err != nil {
-		zlog.Info("Error getting url:", err, surl)
-		return
-	}
-	defer resp.Body.Close()
-	defer io.Copy(ioutil.Discard, resp.Body)
-	if resp.StatusCode != 200 {
-		err = fmt.Errorf("%s %d", resp.Status, resp.StatusCode)
-		return
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		zlog.Info("Error reading body:", err, surl)
-		return
-	}
-	str = strings.Trim(string(body), `"`)
-	zlog.Info("GetResponseAsStringFromUrl:", str, surl)
-	return
-}
-*/
-
-/*
-func UnmarshalFromJSONFromPostForm(surl string, vals url.Values, v interface{}, print bool) (err error) {
-	response, err := http.PostForm(surl, vals)
-	if err != nil {
-		return
-	}
-	defer response.Body.Close()
-	defer io.Copy(ioutil.Discard, response.Body)
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return
-	}
-
-	if response.StatusCode >= 300 {
-		var ej ErrJSON
-		jerr := json.Unmarshal(body, &ej)
-		if jerr == nil && len(ej.Messages) > 0 {
-			err = errors.New(ej.Messages[0])
-			return
-		}
-	}
-	if print {
-		zlog.Info(string(body))
-	}
-
-	err = json.Unmarshal(body, v)
-	return
-}
-*/
 
 func SendBytesSetContentLength(surl string, params Parameters) (response *http.Response, code int, err error) {
 	zlog.Assert(len(params.Body) != 0, surl)
@@ -544,19 +521,6 @@ func (e ErrorStruct) Check(err *error) bool {
 	}
 	return false
 }
-
-/*
-func ServeJSONP(sjson string, w http.ResponseWriter, req *http.Request) {
-	callback := req.FormValue("callback")
-	if callback != "" {
-		zlog.Info("ServeJSONP:", fmt.Sprintf("%s(%s)", callback, sjson))
-		fmt.Fprintf(w, "%s(%s)", callback, sjson)
-	} else {
-		zlog.Info("ServeJSONP direct")
-		w.Write([]byte(sjson))
-	}
-}
-*/
 
 func GetHeaders(surl string) (header http.Header, err error) {
 	resp, err := http.Head(surl)

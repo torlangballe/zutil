@@ -23,7 +23,6 @@ func TimerNew() *Timer {
 }
 
 func StartIn(secs float64, perform func()) *Timer {
-	// zlog.Info("Timer Startin:", secs, zlog.GetCallingStackString())
 	t := TimerNew()
 	t.StartIn(secs, perform)
 	return t

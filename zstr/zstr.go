@@ -31,6 +31,7 @@ const (
 	EscWhite   = "\x1B[37m"
 	EscNoColor = "\x1b[0m"
 )
+
 const Digits = "0123456789"
 
 type StrInt struct {
@@ -267,9 +268,9 @@ func Concat(divider string, parts ...interface{}) string {
 	return str
 }
 
-func StrIndexInStrings(str string, strs []string) int {
+func IndexOf(str string, strs []string) int {
 	for i, s := range strs {
-		//		fmt.Print("StrIndexInStrings: '", str, "' : '", s, "'\n")
+		//		fmt.Print("IndexOf: '", str, "' : '", s, "'\n")
 		if s == str {
 			return i
 		}
@@ -354,8 +355,9 @@ func ExtractLastString(strs *[]string) string {
 	return s
 }
 
-func RemoveStringFromSlice(base []string, str string) (result []string) {
-	i := StrIndexInStrings(str, base)
+// RemovedFromSlice returns the slice with the first instance of a string == str removed
+func RemovedFromSlice(base []string, str string) (result []string) {
+	i := IndexOf(str, base)
 	if i == -1 {
 		return base
 	}
@@ -372,7 +374,7 @@ func SliceToLower(slice []string) (out []string) {
 
 func RemoveStringSlices(base, sub []string) (result []string) {
 	for _, s := range base {
-		if StrIndexInStrings(s, sub) == -1 {
+		if IndexOf(s, sub) == -1 {
 			result = append(result, s)
 		}
 	}
@@ -381,7 +383,7 @@ func RemoveStringSlices(base, sub []string) (result []string) {
 
 func UnionStringSet(aset, bset []string) []string {
 	for _, b := range bset {
-		if StrIndexInStrings(b, aset) == -1 {
+		if IndexOf(b, aset) == -1 {
 			aset = append(aset, b)
 		}
 	}
@@ -390,7 +392,7 @@ func UnionStringSet(aset, bset []string) []string {
 
 func SlicesIntersect(aset, bset []string) bool {
 	for _, b := range bset {
-		if StrIndexInStrings(b, aset) != -1 {
+		if IndexOf(b, aset) != -1 {
 			return true
 		}
 	}
@@ -402,7 +404,7 @@ func SlicesAreEqual(aset, bset []string) bool {
 		return false
 	}
 	for _, b := range bset {
-		if StrIndexInStrings(b, aset) == -1 {
+		if IndexOf(b, aset) == -1 {
 			return false
 		}
 	}
@@ -410,7 +412,7 @@ func SlicesAreEqual(aset, bset []string) bool {
 }
 
 func AddToStringSet(strs *[]string, str string) bool {
-	i := StrIndexInStrings(str, *strs)
+	i := IndexOf(str, *strs)
 	if i == -1 {
 		*strs = append(*strs, str)
 		return true
@@ -1024,6 +1026,30 @@ func BreakIntoRuneLines(str, breakChars string, columns int) (lines [][]rune) {
 		lines = append(lines, runes)
 	}
 	return
+}
+
+// ReplaceAllCapturesFunc calls replace with contents of the first capture group and index 1, then next and index 2 etc.
+// The returned string replaces the capture group, and the entire surrounding string and new contents is returned.
+func ReplaceAllCapturesFunc(regex *regexp.Regexp, str string, replace func(cap string, index int) string) string {
+	var out string
+	groups := regex.FindAllStringSubmatchIndex(str, -1)
+	if len(groups) == 0 {
+		return str
+	}
+	var last int
+	fmt.Println("Groups:", groups, str)
+	for _, group := range groups {
+		glen := len(group)
+		for i := 2; i < glen; i += 2 {
+			s := group[i]
+			e := group[i+1]
+			out += str[last:s]
+			last = e
+			out += replace(str[s:e], i/2)
+		}
+	}
+	out += str[last:]
+	return out
 }
 
 var EscapeQuoteReplacer = strings.NewReplacer(

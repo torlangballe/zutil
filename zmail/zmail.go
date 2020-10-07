@@ -27,11 +27,13 @@ type Mail struct {
 	HTMLContent string
 }
 
+// Test with: https://www.smtper.net
+
 func (m Mail) SendWithSMTP(a Authentication) (err error) {
 	zlog.Assert(len(m.To) != 0 && m.To[0].Email != "")
 	auth := smtp.PlainAuth("", a.UserID, a.Password, a.Server)
 	server := fmt.Sprintf("%s:%d", a.Server, a.Port)
-	zlog.Info("zmail.SendSMTP:", m, a)
+	zlog.Info("zmail.SendSMTP:", a, "to:", m.To)
 
 	var emails []string
 	bulk := true
@@ -64,7 +66,7 @@ func (m Mail) SendWithSMTP(a Authentication) (err error) {
 		content := []byte(toheader + header + m.TextContent)
 		berr := smtp.SendMail(server, auth, m.From.Email, []string{t.Email}, content)
 		if berr != nil {
-			err = zlog.Error(berr, "send single", m, a)
+			err = zlog.Error(berr, "send single", a)
 		}
 	}
 	return err

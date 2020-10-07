@@ -228,3 +228,25 @@ int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int 
     return (err == 0) ? 1 : 0;
 }
 
+void ConvertARGBToRGBAOpaque(int w, int h, int stride, unsigned char *img) {
+	for (int iy = 0; iy < h; iy++) {
+        unsigned char *p = &img[iy*stride];
+		for (int ix = 0; ix < w; ix++) {
+			// ARGB => RGBA, and set A to 255
+            p[0] = p[1];
+            p[1] = p[2];
+            p[2] = p[3];
+            p[3] = 255; 
+            p += 4;
+		}
+	}
+}
+
+CGImageRef GetWindowImage(long winID) {
+    // https://stackoverflow.com/questions/48030214/capture-screenshot-of-macos-window
+     CGImageRef image = CGWindowListCreateImage(CGRectNull, 
+                            kCGWindowListOptionIncludingWindow,
+                            (CGWindowID)winID, 
+                            kCGWindowImageBoundsIgnoreFraming|kCGWindowImageNominalResolution);
+    return image;
+}

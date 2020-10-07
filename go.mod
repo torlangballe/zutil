@@ -31,7 +31,9 @@ require (
 	github.com/lxn/win v0.0.0-20191128105842-2da648fda5b4 // indirect
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/sasha-s/go-deadlock v0.2.0
 	github.com/sendgrid/rest v2.6.0+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.6.0+incompatible
 	github.com/shirou/gopsutil v2.20.4+incompatible

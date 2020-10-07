@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -176,10 +177,32 @@ func GetFloatVal(vals url.Values, name string, def float64) float64 {
 	return n
 }
 
+var requests = map[time.Time]string{}
+var reqLock sync.Mutex
+
 func AddHandler(r *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	http.Handle(pattern, r) // do we need this????
-	return r.HandleFunc(pattern, func(w http.ResponseWriter,
-		req *http.Request) {
+	return r.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
+		start := time.Now()
+		str := req.URL.String()
+		reqLock.Lock()
+		requests[start] = str
+		rlen := len(requests)
+		reqLock.Unlock()
+		if rlen > 30 {
+			var tmin time.Time
+			var smin string
+			for t, s := range requests {
+				if tmin.IsZero() || t.Sub(tmin) < 0 {
+					tmin = t
+					smin = s
+				}
+			}
+			fmt.Println("Handle Request Too many:", time.Since(tmin), smin)
+		}
 		f(w, req)
+		reqLock.Lock()
+		delete(requests, start)
+		reqLock.Unlock()
 	})
 }
