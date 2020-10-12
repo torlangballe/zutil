@@ -411,7 +411,7 @@ func SlicesAreEqual(aset, bset []string) bool {
 	return true
 }
 
-func AddToStringSet(strs *[]string, str string) bool {
+func AddToSet(strs *[]string, str string) bool {
 	i := IndexOf(str, *strs)
 	if i == -1 {
 		*strs = append(*strs, str)
@@ -1037,7 +1037,7 @@ func ReplaceAllCapturesFunc(regex *regexp.Regexp, str string, replace func(cap s
 		return str
 	}
 	var last int
-	fmt.Println("Groups:", groups, str)
+	// fmt.Println("Groups:", groups, str)
 	for _, group := range groups {
 		glen := len(group)
 		for i := 2; i < glen; i += 2 {

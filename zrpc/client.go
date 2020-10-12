@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/torlangballe/zutil/zhttp"
+	"github.com/torlangballe/zutil/zrest"
 
 	rpcjson "github.com/gorilla/rpc/json"
 
@@ -40,7 +41,7 @@ func NewClient() *Client {
 }
 
 func (c *Client) makeUrl() string {
-	return fmt.Sprintf("%s:%d/rpc", c.ToAddress, c.Port)
+	return fmt.Sprintf("%s:%d%srpc", c.ToAddress, c.Port, zrest.AppURLPrefix)
 }
 
 func (c *Client) SetAddressFromURL(surl string) {

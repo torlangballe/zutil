@@ -375,6 +375,11 @@ func MakeURLWithArgs(surl string, args map[string]string) (string, error) {
 	return u.String(), nil
 }
 
+func EscapeURLComponent(str string) string {
+	str = url.PathEscape(str)
+	return strings.ReplaceAll(str, "+", "%2B")
+}
+
 func GetRedirectedURL(surl string) (string, error) {
 	params := MakeParameters()
 	params.Method = http.MethodGet

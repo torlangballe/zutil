@@ -31,6 +31,7 @@ import (
 	_ "image/jpeg"
 	"os/exec"
 	"strconv"
+	"time"
 	"sync"
 	"unsafe"
 
@@ -39,6 +40,30 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 )
+
+var pidCacheLock sync.Mutex
+var pidCache = map[string]int64{}
+
+func ClearAppPIDCache() {
+	pidCacheLock.Lock()
+	pidCache = map[string]int64{}
+	pidCacheLock.Unlock()
+}
+
+func GetCachedPIDForAppName(app string) int64 {
+	pidCacheLock.Lock()
+	pid, got := pidCache[app]
+	pidCacheLock.Unlock()
+	if !got { // We force new get until we have something for that app...
+		pids := zprocess.GetPIDsForAppName(app, false)
+		if len(pids) != 0 {
+			pidCacheLock.Lock()
+			pidCache[app] = pids[0]
+			pidCacheLock.Unlock()
+		}
+	}
+	return pid
+}
 
 func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
 	switch btype {
@@ -85,7 +110,8 @@ func RunURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) (*exe
 
 func WindowWithTitleExists(title, app string) bool {
 	title = getTitleWithApp(title, app)
-	for _, pid := range zprocess.GetPIDsForAppName(app) {
+	pid :=  GetCachedPIDForAppName(app) 
+	if pid != 0 {
 		wInfo := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
 		if int(wInfo.winID) != 0 {
 			return true
@@ -97,7 +123,8 @@ func WindowWithTitleExists(title, app string) bool {
 func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err error) {
 	// title = getTitleWithApp(title, app)
 	// fmt.Println("GetIDAndScaleForWindowTitle title, app:", title, app)
-	for _, pid := range zprocess.GetPIDsForAppName(app) {
+	pid := GetCachedPIDForAppName(app) 
+	if pid != 0 {
 		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
 		w := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
 		// fmt.Println("GetIDAndScaleForWindowTitle2 go:", w)
@@ -107,12 +134,14 @@ func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err e
 		}
 		if int64(w.winID) != 0 {
 			return strconv.FormatInt(int64(w.winID), 10), int(w.scale), err
+		} else {
+			err = errors.New("bad window id")
 		}
 	}
 	return
 }
 
-var screenLock sync.Mutex
+// var screenLock sync.Mutex
 
 func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bool) (image.Image, error) {
 	// crop.Pos = zgeo.Pos{0, 100}
@@ -172,7 +201,8 @@ func GetImageForWindowTitle2(title, app string, crop zgeo.Rect, activateWindow b
 */
 func CloseWindowForTitle(title, app string) error {
 	title = getTitleWithApp(title, app)
-	for _, pid := range zprocess.GetPIDsForAppName(app) {
+	pid := GetCachedPIDForAppName(app) 
+	if pid != 0 {
 		r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
 		if r == 1 {
 			return nil
@@ -190,8 +220,8 @@ func getTitleWithApp(title, app string) string {
 
 func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 	title = getTitleWithApp(title, app)
-	pids := zprocess.GetPIDsForAppName(app)
-	for _, pid := range pids {
+	pid := GetCachedPIDForAppName(app)
+	if pid != 0 {
 		// zlog.Info("SetWindowRectForTitle:", title, app, pid)
 		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
 		if r != 0 {
@@ -209,8 +239,8 @@ func SendQuitCommandToApp(app string) error {
 
 func ActivateWindow(title, app string) {
 	title = getTitleWithApp(title, app)
-	pids := zprocess.GetPIDsForAppName(app)
-	for _, pid := range pids {
+	pid := GetCachedPIDForAppName(app)
+	if pid != 0 {
 		C.ActivateWindowForTitle(C.CString(title), C.long(pid))
 	}
 }
@@ -282,11 +312,14 @@ func CGImageToGoImage(cgimage C.CGImageRef, crop zgeo.Rect) (image.Image, error)
 
 func GetWindowImage(winID string, crop zgeo.Rect) (image.Image, error) {
 	wid, _ := strconv.ParseInt(winID, 10, 64)
+	if wid == 0 {
+		return nil, zlog.Error(nil, "no valid image id")
+	}
 	zlog.Assert(wid != 0)
-	// start := time.Now()
+	start := time.Now()
 	cgimage := C.GetWindowImage(C.long(wid))
 	if cgimage == C.CGImageRef(0) {
-		return nil, zlog.Error(nil, "get window image returned nil", wid)
+		return nil, zlog.Error(nil, "get window image returned nil", time.Since(start), wid)
 	}
 	// zlog.Info("GetWindowImage:", time.Since(start))
 	img, err := CGImageToGoImage(cgimage, crop)

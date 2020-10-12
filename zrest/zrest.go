@@ -16,6 +16,7 @@ import (
 )
 
 var RunningOnServer bool
+var AppURLPrefix = "/"
 
 // Formats a JSON string (linebreaks + identation).
 func formatJSON(input []byte) (out string, err error) {
@@ -79,7 +80,7 @@ func ReturnResultWithHeaders(w http.ResponseWriter, req *http.Request, headers m
 
 // Returns HTTP error code and error messages in JSON representation, with string made of args and, printed
 func ReturnAndPrintError(w http.ResponseWriter, req *http.Request, errorCode int, a ...interface{}) {
-	str := fmt.Sprintln(a)
+	str := fmt.Sprintln(a...)
 	zlog.ErrorAtStack(nil, 5, a...)
 	ReturnError(w, req, str, errorCode)
 }
@@ -181,6 +182,7 @@ var requests = map[time.Time]string{}
 var reqLock sync.Mutex
 
 func AddHandler(r *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
+	pattern = AppURLPrefix + pattern
 	http.Handle(pattern, r) // do we need this????
 	return r.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()
@@ -205,4 +207,8 @@ func AddHandler(r *mux.Router, pattern string, f func(http.ResponseWriter, *http
 		delete(requests, start)
 		reqLock.Unlock()
 	})
+}
+
+func Handle(pattern string, handler http.Handler) {
+	http.Handle(AppURLPrefix+pattern, handler)
 }

@@ -10,8 +10,9 @@ import (
 	"path/filepath"
 	"time"
 
-	zrest "github.com/torlangballe/utils/urest"
+	//zrest "github.com/torlangballe/utils/urest"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zrest"
 
 	//"github.com/torlangballe/zutil/zrest"
 
@@ -34,8 +35,8 @@ func NewHandler(base string) (h *Handler) {
 
 type HandlerFunc func(http.ResponseWriter, *http.Request, *Handler)
 
-func AddHandler(r *mux.Router, pattern string, handler *Handler, handlerFunc HandlerFunc) *mux.Route {
-	return r.HandleFunc("/templates/"+pattern, func(w http.ResponseWriter, req *http.Request) {
+func AddHandler(router *mux.Router, pattern string, handler *Handler, handlerFunc HandlerFunc) *mux.Route {
+	return zrest.AddHandler(router, "templates/"+pattern, func(w http.ResponseWriter, req *http.Request) {
 		handlerFunc(w, req, handler)
 	})
 }

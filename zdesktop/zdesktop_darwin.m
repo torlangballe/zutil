@@ -183,6 +183,7 @@ int CloseWindowForTitle(const char *title, long pid) {
     AXUIElementRef buttonRef = nil;
     AXUIElementCopyAttributeValue(winRef, kAXCloseButtonAttribute, (CFTypeRef*)&buttonRef);
     AXUIElementPerformAction(buttonRef, kAXPressAction);
+    CFRelease(winRef);
     CFRelease(buttonRef);
     return 1;
 }
@@ -192,10 +193,13 @@ int ActivateWindowForTitle(const char *title, long pid) {
     [app activateWithOptions: NSApplicationActivateIgnoringOtherApps];
 
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, false);
-    AXError err = AXUIElementPerformAction(winRef, kAXRaiseAction);
-    if (err != 0) {
-        NSLog(@"ActivateWindowForTitle error: %s %d\n", title, err);
-        return 0;
+    if (winRef != nil) {
+        AXError err = AXUIElementPerformAction(winRef, kAXRaiseAction);
+        if (err != 0) {
+            NSLog(@"ActivateWindowForTitle error: %s %d\n", title, err);
+            return 0;
+        }
+        CFRelease(winRef);
     }
     return 1;
 }
@@ -223,6 +227,7 @@ int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int 
     if (err != 0) {
         NSLog(@"SetWindowRectForTitle set pos error: %s %d\n", title, err);
     }
+    CFRelease(winRef);
     CFRelease(size);
 
     return (err == 0) ? 1 : 0;

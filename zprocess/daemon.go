@@ -15,6 +15,7 @@ import (
 	"github.com/sasha-s/go-deadlock"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfilelog"
+	"github.com/torlangballe/zutil/zhost"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zjson"
@@ -189,12 +190,13 @@ func (c *DaemonConfig) readFromPipe(pipe io.Reader, quit *bool) {
 }
 
 func (c *DaemonConfig) sendCrashEmail() {
-	subject := "Bridgetech QTT " + strings.Trim(c.BinaryPath, " ./") + " crash"
-	fmt.Println("{nolog}SEND CRASH EMAIL1:", subject)
+	_, ip, _ := zhost.GetCurrentLocalIPAddress()
+	subject := "Bridgetech QTT " + strings.Trim(c.BinaryPath, " ./") + " @ " + ip + " crashed"
+	// fmt.Println("{nolog}SEND CRASH EMAIL1:", subject)
 	c.bufferLock.Lock()
 	str := c.crashBuffer
 	c.bufferLock.Unlock()
-	fmt.Println("{nolog}SEND CRASH EMAIL:", subject, len(str), "\n")
+	// fmt.Println("{nolog}SEND CRASH EMAIL:", subject, len(str), "\n")
 	c.SendEmail(str, subject)
 }
 
@@ -221,7 +223,9 @@ func (c *DaemonConfig) Spawn() error {
 					if !lastMod.IsZero() && lastMod == mod {
 						zlog.Info(zstr.EscCyan+"#### Binary", c.BinaryPath, "time modified to", ztime.GetNice(mod, true)+". retarting. ####"+zstr.EscNoColor)
 						time.Sleep(time.Second) // maybe we need this to flush out print
+						c.infoLock.Lock()
 						kerr := cmd.Process.Kill()
+						c.infoLock.Unlock()
 						sendCrash = false
 						zlog.OnError(kerr, "process kill")
 						return false
@@ -234,7 +238,10 @@ func (c *DaemonConfig) Spawn() error {
 		var quitRead bool
 		go c.readFromPipe(outPipe, &quitRead)
 		go c.readFromPipe(errPipe, &quitRead)
-		err = cmd.Run()
+		c.infoLock.Lock()
+		cmdCopy := cmd
+		c.infoLock.Unlock()
+		err = cmdCopy.Run()
 		str := "zprocess daemon: restarting after error in run"
 		quitRead = true
 		c.putBuffer()
@@ -245,14 +252,35 @@ func (c *DaemonConfig) Spawn() error {
 			str += " " + err.Error()
 		}
 		cmd.Process.Kill()
-		fmt.Println("HERE!")
 		if sendCrash {
 			c.sendCrashEmail()
 		}
+		c.sendRestartSpecialLog(sendCrash)
 		time.Sleep(time.Second * 3) // so we don't go completely nuts if something crashes immediately, also to make listeners flush out or we get error on restart
 		fmt.Println(zstr.EscCyan+"#####", str, "#####"+zstr.EscNoColor)
 	}
 	return nil
+}
+
+func (c *DaemonConfig) sendRestartSpecialLog(crashed bool) {
+	if c.AddLogURL != "" {
+		var body string
+		if crashed {
+			c.bufferLock.Lock()
+			body = c.crashBuffer
+			c.bufferLock.Unlock()
+		}
+		if len(body) != 0 {
+			params := zhttp.MakeParameters()
+			params.Method = http.MethodPut
+			surl := c.AddLogURL + "&stopped=" + zhttp.EscapeURLComponent(time.Now().Format(time.RFC3339))
+			zlog.Info("\n\n\nWORKER STOPPED!", surl, "\n\n\n")
+			_, err := zhttp.SendBody(surl, params, []byte(body), nil)
+			if err != nil {
+				zlog.Error(err, "send")
+			}
+		}
+	}
 }
 
 func (c *DaemonConfig) SendEmail(message, subject string) {

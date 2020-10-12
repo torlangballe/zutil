@@ -1,6 +1,7 @@
 package zlog
 
 import (
+	"context"
 	"fmt"
 	"net/http/pprof"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 type Priority int
@@ -373,4 +375,23 @@ func SetProfilingHandle(r *mux.Router) {
 	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	//	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	//	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
+}
+
+func RunProcessUntilTimeouSecs(secs float64, do func()) (completed bool) {
+	ctx, _ := context.WithTimeout(context.Background(), ztime.SecondsDur(secs))
+	return RunProcessUntilContextTimeout(ctx, do)
+}
+
+func RunProcessUntilContextTimeout(ctx context.Context, do func()) (completed bool) {
+	doneChannel := make(chan struct{}, 2)
+	go func() {
+		do()
+		doneChannel <- struct{}{}
+	}()
+	select {
+	case <-doneChannel:
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }

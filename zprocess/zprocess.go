@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/go-ps"
 	"github.com/shirou/gopsutil/process"
@@ -94,23 +95,30 @@ func FindParameterAfterFlag(got *string, args []string, flag string) bool {
 	return false
 }
 
-func GetPIDsForAppName(app string) []int64 {
+// GetPIDsForAppName returns the pid for all processes with executable name *app*.
+// *excludeZombies* checks if it has a ps Z state and doesn't add it to list then. This can take quite a long time.
+func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 	var pids []int64
+	start := time.Now()
 	procs, _ := ps.Processes()
 	for _, p := range procs {
-		// fmt.Println("PROC:", app, "=", p.Executable())
+		// fmt.Println("PROC:", p.Executable())
 		if p.Executable() == app {
-			proc, err := process.NewProcess(int32(p.Pid())) // Specify process id of parent
-			status, err := proc.Status()
-			if err != nil {
-				zlog.Error(err, "get status")
-				continue
+			if excludeZombies {
+				proc, err := process.NewProcess(int32(p.Pid())) // Specify process id of parent
+				status, err := proc.Status()
+				if err != nil {
+					zlog.Error(err, "get status")
+					continue
+				}
+				if status == "Z" {
+					continue
+				}
 			}
-			if status != "Z" {
-				pids = append(pids, int64(p.Pid()))
-			}
+			pids = append(pids, int64(p.Pid()))
 		}
 	}
+	zlog.Info("GetPIDsForAppName", len(procs), len(pids), time.Since(start))
 	return pids
 }
 
@@ -143,7 +151,8 @@ func TerminateAppsByName(name string, force, children bool) (oerr error) {
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	pids := GetPIDsForAppName(name)
+	excludeZombies := false
+	pids := GetPIDsForAppName(name, excludeZombies)
 	sort.Slice(pids, func(i, j int) bool {
 		return pids[i] < pids[j]
 	})
