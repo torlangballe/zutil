@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"path"
@@ -54,7 +55,7 @@ func InitCache(workDir, urlPrefix, cacheName string) *Cache {
 		zlog.Log(err, zlog.FatalLevel, "zimages.Init mkdir failed")
 	}
 	http.Handle(c.getURL, c)
-	ztimer.RepeatIn(3600, func() bool {
+	ztimer.RepeatNow(3600+200*rand.Float64(), func() bool {
 		dir := c.workDir + c.cacheName
 		zfile.Walk(dir, "*.jpeg\t*.png", func(fpath string, info os.FileInfo) error {
 			if time.Since(info.ModTime()) > c.Valid {

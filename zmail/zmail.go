@@ -33,7 +33,7 @@ func (m Mail) SendWithSMTP(a Authentication) (err error) {
 	zlog.Assert(len(m.To) != 0 && m.To[0].Email != "")
 	auth := smtp.PlainAuth("", a.UserID, a.Password, a.Server)
 	server := fmt.Sprintf("%s:%d", a.Server, a.Port)
-	zlog.Info("zmail.SendSMTP:", a, "to:", m.To)
+	// zlog.Info("zmail.SendSMTP:", a, "to:", m.To)
 
 	var emails []string
 	bulk := true

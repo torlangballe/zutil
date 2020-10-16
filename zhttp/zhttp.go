@@ -91,7 +91,7 @@ type Parameters struct {
 func MakeParameters() Parameters {
 	return Parameters{
 		Headers:     map[string]string{},
-		TimeoutSecs: 15,
+		TimeoutSecs: -1,
 	}
 }
 
@@ -153,20 +153,41 @@ var noVerifyClient = &http.Client{
 	},
 }
 
+var defClient *http.Client
+var defSkipClient *http.Client
+
+func makeClient(skipVerify bool) *http.Client {
+	return &http.Client{
+		Timeout: 25 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: 5,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true, // params.SkipVerifyCertificate,
+			},
+		},
+	}
+}
+
 func MakeRequest(surl string, params Parameters) (request *http.Request, client *http.Client, err error) {
 	if params.Args != nil {
 		surl, _ = MakeURLWithArgs(surl, params.Args)
 	}
-	client = &http.Client{
-		Timeout: 15 * time.Second,
-		Transport: &http.Transport{
-			MaxIdleConnsPerHost: 100,
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: params.SkipVerifyCertificate,
-			},
-		},
+	if defClient == nil {
+		defClient = makeClient(false)
 	}
-	if params.TimeoutSecs != 0 {
+	if defSkipClient == nil {
+		defSkipClient = makeClient(true)
+	}
+	if params.SkipVerifyCertificate {
+		client = defSkipClient
+	} else {
+		client = defClient
+	}
+	zlog.Assert(params.TimeoutSecs == -1, params.TimeoutSecs)
+	// we need to remember a new client for each timeout?
+	if params.TimeoutSecs != -1 {
+		c := *client
+		client = &c
 		client.Timeout = ztime.SecondsDur(params.TimeoutSecs)
 	}
 	// zlog.Info("MakeRequest:", client.Timeout, surl)
@@ -393,7 +414,8 @@ func GetRedirectedURL(surl string) (string, error) {
 	return resp.Request.URL.String(), nil
 }
 
-func ReplaceUrlsInText(text string, f func(surl string) string) string {
+func ReplaceURLsInText(text string, f func(surl string) string) string {
+	// move this outside
 	regEx := regexp.MustCompile(`(http|ftp|https):\/\/([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?`)
 	out := regEx.ReplaceAllStringFunc(text, f)
 	return out

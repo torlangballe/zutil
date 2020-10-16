@@ -9,6 +9,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/zwords"
 )
 
 const (
@@ -398,20 +401,39 @@ func TimeZoneNameFromHourOffset(offset float32) string {
 	return str
 }
 
-func GetDurationHourMinSec(d time.Duration) (hours int, mins int, secs int) {
-	s := int64(d.Seconds())
+func GetDurationHourMinSec(d time.Duration) (hours int, mins int, secs int, fract float64) {
+	ds := d.Seconds()
+	s := int64(ds)
 	hours = int(s / 3600)
 	mins = int(s / 60 % 60)
 	secs = int(s % 60)
-
+	fract = ds - float64(s)
 	return
 }
 
-func GetDurationHourMinSecAsString(d time.Duration) (str string) {
-	h, m, s := GetDurationHourMinSec(d)
-	str = fmt.Sprintf("%02d:%02d", m, s)
-	if h != 0 {
-		str = fmt.Sprintf("%d:%s", h, str)
+func GetDurationString(d time.Duration, secs, mins, hours bool, subDigits int) (str string, overflow bool) {
+	h, m, s, fract := GetDurationHourMinSec(d)
+	if secs {
+		if subDigits > 0 {
+			str = zwords.NiceFloat(float64(s)+fract, subDigits)
+		} else {
+			str = fmt.Sprint(s)
+		}
+		if s < 10 && mins {
+			str = "0" + str
+		}
+	}
+	if mins {
+		str = zstr.Concat(":", str, fmt.Sprintf("%02d", m))
+		overflow = false
+	} else if m > 0 {
+		overflow = true
+	}
+	if hours {
+		str = zstr.Concat(":", str, h)
+		overflow = false
+	} else if h > 0 {
+		overflow = true
 	}
 	return
 }
@@ -473,19 +495,22 @@ type DurationStruct struct {
 	Seconds float32
 }
 
-func DurationStructFromIso(dur string) (DurationStruct, error) {
-	var regex = regexp.MustCompile(`P((?P<year>\d+)Y)?((?P<month>\d+)M)?((?P<day>\d+)D)?(T((?P<hour>\d+)H)?((?P<minute>\d+)M)?((?P<second>[\d\.]+)S)?)?`)
+var isoDurRegEx = regexp.MustCompile(`P((?P<year>\d+)Y)?((?P<month>\d+)M)?((?P<day>\d+)D)?(T((?P<hour>\d+)H)?((?P<minute>\d+)M)?((?P<second>[\d\.]+)S)?)?`)
+
+// DurationStructFromISO reads an ISO 8601 dduration string.
+func DurationStructFromISO(dur string) (DurationStruct, error) {
+	// TODO: Make regex stuff more optimal?
 	var match []string
 
 	d := DurationStruct{}
 
-	if regex.MatchString(dur) {
-		match = regex.FindStringSubmatch(dur)
+	if isoDurRegEx.MatchString(dur) {
+		match = isoDurRegEx.FindStringSubmatch(dur)
 	} else {
 		return d, errors.New("bad format")
 	}
 
-	for i, name := range regex.SubexpNames() {
+	for i, name := range isoDurRegEx.SubexpNames() {
 		part := match[i]
 		if i == 0 || name == "" || part == "" {
 			continue
@@ -547,4 +572,15 @@ func RepeatFromNow(intervalSecs float64, f func() bool) {
 			break
 		}
 	}
+}
+
+func DurationFromString(str string) time.Duration {
+	var sh, sm, ss string
+	if zstr.SplitN(str, ":", &sh, &sm, &ss) {
+		h, _ := strconv.ParseInt(sh, 10, 64)
+		m, _ := strconv.ParseInt(sm, 10, 64)
+		s, _ := strconv.ParseInt(ss, 10, 64)
+		return time.Duration(h)*time.Hour + time.Duration(m)*time.Minute + time.Duration(s)*time.Second
+	}
+	return 0
 }

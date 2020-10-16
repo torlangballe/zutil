@@ -8,9 +8,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -38,47 +36,10 @@ var (
 	ErrorPriority  = Verbose
 	OutputFilePath = ""
 	outputHooks    = map[string]func(s string){}
-	logcatMsgRegex = regexp.MustCompile(`([0-9]*)-([0-9]*)\s*([0-9]*):([0-9]*):([0-9]*).([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*([VDIWEF])\s*(.*)`)
 	outFile        *os.File
 	UseColor       = false
 )
 
-type LogCatItem struct {
-	TimeStamp time.Time
-	ProcessID int64
-	ThreadID  int64
-	Priority  Priority
-	Rest      string // Everything after priority
-	Tag       string // Tag : Message from Rest
-	Message   string
-}
-
-func ParseLogcatMessage(s string) (log LogCatItem, got bool) {
-	parts := logcatMsgRegex.FindStringSubmatch(s)
-	if parts == nil {
-		return
-	}
-	month, _ := strconv.Atoi(parts[1])
-	day, _ := strconv.Atoi(parts[2])
-	hour, _ := strconv.Atoi(parts[3])
-	minute, _ := strconv.Atoi(parts[4])
-	second, _ := strconv.Atoi(parts[5])
-	microseconds, _ := strconv.Atoi(parts[6])
-	log.ProcessID, _ = strconv.ParseInt(parts[7], 10, 64)
-	log.ThreadID, _ = strconv.ParseInt(parts[8], 10, 64)
-	log.Priority = Priority(parts[9][0])
-	log.Rest = parts[10]
-
-	log.TimeStamp = time.Date(time.Now().Year(), time.Month(month), day, hour, minute, second, microseconds*1e6, time.Local)
-	if zstr.SplitN(log.Rest, ":", &log.Tag, &log.Message) {
-		log.Tag = strings.TrimSpace(log.Tag)
-		log.Message = strings.TrimSpace(log.Message)
-	}
-	got = true
-	return
-}
-
-// Error performs Log with ErrorLevel priority
 func Error(err error, parts ...interface{}) error {
 	return baseLog(err, ErrorLevel, 4, parts...)
 }
@@ -134,6 +95,27 @@ var timeLock sync.Mutex
 var datePrinted time.Time
 var linesPrintedSinceTimeStamp int
 
+func NewError(parts ...interface{}) error {
+	var err error
+	if len(parts) > 0 {
+		err, _ = parts[0].(error)
+		if err != nil {
+			parts = parts[1:]
+		}
+	}
+	p := strings.TrimSpace(fmt.Sprintln(parts...))
+	pnew := zstr.ColorSetter.Replace(p)
+	if pnew != p {
+		p = pnew + zstr.EscNoColor
+	}
+	if err != nil {
+		err = errors.Wrap(err, p)
+	} else {
+		err = errors.New(p)
+	}
+	return err
+}
+
 func baseLog(err error, priority Priority, pos int, parts ...interface{}) error {
 	if len(parts) != 0 {
 		n, got := parts[0].(StackAdjust)
@@ -167,17 +149,10 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	if priority != InfoLevel {
 		finfo += GetCallingFunctionString(pos) + ": "
 	}
-
-	p := strings.TrimSpace(fmt.Sprintln(parts...))
-	pnew := zstr.ColorSetter.Replace(p)
-	if pnew != p {
-		p = pnew + zstr.EscNoColor
-	}
 	if err != nil {
-		err = errors.Wrap(err, p)
-	} else {
-		err = errors.New(p)
+		parts = append([]interface{}{err}, parts...)
 	}
+	err = NewError(parts...)
 	fmt.Println(finfo + col + err.Error() + endCol)
 	str := finfo + err.Error() + "\n"
 	WriteToTheLogFile(str)
@@ -370,9 +345,10 @@ func PrintStartupInfo(version, commitHash, builtAt, builtBy, builtOn string) {
 // }
 
 func SetProfilingHandle(r *mux.Router) {
-	//	r.HandleFunc("/debug/pprof/", pprof.Index)
+	r.HandleFunc("/debug/pprof/", pprof.Index)
 	//	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	// r.HandleFunc("/debug/pprof/profile", pprof.Index)
+	// r.HandleFunc("/debug/pprof/heap", pprof.Index)
 	//	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	//	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
 }

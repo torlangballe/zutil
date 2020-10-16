@@ -31,8 +31,8 @@ import (
 	_ "image/jpeg"
 	"os/exec"
 	"strconv"
-	"time"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/torlangballe/zutil/zgeo"
@@ -51,17 +51,19 @@ func ClearAppPIDCache() {
 }
 
 func GetCachedPIDForAppName(app string) int64 {
-	pidCacheLock.Lock()
-	pid, got := pidCache[app]
-	pidCacheLock.Unlock()
-	if !got { // We force new get until we have something for that app...
-		pids := zprocess.GetPIDsForAppName(app, false)
-		if len(pids) != 0 {
-			pidCacheLock.Lock()
-			pidCache[app] = pids[0]
-			pidCacheLock.Unlock()
-		}
+	var pid int64
+	// pidCacheLock.Lock()
+	// pid, got := pidCache[app]
+	// pidCacheLock.Unlock()
+	// if !got { // We force new get until we have something for that app...
+	pids := zprocess.GetPIDsForAppName(app, false)
+	if len(pids) != 0 {
+		pidCacheLock.Lock()
+		pid = pids[0]
+		pidCache[app] = pid
+		pidCacheLock.Unlock()
 	}
+	// }
 	return pid
 }
 
@@ -110,7 +112,7 @@ func RunURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) (*exe
 
 func WindowWithTitleExists(title, app string) bool {
 	title = getTitleWithApp(title, app)
-	pid :=  GetCachedPIDForAppName(app) 
+	pid := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		wInfo := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
 		if int(wInfo.winID) != 0 {
@@ -123,7 +125,7 @@ func WindowWithTitleExists(title, app string) bool {
 func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err error) {
 	// title = getTitleWithApp(title, app)
 	// fmt.Println("GetIDAndScaleForWindowTitle title, app:", title, app)
-	pid := GetCachedPIDForAppName(app) 
+	pid := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
 		w := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
@@ -201,7 +203,7 @@ func GetImageForWindowTitle2(title, app string, crop zgeo.Rect, activateWindow b
 */
 func CloseWindowForTitle(title, app string) error {
 	title = getTitleWithApp(title, app)
-	pid := GetCachedPIDForAppName(app) 
+	pid := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
 		if r == 1 {
@@ -222,8 +224,9 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 	title = getTitleWithApp(title, app)
 	pid := GetCachedPIDForAppName(app)
 	if pid != 0 {
-		// zlog.Info("SetWindowRectForTitle:", title, app, pid)
+		zlog.Info("SetWindowRectForTitle:", title, app, pid)
 		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
+		zlog.Info("SetWindowRectForTitle:", title, app, r)
 		if r != 0 {
 			return nil
 		}
@@ -285,27 +288,16 @@ func CGImageToGoImage(cgimage C.CGImageRef, crop zgeo.Rect) (image.Image, error)
 	iw := int(C.CGImageGetWidth(cgimage))
 	ih := int(C.CGImageGetHeight(cgimage))
 
-	// zlog.Info("CGImageToGoImage:", CGImageGetWidth(cgimage), CGImageGetHeight(cgimage))
 	ctx := createBitmapContext(cw, ch, (*C.uint32_t)(unsafe.Pointer(&img.Pix[0])), img.Stride)
 
 	diff := float64(ih - ch)
 	x := C.CGFloat(-crop.Pos.X)
 	y := C.CGFloat(-diff + crop.Pos.Y)
 	cgDrawRect := C.CGRectMake(x, y, C.CGFloat(iw), C.CGFloat(ih))
-	// zlog.Info("CGImageToGoImage draw into:", diff, cgDrawRect)
 	C.CGContextDrawImage(ctx, cgDrawRect, cgimage)
 
 	C.ConvertARGBToRGBAOpaque(C.int(cw), C.int(ch), C.int(img.Stride), (*C.uchar)(unsafe.Pointer(&img.Pix[0])))
-	// i := 0
-	// for iy := 0; iy < ch; iy++ {
-	// 	j := i
-	// 	for ix := 0; ix < cw; ix++ {
-	// 		// ARGB => RGBA, and set A to 255
-	// 		img.Pix[j], img.Pix[j+1], img.Pix[j+2], img.Pix[j+3] = img.Pix[j+1], img.Pix[j+2], img.Pix[j+3], 255
-	// 		j += 4
-	// 	}
-	// 	i += img.Stride
-	// }
+	C.CGContextRelease(ctx)
 
 	return img, nil
 }

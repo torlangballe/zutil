@@ -102,7 +102,6 @@ func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 	start := time.Now()
 	procs, _ := ps.Processes()
 	for _, p := range procs {
-		// fmt.Println("PROC:", p.Executable())
 		if p.Executable() == app {
 			if excludeZombies {
 				proc, err := process.NewProcess(int32(p.Pid())) // Specify process id of parent
@@ -118,7 +117,7 @@ func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 			pids = append(pids, int64(p.Pid()))
 		}
 	}
-	zlog.Info("GetPIDsForAppName", len(procs), len(pids), time.Since(start))
+	zlog.Info("GetPIDsForAppName", app, len(procs), pids, time.Since(start))
 	return pids
 }
 

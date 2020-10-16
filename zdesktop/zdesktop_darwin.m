@@ -141,6 +141,7 @@ AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL de
     AXUIElementRef appElementRef = AXUIElementCreateApplication(pid);
     CFArrayRef windowArray = nil;
     AXUIElementCopyAttributeValue(appElementRef, kAXWindowsAttribute, (CFTypeRef*)&windowArray);
+            // NSLog(@"windowArray: %@\n", windowArray);
     if (windowArray == nil) {
         CFRelease(appElementRef);
         return nil;
@@ -176,7 +177,7 @@ int CloseWindowForTitle(const char *title, long pid) {
     // if (winRef == 0) {
     //     getAXElementOfWindowForTitle(title, pid, true);
     // }
-    // NSLog(@"CloseWindowForTitle1 %s %p\n", title, winRef);
+    //  NSLog(@"CloseWindowForTitle1 %s %p\n", title, winRef);
     if (winRef == nil) {
         return 0;
     }
@@ -206,9 +207,9 @@ int ActivateWindowForTitle(const char *title, long pid) {
 
 int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h) {
     NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
-    AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, NO);
+    AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, YES);
     if (winRef == nil) {
-        return 0;
+        return -2;
     }
     NSSize winSize;
     winSize.width = w;

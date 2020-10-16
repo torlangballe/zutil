@@ -231,11 +231,12 @@ func ItterateStruct(istruct interface{}, options Options) (item Item, err error)
 }
 
 // GetTagAsFields returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
+var tagRegEx, _ = regexp.Compile(`(\w+)\s*:"([^"]*)"\s*`) // http://regoio.herokuapp.com
+
 func GetTagAsMap(stag string) map[string][]string {
 	if stag != "" {
 		m := map[string][]string{}
-		re, _ := regexp.Compile(`(\w+)\s*:"([^"]*)"\s*`) // http://regoio.herokuapp.com
-		matches := re.FindAllStringSubmatch(stag, -1)
+		matches := tagRegEx.FindAllStringSubmatch(stag, -1)
 		if len(matches) > 0 {
 			for _, groups := range matches {
 				label := groups[1]

@@ -157,9 +157,16 @@ func (c *DaemonConfig) putBuffer() {
 	c.postLogTimerLock.Unlock()
 }
 
-func (c *DaemonConfig) readFromPipe(pipe io.Reader, quit *bool) {
+func (c *DaemonConfig) readFromPipe(pipe io.Reader, quit chan struct{}) {
 	reader := bufio.NewReader(pipe)
-	for !*quit {
+	for {
+		select {
+		case <-quit:
+			zlog.Info("quit read from pipe")
+			return
+		default:
+			break
+		}
 		str, err := reader.ReadString('\n')
 		// zlog.Info("daemon: read from pipe", str, err, len(c.logBuffer))
 		if err == io.EOF {
@@ -235,15 +242,16 @@ func (c *DaemonConfig) Spawn() error {
 				return true
 			})
 		}
-		var quitRead bool
-		go c.readFromPipe(outPipe, &quitRead)
-		go c.readFromPipe(errPipe, &quitRead)
+		quitReadChannel := make(chan struct{}, 2)
+		go c.readFromPipe(outPipe, quitReadChannel)
+		go c.readFromPipe(errPipe, quitReadChannel)
 		c.infoLock.Lock()
 		cmdCopy := cmd
 		c.infoLock.Unlock()
 		err = cmdCopy.Run()
 		str := "zprocess daemon: restarting after error in run"
-		quitRead = true
+		fmt.Println("{nolog}exited:", err)
+		quitReadChannel <- struct{}{}
 		c.putBuffer()
 		if err != nil {
 			c.bufferLock.Lock()
