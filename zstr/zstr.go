@@ -691,8 +691,8 @@ func ReplaceVariablesWithValues(text, prefix string, values map[string]string) (
 	return
 }
 
-func Replace(str *string, find, set string) bool {
-	text := strings.Replace(*str, find, set, -1)
+func Replace(str *string, find, with string) bool {
+	text := strings.Replace(*str, find, with, -1)
 	if *str != text {
 		*str = text
 		return true

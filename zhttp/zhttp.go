@@ -95,7 +95,19 @@ func MakeParameters() Parameters {
 	}
 }
 
-// Post uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
+// Post calls SendBody with method == Post
+func Post(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
+	params.Method = http.MethodPost
+	return SendBody(surl, params, send, receive)
+}
+
+// Put calls SendBody with method == Put
+func Put(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
+	params.Method = http.MethodPut
+	return SendBody(surl, params, send, receive)
+}
+
+// SendBody uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
 // receive can be []byte, string or a struct to unmarashal to
 func SendBody(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
 	start := time.Now()
@@ -104,6 +116,7 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (header
 		if params.ContentType == "" {
 			params.ContentType = "raw"
 		}
+		zlog.Info("sendBody: byes", surl)
 	} else {
 		m, got := send.(map[string]string)
 		if got {

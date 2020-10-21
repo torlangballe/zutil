@@ -117,14 +117,14 @@ func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 			pids = append(pids, int64(p.Pid()))
 		}
 	}
-	zlog.Info("GetPIDsForAppName", app, len(procs), pids, time.Since(start))
+	// zlog.Info("GetPIDsForAppName", app, len(procs), pids, time.Since(start))
 	return pids
 }
 
 func terminateProcess(p *process.Process, force, children bool) (oerr error) {
 	var err error
 	status, err := p.Status()
-	zlog.Info("terminateProcess:", p.Pid, status, err)
+	// zlog.Info("terminateProcess:", p.Pid, status, err)
 	if children {
 		kids, _ := p.Children()
 		for _, k := range kids {
@@ -139,7 +139,7 @@ func terminateProcess(p *process.Process, force, children bool) (oerr error) {
 	} else {
 		err = p.Terminate() // Kill the parent process
 	}
-	zlog.Info("TerminateAppsByName2", force, err)
+	// zlog.Info("TerminateAppsByName2", force, err)
 	if err != nil {
 		oerr = zlog.Wrap(err, "kill main process")
 	}

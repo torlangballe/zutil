@@ -17,7 +17,7 @@ type connection struct {
 	Pinger     *ztimer.Repeater
 }
 
-type Client struct {
+type Server struct {
 	connections map[string]*connection
 	mutex       sync.Mutex
 }
@@ -26,18 +26,18 @@ var upgrader = websocket.Upgrader{} // use default options
 
 // Init opens a websocket server on a goroutine, on prefix, typically /ws for single one
 // got contains:
-// n: The client-sendt id sent on connect as a text message, or empty if couldn't make websocket protocol of request
+// n: The server-sendt id sent on connect as a text message, or empty if couldn't make websocket protocol of request
 // close: true if connection just closed.
 // data: typically json data. nil if this is initial opening call or close.
 
-func Init(prefix string, port int, ping bool, got func(c *Client, id string, data []byte, close bool, err error)) *Client { // "/ws"
-	client := &Client{}
-	client.connections = map[string]*connection{}
+func NewServer(prefix string, port int, ping bool, got func(s *Server, id string, data []byte, close bool, err error)) *Server { // "/ws"
+	server := &Server{}
+	server.connections = map[string]*connection{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	http.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			got(client, "", nil, false, zlog.Error(err, "upgrade"))
+			got(server, "", nil, false, zlog.Error(err, "upgrade"))
 			return
 		}
 		conn.SetPongHandler(func(string) error {
@@ -47,7 +47,7 @@ func Init(prefix string, port int, ping bool, got func(c *Client, id string, dat
 		})
 		mt, message, err := conn.ReadMessage()
 		if err != nil {
-			got(client, "", nil, false, zlog.Error(err, "read message"))
+			got(server, "", nil, false, zlog.Error(err, "read message"))
 			return
 		}
 		switch mt {
@@ -59,64 +59,64 @@ func Init(prefix string, port int, ping bool, got func(c *Client, id string, dat
 				c.Pinger = ztimer.RepeatIn(20, func() bool {
 					werr := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(time.Second*15))
 					if werr != nil {
-						client.mutex.Lock()
+						server.mutex.Lock()
 						// let's see if it keeps happening...
 						conn.Close()
-						delete(client.connections, str)
-						client.mutex.Unlock()
-						//					got(client, str, nil, true, nil)
+						delete(server.connections, str)
+						server.mutex.Unlock()
+						//					got(server, str, nil, true, nil)
 						return false
 					}
 					return true
 				})
 			}
-			client.mutex.Lock()
-			client.connections[str] = c
-			client.mutex.Unlock()
-			got(client, str, nil, false, nil)
+			server.mutex.Lock()
+			server.connections[str] = c
+			server.mutex.Unlock()
+			got(server, str, nil, false, nil)
 			// fmt.Println("ws.connect:", mt, str)
 		case websocket.CloseMessage:
 			fmt.Println("ws.disconnect:", conn)
-			str, c1 := client.findConnection(conn)
+			str, c1 := server.findConnection(conn)
 			if c1 != nil {
-				client.mutex.Lock()
+				server.mutex.Lock()
 				if c1.Pinger != nil {
 					c1.Pinger.Stop()
 				}
-				delete(client.connections, str)
-				client.mutex.Unlock()
-				got(client, str, nil, true, nil)
+				delete(server.connections, str)
+				server.mutex.Unlock()
+				got(server, str, nil, true, nil)
 			} else {
-				got(client, "", nil, true, zlog.Error(nil, "closed connection not found"))
+				got(server, "", nil, true, zlog.Error(nil, "closed connection not found"))
 			}
 		case websocket.BinaryMessage:
 			// fmt.Println("ws.binary:", conn)
-			str, c1 := client.findConnection(conn)
+			str, c1 := server.findConnection(conn)
 			if c1 != nil {
 				_, r, err := conn.NextReader()
 				if err != nil {
-					got(client, str, nil, false, zlog.Error(err, "next reader"))
+					got(server, str, nil, false, zlog.Error(err, "next reader"))
 				}
 				data, err := ioutil.ReadAll(r)
 				if err != nil {
-					got(client, str, nil, false, zlog.Error(err, "read all"))
+					got(server, str, nil, false, zlog.Error(err, "read all"))
 				}
-				got(client, str, data, false, nil)
+				got(server, str, data, false, nil)
 			} else {
-				got(client, "", nil, true, zlog.Error(nil, "binary message: connection not found"))
+				got(server, "", nil, true, zlog.Error(nil, "binary message: connection not found"))
 			}
 		}
 	})
 	go func() {
 		err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 		if err != nil {
-			got(client, "", nil, false, zlog.Error(err, "listen"))
+			got(server, "", nil, false, zlog.Error(err, "listen"))
 		}
 	}()
-	return client
+	return server
 }
 
-func (c *Client) findConnection(wc *websocket.Conn) (string, *connection) {
+func (c *Server) findConnection(wc *websocket.Conn) (string, *connection) {
 	c.mutex.Lock()
 	for str, con := range c.connections {
 		if wc == con.Connection {
@@ -128,8 +128,8 @@ func (c *Client) findConnection(wc *websocket.Conn) (string, *connection) {
 	return "", nil
 }
 
-// Close closes the connection to client 'id', and removes it from the map
-func (c *Client) Close(id string) error {
+// Close closes the connection to server 'id', and removes it from the map
+func (c *Server) Close(id string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	con, got := c.connections[id]
@@ -141,7 +141,7 @@ func (c *Client) Close(id string) error {
 	return err
 }
 
-func (c *Client) Send(id string, structure interface{}) error {
+func (c *Server) Send(id string, structure interface{}) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	con, got := c.connections[id]
@@ -151,7 +151,7 @@ func (c *Client) Send(id string, structure interface{}) error {
 	return con.Connection.WriteJSON(structure)
 }
 
-func (c *Client) IDs() []string {
+func (c *Server) IDs() []string {
 	c.mutex.Lock()
 	ids := make([]string, len(c.connections), len(c.connections))
 	i := 0
@@ -161,4 +161,40 @@ func (c *Client) IDs() []string {
 	}
 	c.mutex.Unlock()
 	return ids
+}
+
+type Client struct {
+	Connection *websocket.Conn
+}
+
+func ClientNew(address string, receive func(message []byte, err error) bool) (*Client, error) {
+	var err error
+	c, _, err := websocket.DefaultDialer.Dial(address, nil)
+	if err != nil {
+		return nil, zlog.Error(err, "dial")
+	}
+	client := &Client{Connection: c}
+	defer c.Close()
+
+	// done := make(chan struct{})
+
+	go func() {
+		for {
+			_, message, err := c.ReadMessage()
+			if err != nil {
+				zlog.Error(err, "read")
+			}
+			if receive != nil {
+				if !receive(message, err) {
+					return
+				}
+			}
+			zlog.Info("receive wesocket:", message)
+		}
+	}()
+	return client, nil
+}
+
+func (c *Client) Send(structure interface{}) error {
+	return c.Connection.WriteJSON(structure)
 }
