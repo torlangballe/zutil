@@ -116,7 +116,7 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (header
 		if params.ContentType == "" {
 			params.ContentType = "raw"
 		}
-		zlog.Info("sendBody: byes", surl)
+		// zlog.Info("sendBody: byes", surl)
 	} else {
 		m, got := send.(map[string]string)
 		if got {

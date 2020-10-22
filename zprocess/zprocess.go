@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/mitchellh/go-ps"
 	"github.com/shirou/gopsutil/process"
@@ -99,7 +98,6 @@ func FindParameterAfterFlag(got *string, args []string, flag string) bool {
 // *excludeZombies* checks if it has a ps Z state and doesn't add it to list then. This can take quite a long time.
 func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 	var pids []int64
-	start := time.Now()
 	procs, _ := ps.Processes()
 	for _, p := range procs {
 		if p.Executable() == app {
@@ -123,7 +121,7 @@ func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 
 func terminateProcess(p *process.Process, force, children bool) (oerr error) {
 	var err error
-	status, err := p.Status()
+	// status, err := p.Status()
 	// zlog.Info("terminateProcess:", p.Pid, status, err)
 	if children {
 		kids, _ := p.Children()

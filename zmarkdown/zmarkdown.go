@@ -37,16 +37,6 @@ func ConvertToPDF(input, title string, localFilePathPrefix string) (string, erro
 	tempFile := zfile.CreateTempFilePath(title + ".pdf")
 	renderer := mdtopdf.NewPdfRenderer("", "", tempFile, "trace.log")
 	renderer.LocalFilePathPrefix = localFilePathPrefix
-
-	// renderer.Pdf.SetSubject("How to convert markdown to PDF", true)
-	// renderer.Pdf.SetTitle("Example PDF converted from Markdown", true)
-	// renderer.THeader = mdtopdf.Styler{Font: "Times", Style: "IUB", Size: 20, Spacing: 2,
-	// 	TextColor: mdtopdf.Color{Red: 0, Green: 0, Blue: 0},
-	// 	FillColor: mdtopdf.Color{Red: 179, Green: 179, Blue: 255}}
-	// renderer.TBody = mdtopdf.Styler{Font: "Arial", Style: "", Size: 12, Spacing: 2,
-	// 	TextColor: mdtopdf.Color{Red: 0, Green: 0, Blue: 0},
-	// 	FillColor: mdtopdf.Color{Red: 255, Green: 102, Blue: 129},
-	// }
 	err := renderer.Process([]byte(input))
 	if err != nil {
 		return "", zlog.Error(err, "processing")

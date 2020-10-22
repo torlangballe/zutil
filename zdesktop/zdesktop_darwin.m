@@ -47,6 +47,7 @@ const char *getWindowIDs(void *data, BOOL debug, BOOL(*gotWin)(void *data, struc
         w.wid = (long)[[entry objectForKey:(id)kCGWindowNumber] integerValue];
         w.boundsDict = [entry objectForKey:(id)kCGWindowBounds];
         if (!gotWin(data, w)) {
+            CFRelease(windowList);
             return "";
         }
     }
