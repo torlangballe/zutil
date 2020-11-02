@@ -14,6 +14,8 @@ import (
 //  Created by Tor Langballe on 07-June-2019
 //
 
+// Check out: https://github.com/muesli/gamut
+
 type HSBA struct {
 	H float32 `json:"H"`
 	S float32 `json:"S"`

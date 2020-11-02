@@ -5,12 +5,13 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/torlangballe/blackfriday"
 	"github.com/torlangballe/mdtopdf"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
-	"gopkg.in/russross/blackfriday.v2"
 	// import "github.com/mandolyte/mdtopdf"
 )
 
@@ -20,7 +21,7 @@ func ConvertToHTML(input, title string) (string, error) {
 	params := blackfriday.HTMLRendererParameters{}
 	params.Title = title
 	params.Flags = blackfriday.CompletePage | blackfriday.HrefTargetBlank
-	params.CSS = "/css/github-markdown.css"
+	params.CSS = zrest.AppURLPrefix + "css/github-markdown.css"
 
 	renderer := blackfriday.NewHTMLRenderer(params)
 	return convertWithRenderer(input, title, renderer)
@@ -97,6 +98,7 @@ func FlatttenMarkdown(pathPrefix, basefilePath string, skipChapters []string) (s
 	linkReg := regexp.MustCompile(`\[[\w\s]+\]\(([\w/]+\.md)\)`)
 	footReg := regexp.MustCompile(`\s*\[.+\]\:`)
 
+	zlog.Info("flatten:", pathPrefix, basefilePath)
 	atFooters := false
 	err := zfile.ForAllFileLines(pathPrefix+basefilePath, func(s string) bool {
 		if !atFooters && footReg.MatchString(s) {
@@ -105,8 +107,8 @@ func FlatttenMarkdown(pathPrefix, basefilePath string, skipChapters []string) (s
 		}
 		snew := zstr.ReplaceAllCapturesFunc(linkReg, s, func(capture string, index int) string {
 			fpath := capture
-			zstr.HasPrefix(fpath, "/", &fpath)
-			//		zlog.Info("REG:", fpath, zstr.IndexOf(fpath, chapterPaths), chapterPaths)
+			// zstr.HasPrefix(fpath, "/", &fpath)
+			zlog.Info("REG:", fpath, zstr.IndexOf(fpath, chapterPaths), chapterPaths)
 			if zhttp.StringStartsWithHTTPX(fpath) {
 				return capture
 			}

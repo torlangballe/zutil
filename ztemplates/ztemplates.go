@@ -13,6 +13,7 @@ import (
 	//zrest "github.com/torlangballe/utils/urest"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
+	"github.com/torlangballe/zutil/zstr"
 
 	//"github.com/torlangballe/zutil/zrest"
 
@@ -150,10 +151,14 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "templates get error:", req.URL.Path, err)
 		return false
 	}
-	name := req.URL.Path[1:] + ".gohtml"
+	path := req.URL.Path
+	//	name := req.URL.Path[1:] + ".gohtml"
+	zstr.HasPrefix(path, zrest.AppURLPrefix, &path)
+	name := path + ".gohtml"
+	// zlog.Info("ExecuteTemplate:", req.URL.Path)
 	err = h.mainTemplate.ExecuteTemplate(out, name, v)
 	if err != nil {
-		zlog.Info("Web Exe error:", err)
+		zlog.Error(err, "exe error:")
 		return false
 	}
 	return true

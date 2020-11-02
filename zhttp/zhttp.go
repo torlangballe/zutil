@@ -142,7 +142,7 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (header
 		if response != nil {
 			response.Body.Close()
 		}
-		err = zlog.Error(err, "send bytes", time.Since(start), params.TimeoutSecs)
+		err = zlog.Error(err, "send bytes", time.Since(start), params.TimeoutSecs, surl)
 		err = MakeHTTPError(err, code, params.Method)
 		return
 	}

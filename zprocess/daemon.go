@@ -232,8 +232,8 @@ func (c *DaemonConfig) Spawn() error {
 						time.Sleep(time.Second) // maybe we need this to flush out print
 						c.infoLock.Lock()
 						kerr := cmd.Process.Kill()
-						c.infoLock.Unlock()
 						sendCrash = false
+						c.infoLock.Unlock()
 						zlog.OnError(kerr, "process kill")
 						return false
 					}
@@ -252,7 +252,9 @@ func (c *DaemonConfig) Spawn() error {
 		str := "zprocess daemon: restarting after error in run"
 		fmt.Println("{nolog}exited:", err)
 		quitReadChannel <- struct{}{}
-		c.putBuffer()
+		if c.AddLogURL != "" {
+			c.putBuffer()
+		}
 		if err != nil {
 			c.bufferLock.Lock()
 			c.logBuffer += str + "\n"
@@ -260,7 +262,10 @@ func (c *DaemonConfig) Spawn() error {
 			str += " " + err.Error()
 		}
 		cmd.Process.Kill()
-		if sendCrash {
+		c.infoLock.Lock()
+		send := sendCrash
+		c.infoLock.Unlock()
+		if send {
 			c.sendCrashEmail()
 		}
 		c.sendRestartSpecialLog(sendCrash)

@@ -44,10 +44,14 @@ func (c *Client) makeUrl() string {
 	return fmt.Sprintf("%s:%d%srpc", c.ToAddress, c.Port, zrest.AppURLPrefix)
 }
 
+func (c *Client) SetAddressFromHost(scheme, address string) {
+	c.ToAddress = scheme + "://" + address
+}
+
 func (c *Client) SetAddressFromURL(surl string) {
 	u, err := url.Parse(surl)
 	zlog.AssertNotError(err, "href parse")
-	c.ToAddress = u.Scheme + "://" + u.Hostname()
+	c.SetAddressFromHost(u.Scheme, u.Hostname())
 }
 
 func (c *Client) CallRemote(method interface{}, args interface{}, reply interface{}, timeoutSecs ...float64) error {

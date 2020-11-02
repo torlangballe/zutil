@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -31,6 +32,7 @@ const (
 
 type Item struct {
 	Kind            TypeKind
+	BitSize         int
 	TypeName        string
 	FieldName       string
 	Tag             string
@@ -213,6 +215,18 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 		zlog.Info("marshal.marshalValue: Carefull, unknown type!", val.Kind())
 		item.Kind = KindUndef
 	}
+	switch val.Kind() {
+	case reflect.Int, reflect.Uint:
+		item.BitSize = zint.SizeOfInt
+	case reflect.Int16, reflect.Uint16:
+		item.BitSize = 16
+	case reflect.Int32, reflect.Uint32, reflect.Float32:
+		item.BitSize = 32
+	case reflect.Int64, reflect.Uint64, reflect.Float64:
+		item.BitSize = 64
+	case reflect.Int8, reflect.Uint8:
+		item.BitSize = 8
+	}
 	//item.FieldName = fieldName
 	item.IsAnonymous = isAnonymous
 	item.Tag = tagName
@@ -223,7 +237,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 func ItterateStruct(istruct interface{}, options Options) (item Item, err error) {
 	rval := reflect.ValueOf(istruct)
 	if !rval.IsValid() || rval.IsZero() {
-		zlog.Info("ItterateStruct1")
+		zlog.Info("ItterateStruct: not valid")
 		return
 	}
 	zlog.Assert(rval.Kind() == reflect.Ptr, "not pointer", rval.Kind(), rval)

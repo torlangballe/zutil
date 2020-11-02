@@ -7,9 +7,15 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unsafe"
 )
 
 type Slice []int
+
+var dummy int
+
+// SizeOfInt is the size of an int type
+var SizeOfInt = int(unsafe.Sizeof(dummy))
 
 func Abs64(i int64) int64 {
 	if i >= 0 {
