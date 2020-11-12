@@ -54,10 +54,10 @@ func getAppProgramPath(appName string) string {
 
 func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
 	path := getAppProgramPath(appName)
-	return StartCommand(path, true, args...)
+	return MakeCommand(path, true, args...)
 }
 
-func StartCommand(command string, start bool, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
+func MakeCommand(command string, start bool, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
 	cmd = exec.Command(command, args...)
 	outPipe, err = cmd.StdoutPipe()
 	if err != nil {

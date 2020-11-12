@@ -196,7 +196,7 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 	} else {
 		client = defClient
 	}
-	zlog.Assert(params.TimeoutSecs == -1, params.TimeoutSecs)
+	zlog.Assert(params.TimeoutSecs == -1, params.TimeoutSecs) // check if we actually do this...
 	// we need to remember a new client for each timeout?
 	if params.TimeoutSecs != -1 {
 		c := *client

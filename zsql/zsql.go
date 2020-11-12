@@ -167,7 +167,7 @@ func FieldInfosFromStruct(istruct interface{}, skip []string, isSQLite bool) (in
 		zlog.Fatal(err, "get items")
 	}
 	for i, item := range items.Children {
-		zlog.Info("FieldInfosFromStruct:", i, item)
+		// zlog.Info("FieldInfosFromStruct:", i, item)
 		var name string
 		var f FieldInfo
 		parts := zreflect.GetTagAsMap(item.Tag)["db"]

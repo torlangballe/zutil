@@ -18,6 +18,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/torlangballe/zutil/zint"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -253,6 +255,7 @@ func TruncatedFromStart(str string, length int, endString string) string {
 }
 
 // Concatinates parts, adding divider if prev or current added is not empty
+// Doesn't add divider if prev ends in divider og next part begins with it
 func Concat(divider string, parts ...interface{}) string {
 	var str string
 	for _, p := range parts {
@@ -261,7 +264,10 @@ func Concat(divider string, parts ...interface{}) string {
 			if str == "" {
 				str = s
 			} else {
-				str += divider + s
+				if !strings.HasSuffix(str, divider) && !strings.HasPrefix(s, divider) {
+					str += divider
+				}
+				str += s
 			}
 		}
 	}
@@ -434,7 +440,14 @@ func GenerateRandomHexBytes(byteCount int) string {
 	return hex.EncodeToString(data)
 }
 
+func CreateGUUID() string {
+	u := uuid.New()
+	return u.String()
+}
+
 func GenerateUUID() string {
+	u := uuid.New()
+	return u.String()
 	data := GenerateRandomBytes(16)
 	data[8] = 0x80
 	data[4] = 0x40

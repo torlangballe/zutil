@@ -175,7 +175,7 @@ func (c Color) OpacityChanged(opacity float32) Color {
 	return ColorNew(c.Colors.R, c.Colors.G, c.Colors.B, opacity)
 }
 
-func (c Color) Mix(withColor Color, amount float32) Color {
+func (c Color) Mixed(withColor Color, amount float32) Color {
 	wc := withColor.GetRGBA()
 	col := c.GetRGBA()
 	r := (1-amount)*col.R + wc.R*amount

@@ -15,11 +15,14 @@ require (
 	github.com/amitbet/vnc2video v0.0.0-20190616012314-9d50b9dab1d9
 	github.com/aws/aws-lambda-go v1.13.2
 	github.com/aws/aws-sdk-go v1.25.19
+	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3
 	github.com/garyburd/redigo v1.6.0
+	github.com/github/ietf-cms v0.1.0 // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gobuffalo/envy v1.7.1
+	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.4.2
@@ -38,6 +41,7 @@ require (
 	github.com/sendgrid/rest v2.6.0+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.6.0+incompatible
 	github.com/shirou/gopsutil v2.20.4+incompatible
+	github.com/twinj/uuid v1.0.0 // indirect
 	github.com/twpayne/go-geom v1.0.5
 	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
 	golang.org/x/text v0.3.2

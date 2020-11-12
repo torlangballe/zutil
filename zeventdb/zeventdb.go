@@ -2,6 +2,7 @@ package zeventdb
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -80,13 +81,13 @@ func (db *Database) Add(istruct interface{}) (id int64, err error) {
 		") VALUES (" + params + ")"
 	vals := zsql.FieldValuesFromStruct(istruct, skip)
 
-	zlog.Info("ADD-QUERY:", query, vals)
+	// zlog.Info("ADD-QUERY:", query, vals)
 	r, err := db.DB.Exec(query, vals...)
 	if err != nil {
 		return 0, zlog.Error(err, "query", query, vals)
 	}
 	id, err = r.LastInsertId()
-	zlog.Info("Add2DB:", id)
+	// zlog.Info("Add2DB:", id)
 	if err != nil {
 		return 0, zlog.Error(err, "lastinsert", query, vals)
 	}
@@ -98,7 +99,7 @@ type CompareItem struct {
 	Values []interface{}
 }
 
-func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, time time.Time, id int64, before bool, count int) error {
+func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, time time.Time, id int64, before, decending bool, count int) error {
 	var comps []CompareItem
 	for _, e := range equalItems {
 		found := false
@@ -141,8 +142,12 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, tim
 	resultStructVal := reflect.New(db.StructType)
 
 	operator := ">"
+	dir := "ASC"
 	if before {
 		operator = "<"
+	}
+	if decending {
+		dir = "DESC"
 	}
 	if !time.IsZero() {
 		w := db.TimeField + operator + time.Format(TimeStampFormat)
@@ -153,7 +158,13 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, tim
 		wheres = append(wheres, w)
 	}
 	where := strings.Join(wheres, " AND ")
-	query := "SELECT " + zsql.FieldNamesFromStruct(resultStructVal.Interface(), nil, "") + " FROM " + db.TableName + " WHERE " + where
+	query := "SELECT " + zsql.FieldNamesFromStruct(resultStructVal.Interface(), nil, "") + " FROM " + db.TableName
+	query += " WHERE " + where
+	query += " ORDER BY " + db.TimeField + " " + dir
+	if count != 0 {
+		query += fmt.Sprint(" LIMIT ", count)
+	}
+	// zlog.Info("eventbd:", query, values)
 
 	rows, err := db.DB.Query(query, values...)
 	if err != nil {
@@ -167,7 +178,7 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, tim
 		err = rows.Scan(resultPointers...)
 		sliceVal = reflect.Append(sliceVal, reflect.Indirect(resultStructVal))
 	}
-	// zlog.Info("eventsdb.Get:", query, values, wheres, slicePtrVal.CanAddr())
+	// zlog.Info("eventsdb.Get:", sliceVal.Len(), query, values)
 	reflect.Indirect(slicePtrVal).Set(sliceVal)
 	return nil
 }

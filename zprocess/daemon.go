@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -39,6 +41,7 @@ func init() {
 type DaemonConfig struct {
 	BinaryPath            string `json:",omitempty"`
 	Arguments             []string
+	WorkingDir            string `json:",omitempty"`
 	LogPath               string `json:",omitempty"`
 	AddLogURL             string `json:",omitempty"`
 	Print                 bool   // Print out/err to stdout as well. Only really makes sense if running one app only
@@ -91,10 +94,20 @@ func DaemonizeSelf(adjustConfig func(c *DaemonConfig)) error {
 	if err != nil {
 		return err
 	}
-	config.Print = true
+	// config.Print = true
+	config.BinaryPath = os.Args[0]
+	if strings.HasPrefix(config.BinaryPath, "/") && config.WorkingDir == "" {
+		config.WorkingDir, _ = filepath.Split(config.BinaryPath)
+	}
+	// zlog.Info("DAMONED WD:", config.WorkingDir)
+	if config.WorkingDir != "" {
+		err = os.Chdir(config.WorkingDir)
+		if err != nil {
+			zlog.Fatal(err, "chddir", config.WorkingDir)
+		}
+	}
 	config.RestartModifiedBinary = true
 	// fmt.Printf("READ DAEMON: %+v\n", config)
-	config.BinaryPath = os.Args[0]
 	config.Arguments = append(config.Arguments, "-znodaemon")
 	if adjustConfig != nil {
 		adjustConfig(&config)
@@ -209,39 +222,41 @@ func (c *DaemonConfig) sendCrashEmail() {
 
 func (c *DaemonConfig) Spawn() error {
 	zlog.Info("daemon:", c.BinaryPath)
+	var lastMod time.Time
+	var sendCrash bool = true
+	var cmd *exec.Cmd
+	if c.RestartModifiedBinary {
+		ztimer.RepeatIn(3, func() bool {
+			mod := zfile.Modified(c.BinaryPath)
+			c.infoLock.Lock()
+			mtime := c.binaryModifiedTime
+			c.infoLock.Unlock()
+			if cmd != nil && mod != mtime {
+				if !lastMod.IsZero() && lastMod == mod {
+					zlog.Info(zstr.EscCyan+"#### Binary", c.BinaryPath, "time modified to", ztime.GetNice(mod, true)+". retarting. ####"+zstr.EscNoColor)
+					time.Sleep(time.Second) // maybe we need this to flush out print
+					c.infoLock.Lock()
+					kerr := cmd.Process.Kill()
+					sendCrash = false
+					c.infoLock.Unlock()
+					zlog.OnError(kerr, "process kill")
+					return false
+				}
+				lastMod = mod
+			}
+			return true
+		})
+	}
 	for {
-		sendCrash := true
 		c.infoLock.Lock()
 		c.binaryModifiedTime = zfile.Modified(c.BinaryPath)
 		c.infoLock.Unlock()
-		cmd, outPipe, errPipe, err := StartCommand(c.BinaryPath, false, c.Arguments...)
+		cm, outPipe, errPipe, err := MakeCommand(c.BinaryPath, false, c.Arguments...)
 		if err != nil {
-			return zlog.Error(err, "start command", c.BinaryPath, c.Arguments)
+			return zlog.Error(err, "make command", c.BinaryPath, c.Arguments)
 		}
+		cmd = cm
 		c.StartTime = time.Now()
-		var lastMod time.Time
-		if c.RestartModifiedBinary {
-			ztimer.RepeatIn(3, func() bool {
-				mod := zfile.Modified(c.BinaryPath)
-				c.infoLock.Lock()
-				mtime := c.binaryModifiedTime
-				c.infoLock.Unlock()
-				if mod != mtime {
-					if !lastMod.IsZero() && lastMod == mod {
-						zlog.Info(zstr.EscCyan+"#### Binary", c.BinaryPath, "time modified to", ztime.GetNice(mod, true)+". retarting. ####"+zstr.EscNoColor)
-						time.Sleep(time.Second) // maybe we need this to flush out print
-						c.infoLock.Lock()
-						kerr := cmd.Process.Kill()
-						sendCrash = false
-						c.infoLock.Unlock()
-						zlog.OnError(kerr, "process kill")
-						return false
-					}
-					lastMod = mod
-				}
-				return true
-			})
-		}
 		quitReadChannel := make(chan struct{}, 2)
 		go c.readFromPipe(outPipe, quitReadChannel)
 		go c.readFromPipe(errPipe, quitReadChannel)
@@ -261,7 +276,10 @@ func (c *DaemonConfig) Spawn() error {
 			c.bufferLock.Unlock()
 			str += " " + err.Error()
 		}
-		cmd.Process.Kill()
+		if cmd != nil {
+			cmd.Process.Kill()
+			cmd = nil
+		}
 		c.infoLock.Lock()
 		send := sendCrash
 		c.infoLock.Unlock()

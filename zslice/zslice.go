@@ -70,3 +70,11 @@ func CopyTo(slice, to interface{}) {
 	toVal.SetCap(sliceVal.Len())
 	reflect.Copy(toVal, sliceVal)
 }
+
+func Reverse(s interface{}) {
+	n := reflect.ValueOf(s).Len()
+	swap := reflect.Swapper(s)
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+		swap(i, j)
+	}
+}

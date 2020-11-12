@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"strconv"
 	"time"
@@ -198,5 +199,8 @@ func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, 
 }
 
 func Handle(pattern string, handler http.Handler) {
-	http.Handle(AppURLPrefix+pattern, handler)
+	spath := path.Join(AppURLPrefix, pattern)
+	spath += "/"
+	// zlog.Info("zrest.Handle:", spath, pattern)
+	http.Handle(spath, handler)
 }

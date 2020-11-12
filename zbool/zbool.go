@@ -2,6 +2,7 @@ package zbool
 
 import (
 	"strings"
+	"sync/atomic"
 )
 
 // BoolInd is a bool which also has an indeterminate, or unknown  state
@@ -112,4 +113,23 @@ func Int64ToStringFromList(n int64, list []BitsetItem) string {
 		}
 	}
 	return str
+}
+
+type Atomic struct {
+	flag int32
+}
+
+func (b *Atomic) Set(value bool) {
+	var i int32 = 0
+	if value {
+		i = 1
+	}
+	atomic.StoreInt32(&(b.flag), int32(i))
+}
+
+func (b *Atomic) Get() bool {
+	if atomic.LoadInt32(&(b.flag)) != 0 {
+		return true
+	}
+	return false
 }

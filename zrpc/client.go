@@ -60,7 +60,9 @@ func (c *Client) CallRemote(method interface{}, args interface{}, reply interfac
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote get name")
 	}
-	return c.CallRemoteWithName(name, args, reply, timeoutSecs...)
+	err = c.CallRemoteWithName(name, args, reply, timeoutSecs...)
+	// zlog.Info("Call:", name, err)
+	return err
 }
 
 func (c *Client) CallRemoteWithName(name string, args interface{}, reply interface{}, timeoutSecs ...float64) error {
