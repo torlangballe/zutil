@@ -30,8 +30,8 @@ const (
 	TopLeft                 = Top | Left
 	TopRight                = Top | Right
 	TopCenter               = Top | HorCenter
-	LeftCenter              = Left | VertCenter
-	RightCenter             = Right | VertCenter
+	CenterLeft              = Left | VertCenter
+	CenterRight             = Right | VertCenter
 
 	Center    = HorCenter | VertCenter
 	Expand    = HorExpand | VertExpand

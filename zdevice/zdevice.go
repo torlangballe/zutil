@@ -7,6 +7,7 @@ import (
 
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/mem"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -14,6 +15,7 @@ import (
 
 type CellularNetworkType int
 type OSType string
+type ArchitectureType string
 
 const (
 	CellularUnknown CellularNetworkType = iota
@@ -27,9 +29,14 @@ const (
 	MacOSType   OSType = "macos"
 	WindowsType OSType = "windows"
 	JSType      OSType = "js"
+
+	ARM64Type            ArchitectureType = "arm64"
+	AMD64Type            ArchitectureType = "amd64"
+	WASMType             ArchitectureType = "wasm"
+	ArchitectureTypeNone ArchitectureType = ""
 )
 
-func OS() OSType {
+func Platform() OSType {
 	switch runtime.GOOS {
 	case "windows":
 		return WindowsType
@@ -46,6 +53,20 @@ func OSVersion() string {
 	info, err := host.Info()
 	zlog.OnError(err)
 	return info.PlatformVersion
+}
+
+// Architecture returns the main type of CPU used, ARM, AMD64, WASM
+func Architecture() ArchitectureType {
+	if runtime.GOARCH == "arm64" {
+		return ARM64Type
+	}
+	if runtime.GOARCH == "amd64" {
+		return AMD64Type
+	}
+	if runtime.GOARCH == "wasm" {
+		return WASMType
+	}
+	return ArchitectureTypeNone
 }
 
 // CPUUsage returns a slice of 0-1 where 1 is 100% of how much each CPU is utilized. Order unknown, but hopefully doesn't change
@@ -92,4 +113,12 @@ func MACAddress() ([]byte, error) {
 		return nil, errors.New("no suitable MAC address found")
 	}
 	return mac, nil
+}
+
+func MemoryAvailableUsedAndTotal() (uint64, uint64, uint64) {
+	vm, err := mem.VirtualMemory()
+	if err != nil {
+		zlog.Fatal(err, "get vm")
+	}
+	return vm.Available, vm.Used, vm.Total
 }

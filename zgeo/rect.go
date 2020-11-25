@@ -37,8 +37,8 @@ func RectFromXY2(x, y, x2, y2 float64) Rect {
 	return Rect{Pos{x, y}, Size{x2 - x, y2 - y}}
 }
 
-func RectFromSize(s Size) Rect {
-	return Rect{Size: s}
+func RectFromWH(w, h float64) Rect {
+	return Rect{Size: Size{w, h}}
 }
 
 var RectNull Rect

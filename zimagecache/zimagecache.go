@@ -31,7 +31,9 @@ type Cache struct {
 func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	spath := req.URL.Path[1:]
 	zstr.HasPrefix(req.URL.Path, zrest.AppURLPrefix, &spath)
-	file := path.Join(c.workDir, spath)
+	fpath := path.Join(c.workDir, spath)
+	dir, file := filepath.Split(fpath)
+	file = filepath.Join(dir, file[:3]+"/"+file[3:])
 	// zlog.Info("FileCache serve:", file, spath)
 	if !zfile.Exists(file) {
 		zlog.Info("Serve empty cached image:", file)
@@ -100,7 +102,13 @@ func (c *Cache) CacheFromData(data []byte, stype string) (string, error) {
 	hash := h.Sum64()
 	name := fmt.Sprintf("%x.%s", hash, stype)
 
-	path := c.GetPathForName(name)
+	path, dir := c.GetPathForName(name)
+	if zfile.NotExist(dir) {
+		err = os.Mkdir(dir, 0775|os.ModeDir)
+		if err != nil {
+			return "", zlog.Error(err, "make dir", dir)
+		}
+	}
 	// outUrl := getURLForName(name)
 
 	// zlog.Info("CacheImageFromReader path:", path)
@@ -121,8 +129,10 @@ func (c *Cache) CacheFromData(data []byte, stype string) (string, error) {
 	return name, nil
 }
 
-func (c *Cache) GetPathForName(name string) string {
-	return filepath.Join(c.workDir+c.cacheName, name)
+func (c *Cache) GetPathForName(name string) (path, dir string) {
+	dir = c.workDir + c.cacheName + name[:3] + "/"
+	path = dir + name[3:]
+	return
 }
 
 func (c *Cache) GetUrlForName(name string) string {

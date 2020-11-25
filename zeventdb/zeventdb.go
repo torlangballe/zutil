@@ -2,6 +2,7 @@ package zeventdb
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -9,13 +10,15 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3" // Import go-sqlite3 library
+	sqlite "github.com/mattn/go-sqlite3" // Import go-sqlite3 library
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zsql"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztime"
+	"github.com/torlangballe/zutil/ztimer"
 )
 
 type Database struct {
@@ -34,7 +37,7 @@ const TimeStampFormat = "2006-01-02 15:04:05.999999999"
 // It creates a table *tableName* using the structure istruct as it's column names.
 // The field with db:",primary" set, is the primary key.
 // If there is more than one time.Time type, set db:",eventtime" tag to make it the event's time.
-func CreateDB(filepath string, tableName string, istruct interface{}) (db *Database, err error) {
+func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays, deleteFreqSecs float64) (db *Database, err error) {
 	if !zfile.Exists(filepath) {
 		file, err := os.Create(filepath) // Create SQLite file
 		if err != nil {
@@ -53,9 +56,23 @@ func CreateDB(filepath string, tableName string, istruct interface{}) (db *Datab
 	query, db.FieldInfos = zsql.CreateSQLite3TableCreateStatementFromStruct(istruct, tableName)
 	_, err = db.DB.Exec(query)
 	if err != nil {
-		zlog.Info("\n\n", query, "\n\n")
-		zlog.Error(err, "create table", query, tableName)
+		if errors.Is(err, sqlite.ErrCorrupt) || err.Error() == "database disk image is malformed" {
+			zlog.Info("CORRUPT!")
+			os.Remove(filepath)
+			_, err = db.DB.Exec(query)
+		}
+		if err != nil {
+			zlog.Info("\n\n", query, "\n\n")
+			zlog.Error(err, "create table", tableName)
+			return
+		}
 	}
+	query = "CREATE INDEX IF NOT EXISTS idx_events_time ON events (time)" // UNIQUE
+	_, err = db.DB.Exec(query)
+	if err != nil {
+		zlog.Error(err, "create time index", query)
+	}
+
 	for _, f := range db.FieldInfos {
 		if f.IsPrimary {
 			db.PrimaryField = f.SQLName
@@ -63,6 +80,20 @@ func CreateDB(filepath string, tableName string, istruct interface{}) (db *Datab
 		if f.Kind == zreflect.KindTime && (db.TimeField == "" || zstr.IndexOf("eventtime", f.SubTagParts) != -1) {
 			db.TimeField = f.SQLName
 		}
+	}
+	if deleteDays != 0 && deleteFreqSecs != 0 {
+		ztimer.RepeatNow(deleteFreqSecs, func() bool {
+			at := time.Now().Add(-time.Duration(float64(ztime.Day) * deleteDays))
+			query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", tableName)
+			r, err := db.DB.Exec(query, at)
+			if err != nil {
+				zlog.Error(err, "query", query, at)
+			} else {
+				count, _ := r.RowsAffected()
+				zlog.Info("deleted", count, "events")
+			}
+			return true
+		})
 	}
 	return
 }
@@ -89,7 +120,7 @@ func (db *Database) Add(istruct interface{}) (id int64, err error) {
 	id, err = r.LastInsertId()
 	// zlog.Info("Add2DB:", id)
 	if err != nil {
-		return 0, zlog.Error(err, "lastinsert", query, vals)
+		return 0, zlog.Error(err, "get lastinsert", query, vals)
 	}
 	return id, nil
 }
@@ -99,7 +130,7 @@ type CompareItem struct {
 	Values []interface{}
 }
 
-func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, time time.Time, id int64, before, decending bool, count int) error {
+func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, time time.Time, id int64, before, decending, keepID bool, count int) error {
 	var comps []CompareItem
 	for _, e := range equalItems {
 		found := false
@@ -126,8 +157,15 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, tim
 			if j != 0 {
 				w += " OR "
 			}
-			values = append(values, v)
 			name := c.Name
+			sval, _ := v.(string)
+			if sval != "" && strings.Contains(sval, "*") {
+				sval = strings.Replace(sval, "*", "%", -1)
+				w += name + " LIKE ?"
+				values = append(values, sval)
+				continue
+			}
+			values = append(values, v)
 			if zstr.HasPrefix(name, "!", &name) {
 				w += name + "<>?"
 			} else {
@@ -150,7 +188,7 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, tim
 		dir = "DESC"
 	}
 	if !time.IsZero() {
-		w := db.TimeField + operator + time.Format(TimeStampFormat)
+		w := db.TimeField + operator + `'` + time.UTC().Format(TimeStampFormat) + `'`
 		wheres = append(wheres, w)
 	}
 	if id != 0 {
@@ -159,12 +197,15 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, tim
 	}
 	where := strings.Join(wheres, " AND ")
 	query := "SELECT " + zsql.FieldNamesFromStruct(resultStructVal.Interface(), nil, "") + " FROM " + db.TableName
+	if keepID {
+		where = "(" + where + fmt.Sprint(") OR id=", id)
+	}
 	query += " WHERE " + where
 	query += " ORDER BY " + db.TimeField + " " + dir
 	if count != 0 {
 		query += fmt.Sprint(" LIMIT ", count)
 	}
-	// zlog.Info("eventbd:", query, values)
+	zlog.Info("eventbd:", query, values)
 
 	rows, err := db.DB.Query(query, values...)
 	if err != nil {

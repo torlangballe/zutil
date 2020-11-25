@@ -83,12 +83,8 @@ func NewRateLimiter(secs float64) *RateLimiter {
 	return r
 }
 
-// Do runs the *do* function if secs (or r.frequencySecs if secs == 0) has passed since last time it was done for that id
+// Do runs the *do* function if secs (or r.frequencySecs if secs == -1) has passed since last time it was done for that id
 func (r *RateLimiter) Do(id int64, secs float64, do func()) {
-	if secs == 0 {
-		do()
-		return
-	}
 	r.lock.Lock()
 	t := r.cache[id]
 	freq := r.frequencySecs

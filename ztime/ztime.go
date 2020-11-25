@@ -20,12 +20,15 @@ const (
 	ShortFormat       = "2006-01-02 15:04"
 	JavascriptFormat  = "2006-01-02T15:04:05-07:00"
 	JavascriptISO     = "2006-01-02T15:04:05.999Z"
+
+	Day  = time.Hour * time.Duration(24)
+	Week = Day * time.Duration(7)
 )
 
-// https://github.com/jinzhu/now -- interesting library for getting start of this minute etc
+// Distant is a very far-future time when you want to do things forever etc
+var Distant = time.Unix(1<<62, 0)
 
-const Day = time.Hour * time.Duration(24)
-const Week = Day * time.Duration(7)
+// https://github.com/jinzhu/now -- interesting library for getting start of this minute etc
 
 type JSONTime time.Time
 
@@ -560,18 +563,38 @@ func (d DurationStruct) ToDuration() time.Duration {
 	return tot
 }
 
-// RepeatFromNow invokes f immediately, and then at intervalSecs until the function returns false
-func RepeatFromNow(intervalSecs float64, f func() bool) {
-	ticker := time.NewTicker(SecondsDur(intervalSecs))
-	if !f() {
-		return
-	}
-	for range ticker.C {
-		if !f() {
-			ticker.Stop()
-			break
+// this is in timer???
+// // RepeatFromNow invokes f immediately, and then at intervalSecs until the function returns false
+// func RepeatFromNow(intervalSecs float64, f func() bool) {
+// 	ticker := time.NewTicker(SecondsDur(intervalSecs))
+// 	if !f() {
+// 		return
+// 	}
+// 	for range ticker.C {
+// 		if !f() {
+// 			ticker.Stop()
+// 			break
+// 		}
+// 	}
+// }
+
+func MonthFromString(str string) (time.Month, bool) {
+	str = strings.ToLower(str)
+	is3 := (len(str) == 3)
+	fmt.Println("MonthFromString:", str, is3)
+	for m := time.January; m <= time.December; m++ {
+		n := strings.ToLower(m.String())
+		if is3 {
+			if n[:3] == str {
+				return m, true
+			}
+		} else {
+			if n == str {
+				return m, true
+			}
 		}
 	}
+	return 0, false
 }
 
 func DurationFromString(str string) time.Duration {

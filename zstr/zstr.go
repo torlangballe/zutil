@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/url"
 	"regexp"
 	"sort"
@@ -249,6 +248,14 @@ func TruncatedAtCharFromEnd(str string, max int, divider, truncateSymbol string)
 	return out
 }
 
+func After(str, after string) string {
+	i := strings.Index(str, after)
+	if i == -1 {
+		return ""
+	}
+	return str[i+len(after):]
+}
+
 func TruncatedFromStart(str string, length int, endString string) string {
 	l := zint.Clamp(length, 0, len(str)-len(endString)) // hack without unicode support
 	return endString + str[l:]
@@ -441,18 +448,12 @@ func GenerateRandomHexBytes(byteCount int) string {
 }
 
 func CreateGUUID() string {
-	u := uuid.New()
-	return u.String()
+	return strings.ToUpper(GenerateUUID())
 }
 
 func GenerateUUID() string {
 	u := uuid.New()
 	return u.String()
-	data := GenerateRandomBytes(16)
-	data[8] = 0x80
-	data[4] = 0x40
-
-	return hex.EncodeToString(data)
 }
 
 func MD5Hex(data []byte) string {
@@ -461,42 +462,6 @@ func MD5Hex(data []byte) string {
 
 func SHA256Hex(data []byte) string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
-}
-
-func JoinStringMap(m map[string]string, equal, sep string) (str string) {
-	for key, val := range m {
-		if str != "" {
-			str += sep
-		}
-		str += key + equal + val
-	}
-	return
-}
-
-func RandomKVFromSSMap(m map[string]string) (string, string) {
-	n := int(rand.Int31n(int32(len(m))))
-	i := 0
-	for k, v := range m {
-		if i == n {
-			return k, v
-		}
-		i++
-	}
-	panic("RandomKVFromSSMap outside")
-
-	return "", ""
-}
-
-func AreStringMapsEqual(a, b map[string]string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for k, v := range a {
-		if b[k] != v {
-			return false
-		}
-	}
-	return true
 }
 
 func CountWords(str string) int {

@@ -61,8 +61,11 @@ func (c *Client) CallRemote(method interface{}, args interface{}, reply interfac
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote get name")
 	}
 	err = c.CallRemoteWithName(name, args, reply, timeoutSecs...)
+	if err != nil {
+		return err
+	}
 	// zlog.Info("Call:", name, err)
-	return err
+	return nil
 }
 
 func (c *Client) CallRemoteWithName(name string, args interface{}, reply interface{}, timeoutSecs ...float64) error {
@@ -76,7 +79,9 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote encode client request")
 	}
-	// fmt.Println("REMOTECALL2:", name, time.Since(start))
+	// if strings.Contains(name, "GetEvents") {
+	// 	fmt.Println("REMOTECALL2:", name, string(message))
+	// }
 	params := zhttp.MakeParameters()
 	params.UseHTTPS = false
 	params.SkipVerifyCertificate = true
@@ -97,7 +102,8 @@ func (c *Client) CallRemoteWithName(name string, args interface{}, reply interfa
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return zlog.Error(err, zlog.StackAdjust(1), "call remote post:", name)
+		zlog.Error(err, zlog.StackAdjust(2), "call remote post:", name)
+		return err
 	}
 
 	// sbody := zhttp.GetCopyOfResponseBodyAsString(resp)

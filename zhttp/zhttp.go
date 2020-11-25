@@ -96,20 +96,20 @@ func MakeParameters() Parameters {
 }
 
 // Post calls SendBody with method == Post
-func Post(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
+func Post(surl string, params Parameters, send, receive interface{}) (resp *http.Response, err error) {
 	params.Method = http.MethodPost
 	return SendBody(surl, params, send, receive)
 }
 
 // Put calls SendBody with method == Put
-func Put(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
+func Put(surl string, params Parameters, send, receive interface{}) (resp *http.Response, err error) {
 	params.Method = http.MethodPut
 	return SendBody(surl, params, send, receive)
 }
 
 // SendBody uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
 // receive can be []byte, string or a struct to unmarashal to
-func SendBody(surl string, params Parameters, send, receive interface{}) (headers http.Header, err error) {
+func SendBody(surl string, params Parameters, send, receive interface{}) (resp *http.Response, err error) {
 	start := time.Now()
 	bout, got := send.([]byte)
 	if got {
@@ -137,16 +137,16 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (header
 		}
 	}
 	params.Body = bout
-	response, code, err := SendBytesSetContentLength(surl, params)
+	resp, code, err := SendBytesSetContentLength(surl, params)
 	if err != nil || code >= 300 {
-		if response != nil {
-			response.Body.Close()
+		if resp != nil {
+			resp.Body.Close()
 		}
-		err = zlog.Error(err, "send bytes", time.Since(start), params.TimeoutSecs, surl)
-		err = MakeHTTPError(err, code, params.Method)
+		zlog.Error(err, params.Method, "send bytes", time.Since(start), params.TimeoutSecs, surl)
+		err = MakeHTTPError(err, code, "")
 		return
 	}
-	return processResponse(surl, response, params.PrintBody, receive)
+	return processResponse(surl, resp, params.PrintBody, receive)
 }
 
 var normalClient = &http.Client{
@@ -224,7 +224,7 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 
 var sendCount int64
 
-func GetResponseFromReqClient(request *http.Request, client *http.Client) (response *http.Response, err error) {
+func GetResponseFromReqClient(request *http.Request, client *http.Client) (resp *http.Response, err error) {
 	// atomic.AddInt64(&sendCount, 1)
 	// defer func() {
 	// 	atomic.AddInt64(&sendCount, -1)
@@ -235,24 +235,24 @@ func GetResponseFromReqClient(request *http.Request, client *http.Client) (respo
 	// 	}
 	// }()
 	request.Close = true
-	response, err = client.Do(request)
-	// zlog.Info("GetResponseFromReqClient:", err, response != nil, request.URL)
-	if err == nil && response == nil {
+	resp, err = client.Do(request)
+	// zlog.Info("GetResponseFromReqClient:", err, resp != nil, request.URL)
+	if err == nil && resp == nil {
 		return nil, errors.New("client.Do gave no response: " + request.URL.String())
 	}
-	if err != nil && response != nil {
-		response.Body.Close()
+	if err != nil && resp != nil {
+		resp.Body.Close()
 		return
 	}
-	if err == nil && response != nil && response.StatusCode >= 300 {
+	if err == nil && resp != nil && resp.StatusCode >= 300 {
 		// zlog.Info("GetResponseFromReqClient make error:")
-		err = MakeHTTPError(err, response.StatusCode, "")
+		err = MakeHTTPError(err, resp.StatusCode, "")
 		return
 	}
 	return
 }
 
-func GetResponse(surl string, params Parameters) (response *http.Response, err error) {
+func GetResponse(surl string, params Parameters) (resp *http.Response, err error) {
 	zlog.Assert(params.Method != "", params, surl)
 	req, client, err := MakeRequest(surl, params)
 	// zlog.Info("GetResponse:", err, req != nil, client != nil)
@@ -262,9 +262,9 @@ func GetResponse(surl string, params Parameters) (response *http.Response, err e
 	return GetResponseFromReqClient(req, client)
 }
 
-func Get(surl string, params Parameters, receive interface{}) (headers http.Header, err error) {
+func Get(surl string, params Parameters, receive interface{}) (resp *http.Response, err error) {
 	params.Method = http.MethodGet
-	resp, err := GetResponse(surl, params)
+	resp, err = GetResponse(surl, params)
 	if err != nil || resp == nil {
 		if resp != nil && resp.Body != nil {
 			resp.Body.Close()
@@ -274,41 +274,40 @@ func Get(surl string, params Parameters, receive interface{}) (headers http.Head
 	return processResponse(surl, resp, params.PrintBody, receive)
 }
 
-func processResponse(surl string, response *http.Response, printBody bool, receive interface{}) (headers http.Header, err error) {
-	headers = response.Header
+func processResponse(surl string, resp *http.Response, printBody bool, receive interface{}) (*http.Response, error) {
 	if printBody {
-		zlog.Info("dump:", response.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(response)+"\n")
+		zlog.Info("dump:", resp.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(resp)+"\n")
 	}
 	if receive != nil && reflect.ValueOf(receive).Kind() != reflect.Ptr {
 		zlog.Fatal(nil, "not pointer", surl)
 	}
-	if response.Body != nil {
-		defer response.Body.Close()
+	if resp.Body != nil {
+		defer resp.Body.Close()
 	}
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = zlog.Error(err, "readall")
-		return
+		return resp, err
 	}
 	if receive != nil {
 		if rbytes, got := receive.(*[]byte); got {
 			*rbytes = body
-			return
+			return resp, nil
 		}
 		if rstring, got := receive.(*string); got {
 			*rstring = string(body)
-			return
+			return resp, nil
 		}
 		err = json.Unmarshal(body, receive)
 		if err != nil {
 			err = zlog.Error(err, "unmarshal")
-			return
+			return resp, err
 		}
 	}
-	return
+	return resp, nil
 }
 
-func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorization, authKey string) (response *http.Response, err error) {
+func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorization, authKey string) (resp *http.Response, err error) {
 	client := http.DefaultClient
 	req, err := http.NewRequest("GET", surl, nil)
 	if err != nil {
@@ -321,25 +320,25 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 		//		zlog.Info("UnmarshalFromJSONFromUrlWithBody: auth:", authKey, authorization)
 		req.Header.Set(authKey, authorization)
 	}
-	response, err = client.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
-		if response != nil {
-			err = MakeHTTPError(err, response.StatusCode, "get")
+		if resp != nil {
+			err = MakeHTTPError(err, resp.StatusCode, "get")
 		}
 		return
 	}
 	if print {
-		sbody := GetCopyOfResponseBodyAsString(response)
+		sbody := GetCopyOfResponseBodyAsString(resp)
 		zlog.Info("UnmarshalFromJSONFromUrlWithBody:\n", sbody)
 	}
-	defer response.Body.Close()
-	defer io.Copy(ioutil.Discard, response.Body)
-	ecode := response.StatusCode
+	defer resp.Body.Close()
+	defer io.Copy(ioutil.Discard, resp.Body)
+	ecode := resp.StatusCode
 	if ecode >= 300 {
 		err = MakeHTTPError(nil, ecode, "get")
 		return
 	}
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
@@ -355,7 +354,7 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 	return
 }
 
-func SendBytesSetContentLength(surl string, params Parameters) (response *http.Response, code int, err error) {
+func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Response, code int, err error) {
 	zlog.Assert(len(params.Body) != 0, surl)
 	zlog.Assert(params.ContentType != "")
 	zlog.Assert(params.Method != "")
@@ -369,7 +368,7 @@ func SendBytesSetContentLength(surl string, params Parameters) (response *http.R
 	if err != nil {
 		return
 	}
-	resp, err := GetResponseFromReqClient(req, client)
+	resp, err = GetResponseFromReqClient(req, client)
 	if err != nil {
 		return
 	}
@@ -377,18 +376,18 @@ func SendBytesSetContentLength(surl string, params Parameters) (response *http.R
 }
 
 func PostValuesAsForm(surl string, params Parameters, values url.Values) (data *[]byte, reAuth bool, err error) {
-	var response *http.Response
+	var resp *http.Response
 	params.Body = []byte(values.Encode())
 	params.ContentType = "application/x-www-form-urlencoded"
 	params.Method = http.MethodPost
-	response, _, err = SendBytesSetContentLength(surl, params)
+	resp, _, err = SendBytesSetContentLength(surl, params)
 	if err != nil {
 		return
 	}
-	defer response.Body.Close()
-	defer io.Copy(ioutil.Discard, response.Body)
+	defer resp.Body.Close()
+	defer io.Copy(ioutil.Discard, resp.Body)
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
@@ -458,14 +457,14 @@ func GetIPAddressAndPortFromRequest(req *http.Request) (ip, port string, err err
 }
 
 func GetAndReturnUrlEncodedBodyValues(surl string) (values url.Values, err error) {
-	response, err := http.Get(surl)
+	resp, err := http.Get(surl)
 	if err != nil {
 		return
 	}
-	defer response.Body.Close()
-	defer io.Copy(ioutil.Discard, response.Body)
+	defer resp.Body.Close()
+	defer io.Copy(ioutil.Discard, resp.Body)
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}

@@ -139,11 +139,12 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	if runtime.GOOS != "js" {
 		timeLock.Lock()
 		linesPrintedSinceTimeStamp++
-		if time.Since(datePrinted) > time.Minute || linesPrintedSinceTimeStamp > 25 {
+		if time.Since(datePrinted) > time.Second*60 || linesPrintedSinceTimeStamp > 10 {
+			finfo = fmt.Sprintln("goroutines:", runtime.NumGoroutine())
 			datePrinted = time.Now()
-			finfo += fmt.Sprint(zstr.EscCyan, "[", time.Now().Local().Format("15:04 02-Jan"), "] ", runtime.NumGoroutine(), "g", zstr.EscNoColor, "\n")
-			linesPrintedSinceTimeStamp = 0
 		}
+		finfo += zstr.EscCyan + time.Now().Local().Format("15:04:05/02 ") + zstr.EscNoColor
+		linesPrintedSinceTimeStamp = 0
 		timeLock.Unlock()
 	}
 	if priority != InfoLevel {
@@ -151,6 +152,9 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	}
 	if err != nil {
 		parts = append([]interface{}{err}, parts...)
+	}
+	if priority == FatalLevel {
+		finfo += "\nFatal:" + GetCallingStackString() + "\n"
 	}
 	err = NewError(parts...)
 	fmt.Println(finfo + col + err.Error() + endCol)
@@ -168,7 +172,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	hookingLock.Unlock()
 	writeToSyslog(str)
 	if priority == FatalLevel {
-		panic("zlog.Fatal")
+		os.Exit(-1)
 	}
 	return err
 }
@@ -292,57 +296,6 @@ func PrintStartupInfo(version, commitHash, builtAt, builtBy, builtOn string) {
 		zstr.EscNoColor,
 	)
 }
-
-// func logOnRecover() {
-// 	str := string(debug.Stack())
-// 	fmt.Println("panic:\n", str)
-// 	WriteToTheLogFile(str)
-// }
-
-// func LogRecover() {
-// 	r := recover()
-// 	if r != nil {
-// 		logOnRecover()
-// 	}
-// }
-
-// func LogRecoverAndExit() {
-// 	r := recover()
-// 	if r != nil {
-// 		logOnRecover()
-// 		os.Exit(-1)
-// 	}
-// }
-
-// var profilingFile *os.File
-
-// func StartCPUProfiling() bool {
-// 	var err error
-
-// 	if profilingFile != nil {
-// 		Info("Allready profiling")
-// 		return false
-// 	}
-// 	profilingFile, err = os.Create("cpu.pprof")
-// 	if err != nil {
-// 		Fatal(err, "could not open cpu profile file: ", err)
-// 	}
-// 	err = pprof.StartCPUProfile(profilingFile)
-// 	if err != nil {
-// 		Fatal(err, "could not start CPU profile: ", err)
-// 	}
-// 	return true
-// }
-
-// func StopCPUProfiling() bool {
-// 	if profilingFile != nil {
-// 		pprof.StopCPUProfile()
-// 		profilingFile.Close()
-// 		profilingFile = nil
-// 		return true
-// 	}
-// 	return false
-// }
 
 func SetProfilingHandle(r *mux.Router) {
 	r.HandleFunc("/debug/pprof/", pprof.Index)

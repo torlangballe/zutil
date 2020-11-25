@@ -88,10 +88,6 @@ func FreeAndUsedDiskSpace() (int64, int64) {
 	return 0, 0
 }
 
-func MemoryFreeAndUsed() (int64, int64) {
-	return 0, 0
-}
-
 func IsWifiEnabled() bool {
 	return false
 }

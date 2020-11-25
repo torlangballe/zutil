@@ -94,7 +94,10 @@ func DaemonizeSelf(adjustConfig func(c *DaemonConfig)) error {
 	if err != nil {
 		return err
 	}
-	// config.Print = true
+	config.Print = true
+	if config.LogPath != "" && zlog.OutputFilePath == "" {
+		zlog.OutputFilePath = config.LogPath
+	}
 	config.BinaryPath = os.Args[0]
 	if strings.HasPrefix(config.BinaryPath, "/") && config.WorkingDir == "" {
 		config.WorkingDir, _ = filepath.Split(config.BinaryPath)
@@ -221,7 +224,7 @@ func (c *DaemonConfig) sendCrashEmail() {
 }
 
 func (c *DaemonConfig) Spawn() error {
-	zlog.Info("daemon:", c.BinaryPath)
+	zlog.Info("daemon:", c.BinaryPath, c.RestartModifiedBinary)
 	var lastMod time.Time
 	var sendCrash bool = true
 	var cmd *exec.Cmd
@@ -231,16 +234,18 @@ func (c *DaemonConfig) Spawn() error {
 			c.infoLock.Lock()
 			mtime := c.binaryModifiedTime
 			c.infoLock.Unlock()
+			// zlog.Info("DAEMON mod:", mod, mtime)
 			if cmd != nil && mod != mtime {
 				if !lastMod.IsZero() && lastMod == mod {
-					zlog.Info(zstr.EscCyan+"#### Binary", c.BinaryPath, "time modified to", ztime.GetNice(mod, true)+". retarting. ####"+zstr.EscNoColor)
-					time.Sleep(time.Second) // maybe we need this to flush out print
+					zlog.Info(zstr.EscCyan+"#### Binary", c.BinaryPath, "time modified to", ztime.GetNice(mod, true)+". restarting. ####"+zstr.EscNoColor)
+					time.Sleep(time.Second * 3) // maybe we need this to flush out print
 					c.infoLock.Lock()
 					kerr := cmd.Process.Kill()
 					sendCrash = false
 					c.infoLock.Unlock()
 					zlog.OnError(kerr, "process kill")
-					return false
+					lastMod = time.Time{}
+					return true
 				}
 				lastMod = mod
 			}
