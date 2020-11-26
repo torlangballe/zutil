@@ -1,49 +1,43 @@
 module github.com/torlangballe/zutil
 
-go 1.13
+go 1.15
 
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
-	github.com/Azure/azure-event-hubs-go v1.3.1
-	github.com/Azure/azure-sdk-for-go v34.4.0+incompatible
-	github.com/Azure/go-autorest/autorest v0.9.2
-	github.com/Azure/go-autorest/autorest/adal v0.8.0
-	github.com/Azure/go-autorest/autorest/azure/auth v0.4.0
-	github.com/Azure/go-autorest/autorest/to v0.3.0
-	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
+	github.com/BurntSushi/xgb v0.0.0-20201008132610-5f9e7b3c49cd // indirect
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/amitbet/vnc2video v0.0.0-20190616012314-9d50b9dab1d9
-	github.com/aws/aws-lambda-go v1.13.2
-	github.com/aws/aws-sdk-go v1.25.19
+	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
-	github.com/disintegration/imaging v1.6.2
-	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3
-	github.com/garyburd/redigo v1.6.0
-	github.com/github/ietf-cms v0.1.0 // indirect
+	github.com/disintegration/imaging v1.6.2 // indirect
+	github.com/fogleman/gg v1.3.0 // indirect
+	github.com/garyburd/redigo v1.6.2
+	github.com/gen2brain/shm v0.0.0-20200228170931-49f9650110c5 // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
-	github.com/gobuffalo/envy v1.7.1
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/google/uuid v1.1.2
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/graphql-go/graphql v0.7.8
-	github.com/hnakamur/w32syscall v0.0.0-20150329104255-b8b99ed86a56
-	github.com/kaneshin/pigeon v1.0.0
+	github.com/jung-kurt/gofpdf v1.16.2 // indirect
 	github.com/kbinani/screenshot v0.0.0-20191211154542-3a185f1ce18f
-	github.com/lib/pq v1.2.0
-	github.com/lxn/win v0.0.0-20191128105842-2da648fda5b4 // indirect
-	github.com/mattn/go-sqlite3 v1.14.4
+	github.com/lib/pq v1.8.0
+	github.com/lxn/walk v0.0.0-20201125094449-2a61ddb5a2b8 // indirect
+	github.com/lxn/win v0.0.0-20201111105847-2a20daff6a55 // indirect
+	github.com/mattn/go-sqlite3 v1.14.5
+	github.com/mileusna/useragent v1.0.2
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/sasha-s/go-deadlock v0.2.0
-	github.com/sendgrid/rest v2.6.0+incompatible // indirect
-	github.com/sendgrid/sendgrid-go v3.6.0+incompatible
-	github.com/shirou/gopsutil v2.20.4+incompatible
-	github.com/twinj/uuid v1.0.0 // indirect
-	github.com/twpayne/go-geom v1.0.5
-	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
-	golang.org/x/text v0.3.2
-	google.golang.org/api v0.11.0
+	github.com/sendgrid/rest v2.6.2+incompatible // indirect
+	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
+	github.com/shirou/gopsutil v3.20.10+incompatible
+	github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01
+	github.com/torlangballe/mdtopdf v0.0.0-20201126230225-1d4b4048b450
+	github.com/torlangballe/zui v0.0.0-20201125142540-fd9688fb924d
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+	golang.org/x/text v0.3.3
+	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
 )

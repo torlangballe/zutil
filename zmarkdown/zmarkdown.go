@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/torlangballe/blackfriday"
+	blackfriday "github.com/torlangballe/blackfridayV2"
 	"github.com/torlangballe/mdtopdf"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zhttp"

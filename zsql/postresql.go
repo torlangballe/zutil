@@ -1,8 +1,6 @@
 package zsql
 
 import (
-	"bytes"
-	"capsulefm/libs/util/ugeo"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/hex"
@@ -14,8 +12,6 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
-	geom "github.com/twpayne/go-geom"
-	wkb "github.com/twpayne/go-geom/encoding/wkb"
 )
 
 // type RawString string
@@ -263,6 +259,7 @@ func (p *GisGeoPoint) Value() (driver.Value, error) {
 	return []byte(str), nil
 }
 
+/*
 // GisGeoPoint maps against Postgis geographical Point
 type GisGeoPolygon [][]ugeo.FPoint
 
@@ -329,6 +326,7 @@ func (p *GisGeoPolygon) Value() (driver.Value, error) {
 	//	zlog.Info("GisGeoPolygon.Value:", string(data))
 	return data, nil
 }
+*/
 
 func MakeNDollarParametersInBrackets(n int, start int) string {
 	str := "("
