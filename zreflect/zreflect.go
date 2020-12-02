@@ -1,12 +1,12 @@
 package zreflect
 
 import (
+	"errors"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 )
@@ -63,7 +63,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 	item.TypeName = typeName
 	item.Package = vtype.PkgPath()
 	if !val.IsValid() {
-		err = errors.Errorf("marshalValue: val.IsValid() failed")
+		err = errors.New("marshalValue: val.IsValid() failed")
 		return
 	}
 	// zlog.Info("zref.Itterate:", fieldName, val.Kind())

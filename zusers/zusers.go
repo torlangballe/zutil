@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"errors"
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/lib/pq"
-	"github.com/pkg/errors"
-	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zredis"
+	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
 

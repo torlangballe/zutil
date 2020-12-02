@@ -3,6 +3,7 @@ package zfile
 import (
 	"bufio"
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -79,7 +79,7 @@ func IsFolder(fpath string) bool {
 func ReadStringFromFile(sfile string) (string, error) {
 	bytes, err := ioutil.ReadFile(sfile)
 	if err != nil {
-		err = errors.Wrapf(err, "zfile.ReadFileToString: %v", sfile)
+		err = fmt.Errorf("zfile.ReadFileToString: %w: %s", err, sfile)
 		//		fmt.Println("Error reading file:", sfile, err)
 		return "", err
 	}
@@ -94,7 +94,9 @@ func WriteStringToFile(str, sfile string) error {
 }
 
 func ForAllFileLines(path string, f func(str string) bool) error {
+	wd, _ := os.Getwd()
 	file, err := os.Open(path)
+	// fmt.Println("ForAllFileLines:", wd, path, err)
 	if err != nil {
 		return err
 	}

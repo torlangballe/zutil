@@ -1,6 +1,7 @@
 package zrpc
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -8,13 +9,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/torlangballe/zutil/zhttp"
-	"github.com/torlangballe/zutil/zrest"
-
 	rpcjson "github.com/gorilla/rpc/json"
-
-	"github.com/pkg/errors"
+	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
 )
 

@@ -2,6 +2,8 @@ module github.com/torlangballe/zutil
 
 go 1.15
 
+replace github.com/torlangballe/mdtopdf => /Users/tor/go/src/github.com/torlangballe/mdtopdf
+
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
 	github.com/BurntSushi/xgb v0.0.0-20201008132610-5f9e7b3c49cd // indirect
@@ -19,7 +21,6 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/jung-kurt/gofpdf v1.16.2 // indirect
 	github.com/kbinani/screenshot v0.0.0-20191211154542-3a185f1ce18f
 	github.com/lib/pq v1.8.0
 	github.com/lxn/walk v0.0.0-20201125094449-2a61ddb5a2b8 // indirect

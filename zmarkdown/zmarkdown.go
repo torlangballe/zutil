@@ -48,82 +48,38 @@ func ConvertToPDF(input, title string, localFilePathPrefix string) (string, erro
 	return spdf, err
 }
 
-// func FlatttenMarkdown(pathPrefix, basefilePath string, chapterPaths []string) (string, error) {
-// 	var out string
-// 	linkReg := regexp.MustCompile(`\[[\w\s]+\]\(([\w/]+\.md)\)`)
-// 	footReg := regexp.MustCompile(`\s*\[.+\]\:`)
+var linkReg = regexp.MustCompile(`\[[\w\s]+\]\(([\w/]+\.md)\)`)
+var footReg = regexp.MustCompile(`\s*\[.+\]\:`)
 
-// 	atFooters := false
-// 	err := zfile.ForAllFileLines(pathPrefix+basefilePath, func(s string) bool {
-// 		if !atFooters && footReg.MatchString(s) {
-// 			insertChapters(&out, pathPrefix, chapterPaths)
-// 			atFooters = true
-// 		}
-// 		snew := zstr.ReplaceAllCapturesFunc(linkReg, s, func(capture string, index int) string {
-// 			fpath := capture
-// 			zstr.HasPrefix(fpath, "/", &fpath)
-// 			zlog.Info("REG:", fpath, zstr.IndexOf(fpath, chapterPaths), chapterPaths)
-// 			if zstr.IndexOf(fpath, chapterPaths) != -1 {
-// 				_, file := filepath.Split(fpath)
-// 				file = zfile.RemovedExtension(file)
-// 				return "#" + file
-// 			}
-// 			return capture
-// 		})
-// 		out += snew + "\n"
-// 		return true
-// 	})
-// 	if err != nil {
-// 		return "", zlog.Error(err, "read lines from base")
-// 	}
-// 	return out, nil
-// }
-
-func insertChapters(out *string, pathPrefix, basefilePath string, skipChapters, chapterPaths []string) error {
-	zlog.Info("insertChapters:", pathPrefix, basefilePath, skipChapters, chapterPaths)
-	for _, c := range chapterPaths {
-		str, err := FlatttenMarkdown(pathPrefix, c, zstr.UnionStringSet(skipChapters, chapterPaths))
-		if err != nil {
-			return zlog.Error(err, "flatten", c)
-		}
-		*out += str
-	}
-	return nil
-}
-
-func FlatttenMarkdown(pathPrefix, basefilePath string, skipChapters []string) (string, error) {
-	var out string
-	var chapterPaths []string
-
-	linkReg := regexp.MustCompile(`\[[\w\s]+\]\(([\w/]+\.md)\)`)
-	footReg := regexp.MustCompile(`\s*\[.+\]\:`)
-
-	zlog.Info("flatten:", pathPrefix, basefilePath)
-	atFooters := false
-	err := zfile.ForAllFileLines(pathPrefix+basefilePath, func(s string) bool {
-		if !atFooters && footReg.MatchString(s) {
-			insertChapters(&out, pathPrefix, basefilePath, skipChapters, chapterPaths)
-			atFooters = true
-		}
-		snew := zstr.ReplaceAllCapturesFunc(linkReg, s, func(capture string, index int) string {
-			fpath := capture
-			// zstr.HasPrefix(fpath, "/", &fpath)
-			zlog.Info("REG:", fpath, zstr.IndexOf(fpath, chapterPaths), chapterPaths)
-			if zhttp.StringStartsWithHTTPX(fpath) {
-				return capture
+func FlatttenMarkdown(pathPrefix string, chapters []string) (string, error) {
+	var out, footers string
+	for _, chapter := range chapters {
+		atFooters := false
+		err := zfile.ForAllFileLines(pathPrefix+chapter, func(s string) bool {
+			if !atFooters && footReg.MatchString(s) {
+				atFooters = true
 			}
-			if zstr.IndexOf(fpath, skipChapters) == -1 {
-				zstr.AddToSet(&chapterPaths, fpath)
+			if atFooters {
+				footers += s + "\n"
+				return true
 			}
-			_, file := filepath.Split(fpath)
-			file = zfile.RemovedExtension(file)
-			return "#" + file
+			snew := zstr.ReplaceAllCapturesFunc(linkReg, s, func(capture string, index int) string {
+				fpath := capture
+				// zstr.HasPrefix(fpath, "/", &fpath)
+				if zhttp.StringStartsWithHTTPX(fpath) {
+					return capture
+				}
+				_, file := filepath.Split(fpath)
+				file = zfile.RemovedExtension(file)
+				return "#" + file
+			})
+			out += snew + "\n"
+			return true
 		})
-		out += snew + "\n"
-		return true
-	})
-	if err != nil {
-		return "", zlog.Error(err, "read lines from base")
+		if err != nil {
+			return "", zlog.Error(err, "read lines from base")
+		}
 	}
+	out += footers
 	return out, nil
 }

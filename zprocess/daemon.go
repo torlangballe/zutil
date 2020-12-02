@@ -99,11 +99,9 @@ func DaemonizeSelf(adjustConfig func(c *DaemonConfig)) error {
 		zlog.OutputFilePath = config.LogPath
 	}
 	config.BinaryPath = os.Args[0]
-	if strings.HasPrefix(config.BinaryPath, "/") && config.WorkingDir == "" {
+	wd, _ := os.Getwd()
+	if config.WorkingDir == "" && strings.HasPrefix(config.BinaryPath, "/") {
 		config.WorkingDir, _ = filepath.Split(config.BinaryPath)
-	}
-	// zlog.Info("DAMONED WD:", config.WorkingDir)
-	if config.WorkingDir != "" {
 		err = os.Chdir(config.WorkingDir)
 		if err != nil {
 			zlog.Fatal(err, "chddir", config.WorkingDir)
@@ -115,6 +113,7 @@ func DaemonizeSelf(adjustConfig func(c *DaemonConfig)) error {
 	if adjustConfig != nil {
 		adjustConfig(&config)
 	}
+	zlog.Info("DAMONED WD:", config.WorkingDir, wd, config.BinaryPath, os.Args[0])
 	config.Spawn()
 	return nil
 }
