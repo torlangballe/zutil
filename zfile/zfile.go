@@ -95,7 +95,6 @@ func WriteStringToFile(str, sfile string) error {
 
 func ForAllFileLines(path string, f func(str string) bool) error {
 	file, err := os.Open(path)
-	// fmt.Println("ForAllFileLines:", wd, path, err)
 	if err != nil {
 		return err
 	}
