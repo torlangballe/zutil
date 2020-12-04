@@ -2,8 +2,6 @@ module github.com/torlangballe/zutil
 
 go 1.15
 
-replace github.com/torlangballe/mdtopdf => /Users/tor/go/src/github.com/torlangballe/mdtopdf
-
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
 	github.com/BurntSushi/xgb v0.0.0-20201008132610-5f9e7b3c49cd // indirect
