@@ -30,6 +30,7 @@ require (
 	github.com/sendgrid/rest v2.6.2+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
 	github.com/shirou/gopsutil v3.20.10+incompatible
+	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01
 	github.com/torlangballe/mdtopdf v0.0.0-20201126230225-1d4b4048b450
 	github.com/torlangballe/zui v0.0.0-20201125142540-fd9688fb924d
