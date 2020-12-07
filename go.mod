@@ -19,10 +19,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/kbinani/screenshot v0.0.0-20191211154542-3a185f1ce18f
 	github.com/lib/pq v1.8.0
-	github.com/lxn/walk v0.0.0-20201125094449-2a61ddb5a2b8 // indirect
-	github.com/lxn/win v0.0.0-20201111105847-2a20daff6a55 // indirect
 	github.com/mattn/go-sqlite3 v1.14.5
 	github.com/mileusna/useragent v1.0.2
 	github.com/mitchellh/go-ps v1.0.0

@@ -6,7 +6,6 @@ import (
 	"syscall"
 
 	"github.com/AllenDang/w32"
-	"github.com/kbinani/screenshot"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
@@ -111,13 +110,14 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 		ActivateWindow(title, app)
 	}
 	bounds := image.Rect(int(crop.Min().X), int(crop.Min().Y), int(crop.Max().X), int(crop.Max().Y))
-	nimage, err := screenshot.CaptureRect(bounds)
-	screenLock.Unlock()
-	zlog.Info("IMAGE:", bounds, err)
-	if err != nil {
-		return nil, zlog.Error(err, "capture rect")
-	}
-	return nimage, nil
+	// nimage, err := screenshot.CaptureRect(bounds)
+	// screenLock.Unlock()
+	// zlog.Info("IMAGE:", bounds, err)
+	// if err != nil {
+	// 	return nil, zlog.Error(err, "capture rect")
+	// }
+	// return nimage, nil
+	return nil
 }
 
 func ActivateWindow(title, app string) {
