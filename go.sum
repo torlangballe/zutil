@@ -34,8 +34,14 @@ github.com/gorilla/rpc v1.2.0/go.mod h1:V4h9r+4sF5HnzqbwIez0fKSpANP0zlYd3qR7p36j
 github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0Ufc=
 github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/icza/mjpeg v0.0.0-20170217094447-85dfbe473743/go.mod h1:Eja3x31oRrEOzl6ihhsxY23gXaTYWLP3Gwj5nMAJ7m0=
+github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
+github.com/jung-kurt/gofpdf v1.16.2 h1:jgbatWHfRlPYiK85qgevsZTHviWXKwB1TTiKdz5PtRc=
+github.com/jung-kurt/gofpdf v1.16.2/go.mod h1:1hl7y57EsiPAkLbOwzpzqgx1A30nQCk/YmFV8S2vmK0=
+github.com/kbinani/screenshot v0.0.0-20191211154542-3a185f1ce18f/go.mod h1:f8GY5V3lRzakvEyr49P7hHRYoHtPr8zvj/7JodCoRzw=
 github.com/lib/pq v1.8.0 h1:9xohqzkUwzR4Ga4ivdTcawVS89YSDVxXMa3xJX3cGzg=
 github.com/lib/pq v1.8.0/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
+github.com/lxn/walk v0.0.0-20201125094449-2a61ddb5a2b8/go.mod h1:E23UucZGqpuUANJooIbHWCufXvOcT6E7Stq81gU+CSQ=
+github.com/lxn/win v0.0.0-20201111105847-2a20daff6a55/go.mod h1:KxxjdtRkfNoYDCUP5ryK7XJJNTnpC8atvtmTheChOtk=
 github.com/mattn/go-sqlite3 v1.14.5 h1:1IdxlwTNazvbKJQSxoJ5/9ECbEeaTTyeU7sEAZ5KKTQ=
 github.com/mattn/go-sqlite3 v1.14.5/go.mod h1:WVKg1VTActs4Qso6iwGbiFih2UIHo0ENGwNd0Lj+XmI=
 github.com/mileusna/useragent v1.0.2 h1:DgVKtiPnjxlb73z9bCwgdUvU2nQNQ97uhgfO8l9uz/w=
@@ -72,6 +78,9 @@ github.com/torlangballe/mdtopdf v0.0.0-20201126230225-1d4b4048b450 h1:3kMFMrsPcP
 github.com/torlangballe/mdtopdf v0.0.0-20201126230225-1d4b4048b450/go.mod h1:FjMRIFWBfC3IIQIe6HmwMd9mhfCi+BNYPqNXeE9tYzk=
 github.com/torlangballe/zui v0.0.0-20201125142540-fd9688fb924d h1:QlEwF96fkFoqRiFRRLi17qGTQzKU/dfO1wG4KdmUk0Q=
 github.com/torlangballe/zui v0.0.0-20201125142540-fd9688fb924d/go.mod h1:4TzBHLnFKMRLm0nsvCQyLHR6Dql6y6M/E9IOSHdRPMg=
+github.com/torlangballe/zui v0.0.0-20201207095153-588fb27498a2 h1:YXRfQgOWX8tO12nLLGkRr+vRBlmJHV5EkLE41VpD+0s=
+github.com/torlangballe/zui v0.0.0-20201207095153-588fb27498a2/go.mod h1:m/e7Adcg6Et4Ynbpu9nysyJLvGTNXAh3BLWHUHn+uGM=
+github.com/torlangballe/zutil v0.0.0-20201126235223-ae6e8fe16b25/go.mod h1:4dWRU4ru0tlCkTnx4RKjNrzmctjgQJlVVXLSbx7+v70=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/image v0.0.0-20190910094157-69e4b8554b2a/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
