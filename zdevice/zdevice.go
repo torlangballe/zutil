@@ -55,6 +55,15 @@ func OSVersion() string {
 	return info.PlatformVersion
 }
 
+func Model() string {
+	infos, err := cpu.Info()
+	if err != nil || len(infos) < 1 {
+		zlog.Error(err)
+		return ""
+	}
+	return infos[0].Model
+}
+
 // Architecture returns the main type of CPU used, ARM, AMD64, WASM
 func Architecture() ArchitectureType {
 	if runtime.GOARCH == "arm64" {

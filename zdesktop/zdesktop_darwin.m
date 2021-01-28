@@ -12,25 +12,50 @@ struct WinInfo {
     int scale;
 };
 
-BOOL canRecordScreen() {
-    if (@available(macOS 10.15, *)) {
-        CGDisplayStreamRef stream = CGDisplayStreamCreate(CGMainDisplayID(), 1, 1, kCVPixelFormatType_32BGRA, nil, ^(CGDisplayStreamFrameStatus status, uint64_t displayTime, IOSurfaceRef frameSurface, CGDisplayStreamUpdateRef updateRef) {
-         ;
-    });
-    BOOL canRecord = stream != NULL;
-    if (stream) {
-        CFRelease(stream);
+int canControlComputer(int prompt) {
+    NSDictionary *options = @{(id)kAXTrustedCheckOptionPrompt: @NO};
+    if (prompt) {
+        options = @{(id)kAXTrustedCheckOptionPrompt: @YES};
     }
-        return canRecord;
-    } else {
-        return YES;
+    if (AXIsProcessTrustedWithOptions((CFDictionaryRef)options)) {
+        return 1;
     }
+    return 0;
 }
 
+int getWindowCountForPID(long pid) {
+    AXUIElementRef appElementRef = AXUIElementCreateApplication(pid);
+    //  NSLog(@"getWindowCountForPID: %ld %p\n", pid, appElementRef);
+    CFArrayRef windowArray = nil;
+    AXUIElementCopyAttributeValue(appElementRef, kAXWindowsAttribute, (CFTypeRef*)&windowArray);
+    if (windowArray == nil) {
+        return -1;
+    }
+    CFIndex count = CFArrayGetCount(windowArray);
+    return (int)count;
+}
+
+// also: https://stackoverflow.com/questions/56597221/detecting-screen-recording-settings-on-macos-catalina/58991936#58991936
+int canRecordScreen() {
+    if (@available(macOS 10.15, *)) {
+        CGDisplayStreamRef stream = CGDisplayStreamCreate(CGMainDisplayID(), 1, 1, kCVPixelFormatType_32BGRA, nil, ^(CGDisplayStreamFrameStatus status, uint64_t displayTime, IOSurfaceRef frameSurface, CGDisplayStreamUpdateRef updateRef) {
+        });
+        int can = 0;
+        if (stream != NULL) {
+            can = 1;
+        }
+        if (stream) {
+            CFRelease(stream);
+        }
+        return can;
+    } 
+    return 1;
+}
 
 const char *getWindowIDs(void *data, BOOL debug, BOOL(*gotWin)(void *data, struct WinInfo w)) {
     if (forceScreenRecording) {
         if (!canRecordScreen()) {
+            NSLog(@"Can't record screen");
             return "can't record screen";
         }
         forceScreenRecording = false;
@@ -137,28 +162,30 @@ WinIDInfo WindowGetIDAndScaleForTitle(const char *title, long pid) {
 // }
 
 AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL debug) {
-    //  NSLog(@"getAXElementOfWindowForTitle: %s %ld\n", title, pid);
     NSString *nsTitle = [NSString stringWithUTF8String: title];
     AXUIElementRef appElementRef = AXUIElementCreateApplication(pid);
+    //   NSLog(@"getAXElementOfWindowForTitle: %s %ld %p\n", title, pid, appElementRef);
     CFArrayRef windowArray = nil;
     AXUIElementCopyAttributeValue(appElementRef, kAXWindowsAttribute, (CFTypeRef*)&windowArray);
-            // NSLog(@"windowArray: %@\n", windowArray);
     if (windowArray == nil) {
+        NSLog(@"getAXElementOfWindowForTitle is nil: %s %ld\n", title, pid);
         CFRelease(appElementRef);
         return nil;
     }
     AXUIElementRef matchinWinRef = nil;
     CFIndex nItems = CFArrayGetCount(windowArray);
+    // NSLog(@"getAXElementOfWindowForTitle: %s %p %d\n", title, windowArray, (int)nItems);
     for (int i = 0; i < nItems; i++) {
         AXUIElementRef winRef = (AXUIElementRef) CFArrayGetValueAtIndex(windowArray, i);
         NSString *winTitle = nil;
         AXUIElementCopyAttributeValue(winRef, kAXTitleAttribute, (CFTypeRef *)&winTitle);
         if (winTitle == nil) {
+            // NSLog(@"Win: <nil-title> # %@\n", nsTitle);
             continue;
         }
-        if (debug) {
+       if (debug) {
             NSLog(@"Win: %@ # %@\n", winTitle, nsTitle);
-        }
+       }
         if ([winTitle compare:nsTitle] == NSOrderedSame) {
             matchinWinRef = winRef;
             CFRetain(matchinWinRef);
@@ -195,19 +222,21 @@ int ActivateWindowForTitle(const char *title, long pid) {
     [app activateWithOptions: NSApplicationActivateIgnoringOtherApps];
 
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, false);
-    if (winRef != nil) {
-        AXError err = AXUIElementPerformAction(winRef, kAXRaiseAction);
-        if (err != 0) {
-            NSLog(@"ActivateWindowForTitle error: %s %d\n", title, err);
-            return 0;
-        }
-        CFRelease(winRef);
+    if (winRef == nil) {
+        NSLog(@"ActivateWindowForTitle: no window for %s %ld\n", title, pid);
+        return 0;
     }
+    AXError err = AXUIElementPerformAction(winRef, kAXRaiseAction);
+    if (err != 0) {
+        NSLog(@"ActivateWindowForTitle error: %s %d\n", title, err);
+        return 0;
+    }
+    CFRelease(winRef);
     return 1;
 }
 
 int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h) {
-    NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
+    // NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, YES);
     if (winRef == nil) {
         return -2;
@@ -229,6 +258,7 @@ int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int 
     if (err != 0) {
         NSLog(@"SetWindowRectForTitle set pos error: %s %d\n", title, err);
     }
+    NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
     CFRelease(winRef);
     CFRelease(size);
 

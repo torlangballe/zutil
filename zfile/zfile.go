@@ -38,15 +38,14 @@ func CreateTempFile(name string) (file *os.File, fpath string, err error) {
 }
 
 func CreateTempFilePath(name string) string {
-	now := time.Now()
-	sdate := now.Format("2006-01-02")
+	sdate := time.Now().Format("2006-01-02/")
 	sfold := filepath.Join(os.TempDir(), sdate)
 	err := os.MkdirAll(sfold, 0775|os.ModeDir)
 	if err != nil {
-		fmt.Println("zfile.CreateTempFilePath:", err)
+		fmt.Println("zfile.CreateTempFolder:", err)
 		return ""
 	}
-	stime := now.Format("150405_999999")
+	stime := time.Now().Format("150405_999999")
 	stemp := filepath.Join(sfold, SanitizeStringForFilePath(stime+"_"+name))
 	return stemp
 }
@@ -260,8 +259,12 @@ func ReadFromURLToFilepath(surl, fpath string, maxBytes int64) (path string, err
 }
 
 func Walk(folder, wildcards string, got func(fpath string, info os.FileInfo) error) {
-	wcards := strings.Split(wildcards, "\t")
+	var wcards []string
+	if wildcards != "" {
+		wcards = strings.Split(wildcards, "\t")
+	}
 	filepath.Walk(folder, func(fpath string, info os.FileInfo, err error) error {
+		// fmt.Println("zFile:", fpath, len(wcards), err)
 		if err == nil {
 			matched := true
 			if len(wcards) > 0 {
@@ -294,6 +297,7 @@ func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) 
 		return nil
 	})
 }
+
 
 func RemoveContents(dir string) error {
 	dir = ExpandTildeInFilepath(dir)
@@ -349,7 +353,8 @@ func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error
 	tempPath := fpath + fmt.Sprintf("_%x_ztemp", rand.Int31())
 	file, err := os.Create(tempPath)
 	if err != nil {
-		return nil
+		//		fmt.Println("WriteToFileAtomically create:", err)
+		return err
 	}
 	defer file.Close()
 	err = write(file)

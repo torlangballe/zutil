@@ -11,6 +11,8 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/hirokidaichi/goviz v0.0.0-20140425160843-c57591cb2ad9 // indirect
+	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/lib/pq v1.8.0
 	github.com/mattn/go-sqlite3 v1.14.5
 	github.com/mileusna/useragent v1.0.2

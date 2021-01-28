@@ -16,6 +16,9 @@ package zdesktop
 // int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h);
 // int ActivateWindowForTitle(const char *title, long pid);
 // void ConvertARGBToRGBAOpaque(int w, int h, int stride, unsigned char *img);
+// int canControlComputer(int prompt);
+// int getWindowCountForPID(long pid);
+// int canRecordScreen();
 // typedef struct Image {
 //   int width;
 //   int height;
@@ -50,21 +53,21 @@ func ClearAppPIDCache() {
 	pidCacheLock.Unlock()
 }
 
-func GetCachedPIDForAppName(app string) int64 {
+func GetCachedPIDForAppName(app string) (int64, error) {
 	var pid int64
 	// pidCacheLock.Lock()
 	// pid, got := pidCache[app]
 	// pidCacheLock.Unlock()
 	// if !got { // We force new get until we have something for that app...
 	pids := zprocess.GetPIDsForAppName(app, false)
-	if len(pids) != 0 {
-		pidCacheLock.Lock()
-		pid = pids[0]
-		pidCache[app] = pid
-		pidCacheLock.Unlock()
+	if len(pids) == 0 {
+		return 0, zlog.Error(nil, "no pid for", app)
 	}
-	// }
-	return pid
+	pidCacheLock.Lock()
+	pid = pids[0]
+	pidCache[app] = pid
+	pidCacheLock.Unlock()
+	return pid, nil
 }
 
 func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
@@ -112,7 +115,7 @@ func RunURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) (*exe
 
 func WindowWithTitleExists(title, app string) bool {
 	title = getTitleWithApp(title, app)
-	pid := GetCachedPIDForAppName(app)
+	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		wInfo := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
 		if int(wInfo.winID) != 0 {
@@ -123,9 +126,8 @@ func WindowWithTitleExists(title, app string) bool {
 }
 
 func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err error) {
-	// title = getTitleWithApp(title, app)
 	// fmt.Println("GetIDAndScaleForWindowTitle title, app:", title, app)
-	pid := GetCachedPIDForAppName(app)
+	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
 		w := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
@@ -150,6 +152,7 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 	// screenLock.Lock() -- for windows
 	// defer screenLock.Unlock()
 	winID, _, err := GetIDAndScaleForWindowTitle(title, app)
+	zlog.Info("GetImageForWindowTitle:", winID, err)
 	if err != nil {
 		return nil, zlog.Error(err, "get id scale")
 	}
@@ -203,7 +206,7 @@ func GetImageForWindowTitle2(title, app string, crop zgeo.Rect, activateWindow b
 */
 func CloseWindowForTitle(title, app string) error {
 	title = getTitleWithApp(title, app)
-	pid := GetCachedPIDForAppName(app)
+	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
 		if r == 1 {
@@ -222,11 +225,11 @@ func getTitleWithApp(title, app string) string {
 
 func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 	title = getTitleWithApp(title, app)
-	pid := GetCachedPIDForAppName(app)
+	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		zlog.Info("SetWindowRectForTitle:", title, app, pid)
 		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
-		zlog.Info("SetWindowRectForTitle:", title, app, r)
+		// zlog.Info("SetWindowRectForTitle:", title, app, r)
 		if r != 0 {
 			return nil
 		}
@@ -242,7 +245,7 @@ func SendQuitCommandToApp(app string) error {
 
 func ActivateWindow(title, app string) {
 	title = getTitleWithApp(title, app)
-	pid := GetCachedPIDForAppName(app)
+	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		C.ActivateWindowForTitle(C.CString(title), C.long(pid))
 	}
@@ -318,4 +321,24 @@ func GetWindowImage(winID string, crop zgeo.Rect) (image.Image, error) {
 	// zlog.Info("GetWindowImage Make Go Image:", time.Since(start))
 	C.CGImageRelease(cgimage)
 	return img, err
+}
+
+func CanControlComputer(prompt bool) bool {
+	p := 0
+	if prompt {
+		p = 1
+	}
+	return C.canControlComputer(C.int(p)) == 1
+}
+
+func CanGetWindowInfo() bool {
+	pid, err := GetCachedPIDForAppName("Finder")
+	if err != nil {
+		return false
+	}
+	return C.getWindowCountForPID(C.long(pid)) != -1
+}
+
+func CanRecordScreen() bool {
+	return C.canRecordScreen() == 1
 }

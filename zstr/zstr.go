@@ -700,9 +700,11 @@ func SplitByNewLines(str string, skipEmpty bool) []string {
 	return SplitByAnyOf(str, []string{"\r\n", "\n", "\r"}, skipEmpty)
 }
 
-func RangeStringLines(str string, skipEmpty bool, f func(s string)) {
+func RangeStringLines(str string, skipEmpty bool, f func(s string) bool) {
 	for _, l := range SplitByNewLines(str, skipEmpty) {
-		f(l)
+		if !f(l) {
+			break
+		}
 	}
 }
 

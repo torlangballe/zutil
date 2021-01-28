@@ -15,6 +15,8 @@ import (
 	// import "github.com/mandolyte/mdtopdf"
 )
 
+// For embedded editor:
+// https://reposhub.com/javascript/css/antonmedv-codejar.html
 // https://godoc.org/github.com/russross/blackfriday
 
 func ConvertToHTML(input, title string) (string, error) {

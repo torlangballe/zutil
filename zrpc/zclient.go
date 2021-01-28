@@ -44,6 +44,7 @@ func (c *Client) makeUrl() string {
 
 func (c *Client) SetAddressFromHost(scheme, address string) {
 	c.ToAddress = scheme + "://" + address
+	zlog.Info("zrpc.SetAddressFromHost:", address)
 }
 
 func (c *Client) SetAddressFromURL(surl string) {

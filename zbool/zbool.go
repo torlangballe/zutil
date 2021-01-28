@@ -1,6 +1,7 @@
 package zbool
 
 import (
+	"reflect"
 	"strings"
 	"sync/atomic"
 )
@@ -44,6 +45,14 @@ func (b BoolInd) IsUndetermined() bool {
 	return b == -1
 }
 
+func ChangeBit(all *int64, mask int64, on bool) {
+	if on {
+		*all |= mask
+	} else {
+		*all &= ^mask
+	}
+}
+
 func FromString(str string, def bool) bool {
 	bind := FromStringWithInd(str, Unknown)
 	if bind == Unknown {
@@ -70,16 +79,6 @@ func ToString(b bool) string {
 		return "true"
 	}
 	return "false"
-}
-
-type BitSetStringer interface {
-	FromStringToBits(str string)
-	String() string
-}
-
-type BitsetItem struct {
-	Name string
-	Mask int64
 }
 
 func StrToInt64FromList(str string, list []BitsetItem) (n int64) {
@@ -132,4 +131,56 @@ func (b *Atomic) Get() bool {
 		return true
 	}
 	return false
+}
+
+type BitsetItem struct {
+	Name  string
+	Mask  int64
+	Title string
+}
+
+type BitsetItemsOwner interface {
+	GetBitsetItems() []BitsetItem
+}
+
+func BSItem(name string, mask int64) BitsetItem {
+	return BitsetItem{Name: name, Mask: mask}
+}
+
+func BSItemTitled(name string, mask int64, title string) BitsetItem {
+	return BitsetItem{Name: name, Mask: mask, Title: title}
+}
+
+func BitSetOwnerToString(b interface{}) string {
+	bso := b.(BitsetItemsOwner)
+	bitset := bso.GetBitsetItems()
+	n := reflect.ValueOf(b).Int()
+	return Int64ToStringFromList(int64(n), bitset)
+}
+
+func BitSetOwnerUnmarshal(ptr interface{}, data []byte) {
+	val := reflect.ValueOf(ptr)
+	eval := val.Elem()
+	ei := eval.Interface()
+	bso := ei.(BitsetItemsOwner)
+	bitset := bso.GetBitsetItems()
+	n := StrToInt64FromList(strings.Trim(string(data), `"`), bitset)
+	eval.SetInt(int64(n))
+}
+
+func BitSetOwnerMarshal(b interface{}) ([]byte, error) {
+	str := BitSetOwnerToString(b)
+	return []byte(`"` + str + `"`), nil
+}
+
+func BitSetOwnerTitle(b interface{}) string {
+	bso := b.(BitsetItemsOwner)
+	bitset := bso.GetBitsetItems()
+	n := reflect.ValueOf(b).Int()
+	for _, bs := range bitset {
+		if bs.Mask == int64(n) {
+			return bs.Title
+		}
+	}
+	return ""
 }

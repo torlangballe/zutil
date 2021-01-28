@@ -3,9 +3,8 @@ package zcache
 import (
 	"reflect"
 
-	"github.com/torlangballe/zutil/ztime"
-
 	"github.com/patrickmn/go-cache"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 // TODO: Allow a redis hookup

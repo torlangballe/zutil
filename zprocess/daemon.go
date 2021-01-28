@@ -34,7 +34,7 @@ const (
 
 var noDaemon *bool
 
-func init() {
+func SetNoDaemonFlag() {
 	noDaemon = flag.Bool("znodaemon", false, "set to not spawn self as daemon.")
 }
 
@@ -118,7 +118,7 @@ func DaemonizeSelf(adjustConfig func(c *DaemonConfig)) error {
 	return nil
 }
 
-func ReplaceArgAndResaveConfig(arg, value string) error {
+func ReplaceDaemonArgAndResaveConfig(arg, value string) error {
 	var config DaemonConfig
 	err := loadConfig(&config)
 	if err != nil {

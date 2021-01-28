@@ -156,9 +156,8 @@ func (s Size) ScaledInto(in Size) Size {
 	return scaled
 }
 
-func (s *Size) MakeInteger() {
-	s.W = math.Ceil(s.W)
-	s.H = math.Ceil(s.H)
+func (s *Size) ExpandedToInt() Size {
+	return Size{math.Ceil(s.W), math.Ceil(s.H)}
 }
 
 func (s Size) String() string { // we don't use String() since we're doing that as set methods in zui

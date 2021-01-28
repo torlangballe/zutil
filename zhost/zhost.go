@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -89,33 +90,33 @@ func forOSX() (name string, err error) {
 	return
 }
 
-func GetCurrentLocalIPAddress2() (ip16, ip4 string, err error) {
-	addrs, err := net.InterfaceAddrs()
-	// zlog.Info("CurrentLocalIP Stuff:", addrs, err)
-	if err != nil {
-		return
-	}
+// func GetCurrentLocalIPAddress2() (ip16, ip4 string, err error) {
+// 	addrs, err := net.InterfaceAddrs()
+// 	// zlog.Info("CurrentLocalIP Stuff:", addrs, err)
+// 	if err != nil {
+// 		return
+// 	}
 
-	for _, a := range addrs {
-		ipnet, ok := a.(*net.IPNet)
-		if ok {
-			if ipnet.IP.IsLoopback() {
-				continue
-			}
-			i16 := ipnet.IP.To16()
-			if i16 != nil {
-				ip16 = i16.String()
-			}
-			i4 := ipnet.IP.To4()
-			if i4 != nil {
-				ip4 = i4.String()
-				zlog.Info("IP:", a.String(), ip4)
-				break
-			}
-		}
-	}
-	return
-}
+// 	for _, a := range addrs {
+// 		ipnet, ok := a.(*net.IPNet)
+// 		if ok {
+// 			if ipnet.IP.IsLoopback() {
+// 				continue
+// 			}
+// 			i16 := ipnet.IP.To16()
+// 			if i16 != nil {
+// 				ip16 = i16.String()
+// 			}
+// 			i4 := ipnet.IP.To4()
+// 			if i4 != nil {
+// 				ip4 = i4.String()
+// 				zlog.Info("IP:", a.String(), ip4)
+// 				break
+// 			}
+// 		}
+// 	}
+// 	return
+// }
 
 func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
 	ifaces, err := net.Interfaces()
@@ -242,4 +243,23 @@ func copyIO(src, dest net.Conn) {
 	defer src.Close()
 	defer dest.Close()
 	io.Copy(src, dest)
+}
+
+func GetHostAndPort(u *url.URL) (host string, port int) {
+	var err error
+	var sport string
+	if !strings.Contains(u.Host, ":") {
+		return u.Host, 0
+	}
+	host, sport, err = net.SplitHostPort(u.Host)
+	if err != nil {
+		zlog.Error(err)
+		return
+	}
+	port, err = strconv.Atoi(sport)
+	if err != nil {
+		zlog.Error(err)
+		return
+	}
+	return
 }

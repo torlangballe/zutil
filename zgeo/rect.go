@@ -3,8 +3,6 @@ package zgeo
 import (
 	"image"
 	"math"
-
-	"github.com/torlangballe/zutil/zlog"
 )
 
 type Rect struct {
@@ -229,7 +227,7 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 			wa = wf
 			ha = hf
 		} else {
-			zlog.Assert(align&HorOut != 0)
+			// zlog.Assert(align&HorOut != 0, align) what does this do?
 			scalex = wf / wa
 			scaley = hf / ha
 			if scalex > 1 || scaley > 1 {
@@ -428,9 +426,12 @@ func centerToRect(center Pos, radius float64, radiusy float64) Rect {
 	return Rect{center.Minus(s.Pos()), s.TimesD(2.0)}
 }
 
-func (r *Rect) MakeInteger() {
-	r.Pos.X = math.Floor(r.Pos.X)
-	r.Pos.Y = math.Floor(r.Pos.Y)
-	r.Size.W = math.Ceil(r.Size.W)
-	r.Size.H = math.Ceil(r.Size.H)
+func (r *Rect) ExpandedToInt() Rect {
+	var ir Rect
+	ir.Pos.X = math.Floor(r.Pos.X)
+	ir.Pos.Y = math.Floor(r.Pos.Y)
+	ir.Size.W = math.Ceil(r.Size.W)
+	ir.Size.H = math.Ceil(r.Size.H)
+
+	return ir
 }
