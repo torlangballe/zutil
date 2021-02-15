@@ -47,6 +47,11 @@ func (s Size) IsNull() bool {
 	return s.W == 0 && s.H == 0
 }
 
+func (s *Size) Set(w, h float64) {
+	s.W = w
+	s.H = h
+}
+
 // Vertice returns the non-vertical s.W or vertical s.H
 func (s Size) Vertice(vertical bool) float64 {
 	if vertical {
@@ -156,8 +161,16 @@ func (s Size) ScaledInto(in Size) Size {
 	return scaled
 }
 
-func (s *Size) ExpandedToInt() Size {
+func (s *Size) Floor() Size {
+	return Size{math.Floor(s.W), math.Floor(s.H)}
+}
+
+func (s *Size) Ceil() Size {
 	return Size{math.Ceil(s.W), math.Ceil(s.H)}
+}
+
+func (s *Size) Round() Size {
+	return Size{math.Round(s.W), math.Round(s.H)}
 }
 
 func (s Size) String() string { // we don't use String() since we're doing that as set methods in zui

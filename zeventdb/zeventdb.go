@@ -130,7 +130,7 @@ type CompareItem struct {
 	Values []interface{}
 }
 
-func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, time time.Time, id int64, before, decending, keepID bool, count int) error {
+func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, start, end time.Time, id int64, decending, keepID bool, count int) error {
 	var comps []CompareItem
 	for _, e := range equalItems {
 		found := false
@@ -179,20 +179,22 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, tim
 	}
 	resultStructVal := reflect.New(db.StructType)
 
-	operator := ">"
 	dir := "ASC"
-	if before {
-		operator = "<"
-	}
+	op := ">"
 	if decending {
 		dir = "DESC"
 	}
-	if !time.IsZero() {
-		w := db.TimeField + operator + `'` + time.UTC().Format(TimeStampFormat) + `'`
+	if !start.IsZero() {
+		w := db.TimeField + `>'` + start.UTC().Format(TimeStampFormat) + `'`
+		wheres = append(wheres, w)
+	}
+	if !end.IsZero() {
+		op = "<"
+		w := db.TimeField + `<'` + end.UTC().Format(TimeStampFormat) + `'`
 		wheres = append(wheres, w)
 	}
 	if id != 0 {
-		w := db.PrimaryField + operator + strconv.FormatInt(id, 10)
+		w := db.PrimaryField + op + strconv.FormatInt(id, 10)
 		wheres = append(wheres, w)
 	}
 	where := strings.Join(wheres, " AND ")

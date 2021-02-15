@@ -319,6 +319,7 @@ func ColorFromString(str string) Color {
 }
 
 var ColorDarkGray = ColorNewGray(0.25, 1)
+var ColorLightGray = ColorNewGray(0.75, 1)
 var ColorClear = ColorNewGray(0, 0)
 var ColorOrange = ColorNew(1, 0.5, 0, 1)
 var ColorCyan = ColorNew(0, 1, 1, 1)

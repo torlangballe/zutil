@@ -27,7 +27,10 @@ const (
 	CellularXG
 
 	MacOSType   OSType = "macos"
+	IOSType     OSType = "ios"
+	AndroidType OSType = "android"
 	WindowsType OSType = "windows"
+	LinuxType   OSType = "linux"
 	JSType      OSType = "js"
 
 	ARM64Type            ArchitectureType = "arm64"
@@ -36,6 +39,8 @@ const (
 	ArchitectureTypeNone ArchitectureType = ""
 )
 
+// Platform is the surface-system we are running on.
+// For wasm in browser this is JSType, not underlying os browser is running on
 func Platform() OSType {
 	switch runtime.GOOS {
 	case "windows":

@@ -39,6 +39,10 @@ func (items Items) Equal(to Items) bool {
 	return true
 }
 
+func (i *Items) Empty() {
+	*i = Items{}
+}
+
 func (d Dict) Join(equal, sep string) string {
 	str := ""
 	for k, v := range d {

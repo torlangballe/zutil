@@ -5,6 +5,7 @@ import (
 	"time"
 
 	ua "github.com/mileusna/useragent"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 // https://developer.mozilla.org/en-US/docs/Web/API/Navigator - info about browser/dev
@@ -30,6 +31,25 @@ func IsBrowser() bool {
 
 func WasmBrowser() string {
 	return getUserAgentInfo().Name
+}
+
+// OS Returns the underlying operating system program is running on.
+// For wasm in browsers, this is the actual mac/win/linux etc os the browser is running on.
+func OS() OSType {
+	switch getUserAgentInfo().OS {
+	case ua.MacOS:
+		return MacOSType
+	case ua.Windows:
+		return WindowsType
+	case ua.Linux:
+		return LinuxType
+	case ua.IOS:
+		return IOSType
+	case ua.Android:
+		return AndroidType
+	}
+	zlog.Error(nil, "other type")
+	return OSType("")
 }
 
 func IsIPhone() bool {

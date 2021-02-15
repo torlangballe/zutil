@@ -54,7 +54,7 @@ func (c *Client) SetAddressFromURL(surl string) {
 }
 
 func (c *Client) CallRemote(method interface{}, args interface{}, reply interface{}, timeoutSecs ...float64) error {
-	// defer zlog.LogRecoverAndExit()
+	// TODO: check that args and reply are the same as the 2 parameters in the actual method. (or nil?)
 	name, err := getRemoteCallName(method)
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote get name")

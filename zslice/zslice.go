@@ -7,6 +7,8 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
+// https://github.com/golang/go/wiki/SliceTricks#delete
+
 func checkIsSlicePtr(s interface{}) error {
 	if s == nil {
 		return errors.New("slice is nil")

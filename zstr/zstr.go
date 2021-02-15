@@ -347,6 +347,15 @@ func ExtractStringFromEndTilSeparator(str *string, sep string) (got string) {
 	}
 }
 
+func ExtractItemFromStrings(strs *[]string, item string) bool {
+	i := IndexOf(item, *strs)
+	if i == -1 {
+		return false
+	}
+	*strs = append((*strs)[:i], (*strs)[i+1:]...)
+	return true
+}
+
 func ExtractFirstString(strs *[]string) string {
 	if len(*strs) == 0 {
 		return ""

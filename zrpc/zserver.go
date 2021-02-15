@@ -44,7 +44,7 @@ func InitServer(router *mux.Router, port int) error {
 
 func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// TODO: See how little of this we can get away with
-	zlog.Info("zrpc.DoServeHTTP:", req.Method, "from:", req.Header.Get("Origin"), req.URL)
+	// zlog.Info("zrpc.DoServeHTTP:", req.Method, "from:", req.Header.Get("Origin"), req.URL)
 	w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -55,7 +55,6 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "OPTIONS" {
 		return
 	}
-	// zlog.Info("zrpc.doServeHTTP:", req.Method, zhttp.GetCopyOfRequestBodyAsString(req))
 	server.ServeHTTP(w, req)
 }
 

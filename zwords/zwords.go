@@ -75,7 +75,7 @@ func PluralWord(word string, count float64, langCode, plural string, significant
 		} else {
 			str += word
 			switch langCode {
-			case "en", "uk", "us":
+			case "", "en", "uk", "us":
 				if strings.HasSuffix(word, "s") {
 					str += "es"
 				} else {

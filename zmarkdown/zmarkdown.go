@@ -36,15 +36,16 @@ func convertWithRenderer(input, title string, renderer blackfriday.Renderer) (st
 	return string(output), nil
 }
 
-func ConvertToPDF(input, title string, localFilePathPrefix string) (string, error) {
+func ConvertToPDF(input, title, localFilePathPrefix, hostPrefix string) (string, error) {
 	tempFile := zfile.CreateTempFilePath(title + ".pdf")
 	renderer := mdtopdf.NewPdfRenderer("", "", tempFile, "trace.log")
+	// zlog.Info("ConvertToPDF:", localFilePathPrefix)
 	renderer.LocalFilePathPrefix = localFilePathPrefix
+	renderer.LocalHostPrefix = hostPrefix
 	err := renderer.Process([]byte(input))
 	if err != nil {
 		return "", zlog.Error(err, "processing")
 	}
-	// zlog.Info("topdf:", zfile.Size(tempFile))
 	spdf, err := zfile.ReadStringFromFile(tempFile)
 	os.Remove(tempFile)
 	return spdf, err
@@ -73,7 +74,7 @@ func FlatttenMarkdown(pathPrefix string, chapters []string) (string, error) {
 				}
 				_, file := filepath.Split(fpath)
 				file = zfile.RemovedExtension(file)
-				return "#" + file
+				return fpath + "#" + file
 			})
 			out += snew + "\n"
 			return true

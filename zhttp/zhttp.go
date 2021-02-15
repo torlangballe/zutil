@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,7 +20,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"errors"
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
@@ -85,6 +85,7 @@ type Parameters struct {
 	Method                string
 	ContentType           string
 	Body                  []byte
+	GetErrorFromBody      bool
 }
 
 func MakeParameters() Parameters {
@@ -223,7 +224,7 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 
 var sendCount int64
 
-func GetResponseFromReqClient(request *http.Request, client *http.Client) (resp *http.Response, err error) {
+func GetResponseFromReqClient(params Parameters, request *http.Request, client *http.Client) (resp *http.Response, err error) {
 	// atomic.AddInt64(&sendCount, 1)
 	// defer func() {
 	// 	atomic.AddInt64(&sendCount, -1)
@@ -238,6 +239,9 @@ func GetResponseFromReqClient(request *http.Request, client *http.Client) (resp 
 	// zlog.Info("GetResponseFromReqClient:", err, resp != nil, request.URL)
 	if err == nil && resp == nil {
 		return nil, errors.New("client.Do gave no response: " + request.URL.String())
+	}
+	if params.GetErrorFromBody && (resp != nil && (err != nil || resp.StatusCode != 200)) {
+		err = CheckErrorFromBody(resp)
 	}
 	if err != nil && resp != nil {
 		resp.Body.Close()
@@ -258,7 +262,7 @@ func GetResponse(surl string, params Parameters) (resp *http.Response, err error
 	if err != nil {
 		return
 	}
-	return GetResponseFromReqClient(req, client)
+	return GetResponseFromReqClient(params, req, client)
 }
 
 func Get(surl string, params Parameters, receive interface{}) (resp *http.Response, err error) {
@@ -367,7 +371,7 @@ func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Respo
 	if err != nil {
 		return
 	}
-	resp, err = GetResponseFromReqClient(req, client)
+	resp, err = GetResponseFromReqClient(params, req, client)
 	if err != nil {
 		return
 	}
