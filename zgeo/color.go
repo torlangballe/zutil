@@ -219,7 +219,7 @@ func getHexAsValue(str string, len int) float32 {
 	return float32(n) / 255
 }
 
-func (c Color) GetHex() string {
+func (c Color) Hex() string {
 	return fmt.Sprintf("#%02x%02x%02x%02x", int(c.Colors.R*255), int(c.Colors.G*255), int(c.Colors.B*255), int(c.Colors.A*255))
 }
 

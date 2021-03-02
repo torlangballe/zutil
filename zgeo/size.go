@@ -108,6 +108,15 @@ func (s *Size) Minimize(a Size) {
 	s.H = math.Min(s.H, a.H)
 }
 
+func (s *Size) MinimizeNonZero(a Size) {
+	if a.W != 0 {
+		s.W = math.Min(s.W, a.W)
+	}
+	if a.H != 0 {
+		s.H = math.Min(s.H, a.H)
+	}
+}
+
 func (s *Size) Add(a Size) {
 	s.W += a.W
 	s.H += a.H
@@ -231,4 +240,8 @@ func (s *Sizes) IndexOf(size Size) int {
 		}
 	}
 	return -1
+}
+
+func (s Size) Swapped() Size {
+	return Size{s.H, s.W}
 }

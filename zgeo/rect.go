@@ -209,19 +209,6 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 	if align&MarginIsOffset == 0 {
 		hf -= float64(marg.H * 2.0)
 	}
-	if align == ScaleToFitProp {
-		xratio := wf / wa
-		yratio := hf / ha
-		var ns = r.Size
-		if xratio != 1.0 || yratio != 1.0 {
-			if xratio > yratio {
-				ns = Size{wf, ha * xratio}
-			} else {
-				ns = Size{wa * yratio, hf}
-			}
-		}
-		return Rect{Size: (ns)}.Centered(r.Center())
-	}
 	if align&HorExpand != 0 && align&VertExpand != 0 {
 		if align&Proportional == 0 {
 			wa = wf
@@ -279,6 +266,11 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 		ha = hf
 	}
 
+	if maxSize.W != 0 && maxSize.H != 0 {
+		s := Size{wa, ha}.ScaledInto(maxSize)
+		wa = s.W
+		ha = s.H
+	}
 	if maxSize.W != 0.0 {
 		wa = math.Min(wa, float64(maxSize.W))
 	}
@@ -434,4 +426,9 @@ func (r *Rect) ExpandedToInt() Rect {
 	ir.Size.H = math.Ceil(r.Size.H)
 
 	return ir
+}
+
+// Swapped returns a Rect where the vertical and horizontal components are swapped
+func (r Rect) Swapped() Rect {
+	return Rect{Pos: r.Pos.Swapped(), Size: r.Size.Swapped()}
 }

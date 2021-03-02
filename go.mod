@@ -14,7 +14,7 @@ require (
 	github.com/hirokidaichi/goviz v0.0.0-20140425160843-c57591cb2ad9 // indirect
 	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/lib/pq v1.8.0
-	github.com/mattn/go-sqlite3 v1.14.5
+	github.com/mattn/go-sqlite3 v1.14.6
 	github.com/mileusna/useragent v1.0.2
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible

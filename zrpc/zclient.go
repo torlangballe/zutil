@@ -44,7 +44,7 @@ func (c *Client) makeUrl() string {
 
 func (c *Client) SetAddressFromHost(scheme, address string) {
 	c.ToAddress = scheme + "://" + address
-	zlog.Info("zrpc.SetAddressFromHost:", address)
+	// zlog.Info("zrpc.SetAddressFromHost:", address)
 }
 
 func (c *Client) SetAddressFromURL(surl string) {
@@ -53,13 +53,13 @@ func (c *Client) SetAddressFromURL(surl string) {
 	c.SetAddressFromHost(u.Scheme, u.Hostname())
 }
 
-func (c *Client) CallRemote(method interface{}, args interface{}, reply interface{}, timeoutSecs ...float64) error {
+func (c *Client) CallRemoteFunc(method interface{}, args interface{}, reply interface{}, timeoutSecs ...float64) error {
 	// TODO: check that args and reply are the same as the 2 parameters in the actual method. (or nil?)
 	name, err := getRemoteCallName(method)
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote get name")
 	}
-	err = c.CallRemoteWithName(name, args, reply, timeoutSecs...)
+	err = c.CallRemote(name, args, reply, timeoutSecs...)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (c *Client) CallRemote(method interface{}, args interface{}, reply interfac
 	return nil
 }
 
-func (c *Client) CallRemoteWithName(name string, args interface{}, reply interface{}, timeoutSecs ...float64) error {
+func (c *Client) CallRemote(name string, args interface{}, reply interface{}, timeoutSecs ...float64) error {
 	// https://github.com/golang/go/wiki/WebAssembly#configuring-fetch-options-while-using-nethttp
 
 	// start := time.Now()

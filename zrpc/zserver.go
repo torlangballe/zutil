@@ -65,6 +65,7 @@ func Register(owners ...interface{}) {
 		if registeredOwners[name] {
 			zlog.Fatal(nil, "calls owner with same name exists:", name)
 		}
+		// zlog.Info("zrpc.Register name:", name)
 		registeredOwners[name] = true
 		err := server.RegisterService(o, "")
 		if err != nil {

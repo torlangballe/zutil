@@ -16,7 +16,6 @@ import (
 
 	"github.com/sasha-s/go-deadlock"
 	"github.com/torlangballe/zutil/zfile"
-	"github.com/torlangballe/zutil/zfilelog"
 	"github.com/torlangballe/zutil/zhost"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zint"
@@ -206,7 +205,7 @@ func (c *DaemonConfig) readFromPipe(pipe io.Reader, quit chan struct{}) {
 			c.postLogTimerLock.Unlock()
 		}
 		if c.LogPath != "" {
-			zfilelog.AddToLogFile(c.LogPath, str)
+			//			zfilelog.AddToLogFile(c.LogPath, str)
 		}
 	}
 }

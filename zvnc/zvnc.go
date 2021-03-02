@@ -21,7 +21,7 @@ func (c *Client) Close() {
 }
 
 func Connect(address, password string, updateSecs float64, got func(i *zui.Image, err error)) (*Client, error) {
-	nc, err := net.DialTimeout("tcp", address, 5*time.Second)
+	nc, err := net.DialTimeout("tcp", address, 25*time.Second)
 	if err != nil {
 		return nil, zlog.Error(err, "dial")
 	}
@@ -83,7 +83,7 @@ func Connect(address, password string, updateSecs float64, got func(i *zui.Image
 					// reqPerSec := float64(frameBufferReq) / secsPassed
 					// fmt.Println("New screen!", screenImage.Bounds())
 					if got != nil {
-						image := zui.ImageFromNative(screenImage)
+						image := zui.ImageFromGo(screenImage)
 						got(image, nil)
 					}
 					// zlog.Info("Start new vnc fetch", updateSecs)

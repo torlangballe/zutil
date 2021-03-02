@@ -1,3 +1,5 @@
+//+build !js
+
 package zfile
 
 import (
@@ -11,21 +13,16 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/user"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztimer"
 )
-
-var RootFolder = getRootFolder()
-
-func getRootFolder() string {
-	return ExpandTildeInFilepath("~/caproot/")
-}
 
 func CreateTempFile(name string) (file *os.File, fpath string, err error) {
 	fpath = CreateTempFilePath(name)
@@ -111,64 +108,6 @@ func ForAllFileLines(path string, f func(str string) bool) error {
 	return scanner.Err()
 }
 
-func RemovedExtension(spath string) string {
-	name := strings.TrimSuffix(spath, path.Ext(spath))
-	return name
-}
-
-func Split(spath string) (dir, name, stub, ext string) {
-	dir, name = path.Split(spath)
-	ext = path.Ext(name)
-	stub = strings.TrimSuffix(name, ext)
-
-	return
-}
-
-func SanitizeStringForFilePath(s string) string {
-	s = url.QueryEscape(s)
-	s = zstr.FileEscapeReplacer.Replace(s)
-
-	return s
-}
-
-func CreateSanitizedShortNameWithHash(name string) string {
-	hash := zstr.HashTo64Hex(name)
-	name = zstr.Head(name, 100)
-	name = zstr.ReplaceSpaces(name, '_')
-	name = SanitizeStringForFilePath(name)
-	name = name + "#" + hash
-
-	return name
-}
-
-func ExpandTildeInFilepath(path string) string {
-	if runtime.GOOS == "js" {
-		return path
-	}
-	usr, err := user.Current()
-	if err == nil {
-		dir := usr.HomeDir
-		return strings.Replace(path, "~", dir, 1)
-	}
-	return ""
-}
-
-func ReplaceHomeDirPrefixWithTilde(path string) string {
-	var rest string
-	if runtime.GOOS == "js" {
-		return path
-	}
-	usr, err := user.Current()
-	if err != nil {
-		return path
-	}
-	dir := usr.HomeDir + "/"
-	if zstr.HasPrefix(path, dir, &rest) {
-		return "~/" + rest
-	}
-	return path
-}
-
 func Size(fpath string) int64 {
 	stat, err := os.Stat(fpath)
 	if err == nil {
@@ -177,16 +116,16 @@ func Size(fpath string) int64 {
 	return -1
 }
 
-func Modified(fpath string) time.Time {
-	stat, err := os.Stat(fpath)
+func Modified(filepath string) time.Time {
+	stat, err := os.Stat(filepath)
 	if err == nil {
 		return stat.ModTime()
 	}
 	return time.Time{}
 }
 
-func CalcMD5(fpath string) (data []byte, err error) {
-	file, err := os.Open(fpath)
+func CalcMD5(filepath string) (data []byte, err error) {
+	file, err := os.Open(filepath)
 	if err != nil {
 		return
 	}
@@ -200,8 +139,34 @@ func CalcMD5(fpath string) (data []byte, err error) {
 	return
 }
 
-func ReadFromURLToFilepath(surl, fpath string, maxBytes int64) (path string, err error) {
-	if fpath == "" {
+func CopyFile(dest, source string) (err error) {
+	if runtime.GOOS == "darwin" {
+		err = unix.Clonefile(source, dest, 0)
+		if err == nil {
+			return nil
+		}
+	}
+	in, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+func ReadFromURLToFilepath(surl, filepath string, maxBytes int64) (path string, err error) {
+	if filepath == "" {
 		var name string
 		u, err := url.Parse(surl)
 		if err != nil {
@@ -210,7 +175,7 @@ func ReadFromURLToFilepath(surl, fpath string, maxBytes int64) (path string, err
 		} else {
 			name = strings.Trim(u.Path, "/")
 		}
-		fpath = CreateTempFilePath(name)
+		filepath = CreateTempFilePath(name)
 	}
 	response, err := http.Get(surl)
 	if err != nil {
@@ -220,9 +185,9 @@ func ReadFromURLToFilepath(surl, fpath string, maxBytes int64) (path string, err
 	defer response.Body.Close()
 
 	//open a file for writing
-	file, err := os.Create(fpath)
+	file, err := os.Create(filepath)
 	if err != nil {
-		fmt.Println("ReadFromUrlToFilepath error creating file:", err, fpath)
+		fmt.Println("ReadFromUrlToFilepath error creating file:", err, filepath)
 		return
 	}
 	if maxBytes != 0 {
@@ -249,12 +214,12 @@ func ReadFromURLToFilepath(surl, fpath string, maxBytes int64) (path string, err
 		// Use io.Copy to just dump the response body to the file. This supports huge files
 		_, err = io.Copy(file, response.Body)
 		if err != nil {
-			fmt.Println("ReadFromUrlToFilepath error copying to file:", err, fpath)
+			fmt.Println("ReadFromUrlToFilepath error copying to file:", err, filepath)
 			return
 		}
 	}
 	file.Close()
-	path = fpath
+	path = filepath
 	return
 }
 
@@ -298,7 +263,6 @@ func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) 
 	})
 }
 
-
 func RemoveContents(dir string) error {
 	dir = ExpandTildeInFilepath(dir)
 	d, err := os.Open(dir)
@@ -318,33 +282,6 @@ func RemoveContents(dir string) error {
 		}
 	}
 	return nil
-}
-
-func MakePathRelativeTo(path, rel string) string {
-	origPath := path
-	path = strings.TrimLeft(path, "/")
-	rel = strings.TrimLeft(rel, "/")
-	// fmt.Println("MakePathRelativeTo1:", path, rel)
-	for {
-		p := zstr.HeadUntil(path, "/")
-		r := zstr.HeadUntil(rel, "/")
-		if p != r || p == "" {
-			break
-		}
-		l := len(p)
-		path = zstr.Body(path, l+1, -1)
-		rel = zstr.Body(rel, l+1, -1)
-	}
-	// fmt.Println("MakePathRelativeTo:", path, rel)
-	count := strings.Count(rel, "/")
-	if count != 0 {
-		count++
-	}
-	str := strings.Repeat("../", count) + path
-	if count > 2 || len(str) > len(origPath) {
-		return ReplaceHomeDirPrefixWithTilde(origPath)
-	}
-	return str
 }
 
 // WriteToFileAtomically  opens a temporary file in same directory as fpath, calls write with it's file,
@@ -450,6 +387,34 @@ func ReadLastLine(fpath string, pos int64) (line string, startpos, newpos int64,
 		}
 	}
 	newpos = pos
-
 	return
+}
+
+// PeriodicFileBackup checks if *filepath* is larger than maxMB megabytes
+// every *checkHours*. If so, the file is copied to a file in the  same directory
+// with a postfix before extension. "path/file_postfix.log", and the file truncated.
+// This may be slow, but only way that seems to work with launchd logs on mac.
+func PeriodicFileBackup(filepath, postfixForOld string, checkHours float64, maxMB int) {
+	ztimer.RepeatIn(checkHours*3600, func() bool {
+		if Size(filepath) >= int64(maxMB*1024*1024) {
+			dir, _, stub, ext := Split(filepath)
+			newPath := dir + stub + postfixForOld + ext
+			err := os.Remove(newPath)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				fmt.Println(err, "remove old", filepath, newPath)
+				return true
+			}
+			err = CopyFile(newPath, filepath)
+			if err != nil {
+				fmt.Println(err, "link old", filepath, newPath)
+				return true
+			}
+			err = os.Truncate(filepath, 0)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				fmt.Println(err, "remove filepath", filepath, newPath)
+				return true
+			}
+		}
+		return true
+	})
 }

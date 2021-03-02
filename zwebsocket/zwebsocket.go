@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztimer"
+	"github.com/sasha-s/go-deadlock"
 )
 
 type connection struct {
@@ -19,7 +19,8 @@ type connection struct {
 
 type Server struct {
 	connections map[string]*connection
-	mutex       sync.Mutex
+	mutex deadlock.Mutex
+//	mutex       sync.Mutex
 }
 
 var upgrader = websocket.Upgrader{} // use default options
@@ -125,13 +126,12 @@ func NewServer(prefix string, port int, ping bool, got func(s *Server, id string
 
 func (c *Server) findConnection(wc *websocket.Conn) (string, *connection) {
 	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	for str, con := range c.connections {
 		if wc == con.Connection {
-			c.mutex.Unlock()
 			return str, con
 		}
 	}
-	c.mutex.Unlock()
 	return "", nil
 }
 
@@ -155,6 +155,7 @@ func (c *Server) Send(id string, structure interface{}) error {
 	if !got {
 		return zlog.Error(nil, "no connection to send to:", id)
 	}
+ 	con.Connection.SetWriteDeadline(time.Now().Add(time.Second * 60))
 	return con.Connection.WriteJSON(structure)
 }
 

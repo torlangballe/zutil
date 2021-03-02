@@ -19,9 +19,7 @@ const (
 	VertOut
 
 	Proportional
-	HorJustify
-	MarginIsOffset
-	ScaleToFitProp
+	MarginIsOffset // MarginIsOffset is a special flag used to offset a center alignment in absolute, instead of relative to sides.
 
 	AlignmentNone Alignment = 0
 	BottomLeft              = Bottom | Left
@@ -62,9 +60,7 @@ var alignmentList = []zbool.BitsetItem{
 	zbool.BSItem("horout", int64(HorOut)),
 	zbool.BSItem("vertout", int64(VertOut)),
 	zbool.BSItem("proportional", int64(Proportional)),
-	zbool.BSItem("horjustify", int64(HorJustify)),
 	zbool.BSItem("marginissoffset", int64(MarginIsOffset)),
-	zbool.BSItem("scaletofitprop", int64(ScaleToFitProp)),
 	zbool.BSItem("center", int64(Center)),
 	zbool.BSItem("expand", int64(Expand)),
 	zbool.BSItem("shrink", int64(Shrink)),
@@ -107,6 +103,7 @@ func (a Alignment) FlippedVertical() Alignment {
 	}
 	return r
 }
+
 func (a Alignment) FlippedHorizontal() Alignment {
 	var r = a
 	r.AndWith(Vertical)
@@ -118,6 +115,49 @@ func (a Alignment) FlippedHorizontal() Alignment {
 	}
 	return r
 }
+
+// Swapped returns a new alignment where all the vertical alignments are the equivalent of what the horizontal ones were, and visa versa.
+func (a Alignment) Swapped() Alignment {
+	var o = AlignmentNone
+	if a&Left != 0 {
+		o |= Top
+	}
+	if a&Right != 0 {
+		o |= Bottom
+	}
+	if a&Top != 0 {
+		o |= Left
+	}
+	if a&HorCenter != 0 {
+		o |= VertCenter
+	}
+	if a&VertCenter != 0 {
+		o |= HorCenter
+	}
+	if a&Bottom != 0 {
+		o |= Right
+	}
+	if a&HorExpand != 0 {
+		o |= VertExpand
+	}
+	if a&VertExpand != 0 {
+		o |= HorExpand
+	}
+	if a&HorShrink != 0 {
+		o |= VertShrink
+	}
+	if a&VertShrink != 0 {
+		o |= HorShrink
+	}
+	if a&HorOut != 0 {
+		o |= VertOut
+	}
+	if a&VertOut != 0 {
+		o |= HorOut
+	}
+	return o
+}
+
 func (a Alignment) Subtracted(sub Alignment) Alignment {
 	return Alignment(a & Alignment(^uint64(sub)))
 }
