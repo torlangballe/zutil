@@ -16,12 +16,12 @@ import (
 
 	"github.com/sasha-s/go-deadlock"
 	"github.com/torlangballe/zutil/zfile"
-	"github.com/torlangballe/zutil/zhost"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zjson"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmail"
+	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
@@ -211,7 +211,7 @@ func (c *DaemonConfig) readFromPipe(pipe io.Reader, quit chan struct{}) {
 }
 
 func (c *DaemonConfig) sendCrashEmail() {
-	_, ip, _ := zhost.GetCurrentLocalIPAddress()
+	_, ip, _ := znet.GetCurrentLocalIPAddress()
 	subject := "Bridgetech QTT " + strings.Trim(c.BinaryPath, " ./") + " @ " + ip + " crashed"
 	// fmt.Println("{nolog}SEND CRASH EMAIL1:", subject)
 	c.bufferLock.Lock()

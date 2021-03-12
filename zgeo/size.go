@@ -145,6 +145,10 @@ func (s Size) Equals(a Size) bool {
 	return s.W == a.W && s.H == a.H
 }
 
+func (s Size) Contains(a Size) bool {
+	return s.W >= a.W && s.H >= a.H
+}
+
 func (s Size) Plus(a Size) Size          { return Size{s.W + a.W, s.H + a.H} }
 func (s Size) Minus(a Size) Size         { return Size{s.W - a.W, s.H - a.H} }
 func (s Size) MinusD(a float64) Size     { return Size{s.W - a, s.H - a} }

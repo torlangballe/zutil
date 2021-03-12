@@ -131,7 +131,19 @@ type CompareItem struct {
 	Values []interface{}
 }
 
-func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, start, end time.Time, id int64, decending, keepID bool, count int) error {
+func getTimeCompare(db *Database, addTo *[]string, t time.Time, start bool) {
+	if t.IsZero() {
+		return
+	}
+	op := ">"
+	if !start {
+		op = "<"
+	}
+	w := db.TimeField + op + `'` + t.UTC().Format(TimeStampFormat) + `'`
+	*addTo = append(*addTo, w)
+}
+
+func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, start, end time.Time, startID, endID int64, decending bool, keepID int64, count int) error {
 	var comps []CompareItem
 	for _, e := range equalItems {
 		found := false
@@ -181,27 +193,25 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	resultStructVal := reflect.New(db.StructType)
 
 	dir := "ASC"
-	op := ">"
 	if decending {
 		dir = "DESC"
 	}
-	if !start.IsZero() {
-		w := db.TimeField + `>'` + start.UTC().Format(TimeStampFormat) + `'`
-		wheres = append(wheres, w)
-	}
-	if !end.IsZero() {
-		op = "<"
-		w := db.TimeField + `<'` + end.UTC().Format(TimeStampFormat) + `'`
-		wheres = append(wheres, w)
-	}
-	if id != 0 {
+	getTimeCompare(db, &wheres, start, true)
+	getTimeCompare(db, &wheres, end, false)
+	if startID != 0 || endID != 0 {
+		op := ">"
+		id := startID
+		if endID != 0 {
+			op = "<"
+			id = endID
+		}
 		w := db.PrimaryField + op + strconv.FormatInt(id, 10)
 		wheres = append(wheres, w)
 	}
 	where := strings.Join(wheres, " AND ")
 	query := "SELECT " + zsql.FieldNamesFromStruct(resultStructVal.Interface(), nil, "") + " FROM " + db.TableName
-	if keepID {
-		where = "(" + where + fmt.Sprint(") OR id=", id)
+	if keepID != 0 {
+		where = "(" + where + fmt.Sprint(") OR id=", keepID)
 	}
 	query += " WHERE " + where
 	query += " ORDER BY " + db.TimeField + " " + dir

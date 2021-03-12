@@ -82,11 +82,15 @@ func ReadStringFromFile(sfile string) (string, error) {
 	return string(bytes), nil
 }
 
-func WriteStringToFile(str, sfile string) error {
+func WriteBytesToFile(data []byte, sfile string) error {
 	return WriteToFileAtomically(sfile, func(file io.Writer) error {
-		_, err := file.Write([]byte(str))
+		_, err := file.Write(data)
 		return err
 	})
+}
+
+func WriteStringToFile(str, sfile string) error {
+	return WriteBytesToFile([]byte(str), sfile)
 }
 
 func ForAllFileLines(path string, f func(str string) bool) error {
@@ -395,8 +399,10 @@ func ReadLastLine(fpath string, pos int64) (line string, startpos, newpos int64,
 // with a postfix before extension. "path/file_postfix.log", and the file truncated.
 // This may be slow, but only way that seems to work with launchd logs on mac.
 func PeriodicFileBackup(filepath, postfixForOld string, checkHours float64, maxMB int) {
-	ztimer.RepeatIn(checkHours*3600, func() bool {
+	ztimer.RepeatNow(checkHours*3600, func() bool {
+		fmt.Println("PeriodicFileBackup", checkHours*3600)
 		if Size(filepath) >= int64(maxMB*1024*1024) {
+			fmt.Println("PeriodicFileBackup need to do swap")
 			dir, _, stub, ext := Split(filepath)
 			newPath := dir + stub + postfixForOld + ext
 			err := os.Remove(newPath)

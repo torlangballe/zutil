@@ -108,8 +108,8 @@ func (c *Client) CallRemote(name string, args interface{}, reply interface{}, ti
 	// sbody := zhttp.GetCopyOfResponseBodyAsString(resp)
 	err = rpcjson.DecodeClientResponse(resp.Body, &reply)
 	if err != nil {
+		return zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
 		return err
-		//		return zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
 	}
 	return nil
 }

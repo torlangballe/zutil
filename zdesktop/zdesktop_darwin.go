@@ -139,7 +139,7 @@ func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err e
 		if int64(w.winID) != 0 {
 			return strconv.FormatInt(int64(w.winID), 10), int(w.scale), err
 		} else {
-			err = errors.New("bad window id")
+			err = errors.New("bad window id: " + title)
 		}
 	}
 	return
@@ -227,7 +227,7 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 	title = getTitleWithApp(title, app)
 	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
-		zlog.Info("SetWindowRectForTitle:", title, app, pid)
+		// zlog.Info("SetWindowRectForTitle:", title, app, pid)
 		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
 		// zlog.Info("SetWindowRectForTitle:", title, app, r)
 		if r != 0 {

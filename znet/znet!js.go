@@ -1,11 +1,14 @@
-package zhost
+// +build !js
+
+package znet
 
 import (
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
-	"net/url"
+	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -14,6 +17,7 @@ import (
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 const osxCmd = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
@@ -245,21 +249,32 @@ func copyIO(src, dest net.Conn) {
 	io.Copy(src, dest)
 }
 
-func GetHostAndPort(u *url.URL) (host string, port int) {
-	var err error
-	var sport string
-	if !strings.Contains(u.Host, ":") {
-		return u.Host, 0
+var certManager = autocert.Manager{
+	Prompt: autocert.AcceptTOS,
+	Cache:  autocert.DirCache("certs"),
+}
+
+func ShowGenerateTLSCertificatesCommands(certName string) {
+	os.Mkdir("certs", 0775|os.ModeDir)
+	// Key considerations for algorithm "RSA" ≥ 2048-bit
+	zlog.Info("🟨openssl genrsa -out certs/" + certName + ".key 2048")
+	// Key considerations for algorithm "ECDSA" ≥ secp384r1
+	// List ECDSA the supported curves (openssl ecparam -list_curves)
+	zlog.Info("🟨openssl ecparam -genkey -name secp384r1 -out certs/" + certName + ".key")
+	//	Generation of self-signed(x509) public key (PEM-encodings .pem|.crt) based on the private (.key)
+	zlog.Info("🟨openssl req -new -x509 -sha256 -key certs/" + certName + ".key -out certs/" + certName + ".crt -days 3650")
+}
+
+func ServeHTTPS(port int, certName string) {
+	// https://ap.www.namecheap.com/Domains/DomainControlPanel/etheros.online/advancedns
+	// https://github.com/denji/golang-tls
+	if port == 0 {
+		port = 443
 	}
-	host, sport, err = net.SplitHostPort(u.Host)
+	address := fmt.Sprintf("%d:", port)
+	err := http.ListenAndServeTLS(":443", "certs/"+certName+".crt", "certs/"+certName+".key", nil)
 	if err != nil {
-		zlog.Error(err)
-		return
+		zlog.Error(err, "serve https listen err:", address)
 	}
-	port, err = strconv.Atoi(sport)
-	if err != nil {
-		zlog.Error(err)
-		return
-	}
-	return
+	zlog.Info("Here")
 }

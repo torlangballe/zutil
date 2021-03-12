@@ -2,60 +2,91 @@ package zcache
 
 import (
 	"reflect"
+	"sync"
+	"time"
 
-	"github.com/patrickmn/go-cache"
-	"github.com/torlangballe/zutil/ztime"
+	"github.com/torlangballe/zutil/ztimer"
 )
 
 // TODO: Allow a redis hookup
 
-var DefaultExpiration = 3600.0
+type item struct {
+	value   interface{}
+	touched time.Time
+	expiry  time.Duration
+}
 
-const NoExpiration = -1.0
+// Cache is a simple in-memory cached map;
+type Cache struct {
+	accurateExpiry   bool // If accurateExpiry set, items are not touched on get, and Get returns false if expired, even if not flushed out yet. Good for tokens etc that actually have an expiry time
+	defaultExpiry time.Duration
+	items         map[string]*item
+	lock          sync.Mutex
+}
 
-func New(ttlSecs float64) *Cache {
-	if ttlSecs == 0 {
-		ttlSecs = 3600 * 24
+func New(expiry time.Duration, accurateExpiry bool) *Cache {
+	c := &Cache{}
+	c.items = map[string]*item{}
+	c.accurateExpiry = accurateExpiry
+	c.defaultExpiry = expiry
+	if expiry != 0 {
+		ztimer.RepeatIn(60*10, func() bool {
+			c.lock.Lock()
+			for key, i := range c.items {
+				if time.Since(i.touched) > expiry {
+					delete(c.items, key)
+				}
+			}
+			c.lock.Unlock()
+			return true
+		})
 	}
-	c := new(Cache)
-	c.cache = cache.New(ztime.SecondsDur(ttlSecs), ztime.SecondsDur(ttlSecs*2))
 	return c
 }
 
-func (c *Cache) Put(key string, val interface{}) error {
-	c.cache.Set(key, val, cache.DefaultExpiration)
-	return nil
+func (c *Cache) Put(key string, val interface{}) bool {
+	e := c.defaultExpiry
+	return c.PutWithExpiry(key, val, e)
 }
 
-func (c *Cache) PutTTL(key string, val interface{}, ttlSecs float64) error {
-	if ttlSecs == NoExpiration {
-		ttlSecs = ztime.DurSeconds(cache.NoExpiration)
-	} else {
-		ttlSecs = ztime.DurSeconds(cache.DefaultExpiration)
+func (c *Cache) PutWithExpiry(key string, val interface{}, expiry time.Duration) bool {
+	c.lock.Lock()
+	i, _ := c.items[key]
+	if i == nil {
+		i = &item{}
+		c.items[key] = i
 	}
-	c.cache.Set(key, val, ztime.SecondsDur(ttlSecs))
-	return nil
+	i.touched = time.Now()
+	i.value = val
+	i.expiry = expiry
+	c.lock.Unlock()
+	return false
 }
 
-func (c *Cache) Get(key string) (val interface{}, got bool) {
-	val, got = c.cache.Get(key)
-	return
-}
-
-func (c *Cache) GetTo(toPtr interface{}, key string) (got bool) {
-	val, got := c.cache.Get(key)
-	if got {
-		a := reflect.ValueOf(toPtr).Elem()
-		v := reflect.ValueOf(val)
-		a.Set(v)
+func (c *Cache) Get(toPtr interface{}, key string) (got bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	i, _ := c.items[key]
+	if i == nil {
+		return false
 	}
-	return
+	if c.accurateExpiry && i.expiry != 0 {
+		if time.Since(i.touched) >= i.expiry {
+			delete(c.items, key)
+			return false
+		}
+	}
+	if !c.accurateExpiry {
+		i.touched = time.Now()
+	}
+	a := reflect.ValueOf(toPtr).Elem()
+	v := reflect.ValueOf(i.value)
+	a.Set(v)
+	return true
 }
 
-func (c *Cache) Delete(key string) {
-	c.cache.Delete(key)
-}
-
-type Cache struct {
-	cache *cache.Cache
+func (c *Cache) Remove(key string) {
+	c.lock.Lock()
+	delete(c.items, key)
+	c.lock.Unlock()
 }

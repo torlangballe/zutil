@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/mitchellh/go-ps"
@@ -182,4 +183,11 @@ func GetRunningProcessUserName() (string, error) {
 		return "", zlog.Error(err, "get name")
 	}
 	return name, nil
+}
+
+func SetMaxOpenFileConnections(max int) {
+	str, err := RunCommand("ulimit", 5, "-n", strconv.Itoa(max))
+	if err != nil {
+		zlog.Error(err, str)
+	}
 }
