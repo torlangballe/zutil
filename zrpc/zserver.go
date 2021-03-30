@@ -1,3 +1,5 @@
+// +build server
+
 package zrpc
 
 import (
@@ -11,6 +13,7 @@ import (
 	rpcjson "github.com/gorilla/rpc/json"
 
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zrest"
 )
 
@@ -19,15 +22,17 @@ type CallsBase int
 type RPCCalls CallsBase
 
 //var ServerUsingAuthToken = false
-var ServerPort int = 1200
-var server *rpc.Server
-var registeredOwners = map[string]bool{}
+var (
+	ServerPort       int = 1200
+	server           *rpc.Server
+	registeredOwners = map[string]bool{}
 
-// updatedResourcesSentToClient stores Which clients have I sent info about resource being updated to [res][client]bool
-var updatedResourcesSentToClient = map[string]map[string]bool{}
-var updatedResourcesMutex sync.Mutex
+	// updatedResourcesSentToClient stores Which clients have I sent info about resource being updated to [res][client]bool
+	updatedResourcesSentToClient = map[string]map[string]bool{}
+	updatedResourcesMutex        sync.Mutex
+)
 
-func InitServer(router *mux.Router, port int) error {
+func InitServer(router *mux.Router, port int, httpsAddress string) error {
 	//	go http.ListenAndServeTLS(fmt.Sprintf(":%d", ServerPort), "https/server.crt", "https/server.key", router)
 	if port == 0 {
 		port = 1200
@@ -35,8 +40,12 @@ func InitServer(router *mux.Router, port int) error {
 	ServerPort = port
 	server = rpc.NewServer()
 	registeredOwners = map[string]bool{}
-	go http.ListenAndServe(fmt.Sprintf(":%d", ServerPort), router)
-	zlog.Info("Serve RPC On:", ServerPort)
+	if httpsAddress != "" {
+		go znet.ServeHTTPS(ServerPort, httpsAddress, router)
+	} else {
+		go http.ListenAndServe(fmt.Sprintf(":%d", ServerPort), router)
+	}
+	zlog.Info("🟨Serve RPC On:", ServerPort)
 	server.RegisterCodec(rpcjson.NewCodec(), "application/json")
 	zrest.AddHandler(router, "rpc", doServeHTTP).Methods("POST", "OPTIONS")
 	return nil
@@ -44,11 +53,13 @@ func InitServer(router *mux.Router, port int) error {
 
 func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// TODO: See how little of this we can get away with
-	//  zlog.Info("zrpc.DoServeHTTP:", req.Method, "from:", req.Header.Get("Origin"), req.URL)
-	w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Token, X-ZUI-Client-Id, X-ZUI-Auth-Token")
+	// zlog.Info("zrpc.DoServeHTTP:", req.Method, "from:", req.Header.Get("Origin"), req.URL)
+
+	zrest.AddCORSHeaders(w, req)
+	// w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
+	// w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
+	// w.Header().Set("Access-Control-Allow-Credentials", "true")
+	// w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Token, X-ZUI-Client-Id, X-ZUI-Auth-Token")
 
 	defer req.Body.Close()
 
@@ -75,11 +86,7 @@ func Register(owners ...interface{}) {
 }
 
 func AuthenticateRequest(req *http.Request) (client string, err error) {
-	clientID := req.Header.Get("X-ZUI-Client-Id")
-	//token := req.Header.Get("X-ZUI-Auth-Token")
-	// if ServerUsingAuthToken {
-
-	// }
+	clientID := req.Header.Get(ClientIDKey)
 	return clientID, nil
 }
 
@@ -105,6 +112,7 @@ func ClearResourceUpdated(resID, clientID string) {
 }
 
 func (c *RPCCalls) GetUpdatedResources(req *http.Request, args *Any, reply *[]string) error {
+	zlog.Info("GetUpdatedResources")
 	clientID, err := AuthenticateRequest(req)
 	if err != nil {
 		return err

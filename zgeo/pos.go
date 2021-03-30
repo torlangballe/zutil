@@ -1,6 +1,7 @@
 package zgeo
 
 import (
+	"fmt"
 	"image"
 	"math"
 
@@ -10,6 +11,10 @@ import (
 type Pos struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
+}
+
+func (p Pos) String() string {
+	return fmt.Sprintf("%g,%g", p.X, p.Y)
 }
 
 func (p Pos) Vertice(vertical bool) float64 {

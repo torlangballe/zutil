@@ -266,3 +266,4 @@ func MixedValueAtIndex(slice []float64, index float64) float64 {
 	}
 	return 0
 }
+

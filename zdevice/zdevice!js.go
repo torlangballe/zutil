@@ -18,3 +18,7 @@ func UUID() string {
 	}
 	return str
 }
+
+func OS() OSType {
+	return Platform()
+}

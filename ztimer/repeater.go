@@ -51,5 +51,10 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 func (r *Repeater) Stop() {
 	if r.ticker != nil {
 		r.ticker.Stop()
+		r.ticker = nil
 	}
+}
+
+func (r *Repeater) IsStopped() bool {
+	return (r.ticker == nil)
 }

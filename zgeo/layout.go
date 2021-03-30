@@ -65,6 +65,7 @@ func getStackCells(r Rect, vertical bool, cells []LayoutCell) (scells []stackCel
 						fr = fr.Swapped()
 					}
 					outRects[i] = fr
+					// zlog.Info("Stack free:", c.Name, fr)
 				} else {
 					scells = append(scells, sc)
 				}

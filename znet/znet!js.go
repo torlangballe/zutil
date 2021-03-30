@@ -265,14 +265,14 @@ func ShowGenerateTLSCertificatesCommands(certName string) {
 	zlog.Info("🟨openssl req -new -x509 -sha256 -key certs/" + certName + ".key -out certs/" + certName + ".crt -days 3650")
 }
 
-func ServeHTTPS(port int, certName string) {
+func ServeHTTPS(port int, certName string, handler http.Handler) {
 	// https://ap.www.namecheap.com/Domains/DomainControlPanel/etheros.online/advancedns
 	// https://github.com/denji/golang-tls
 	if port == 0 {
 		port = 443
 	}
-	address := fmt.Sprintf("%d:", port)
-	err := http.ListenAndServeTLS(":443", "certs/"+certName+".crt", "certs/"+certName+".key", nil)
+	address := fmt.Sprintf(":%d", port)
+	err := http.ListenAndServeTLS(address, "certs/"+certName+".crt", "certs/"+certName+".key", handler)
 	if err != nil {
 		zlog.Error(err, "serve https listen err:", address)
 	}

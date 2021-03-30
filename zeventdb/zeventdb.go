@@ -55,6 +55,7 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 	}
 	var query string
 	query, db.FieldInfos = zsql.CreateSQLite3TableCreateStatementFromStruct(istruct, tableName)
+	zlog.Info("ZEDB CREATE:", query)
 	_, err = db.DB.Exec(query)
 	if err != nil {
 		if errors.Is(err, sqlite.ErrCorrupt) || err.Error() == "database disk image is malformed" {
@@ -132,6 +133,7 @@ type CompareItem struct {
 }
 
 func getTimeCompare(db *Database, addTo *[]string, t time.Time, start bool) {
+	// zlog.Info("zeventsdb get time compare:", t, start)
 	if t.IsZero() {
 		return
 	}

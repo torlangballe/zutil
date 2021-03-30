@@ -143,7 +143,9 @@ func (r Rect) Centered(center Pos) Rect {
 }
 
 func (r Rect) Expanded(s Size) Rect {
-	return Rect{r.Pos.Minus(s.Pos()), r.Size.Plus(s.TimesD(2))}
+	r2 := Rect{Pos: r.Pos.Minus(s.Pos()), Size: r.Size.Plus(s.TimesD(2))}
+	// zlog.Info("r.Expand:", r, s, r2)
+	return r2
 }
 
 // AlignmentTransform moves right if Left, left if Right, or shrinks in Center
@@ -267,7 +269,7 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 	}
 
 	if maxSize.W != 0 && maxSize.H != 0 {
-		s := Size{wa, ha}.ScaledInto(maxSize)
+		s := Size{wa, ha}.ShrunkInto(maxSize)
 		wa = s.W
 		ha = s.H
 	}

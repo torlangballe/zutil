@@ -20,12 +20,13 @@ import (
 type Any struct{}
 
 type Client struct {
-	ID        string
-	AuthToken string
+	ID string
 	//var UseHttp = false
 	Port      int
 	ToAddress string
 }
+
+const ClientIDKey = "ZRPC-Client-Id"
 
 var ToServerClient *Client
 var ToNativeClient *Client
@@ -84,8 +85,7 @@ func (c *Client) CallRemote(name string, args interface{}, reply interface{}, ti
 	params := zhttp.MakeParameters()
 	params.UseHTTPS = false
 	params.SkipVerifyCertificate = true
-	params.Headers["X-ZUI-Client-Id"] = c.ID
-	params.Headers["X-ZUI-Auth-Token"] = c.AuthToken
+	params.Headers[ClientIDKey] = c.ID
 	params.Body = message
 	params.ContentType = "application/json"
 	params.Method = http.MethodPost

@@ -49,9 +49,15 @@ func Platform() OSType {
 		return MacOSType
 	case "js":
 		return JSType
+	case "android":
+		return AndroidType
 	}
 	zlog.Fatal(nil, "other type")
 	return OSType("")
+}
+
+func IsDesktop() bool {
+	return OS() != AndroidType && OS() != IOSType
 }
 
 func OSVersion() string {

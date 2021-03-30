@@ -356,6 +356,19 @@ func ExtractItemFromStrings(strs *[]string, item string) bool {
 	return true
 }
 
+func ExtractFlaggedArg(strs *[]string, flag string) string {
+	i := IndexOf(flag, *strs)
+	if i == -1 {
+		return ""
+	}
+	if len(*strs) < i+2 {
+		return ""
+	}
+	val := (*strs)[i+1]
+	*strs = append((*strs)[:i], (*strs)[i+2:]...)
+	return val
+}
+
 func ExtractFirstString(strs *[]string) string {
 	if len(*strs) == 0 {
 		return ""
@@ -557,7 +570,7 @@ func GetQuotedArgs(args string) (parts []string) {
 		} else if s != "" {
 			s = strings.TrimSpace(s)
 			if s != "" {
-				split := strings.Split(strings.TrimSpace(s), " ")
+				split := strings.Fields(strings.TrimSpace(s))
 				parts = append(parts, split...)
 			}
 		}
@@ -1039,6 +1052,45 @@ func ReplaceAllCapturesFunc(regex *regexp.Regexp, str string, replace func(cap s
 	}
 	out += str[last:]
 	return out
+}
+
+// ScanLinesWithCR is a replacement for bufio.Scanner
+func ScanLinesWithCR(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	var cr bool
+	for i := 0; i < len(data); i++ {
+		if data[i] == '\r' {
+			if i == len(data)-1 {
+				return i + 1, data[0:i], nil
+			}
+			cr = true
+		} else if data[i] == '\n' {
+			end := i
+			if cr {
+				end--
+			}
+			return i + 1, data[0:end], nil
+		} else {
+			if cr {
+				return i, data[0 : i-1], nil
+			}
+		}
+	}
+	if atEOF {
+		return len(data), data, nil
+	}
+	return 0, nil, nil
+}
+
+var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+func IsValidEmail(email string) bool {
+	if len(email) < 3 && len(email) > 254 {
+		return false
+	}
+	return emailRegex.MatchString(email)
 }
 
 var EscapeQuoteReplacer = strings.NewReplacer(

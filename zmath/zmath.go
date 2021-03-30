@@ -195,3 +195,22 @@ func GetNiceDividesOf(d float64, max int, isMemory bool) float64 {
 func EaseInOut(t float64) float64 {
 	return 1 - math.Cos(t*math.Pi)
 }
+
+// for length items, IndexOfMostFrequent compares them with each other and finds which one is used the most.
+// It returns the index to an aribitrary item which is used the most.
+func IndexOfMostFrequent(length int, compare func(i, j int) bool) int {
+	var cmax, imax int
+	var counts = make([]int, length, length)
+	for i := 0; i < length; i++ {
+		for j := i + 1; j < length; j++ {
+			if compare(i, j) {
+				counts[i]++
+				if counts[i] > cmax {
+					cmax = counts[i]
+					cmax = i
+				}
+			}
+		}
+	}
+	return imax
+}

@@ -2,9 +2,9 @@ package zusers
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
-	"errors"
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/lib/pq"
@@ -14,21 +14,21 @@ import (
 	"github.com/torlangballe/zutil/ztime"
 )
 
-const (
-	AdminPermission = "admin"
-	AdminSuperUser  = "super"
-)
-
-const hashKey = "gOBgx69Z3k4TtgTDK8VF"
-
 type User struct {
 	Id           int64
 	Email        string
 	Salt         string
 	PasswordHash string
-	OemId        int64
 	Permissions  []string
 }
+
+const (
+	AdminPermission = "admin"
+	AdminSuperUser  = "super"
+	hashKey         = "gOBgx69Z3k4TtgTDK8VF"
+)
+
+var NotAuthenticatedError = errors.New("not authenticated")
 
 func (u *User) IsAdmin() bool {
 	return zstr.StringsContain(u.Permissions, AdminPermission)
@@ -40,32 +40,19 @@ func (u *User) IsSuper() bool {
 
 var LoginFail error = errors.New("wrong user email or password")
 
-func InitTable(db *sql.DB) error {
+func Init(db *sql.DB) error {
 	squery := `
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		passwordhash TEXT NOT NULL,
 		salt TEXT NOT NULL,
-		oemid INT NOT NULL,
 		permissions TEXT[] NOT NULL DEFAULT '{}'
 	);
 	`
 	_, err := db.Exec(squery)
 	return err
 }
-
-// func MakeFromStruct(db *sql.DB, u User) (id int64, err error) {
-// 	squery := "INSERT INTO users (email, passwordhash, salt, oemid, xxx) VALUES ($1, $2, $3, $4, $5) RETURNING id"
-// 	row := db.QueryRow(squery, u.Email, u.PasswordHash, u.Salt, u.OemId, u.IsAdmin)
-// 	err = row.Scan(&id)
-// 	if err != nil {
-// 		zlog.Info("make user err:", err)
-// 		err = errors.Wrap(err, "users.MakeFromStruct Query/Scan")
-// 		return
-// 	}
-// 	return
-// }
 
 func makeHash(str, salt string) string {
 	return zstr.Sha1Hex(str + salt + hashKey)
@@ -74,7 +61,7 @@ func makeHash(str, salt string) string {
 func getUsersFromRows(db *sql.DB, rows *sql.Rows) (us []*User, err error) {
 	for rows.Next() {
 		var u User
-		err = rows.Scan(&u.Id, &u.Email, &u.OemId, pq.Array(&u.Permissions))
+		err = rows.Scan(&u.Id, &u.Email, pq.Array(&u.Permissions))
 		if err != nil {
 			return
 		}
@@ -83,27 +70,17 @@ func getUsersFromRows(db *sql.DB, rows *sql.Rows) (us []*User, err error) {
 	return
 }
 
-func GetUsersForOem(db *sql.DB, oemId int64) (us []*User, err error) {
-	squery := "SELECT id, email, oemid, permissions FROM users WHERE oemid=$1 ORDER BY email ASC"
-	rows, err := db.Query(squery, oemId)
-	if err != nil {
-		return
-	}
-	us, err = getUsersFromRows(db, rows)
-	return
-}
-
-func GetUserForId(db *sql.DB, id int64) (u User, err error) {
-	squery := "SELECT id, email, oemid, permissions FROM users WHERE id=$1 LIMIT 1"
+func GetUserForID(db *sql.DB, id int64) (u User, err error) {
+	squery := "SELECT id, email, permissions FROM users WHERE id=$1 LIMIT 1"
 	row := db.QueryRow(squery, id)
-	err = row.Scan(&u.Id, &u.Email, &u.OemId, pq.Array(&u.Permissions))
+	err = row.Scan(&u.Id, &u.Email, pq.Array(&u.Permissions))
 	if err != nil {
 		return
 	}
 	return
 }
 
-func DeleteUserForId(db *sql.DB, id int64) (err error) {
+func DeleteUserForID(db *sql.DB, id int64) (err error) {
 	squery := "DELETE FROM users WHERE id=$1"
 	_, err = db.Exec(squery, id)
 	return
@@ -145,7 +122,7 @@ func ChangePasswordForUser(db *sql.DB, id int64, password string) (err error) {
 }
 
 func GetAllUsers(db *sql.DB) (us []*User, err error) {
-	squery := "SELECT id, email, oemid FROM users ORDER BY email ASC"
+	squery := "SELECT id, email FROM users ORDER BY email ASC"
 	rows, err := db.Query(squery)
 	if err != nil {
 		return
@@ -156,18 +133,18 @@ func GetAllUsers(db *sql.DB) (us []*User, err error) {
 
 func getUserFor(db *sql.DB, field, value string) (user User, err error) {
 	squery :=
-		fmt.Sprintf(`SELECT id, email, passwordhash, salt, oemid, permissions 
+		fmt.Sprintf(`SELECT id, email, passwordhash, salt, permissions 
 		FROM users WHERE %s=$1 LIMIT 1`, field)
 	row := db.QueryRow(squery, value)
-	err = row.Scan(&user.Id, &user.Email, &user.PasswordHash, &user.Salt, &user.OemId, pq.Array(&user.Permissions))
+	err = row.Scan(&user.Id, &user.Email, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions))
 	if err != nil {
 		return
 	}
 	return
 }
 
-func GetUserFromTokenInRequest(db *sql.DB, redisPool *redis.Pool, req *http.Request) (user User, token string, err error) {
-	t, _ := req.Cookie("token")
+func GetUserFromCookieInRequest(db *sql.DB, redisPool *redis.Pool, req *http.Request) (user User, token string, err error) {
+	t, _ := req.Cookie("user-token")
 	//	zlog.Info("GetUserFromTokenInRequest:", t.Name, t.Value)
 	if t == nil {
 		err = errors.New("no token")
@@ -217,7 +194,7 @@ func makeSaltyHash(password string) (salt, hash, token string) {
 	return
 }
 
-func Register(db *sql.DB, redisPool *redis.Pool, email, password string, oemId int64, isAdmin, makeToken bool) (id int64, token string, err error) {
+func Register(db *sql.DB, redisPool *redis.Pool, email, password string, isAdmin, makeToken bool) (id int64, token string, err error) {
 	_, err = getUserFor(db, "email", email)
 	if err == nil {
 		err = errors.New("user exists: " + email)
@@ -231,10 +208,10 @@ func Register(db *sql.DB, redisPool *redis.Pool, email, password string, oemId i
 	//	zlog.Info("register:", hash, password, "salt:", salt)
 	squery :=
 		`INSERT INTO users 
-	(email, passwordhash, salt, oemid, permissions) VALUES
+	(email, passwordhash, salt, permissions) VALUES
 	($1, $2, $3, $4, $5) RETURNING id
 	`
-	row := db.QueryRow(squery, email, hash, salt, oemId, pq.Array(perm))
+	row := db.QueryRow(squery, email, hash, salt, pq.Array(perm))
 	err = row.Scan(&id)
 	if err != nil {
 		zlog.Info("register error:", err)
@@ -250,7 +227,7 @@ func Register(db *sql.DB, redisPool *redis.Pool, email, password string, oemId i
 	return
 }
 
-func getUserIdFromToken(redisPool *redis.Pool, token string) (id int64, err error) {
+func getUserIDFromToken(redisPool *redis.Pool, token string) (id int64, err error) {
 	key := "user." + token
 	_, err = zredis.Get(redisPool, &id, key)
 	return

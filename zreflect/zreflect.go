@@ -236,8 +236,8 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 
 func ItterateStruct(istruct interface{}, options Options) (item Item, err error) {
 	rval := reflect.ValueOf(istruct)
-	if !rval.IsValid() || rval.IsZero() {
-		zlog.Info("ItterateStruct: not valid")
+	if !rval.IsValid() || rval.IsZero() { //  && rval.Kind() != reflect.StructKind
+		zlog.Info("ItterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
 		return
 	}
 	zlog.Assert(rval.Kind() == reflect.Ptr, "not pointer", rval.Kind(), rval)

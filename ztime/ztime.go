@@ -414,6 +414,25 @@ func GetDurationHourMinSec(d time.Duration) (hours int, mins int, secs int, frac
 	return
 }
 
+func GetDurNice(d time.Duration, fractDigits int) string {
+	var parts []string
+	h, m, s, f := GetDurationHourMinSec(d)
+	if h != 0 {
+		parts = append(parts, fmt.Sprintf("%d h", h))
+	}
+	if m != 0 {
+		parts = append(parts, fmt.Sprintf("%d m", m))
+	}
+	if s != 0 {
+		if fractDigits == 0 {
+			parts = append(parts, fmt.Sprintf("%d m", s))
+		} else {
+			parts = append(parts, zwords.NiceFloat(float64(s)+f, fractDigits))
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
 func GetDurationString(d time.Duration, secs, mins, hours bool, subDigits int) (str string, overflow bool) {
 	h, m, s, fract := GetDurationHourMinSec(d)
 	if secs {
@@ -474,7 +493,7 @@ func GetNiceIncsOf(start, stop time.Time, incCount int) (inc time.Duration, firs
 	i := math.Max(1.0, math.Round(bestPart/float64(incCount)))
 	switch part {
 	case time.Second, time.Minute:
-		i = GetClosestTo(i, []float64{1, 2, 3, 5, 10, 15, 20, 30})
+		i = GetClosestTo(i, []float64{1, 2, 5, 10, 15, 20, 30})
 	case time.Hour:
 		i = GetClosestTo(i, []float64{1, 2, 3, 6, 12, 24})
 	}
@@ -483,7 +502,7 @@ func GetNiceIncsOf(start, stop time.Time, incCount int) (inc time.Duration, firs
 	mod := u % ui
 	n := u + (ui - mod)
 	first = time.Unix(n, 0).In(start.Location())
-	//	zlog.Info("best:", i, part, u, mod, n, first)
+	// zlog.Info("best:", i, part, u, mod, n, first)
 	inc = time.Duration(i) * part
 	return
 }

@@ -50,9 +50,10 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	if LegalCORSOrigins[o] {
 		// zlog.Info("AddCorsHeaders:", o, "allowed:", LegalCORSOrigins)
 		w.Header().Set("Access-Control-Allow-Origin", o)
+		// w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Origin, X-TimeZone-Offset-Hours, X-Requested-With, Content-Type, Accept, Access-Token")
+		w.Header().Set("Access-Control-Allow-Headers", "Origin, ZRPC-Client-Id, X-TimeZone-Offset-Hours, X-Requested-With, Content-Type, Accept, Access-Token")
 	}
 }
 

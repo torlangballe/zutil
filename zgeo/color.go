@@ -171,7 +171,7 @@ func (c Color) Opacity() float32 {
 	return c.Colors.A
 }
 
-func (c Color) OpacityChanged(opacity float32) Color {
+func (c Color) WithOpacity(opacity float32) Color {
 	return ColorNew(c.Colors.R, c.Colors.G, c.Colors.B, opacity)
 }
 
@@ -334,13 +334,16 @@ var ColorMaroon = ColorNew(0.5, 0, 0, 1)
 var ColorYellow = ColorNew(1, 1, 0, 1)
 var ColorOlive = ColorNew(0.5, 0.5, 0, 1)
 var ColorLime = ColorNew(0, 1, 0, 1)
-var ColorGreen = ColorNew(0, 0.5, 0, 1)
+var ColorGreen = ColorNew(0, 1, 0, 1)
+var ColorDarkGreen = ColorNew(0, 0.5, 0, 1)
 var ColorAqua = ColorNew(0, 1, 1, 1)
 var ColorTeal = ColorNew(0, 0.5, 0.5, 1)
 var ColorBlue = ColorNew(0, 0, 1, 1)
 var ColorNavy = ColorNew(0, 0, 0.5, 1)
 var ColorFuchsia = ColorNew(1, 0, 1, 1)
 var ColorPurple = ColorNew(0.5, 0, 0.5, 1)
+
+var ColorDistinctList = []Color{ColorOrange, ColorCyan, ColorMagenta, ColorGray, ColorBlack, ColorRed, ColorMaroon, ColorYellow, ColorOlive, ColorLime, ColorGreen, ColorDarkGreen, ColorAqua, ColorTeal, ColorBlue, ColorNavy, ColorDarkGray, ColorFuchsia, ColorPurple, ColorLightGray}
 
 type DropShadow struct {
 	Delta Size

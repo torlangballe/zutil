@@ -14,7 +14,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
-	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -210,6 +209,45 @@ func GetCallingStackString() string {
 	return strings.Join(parts, "\n")
 }
 
+func makePathRelativeTo(path, rel string) string {
+	origPath := path
+	path = strings.TrimLeft(path, "/")
+	rel = strings.TrimLeft(rel, "/")
+	// fmt.Println("MakePathRelativeTo1:", path, rel)
+	for {
+		p := zstr.HeadUntil(path, "/")
+		r := zstr.HeadUntil(rel, "/")
+		if p != r || p == "" {
+			break
+		}
+		l := len(p)
+		path = zstr.Body(path, l+1, -1)
+		rel = zstr.Body(rel, l+1, -1)
+	}
+	// fmt.Println("MakePathRelativeTo:", path, rel)
+	count := strings.Count(rel, "/")
+	if count != 0 {
+		count++
+	}
+	str := strings.Repeat("../", count) + path
+	if count > 2 || len(str) > len(origPath) {
+		var rest string
+		if runtime.GOOS == "js" {
+			return origPath
+		}
+		usr, err := user.Current()
+		if err != nil {
+			return origPath
+		}
+		dir := usr.HomeDir + "/"
+		if zstr.HasPrefix(origPath, dir, &rest) {
+			return "~/" + rest
+		}
+		return origPath
+	}
+	return str
+}
+
 func GetCallingFunctionString(pos int) string {
 	function, file, line := GetCallingFunctionInfo(pos)
 	if function == "" {
@@ -218,7 +256,7 @@ func GetCallingFunctionString(pos int) string {
 	_, function = path.Split(function)
 
 	home, _ := os.Getwd()
-	file = zfile.MakePathRelativeTo(file, home)
+	file = makePathRelativeTo(file, home)
 
 	return fmt.Sprintf("%s:%d %s()", file, line, function)
 }

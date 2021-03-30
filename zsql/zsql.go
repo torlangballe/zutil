@@ -13,6 +13,10 @@ import (
 	"github.com/lib/pq"
 )
 
+type Executer interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
 type SQLer interface { // this is used for routines that can take a sql.Db or sql.Tx
 	QueryRow(query string, args ...interface{}) *sql.Row
 	Query(query string, args ...interface{}) (*sql.Rows, error)

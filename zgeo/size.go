@@ -163,14 +163,30 @@ func (s Size) Copy() Size {
 	return s
 }
 
-func (s Size) ScaledInto(in Size) Size {
+// ShrunkInto makes s just fit in 'in' proportionally, if bigger
+func (s Size) ShrunkInto(in Size) Size {
+	if s.W <= in.W && s.H < in.H {
+		return s
+	}
+	return s.ScaledTo(in)
+}
+
+// ExpandTo makes s just fit in 'in' proportionally, if smaller
+func (s Size) ExpandedInto(in Size) Size {
+	if s.W >= in.W && s.H > in.H {
+		return s
+	}
+	return s.ScaledTo(in)
+}
+
+// ScaledTo makes s just fit in 'in' proportionally
+func (s Size) ScaledTo(in Size) Size {
 	if s.W == 0 || s.H == 0 || in.W == 0 || in.H == 0 {
 		return Size{}
 	}
 	f := in.DividedBy(s)
 	min := f.Min()
 	scaled := s.TimesD(min)
-
 	return scaled
 }
 
