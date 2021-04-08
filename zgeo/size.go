@@ -117,6 +117,15 @@ func (s *Size) MinimizeNonZero(a Size) {
 	}
 }
 
+func (s *Size) MaximizeNonZero(a Size) {
+	if a.W != 0 {
+		s.W = math.Max(s.W, a.W)
+	}
+	if a.H != 0 {
+		s.H = math.Max(s.H, a.H)
+	}
+}
+
 func (s *Size) Add(a Size) {
 	s.W += a.W
 	s.H += a.H

@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	sqlite "github.com/mattn/go-sqlite3" // Import go-sqlite3 library
@@ -30,6 +31,7 @@ type Database struct {
 	FieldInfos   []zsql.FieldInfo
 	StructType   reflect.Type
 	istruct      interface{}
+	lock         sync.RWMutex
 }
 
 const TimeStampFormat = "2006-01-02 15:04:05.999999999"
@@ -115,6 +117,9 @@ func (db *Database) Add(istruct interface{}) (id int64, err error) {
 	vals := zsql.FieldValuesFromStruct(istruct, skip)
 
 	// zlog.Info("ADD-QUERY:", query, vals)
+
+	db.lock.Lock()
+	defer db.lock.Unlock()
 	r, err := db.DB.Exec(query, vals...)
 	if err != nil {
 		return 0, zlog.Error(err, "query", query, vals)
@@ -220,12 +225,16 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	if count != 0 {
 		query += fmt.Sprint(" LIMIT ", count)
 	}
-	zlog.Info("eventbd:", query, values)
-
+	now := time.Now()
+	db.lock.RLock()
+	defer db.lock.RUnlock()
 	rows, err := db.DB.Query(query, values...)
+	// zlog.Info("eventbd:", time.Since(now), query, values)
 	if err != nil {
 		return zlog.Error(err, "query", query, "vals:", values)
 	}
+	defer rows.Close()
+
 	slicePtrVal := reflect.ValueOf(resultsSlicePtr)
 	sliceVal := reflect.Indirect(slicePtrVal)
 
@@ -234,7 +243,7 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 		err = rows.Scan(resultPointers...)
 		sliceVal = reflect.Append(sliceVal, reflect.Indirect(resultStructVal))
 	}
-	// zlog.Info("eventsdb.Get:", sliceVal.Len(), query, values)
+	zlog.Info("eventsdb.Got:", time.Since(now), sliceVal.Len(), query, values)
 	reflect.Indirect(slicePtrVal).Set(sliceVal)
 	return nil
 }

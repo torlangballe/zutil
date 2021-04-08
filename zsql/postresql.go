@@ -124,6 +124,7 @@ func (s *JSONStringMapForPtr) Scan(val interface{}) error {
 type JSONStringInterfaceMap map[string]interface{}
 
 func (s JSONStringInterfaceMap) Value() (driver.Value, error) {
+	// zlog.Info("JSONStringInterfaceMap Value")
 	if s == nil {
 		return nil, nil
 	}
@@ -132,6 +133,10 @@ func (s JSONStringInterfaceMap) Value() (driver.Value, error) {
 
 func (s *JSONStringInterfaceMap) Scan(val interface{}) error {
 	//	zlog.Info("JSONStringInterfaceMap scan")
+	if val == nil {
+		*s = JSONStringInterfaceMap{}
+		return nil
+	}
 	data, ok := val.([]byte)
 	if !ok {
 		return errors.New("JSONStringInterfaceMap unsupported data type")

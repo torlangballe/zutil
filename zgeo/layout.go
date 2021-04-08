@@ -2,6 +2,7 @@ package zgeo
 
 import (
 	"github.com/torlangballe/zutil/zfloat"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 type LayoutCell struct {
@@ -38,7 +39,6 @@ func getStackCells(r Rect, vertical bool, cells []LayoutCell) (scells []stackCel
 				continue
 			}
 			a := c.Alignment
-			// zlog.Info("performStacking add:", c.View.ObjectName(), a, ca)
 			if vertical {
 				a = a.Swapped()
 			}
@@ -54,19 +54,23 @@ func getStackCells(r Rect, vertical bool, cells []LayoutCell) (scells []stackCel
 					sc.MaxSize = c.MaxSize.Swapped()
 					sc.OriginalSize = c.OriginalSize.Swapped()
 				}
-				sc.OriginalSize.MinimizeNonZero(sc.MinSize)
 				// TODO: handle ExpandFromMinSize
 				// TODO: If shrink align, shrink into rect
 				sc.size = sc.OriginalSize
-				sc.size.Add(sc.Margin)
+				//				sc.size.Add(sc.Margin.TimesD(2))
 				if c.Free {
-					fr := r.Align(sc.size, sc.Alignment, sc.Margin, sc.MaxSize)
+					// TODO: Complex handling of MinSize, proportional, and if only W, or H set...
+					fr := r.AlignPro(sc.size, sc.Alignment, sc.Margin, sc.MaxSize, Size{})
 					if vertical {
 						fr = fr.Swapped()
 					}
 					outRects[i] = fr
 					// zlog.Info("Stack free:", c.Name, fr)
 				} else {
+					sc.size.MaximizeNonZero(sc.MinSize)
+					sc.size.MinimizeNonZero(sc.MaxSize)
+					sc.size.Add(sc.Margin.TimesD(2))
+					zlog.Info(sc.MinSize, sc.MaxSize, sc.size, "getStackCells add:", c.Alignment, c.Margin, c.Name, sc.OriginalSize)
 					scells = append(scells, sc)
 				}
 			}
@@ -82,41 +86,41 @@ func getStackCells(r Rect, vertical bool, cells []LayoutCell) (scells []stackCel
 func addLeftoverSpaceToWidths(r Rect, scells []stackCell, vertical bool, spacing float64) (added float64) {
 	wspace := float64(len(scells)-1) * spacing // sum of all spacing between cells
 	added = wspace
-	for _, doLimited := range []bool{true, false} { // do limited width cells first, then ones that want as much as they can get
-		var unaddedWidth float64
-		for _, sc := range scells {
-			if !sc.added {
-				unaddedWidth += sc.size.W
-			}
+	var widthTotal float64
+	for _, sc := range scells {
+		if !sc.added {
+			widthTotal += sc.size.W
 		}
-		// if unaddedWidth == 0 {
-		// 	break
-		// }
-		diff := r.Size.W - wspace - unaddedWidth
-		// TODO: If diff < 0, and some cells have shrink align, shrink to sc.minsize
-		for i, sc := range scells {
-			// zlog.Info("SC:", sc.Name, sc.added, doCellsWithMaxW, sc.MaxSize.W)
-			if sc.added {
-				continue
-			}
-			if doLimited && (sc.MaxSize.W == 0 || sc.Alignment&HorExpand == 0) { // we're doing limited, and this one isn't
-				continue
-			}
-			w := sc.size.W
-			fractionOfUnadded := w / unaddedWidth // sets how much of total unadded width is width of this cell
-			newWidth := w
-			if sc.Alignment&HorExpand != 0 {
+	}
+	// if unaddedWidth == 0 {
+	// 	break
+	// }
+	diff := r.Size.W - added - wspace - widthTotal
+	zlog.Info("addLeftoverSpaceToWidths:", widthTotal, diff, "r.w:", r.Size.W, spacing)
+	// TODO: If diff < 0, and some cells have shrink align, shrink to sc.minsize
+	for i := 0; i < len(scells); i++ {
+		sc := scells[i]
+		// zlog.Info("SC:", sc.Name, sc.added, doLimited, sc.MaxSize.W)
+		w := sc.size.W
+		newWidth := w
+		fractionOfUnadded := w / unaddedWidth // sets how much of total unadded width is width of this cell
+		if ((diff < 0 && sc.MinSize.W != 0) || sc.Alignment&HorExpand != 0) && (sc.MaxSize.W == 0 || sc.MaxSize.W != sc.MinSize.W) {
+			if diff > 0 {
 				newWidth += diff * fractionOfUnadded
+			} else if sc.MinSize.W != 0 {
+				newWidth += diff * fractionOfUnadded
+				zlog.Info("sub:", sc.Name, newWidth, diff*fractionOfUnadded)
+				zfloat.Maximize(&newWidth, sc.MinSize.W)
 			}
 			if sc.MaxSize.W != 0 {
-				zfloat.Maximize(&newWidth, sc.MaxSize.W+sc.Margin.W*2)
+				zfloat.Minimize(&newWidth, sc.MaxSize.W+sc.Margin.W*2)
 			}
-			// TODO: handle proportional in first loop itteration
-			scells[i].size.W = newWidth
-			scells[i].added = true
-			added += newWidth
-			// zlog.Info("added:", r, sc.Name, doLimited, sc.Alignment, added, newWidth, w, fractionOfUnadded)
 		}
+		scells[i].size.W = newWidth
+		// TODO: handle proportional in first loop itteration
+		//		scells[i].added = true
+		added += newWidth
+		zlog.Info("added:", r, sc.Name, sc.Alignment, "added:", added, "newWidth:", newWidth, "w:", w, "diff:", diff, fractionOfUnadded, "maxmin:", sc.MaxSize.W, sc.MinSize.W)
 	}
 	return
 }
@@ -146,9 +150,10 @@ func layoutRectsInBoxes(r Rect, scells []stackCell, vertical bool, spacing, adde
 		if i == len(scells)-1 {
 			box.SetMaxX(r.Max().X)
 		}
-		vr := box.Align(sc.OriginalSize, sc.Alignment, sc.Margin, Size{})
+		vr := box.AlignPro(sc.OriginalSize, sc.Alignment|Shrink, sc.Margin, sc.MaxSize, sc.MinSize)
+		zlog.Info(i, sc.OriginalSize, "align:", sc.Name, box, vr)
 		// zlog.Info(i, "align:", sc.Name, r, i, len(scells), box, sc.OriginalSize, sc.Alignment, "=", vr)
-		x = vr.Max().X + spacing
+		x = box.Max().X + spacing // was vr.Max!!!
 		if vertical {
 			vr = vr.Swapped()
 			// sc.Alignment = sc.Alignment.Swapped() // these are just to debug print:

@@ -99,6 +99,7 @@ func FieldPointersFromStruct(istruct interface{}, skip []string) (pointers []int
 		if i.IsSlice {
 			a = pq.Array(a)
 		}
+		// zlog.Info("FieldPointersFromStruct:", i.TypeName, i.Kind, i.FieldName, reflect.ValueOf(a).Type())
 		pointers = append(pointers, a)
 	}
 	return

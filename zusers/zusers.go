@@ -10,12 +10,13 @@ import (
 	"github.com/lib/pq"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zredis"
+	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
 
 type User struct {
-	Id           int64
+	ID           int64
 	Email        string
 	Salt         string
 	PasswordHash string
@@ -24,23 +25,27 @@ type User struct {
 
 const (
 	AdminPermission = "admin"
-	AdminSuperUser  = "super"
 	hashKey         = "gOBgx69Z3k4TtgTDK8VF"
 )
 
-var NotAuthenticatedError = errors.New("not authenticated")
+var (
+	NotAuthenticatedError = errors.New("not authenticated")
+	database              *sql.DB
+	redisPool             *redis.Pool
+	LoginFail             error = errors.New("wrong user email or password")
+)
 
 func (u *User) IsAdmin() bool {
 	return zstr.StringsContain(u.Permissions, AdminPermission)
 }
 
 func (u *User) IsSuper() bool {
-	return zstr.StringsContain(u.Permissions, AdminSuperUser)
+	return u.ID == 1
 }
 
-var LoginFail error = errors.New("wrong user email or password")
-
-func Init(db *sql.DB) error {
+func Init(db *sql.DB, redis *redis.Pool) error {
+	database = db
+	redisPool = redis
 	squery := `
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
@@ -50,18 +55,19 @@ func Init(db *sql.DB) error {
 		permissions TEXT[] NOT NULL DEFAULT '{}'
 	);
 	`
-	_, err := db.Exec(squery)
+	_, err := database.Exec(squery)
 	return err
 }
 
 func makeHash(str, salt string) string {
-	return zstr.Sha1Hex(str + salt + hashKey)
+	all := str + salt + hashKey
+	return zstr.SHA256Hex([]byte(all))
 }
 
-func getUsersFromRows(db *sql.DB, rows *sql.Rows) (us []*User, err error) {
+func getUsersFromRows(rows *sql.Rows) (us []*User, err error) {
 	for rows.Next() {
 		var u User
-		err = rows.Scan(&u.Id, &u.Email, pq.Array(&u.Permissions))
+		err = rows.Scan(&u.ID, &u.Email, pq.Array(&u.Permissions))
 		if err != nil {
 			return
 		}
@@ -70,26 +76,26 @@ func getUsersFromRows(db *sql.DB, rows *sql.Rows) (us []*User, err error) {
 	return
 }
 
-func GetUserForID(db *sql.DB, id int64) (u User, err error) {
+func GetUserForID(id int64) (u User, err error) {
 	squery := "SELECT id, email, permissions FROM users WHERE id=$1 LIMIT 1"
-	row := db.QueryRow(squery, id)
-	err = row.Scan(&u.Id, &u.Email, pq.Array(&u.Permissions))
+	row := database.QueryRow(squery, id)
+	err = row.Scan(&u.ID, &u.Email, pq.Array(&u.Permissions))
 	if err != nil {
 		return
 	}
 	return
 }
 
-func DeleteUserForID(db *sql.DB, id int64) (err error) {
+func DeleteUserForID(id int64) (err error) {
 	squery := "DELETE FROM users WHERE id=$1"
-	_, err = db.Exec(squery, id)
+	_, err = database.Exec(squery, id)
 	return
 }
 
-func SetAdminForUser(db *sql.DB, id int64, isAdmin bool) (err error) {
+func SetAdminForUser(id int64, isAdmin bool) (err error) {
 	var perm []string
 	squery := "SELECT permissions FROM users WHERE id=$1"
-	tx, err := db.Begin()
+	tx, err := database.Begin()
 	if err != nil {
 		return
 	}
@@ -99,7 +105,7 @@ func SetAdminForUser(db *sql.DB, id int64, isAdmin bool) (err error) {
 	if err != nil {
 		return
 	}
-	perm = zstr.RemoveStringFromSlice(perm, AdminPermission)
+	perm = zstr.RemovedFromSlice(perm, AdminPermission)
 	if isAdmin {
 		perm = append(perm, AdminPermission)
 	}
@@ -108,44 +114,44 @@ func SetAdminForUser(db *sql.DB, id int64, isAdmin bool) (err error) {
 	return
 }
 
-func ChangeEmailForUser(db *sql.DB, id int64, email string) (err error) {
+func ChangeEmailForUser(id int64, email string) (err error) {
 	squery := "UPDATE users SET email=$1 WHERE id=$2"
-	_, err = db.Exec(squery, email, id)
+	_, err = database.Exec(squery, email, id)
 	return
 }
 
-func ChangePasswordForUser(db *sql.DB, id int64, password string) (err error) {
+func ChangePasswordForUser(id int64, password string) (err error) {
 	squery := "UPDATE users SET passwordhash=$1, salt=$2, token=$3 WHERE id=$4"
 	salt, hash, token := makeSaltyHash(password)
-	_, err = db.Exec(squery, hash, salt, token, id)
+	_, err = database.Exec(squery, hash, salt, token, id)
 	return
 }
 
-func GetAllUsers(db *sql.DB) (us []*User, err error) {
+func GetAllUsers() (us []*User, err error) {
 	squery := "SELECT id, email FROM users ORDER BY email ASC"
-	rows, err := db.Query(squery)
+	rows, err := database.Query(squery)
 	if err != nil {
 		return
 	}
-	us, err = getUsersFromRows(db, rows)
+	us, err = getUsersFromRows(rows)
 	return
 }
 
-func getUserFor(db *sql.DB, field, value string) (user User, err error) {
+func getUserFor(field, value string) (user User, err error) {
 	squery :=
 		fmt.Sprintf(`SELECT id, email, passwordhash, salt, permissions 
 		FROM users WHERE %s=$1 LIMIT 1`, field)
-	row := db.QueryRow(squery, value)
-	err = row.Scan(&user.Id, &user.Email, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions))
+	row := database.QueryRow(squery, value)
+	err = row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions))
 	if err != nil {
 		return
 	}
 	return
 }
 
-func GetUserFromCookieInRequest(db *sql.DB, redisPool *redis.Pool, req *http.Request) (user User, token string, err error) {
+func GetUserFromCookieInRequest(req *http.Request) (user User, token string, err error) {
 	t, _ := req.Cookie("user-token")
-	//	zlog.Info("GetUserFromTokenInRequest:", t.Name, t.Value)
+	//	zlog.Info("GetUserFromCookieInRequest:", t.Name, t.Value)
 	if t == nil {
 		err = errors.New("no token")
 		return
@@ -155,16 +161,29 @@ func GetUserFromCookieInRequest(db *sql.DB, redisPool *redis.Pool, req *http.Req
 		err = errors.New("empty token")
 		return
 	}
-	user, err = GetUserFromToken(db, redisPool, token)
-	//	zlog.Info("GetUserFromTokenInRequest2:", err, user)
+	user, err = GetUserFromToken(token)
+	//	zlog.Info("GetUserFromCookieInRequest:", err, user)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func Login(db *sql.DB, redisPool *redis.Pool, email, password string) (id int64, token string, err error) {
-	u, err := getUserFor(db, "email", email)
+func GetUserFromZRPCHeader(req *http.Request) (user User, token string, err error) {
+	token, err = zrpc.AuthenticateRequest(req)
+	if err != nil || token == "" {
+		zlog.Error(err, "auth", token)
+		return
+	}
+	user, err = GetUserFromToken(token)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func Login(email, password string) (id int64, token string, err error) {
+	u, err := getUserFor("email", email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err = LoginFail
@@ -178,8 +197,8 @@ func Login(db *sql.DB, redisPool *redis.Pool, email, password string) (id int64,
 		return
 	}
 	token = zstr.GenerateUUID()
-	id = u.Id
-	err = setTokenForUserId(redisPool, token, id)
+	id = u.ID
+	err = setTokenForUserId(token, id)
 	if err != nil {
 		zlog.Info("login set token error:", err)
 		return
@@ -194,8 +213,8 @@ func makeSaltyHash(password string) (salt, hash, token string) {
 	return
 }
 
-func Register(db *sql.DB, redisPool *redis.Pool, email, password string, isAdmin, makeToken bool) (id int64, token string, err error) {
-	_, err = getUserFor(db, "email", email)
+func Register(email, password string, isAdmin, makeToken bool) (id int64, token string, err error) {
+	_, err = getUserFor("email", email)
 	if err == nil {
 		err = errors.New("user exists: " + email)
 		return
@@ -206,19 +225,17 @@ func Register(db *sql.DB, redisPool *redis.Pool, email, password string, isAdmin
 	}
 	salt, hash, token := makeSaltyHash(password)
 	//	zlog.Info("register:", hash, password, "salt:", salt)
-	squery :=
-		`INSERT INTO users 
-	(email, passwordhash, salt, permissions) VALUES
-	($1, $2, $3, $4, $5) RETURNING id
-	`
-	row := db.QueryRow(squery, email, hash, salt, pq.Array(perm))
+	squery := `
+INSERT INTO users (email, passwordhash, salt, permissions) VALUES
+($1, $2, $3, $4) RETURNING id`
+	row := database.QueryRow(squery, email, hash, salt, pq.Array(perm))
 	err = row.Scan(&id)
 	if err != nil {
 		zlog.Info("register error:", err)
 		return
 	}
 	if makeToken {
-		err = setTokenForUserId(redisPool, token, id)
+		err = setTokenForUserId(token, id)
 		if err != nil {
 			zlog.Info("set token error:", err)
 			return
@@ -227,38 +244,20 @@ func Register(db *sql.DB, redisPool *redis.Pool, email, password string, isAdmin
 	return
 }
 
-func getUserIDFromToken(redisPool *redis.Pool, token string) (id int64, err error) {
+func getUserIDFromRedisFromToken(token string) (id int64, err error) {
 	key := "user." + token
 	_, err = zredis.Get(redisPool, &id, key)
 	return
 }
 
-func setTokenForUserId(redisPool *redis.Pool, token string, id int64) (err error) {
+func setTokenForUserId(token string, id int64) (err error) {
 	key := "user." + token
 	err = zredis.Put(redisPool, key, ztime.Day*30, id)
 	return
 }
 
-func GetUserFromHeaderToken(db *sql.DB, redisPool *redis.Pool, req *http.Request) (user User, err error) {
-	t, _ := req.Cookie("token")
-	if t == nil {
-		err = errors.New("no token")
-		return
-	}
-	token := t.Value
-	if token == "" {
-		err = errors.New("empty token")
-		return
-	}
-	user, err = GetUserFromToken(db, redisPool, token)
-	if err != nil {
-		return
-	}
-	return
-}
-
-func GetUserFromToken(db *sql.DB, redisPool *redis.Pool, token string) (user User, err error) {
-	id, err := getUserIdFromToken(redisPool, token)
+func GetUserFromToken(token string) (user User, err error) {
+	id, err := getUserIDFromRedisFromToken(token)
 	if err != nil {
 		return
 	}
@@ -266,5 +265,5 @@ func GetUserFromToken(db *sql.DB, redisPool *redis.Pool, token string) (user Use
 		err = errors.New("no user for token")
 		return
 	}
-	return GetUserForId(db, id)
+	return GetUserForID(id)
 }

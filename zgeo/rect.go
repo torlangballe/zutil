@@ -189,7 +189,11 @@ func (r Rect) Contains(pos Pos) bool {
 	return pos.X >= min.X && pos.X <= max.X && pos.Y >= min.Y && pos.Y <= max.Y
 }
 
-func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
+func (r Rect) Align(s Size, align Alignment, marg Size) Rect {
+	return r.AlignPro(s, align, marg, Size{}, Size{})
+}
+
+func (r Rect) AlignPro(s Size, align Alignment, marg, maxSize, minSize Size) Rect {
 	var x float64
 	var y float64
 	var scalex float64
@@ -267,8 +271,7 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 	if align&VertShrink != 0 && ha > hf {
 		ha = hf
 	}
-
-	if maxSize.W != 0 && maxSize.H != 0 {
+	if maxSize.W != 0 && maxSize.H != 0 { // TODO:  && align&Proportional != 0 {
 		s := Size{wa, ha}.ShrunkInto(maxSize)
 		wa = s.W
 		ha = s.H
@@ -279,6 +282,19 @@ func (r Rect) Align(s Size, align Alignment, marg Size, maxSize Size) Rect {
 	if maxSize.H != 0.0 {
 		ha = math.Min(ha, float64(maxSize.H))
 	}
+
+	if minSize.W != 0 && minSize.H != 0 && align&Proportional != 0 {
+		s := Size{wa, ha}.ExpandedInto(minSize)
+		wa = s.W
+		ha = s.H
+	}
+	if minSize.W != 0.0 {
+		wa = math.Max(wa, float64(minSize.W))
+	}
+	if minSize.H != 0.0 {
+		ha = math.Max(ha, float64(minSize.H))
+	}
+
 	if align&HorOut != 0 {
 		if align&Left != 0 {
 			x = float64(r.Pos.X - marg.W - s.W)
