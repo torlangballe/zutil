@@ -39,9 +39,10 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 				return
 			}
 		}
-		for range r.ticker.C {
+		t := r.ticker
+		for range t.C {
 			if !perform() {
-				r.ticker.Stop()
+				t.Stop()
 				break
 			}
 		}
