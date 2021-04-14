@@ -31,7 +31,8 @@ type PathNode struct {
 }
 
 type Path struct {
-	nodes []PathNode
+	Dashes []int
+	nodes  []PathNode
 }
 
 func PathNew() *Path {
@@ -103,6 +104,15 @@ func (p *Path) GetPos() Pos {
 		}
 	}
 	return Pos{}
+}
+
+func (p *Path) MoveOrLineTo(pos Pos) {
+	plen := len(p.nodes)
+	if plen == 0 || p.nodes[plen-1].Type == PathClose {
+		p.MoveTo(pos)
+	} else {
+		p.LineTo(pos)
+	}
 }
 
 func (p *Path) MoveTo(pos Pos) {

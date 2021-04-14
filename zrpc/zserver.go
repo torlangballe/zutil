@@ -112,7 +112,7 @@ func ClearResourceUpdated(resID, clientID string) {
 }
 
 func (c *RPCCalls) GetUpdatedResources(req *http.Request, args *Any, reply *[]string) error {
-	zlog.Info("GetUpdatedResources")
+	// zlog.Info("GetUpdatedResources")
 	clientID, err := AuthenticateRequest(req)
 	if err != nil {
 		return err

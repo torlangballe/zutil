@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -423,4 +424,15 @@ func PeriodicFileBackup(filepath, postfixForOld string, checkHours float64, maxM
 		}
 		return true
 	})
+}
+
+func MimeToExtension(smime string) string {
+	var ext string
+	es, _ := mime.ExtensionsByType(smime)
+	for _, s := range es {
+		if len(s) > len(ext) {
+			ext = s
+		}
+	}
+	return ext
 }

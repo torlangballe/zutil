@@ -1,20 +1,22 @@
 package zgeo
 
 import (
+	"math"
+
 	"github.com/torlangballe/zutil/zfloat"
-	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zslice"
 )
 
 type LayoutCell struct {
-	Alignment         Alignment
-	Margin            Size
-	MaxSize           Size   // MaxSize is maximum size of child-view excluding margin
-	MinSize           Size   // MinSize is minimum size of child-view excluding margin
-	Collapsed         bool   // Collapsed is a cell that currently is not shown or takes up space.
-	Free              bool   // Free Cells are placed using ContainerView method, not "inherited" ArrangeChildren method
-	ExpandFromMinSize bool   // Makes cell expand into extra space in addition to minsize, not current size
-	OriginalSize      Size   // Original size of object before layout
-	Name              string // A name just for debugging
+	Alignment         Alignment // Alignment is how cell is placed within parent rect and siblings. If AlignmentNone, it is not placed at all
+	Margin            Size      // Margin is the size around object in cell
+	MaxSize           Size      // MaxSize is maximum size of object before margin. Can be only W or H
+	MinSize           Size      // MinSize is minimum size of object before margin. Can be only W or H
+	Collapsed         bool      // Collapsed is a cell that currently is not shown or takes up space.
+	Free              bool      // Free Cells are placed using simple aligning to parent rect, not stacked etc
+	ExpandFromMinSize bool      // Makes cell expand into extra space in addition to minsize, not current size, will probabbly be remoed when newstack exclusive
+	OriginalSize      Size      // Original size of object before layout
+	Name              string    // A name just for debugging
 }
 
 // stackCell is used to  calculate a box of *size* for each cell to layout in a stack.
@@ -23,19 +25,41 @@ type LayoutCell struct {
 // Then OriginalSize is aligned within each box to calculate each cell's final rectangle.
 type stackCell struct {
 	LayoutCell
-	size       Size // size of box to align within
-	added      bool // used during layout
-	inputIndex int  // index of input cell
+	size Size // size of box to align within
+	// added      bool // used during layout
+	inputIndex int // index of input cell
+}
+
+// makeOutRectsAndFillFree creates a slice *out* for rects for each scell.
+// It aligns the free cells and stores the rect in out, removing that cell from scells.
+func fillFreeInOutRect(r Rect, vertical bool, out []Rect, scells *[]stackCell) {
+	for i := 0; i < len(*scells); {
+		sc := (*scells)[i]
+		if sc.Free {
+			fr := r.AlignPro(sc.OriginalSize, sc.Alignment, sc.Margin, sc.MaxSize, sc.MinSize)
+			// zlog.Info(r, "fillFreeInOutRect:", i, fr, sc.Name)
+			if vertical {
+				fr = fr.Swapped()
+			}
+			out[sc.inputIndex] = fr
+			zslice.RemoveAt(scells, i)
+			// zlog.Info("OR:", j, sc.Name, fr)
+		} else {
+			i++
+		}
+	}
+	// for i, r := range out {
+	// 	zlog.Info("fillFreeInOutRect:", i, r)
+	// }
 }
 
 // getStackCells returns a slice of stackCells, in left, center, right order, minus collapsed.
 // They are swapped if vertical for later to be swapped back.
-// It creates the outRects slice, and lays out free cells within it, not returning them in scells
-func getStackCells(r Rect, vertical bool, cells []LayoutCell) (scells []stackCell, outRects []Rect) {
-	outRects = make([]Rect, len(cells), len(cells))
+// Free cells are added with original size
+func getStackCells(vertical bool, cells []LayoutCell) (scells []stackCell) {
 	for _, ca := range []Alignment{Left, HorCenter, Right} { // Add left ones, first, then center, then right
 		for i, c := range cells {
-			if c.Collapsed || c.Alignment == AlignmentNone {
+			if (c.Collapsed && !c.Free) || c.Alignment == AlignmentNone {
 				continue
 			}
 			a := c.Alignment
@@ -44,9 +68,8 @@ func getStackCells(r Rect, vertical bool, cells []LayoutCell) (scells []stackCel
 			}
 			if a&ca != 0 { // are we in left, center or right adding part now?
 				var sc stackCell
+				sc.inputIndex = i // important we do this now, when i is index of original input, scells will be sorted
 				sc.LayoutCell = c
-				sc.inputIndex = i
-				// zlog.Info("Cell:", c.Name)
 				if vertical {
 					sc.Alignment = a // set alignment to the swapped version
 					sc.Margin = c.Margin.Swapped()
@@ -54,173 +77,187 @@ func getStackCells(r Rect, vertical bool, cells []LayoutCell) (scells []stackCel
 					sc.MaxSize = c.MaxSize.Swapped()
 					sc.OriginalSize = c.OriginalSize.Swapped()
 				}
-				// TODO: handle ExpandFromMinSize
 				// TODO: If shrink align, shrink into rect
 				sc.size = sc.OriginalSize
-				//				sc.size.Add(sc.Margin.TimesD(2))
 				if c.Free {
-					// TODO: Complex handling of MinSize, proportional, and if only W, or H set...
-					fr := r.AlignPro(sc.size, sc.Alignment, sc.Margin, sc.MaxSize, Size{})
-					if vertical {
-						fr = fr.Swapped()
-					}
-					outRects[i] = fr
-					// zlog.Info("Stack free:", c.Name, fr)
+					sc.size = c.OriginalSize
 				} else {
 					sc.size.MaximizeNonZero(sc.MinSize)
 					sc.size.MinimizeNonZero(sc.MaxSize)
-					sc.size.Add(sc.Margin.TimesD(2))
-					zlog.Info(sc.MinSize, sc.MaxSize, sc.size, "getStackCells add:", c.Alignment, c.Margin, c.Name, sc.OriginalSize)
-					scells = append(scells, sc)
 				}
+				// zlog.Info(i, sc.MinSize, sc.MaxSize, sc.size, "getStackCells add:", c.Alignment, c.Margin, c.Name, sc.OriginalSize)
+				scells = append(scells, sc)
 			}
 		}
 	}
 	return
+}
+
+// calcPreAddedTotalWidth gets the total width of objects, spacing and margin
+func calcPreAddedTotalWidth(scells []stackCell, spacing float64) (w, space, marg float64) {
+	for i, sc := range scells {
+		w += sc.size.W
+		marg += sc.Margin.W * 2
+		if i != 0 {
+			space += spacing
+		}
+	}
+	w += space + marg
+	return
+}
+
+// getPossibleAdjustments returns how much each cell can shrink/expand, based on diff being + or -.
+// MinSize, MaxSize and HorExpand alignment are used.
+func getPossibleAdjustments(diff float64, scells []stackCell) []float64 {
+	adj := make([]float64, len(scells), len(scells))
+	for i, sc := range scells {
+		w := sc.size.W
+		if diff < 0 {
+			if sc.MinSize.W != 0 {
+				adj[i] = math.Min(0, sc.MinSize.W-w)
+			}
+			// zlog.Info(i, "pos:", diff, sc.Name, w, sc.MinSize.W, "adj", adj[i])
+			continue
+		}
+		if sc.Alignment&HorExpand != 0 {
+			if sc.MaxSize.W != 0 {
+				adj[i] = math.Max(0, sc.MaxSize.W-w)
+			} else {
+				adj[i] = diff // we can take it all if needed
+			}
+			// zlog.Info(i, "pos+:", diff, sc.Name, w, sc.MaxSize.W, "adj", adj[i])
+		}
+	}
+	return adj
 }
 
 // addLeftoverSpaceToWidths adjusts the size of scells to fit in total space in r.
 // Each cell is increased based on it's current with compared to total
 // it does two passes; First ones with a MaxSize or non-expanding, then rest with what is left.
 // it returns *added*, which is sum of width of all added cells
-func addLeftoverSpaceToWidths(r Rect, scells []stackCell, vertical bool, spacing float64) (added float64) {
-	wspace := float64(len(scells)-1) * spacing // sum of all spacing between cells
-	added = wspace
-	for _, doLimited := range []bool{true, false} { // do limited width cells first, then ones that want as much as they can get
-		var unaddedWidth float64
-		for _, sc := range scells {
-			if !sc.added {
-				unaddedWidth += sc.size.W
-			}
-		}
-		// if unaddedWidth == 0 {
-		// 	break
-		// }
-		diff := r.Size.W - wspace - unaddedWidth
-		// TODO: If diff < 0, and some cells have shrink align, shrink to sc.minsize
+func addLeftoverSpaceToWidths(r Rect, scells []stackCell, vertical bool, spacing float64) {
+	width, space, marg := calcPreAddedTotalWidth(scells, spacing)
+	diff := r.Size.W - width
+	// zlog.Info("addLeftoverSpaceToWidths:", r.Size.W, "diff:", diff, "spacing:", spacing, "w:", width, "sp:", space, "marg:", marg)
+	adj := getPossibleAdjustments(diff, scells)
+	ndiff := diff
+	viewsWidth := width - space - marg
+	for {
+		adjusted := false
 		for i, sc := range scells {
-			// zlog.Info("SC:", sc.Name, sc.added, doCellsWithMaxW, sc.MaxSize.W)
-			if sc.added {
+			// zlog.Info("addLeftoverSpaceToWidths1:", sc.Name, adj[i])
+			if adj[i] == 0 {
 				continue
 			}
-			if doLimited && (sc.MaxSize.W == 0 || sc.Alignment&HorExpand == 0) { // we're doing limited, and this one isn't
-				continue
+			w := math.Max(1, sc.size.W)
+			shouldAdjust := w / viewsWidth * diff
+			if math.Abs(adj[i]) < math.Abs(shouldAdjust) {
+				// zlog.Info("addLeftoverSpaceToWidths adjust:", sc.Name, adj[i])
+				adjusted = true
+				scells[i].size.W = w + adj[i]
+				adj[i] = 0
+				ndiff -= adj[i]
 			}
+		}
+		diff = ndiff
+		if !adjusted {
+			break
+		}
+	}
+	var biggiesTotalWidth float64
+	for i, sc := range scells {
+		if adj[i] != 0 {
 			w := sc.size.W
-			fractionOfUnadded := w / unaddedWidth // sets how much of total unadded width is width of this cell
-			newWidth := w
-			if sc.Alignment&HorExpand != 0 {
-				newWidth += diff * fractionOfUnadded
-			}
 			if sc.MaxSize.W != 0 {
-				zfloat.Maximize(&newWidth, sc.MaxSize.W+sc.Margin.W*2)
+				zfloat.Minimize(&w, sc.MaxSize.W)
 			}
-			// TODO: handle proportional in first loop itteration
+			biggiesTotalWidth += w
+		}
+	}
+	zfloat.Maximize(&biggiesTotalWidth, 1)
+	for i, sc := range scells {
+		if adj[i] != 0 {
+			w := sc.size.W
+			if sc.MaxSize.W != 0 {
+				zfloat.Minimize(&w, sc.MaxSize.W)
+			}
+			newWidth := scells[i].size.W + w/biggiesTotalWidth*diff
+			if sc.MaxSize.W != 0 {
+				zfloat.Minimize(&newWidth, sc.MaxSize.W)
+			}
+			// zlog.Info(biggiesTotalWidth, diff, "addLeftoverSpaceToWidths biggies:", sc.Name, w, newWidth, sc.MaxSize)
 			scells[i].size.W = newWidth
-			scells[i].added = true
-			added += newWidth
-			// zlog.Info("added:", r, sc.Name, doLimited, sc.Alignment, added, newWidth, w, fractionOfUnadded)
 		}
 	}
-	return
 }
-
-/* new better stuff:
-func addLeftoverSpaceToWidths(r Rect, scells []stackCell, vertical bool, spacing float64) (added float64) {
-	wspace := float64(len(scells)-1) * spacing // sum of all spacing between cells
-	added = wspace
-	var widthTotal float64
-	for _, sc := range scells {
-		if !sc.added {
-			widthTotal += sc.size.W
-		}
-	}
-	// if unaddedWidth == 0 {
-	// 	break
-	// }
-	diff := r.Size.W - added - wspace - widthTotal
-	zlog.Info("addLeftoverSpaceToWidths:", widthTotal, diff, "r.w:", r.Size.W, spacing)
-	// TODO: If diff < 0, and some cells have shrink align, shrink to sc.minsize
-	for i := 0; i < len(scells); i++ {
-		sc := scells[i]
-		// zlog.Info("SC:", sc.Name, sc.added, doLimited, sc.MaxSize.W)
-		w := sc.size.W
-		newWidth := w
-		fractionOfUnadded := w / unaddedWidth // sets how much of total unadded width is width of this cell
-		if ((diff < 0 && sc.MinSize.W != 0) || sc.Alignment&HorExpand != 0) && (sc.MaxSize.W == 0 || sc.MaxSize.W != sc.MinSize.W) {
-			if diff > 0 {
-				newWidth += diff * fractionOfUnadded
-			} else if sc.MinSize.W != 0 {
-				newWidth += diff * fractionOfUnadded
-				zlog.Info("sub:", sc.Name, newWidth, diff*fractionOfUnadded)
-				zfloat.Maximize(&newWidth, sc.MinSize.W)
-			}
-			if sc.MaxSize.W != 0 {
-				zfloat.Minimize(&newWidth, sc.MaxSize.W+sc.Margin.W*2)
-			}
-		}
-		scells[i].size.W = newWidth
-		// TODO: handle proportional in first loop itteration
-		//		scells[i].added = true
-		added += newWidth
-		zlog.Info("added:", r, sc.Name, sc.Alignment, "added:", added, "newWidth:", newWidth, "w:", w, "diff:", diff, fractionOfUnadded, "maxmin:", sc.MaxSize.W, sc.MinSize.W)
-	}
-	return
-}
-*/
 
 // layoutRectsInBoxes goes left to right, making a box of full hight and each scell's width.
 // it aligns the cell's original size within this with cells alignment.
 // any space not used by cells (see jump below), is added between left and center, and center and right.
-func layoutRectsInBoxes(r Rect, scells []stackCell, vertical bool, spacing, added float64, outRects []Rect) {
-	x := r.Min().X
+func layoutRectsInBoxes(r Rect, scells []stackCell, vertical bool, spacing float64, outRects []Rect) {
+	sx := r.Min().X
+	x := sx
 	prevAlign := Left
-	jump := r.Size.W - added
+	var wcenter, wright float64
+	for i, sc := range scells {
+		w := sc.size.W + sc.Margin.W*2
+		if i != 0 {
+			w += spacing
+		}
+		if sc.Alignment&HorCenter != 0 {
+			wcenter += w
+		} else if sc.Alignment&Right != 0 {
+			wright += w
+		}
+	}
+	// zlog.Info("layoutRectsInBoxes", wcenter, wright)
 	for i, sc := range scells {
 		if (sc.Alignment&(Left|HorCenter|Right))&prevAlign == 0 { // if align is something new, ie. center/right
 			if sc.Alignment&HorCenter != 0 { // if we are starting on center cells, add half of space left, and halve it for before right cells
-				if i > 0 {
-					x += jump / 2
-					jump /= 2
-				}
+				x = math.Max(sx, r.Min().X+r.Size.W/2-wcenter/2)
 			} else { // we are starting with right cells, add rest of extra space
-				x += jump
+				x = math.Max(sx, r.Max().X-wright)
 			}
 			prevAlign = sc.Alignment
 		}
-		box := RectFromXYWH(x, r.Min().Y, sc.size.W, r.Size.H)
+		box := RectFromXYWH(x, r.Min().Y, sc.size.W+sc.Margin.W*2, r.Size.H)
 		// TODO: if sc.MaxSize.Y != 0 do something!!!
 		// TODO: MarginIsOffset
 		if i == len(scells)-1 {
 			box.SetMaxX(r.Max().X)
 		}
 		vr := box.AlignPro(sc.OriginalSize, sc.Alignment|Shrink, sc.Margin, sc.MaxSize, sc.MinSize)
-		zlog.Info(i, sc.OriginalSize, "align:", sc.Name, box, vr)
-		// zlog.Info(i, "align:", sc.Name, r, i, len(scells), box, sc.OriginalSize, sc.Alignment, "=", vr)
+		// zlog.Info(i, sc.inputIndex, sc.MinSize, "  align:", sc.Name, r, i, len(scells), box, sc.OriginalSize, sc.Alignment, "=", vr)
 		x = box.Max().X + spacing // was vr.Max!!!
 		if vertical {
 			vr = vr.Swapped()
-			// sc.Alignment = sc.Alignment.Swapped() // these are just to debug print:
-			// sc.Margin = sc.Margin.Swapped()
-			// sc.MinSize = sc.MinSize.Swapped()
-			// sc.MaxSize = sc.MaxSize.Swapped()
-			// sc.OriginalSize = sc.OriginalSize.Swapped()
 		}
 		outRects[sc.inputIndex] = vr
-		// zlog.Info("nstack:", r, sc.OriginalSize, sc.Name, box.Swapped(), vr, "max:", sc.MaxSize, "min:", sc.MinSize, sc.Alignment)
 	}
 }
 
-// StackCells stacks cells horizontally or vertically in rect, returning resulting slice of rects in same slice positions as input cells.
+// LayoutCellsInStack stacks cells horizontally or vertically in rect, returning resulting slice of rects in same slice positions as input cells.
 func LayoutCellsInStack(rect Rect, vertical bool, spacing float64, cells []LayoutCell) []Rect {
+	// zlog.Info("LayoutCellsInStack:", rect, vertical, len(cells))
 	r := rect
 	if vertical {
 		r = r.Swapped() // we do everything as if it's a horizontal stack, swapping coordinates before and after if not
 	}
-	scells, outRects := getStackCells(r, vertical, cells)
-	// zlog.Info("\nperformStacking2:", len(scells), rect, vertical)
-	added := addLeftoverSpaceToWidths(r, scells, vertical, spacing)
-	layoutRectsInBoxes(r, scells, vertical, spacing, added, outRects)
-
+	scells := getStackCells(vertical, cells)
+	outRects := make([]Rect, len(cells), len(cells))
+	fillFreeInOutRect(r, vertical, outRects, &scells)
+	addLeftoverSpaceToWidths(r, scells, vertical, spacing)
+	layoutRectsInBoxes(r, scells, vertical, spacing, outRects)
+	// zlog.Info("LayoutCellsInStack done", len(cells), len(outRects))
 	return outRects
+}
+
+func GetCellsStackSize(vertical bool, spacing float64, cells []LayoutCell) Size {
+	scells := getStackCells(vertical, cells)
+	w, _, _ := calcPreAddedTotalWidth(scells, spacing)
+	h := 0.0
+	for _, sc := range scells {
+		zfloat.Maximize(&h, sc.size.H+sc.Margin.H*2)
+	}
+	return Size{w, h}
 }

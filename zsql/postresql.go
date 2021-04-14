@@ -410,30 +410,20 @@ func SetupPostgres(userName, dbName string) (db *sql.DB, err error) {
 	return
 }
 
-/*
-func MakeConnection(connString string, print bool) *sql.DB {
-	//connString := os.Getenv("DATABASE_URL")
+var insertQueries = map[string]string{}
 
-	parsedStr, err := pq.ParseURL(connString) // this parses a url to the variable-format
-	if err == nil {
-		//		zlog.Info("parsedStr:", parsedStr, err)
-		connString = parsedStr
+func InsertIDStruct(rq RowQuerier, s interface{}, table string) (id int64, err error) {
+	key := table + "_insertStruct"
+	skip := []string{"id"}
+	query := insertQueries[key]
+	if query == "" {
+		params := FieldParametersFromStruct(s, skip, 1)
+		query = "INSERT INTO " + table + " (" + FieldNamesFromStruct(s, skip, "") + ") VALUES (" + params + ") RETURNING id"
+		insertQueries[key] = query
 	}
-	if print {
-		zlog.Info(zstr.EscGreen+"Opening DB: ", strings.SplitN(connString, "password", 2)[0], zstr.EscWhite)
-	}
-	dbConn, err := sql.Open("postgres", connString)
-	if err != nil {
-		panic(err)
-	}
-	dbConn.Exec("SET TIME ZONE 'UTC'")
-	return dbConn
+	vals := FieldValuesFromStruct(s, skip)
+	row := rq.QueryRow(query, vals...)
+	err = row.Scan(&id)
+	zlog.AssertNotError(err, insertQueries, vals)
+	return
 }
-
-func CloseConnection(dbConn *sql.DB) {
-	err := dbConn.Close()
-	if err != nil {
-		panic(err)
-	}
-}
-*/

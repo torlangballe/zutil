@@ -1,3 +1,5 @@
+// +build server
+
 package zsql
 
 import (
@@ -15,6 +17,10 @@ import (
 
 type Executer interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
+type RowQuerier interface {
+	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
 type SQLer interface { // this is used for routines that can take a sql.Db or sql.Tx
