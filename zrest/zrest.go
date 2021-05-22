@@ -184,6 +184,7 @@ func GetFloatVal(vals url.Values, name string, def float64) float64 {
 func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	pattern = AppURLPrefix + pattern
 	// zlog.Info("zrest.AddHandler:", pattern)
+	defer zlog.HandlePanic(false)
 	http.Handle(pattern, router) // do we need this????
 	return router.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
 		// timer := ztimer.StartIn(10, func() {

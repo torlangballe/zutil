@@ -1,4 +1,4 @@
-package uxml
+package zxml
 
 import (
 	"bytes"

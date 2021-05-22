@@ -152,7 +152,7 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 	// screenLock.Lock() -- for windows
 	// defer screenLock.Unlock()
 	winID, _, err := GetIDAndScaleForWindowTitle(title, app)
-	zlog.Info("GetImageForWindowTitle:", winID, err)
+	// zlog.Info("GetImageForWindowTitle:", winID, err)
 	if err != nil {
 		return nil, zlog.Error(err, "get id scale")
 	}
@@ -284,7 +284,7 @@ func createBitmapContext(width int, height int, data *C.uint32_t, bytesPerRow in
 func CGImageToGoImage(cgimage C.CGImageRef, crop zgeo.Rect) (image.Image, error) {
 	cw := int(crop.Size.W)
 	ch := int(crop.Size.H)
-	img := image.NewRGBA(image.Rect(0, 0, cw, ch))
+	img := image.NewNRGBA(image.Rect(0, 0, cw, ch))
 	if img == nil {
 		return nil, zlog.Error(nil, "NewRGBA returned nil", cw, ch)
 	}

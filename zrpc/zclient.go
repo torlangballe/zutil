@@ -31,9 +31,11 @@ const ClientIDKey = "ZRPC-Client-Id"
 var ToServerClient *Client
 var ToNativeClient *Client
 
-func NewClient() *Client {
+func NewClient(useTokenAuth bool) *Client {
 	c := &Client{}
-	c.ID = zstr.GenerateRandomHexBytes(8)
+	if !useTokenAuth {
+		c.ID = zstr.GenerateRandomHexBytes(8)
+	}
 	c.Port = 1200
 	c.ToAddress = "http://127.0.0.1"
 	return c
@@ -109,7 +111,6 @@ func (c *Client) CallRemote(name string, args interface{}, reply interface{}, ti
 	err = rpcjson.DecodeClientResponse(resp.Body, &reply)
 	if err != nil {
 		return zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
-		return err
 	}
 	return nil
 }

@@ -722,6 +722,7 @@ func SplitByNewLines(str string, skipEmpty bool) []string {
 	return SplitByAnyOf(str, []string{"\r\n", "\n", "\r"}, skipEmpty)
 }
 
+// TODO: remove, we can do range ourself
 func RangeStringLines(str string, skipEmpty bool, f func(s string) bool) {
 	for _, l := range SplitByNewLines(str, skipEmpty) {
 		if !f(l) {
@@ -977,6 +978,9 @@ func SplitIntoLengths(s string, length int) []string {
 }
 
 func SprintSpaced(items ...interface{}) string {
+	if len(items) == 0 {
+		return ""
+	}
 	str := fmt.Sprintln(items...)
 	return TruncatedCharsAtEnd(str, 1)
 }

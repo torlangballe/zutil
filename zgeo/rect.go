@@ -119,7 +119,7 @@ func MergeAll(rects []Rect) []Rect {
 			for j := i + 1; j < len(rold); j++ {
 				if r.Overlaps(rold[j].ExpandedD(4)) {
 					var n = rects[i]
-					n.UnionWith(rold[j])
+					n = n.UnionedWith(rold[j])
 					rnew = append(rnew, n)
 					merged = true
 					used = true
@@ -371,7 +371,7 @@ func (r Rect) Copy() Rect {
 	return r
 }
 
-func (r *Rect) UnionWith(rect Rect) {
+func (r Rect) UnionedWith(rect Rect) Rect {
 	if !rect.IsNull() {
 		if r.IsNull() {
 			r.Pos = rect.Pos.Copy()
@@ -395,6 +395,7 @@ func (r *Rect) UnionWith(rect Rect) {
 			}
 		}
 	}
+	return r
 }
 
 func (r *Rect) UnionWithPos(pos Pos) {

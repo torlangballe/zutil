@@ -15,11 +15,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
-
-	"golang.org/x/sys/unix"
 
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztimer"
@@ -53,16 +50,24 @@ func Exists(fpath string) bool {
 	return err == nil
 }
 
-func SetModified(fpath string, t time.Time) error {
-	err := os.Chtimes(fpath, t, t)
-	return err
-}
-
 func NotExist(fpath string) bool { // not same as !DoesFileExist...
 	if _, err := os.Stat(fpath); os.IsNotExist(err) {
 		return true
 	}
 	return false
+}
+
+func MakeDirAllIfNotExists(dir string) error {
+	err := os.MkdirAll(dir, os.ModeDir|0755)
+	if err == nil || os.IsExist(err) {
+		return nil
+	}
+	return err
+}
+
+func SetModified(fpath string, t time.Time) error {
+	err := os.Chtimes(fpath, t, t)
+	return err
 }
 
 func IsFolder(fpath string) bool {
@@ -145,12 +150,12 @@ func CalcMD5(filepath string) (data []byte, err error) {
 }
 
 func CopyFile(dest, source string) (err error) {
-	if runtime.GOOS == "darwin" {
-		err = unix.Clonefile(source, dest, 0)
-		if err == nil {
-			return nil
-		}
-	}
+	// if runtime.GOOS == "darwin" {
+	// 	err = unix.Clonefile(source, dest, 0)
+	// 	if err == nil {
+	// 		return nil
+	// 	}
+	// }
 	in, err := os.Open(source)
 	if err != nil {
 		return err
@@ -234,8 +239,11 @@ func Walk(folder, wildcards string, got func(fpath string, info os.FileInfo) err
 		wcards = strings.Split(wildcards, "\t")
 	}
 	filepath.Walk(folder, func(fpath string, info os.FileInfo, err error) error {
-		// fmt.Println("zFile:", fpath, len(wcards), err)
+		// fmt.Println("zFile walk:", fpath, len(wcards), err)
 		if err == nil {
+			if info.IsDir() {
+				return got(fpath, info)
+			}
 			matched := true
 			if len(wcards) > 0 {
 				_, name := filepath.Split(fpath)
@@ -249,14 +257,42 @@ func Walk(folder, wildcards string, got func(fpath string, info os.FileInfo) err
 				}
 			}
 			if matched {
-				e := got(fpath, info)
-				if e != nil {
-					return e
-				}
+				return got(fpath, info)
 			}
 		}
 		return nil
 	})
+}
+
+// GetFilesFromPath returns a list of names of files inside path. If path has a wildcard
+func GetFilesFromPath(path string, addDirs bool) (files []string, err error) {
+	var wild string
+	dir, name := filepath.Split(path)
+	if dir != "" && NotExist(dir) {
+		return files, os.ErrNotExist
+	}
+	if dir == "" {
+		dir = "."
+	}
+	if strings.Contains(name, "*") {
+		wild = name
+	} else {
+		dir = path
+	}
+	Walk(dir, wild, func(fpath string, info os.FileInfo) error {
+		if info.IsDir() {
+			if fpath == dir {
+				return nil
+			}
+			if addDirs {
+				files = append(files, fpath+"/")
+			}
+			return filepath.SkipDir
+		}
+		files = append(files, fpath)
+		return nil
+	})
+	return files, nil
 }
 
 func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) {

@@ -39,11 +39,12 @@ int getWindowCountForPID(long pid) {
 int canRecordScreen() {
     if (@available(macOS 10.15, *)) {
         CGDisplayStreamRef stream = CGDisplayStreamCreate(CGMainDisplayID(), 1, 1, kCVPixelFormatType_32BGRA, nil, ^(CGDisplayStreamFrameStatus status, uint64_t displayTime, IOSurfaceRef frameSurface, CGDisplayStreamUpdateRef updateRef) {
-        });
+        });        
         int can = 0;
         if (stream != NULL) {
             can = 1;
         }
+        NSLog(@"NSCanRecord: %d", can);
         if (stream) {
             CFRelease(stream);
         }

@@ -5,6 +5,7 @@ package ztimer
 import (
 	"time"
 
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
 )
 
@@ -33,16 +34,20 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	r.Stop()
 	r.ticker = time.NewTicker(ztime.SecondsDur(secs))
 	go func() {
-		// defer zlog.LogRecoverAndExit()
+		defer zlog.HandlePanic(true)
 		if now {
 			if !perform() {
 				return
 			}
 		}
 		t := r.ticker
-		for range t.C {
+		ch := t.C //
+		for range ch {
 			if !perform() {
 				t.Stop()
+				break
+			}
+			if t == nil {
 				break
 			}
 		}

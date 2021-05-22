@@ -65,6 +65,10 @@ func (p *Path) IsEmpty() bool {
 	return len(p.nodes) == 0
 }
 
+func (p *Path) NodeCount() int {
+	return len(p.nodes)
+}
+
 func (p *Path) Rect() Rect {
 	if p.IsEmpty() {
 		return Rect{}

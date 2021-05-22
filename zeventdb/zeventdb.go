@@ -57,7 +57,7 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 	}
 	var query string
 	query, db.FieldInfos = zsql.CreateSQLite3TableCreateStatementFromStruct(istruct, tableName)
-	zlog.Info("ZEDB CREATE:", query)
+	// zlog.Info("ZEDB CREATE:", query)
 	_, err = db.DB.Exec(query)
 	if err != nil {
 		if errors.Is(err, sqlite.ErrCorrupt) || err.Error() == "database disk image is malformed" {
@@ -93,8 +93,10 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 			if err != nil {
 				zlog.Error(err, "query", query, at)
 			} else {
-				count, _ := r.RowsAffected()
-				zlog.Info("deleted", count, "events")
+				if !zlog.IsInTests {
+					count, _ := r.RowsAffected()
+					zlog.Info("deleted", count, "events")
+				}
 			}
 			return true
 		})
@@ -225,7 +227,6 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	if count != 0 {
 		query += fmt.Sprint(" LIMIT ", count)
 	}
-	now := time.Now()
 	db.lock.RLock()
 	defer db.lock.RUnlock()
 	rows, err := db.DB.Query(query, values...)
@@ -243,7 +244,18 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 		err = rows.Scan(resultPointers...)
 		sliceVal = reflect.Append(sliceVal, reflect.Indirect(resultStructVal))
 	}
-	zlog.Info("eventsdb.Got:", time.Since(now), sliceVal.Len(), query, values)
+	// zlog.Info("eventsdb.Got:", time.Since(now), sliceVal.Len(), query, values)
 	reflect.Indirect(slicePtrVal).Set(sliceVal)
+	return nil
+}
+
+func (db *Database) DeleteEvent(id int64) error {
+	query := "DELETE FROM events WHERE id=$1"
+	db.lock.Lock()
+	defer db.lock.Unlock()
+	_, err := db.DB.Exec(query, id)
+	if err != nil {
+		return zlog.Error(err, "delete", query, id)
+	}
 	return nil
 }

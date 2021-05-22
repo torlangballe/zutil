@@ -30,12 +30,22 @@ const (
 )
 
 var (
-	ErrorPriority  = Verbose
-	OutputFilePath = ""
-	outputHooks    = map[string]func(s string){}
-	outFile        *os.File
-	UseColor       = false
+	ErrorPriority = Verbose
+	outputHooks   = map[string]func(s string){}
+	UseColor      = false
+	PanicHandler  func(reason string, exit bool)
+	IsInTests     bool
 )
+
+func init() {
+	IsInTests = (strings.HasSuffix(os.Args[0], ".test"))
+	PanicHandler = func(reason string, exit bool) {
+		Info("panic handler:", reason)
+		if exit {
+			panic(reason)
+		}
+	}
+}
 
 func Error(err error, parts ...interface{}) error {
 	return baseLog(err, ErrorLevel, 4, parts...)
@@ -156,7 +166,6 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	err = NewError(parts...)
 	fmt.Println(finfo + col + err.Error() + endCol)
 	str := finfo + err.Error() + "\n"
-	WriteToTheLogFile(str)
 
 	hookingLock.Lock()
 	if !hooking {
@@ -172,21 +181,6 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		os.Exit(-1)
 	}
 	return err
-}
-
-func WriteToTheLogFile(str string) {
-	if OutputFilePath != "" && outFile == nil {
-		var ferr error
-		fp := expandTildeInFilepath(OutputFilePath)
-		outFile, ferr = os.Create(fp)
-		if ferr != nil {
-			fmt.Println("Error creating output file for zlog:", ferr)
-			OutputFilePath = ""
-		}
-	}
-	if outFile != nil {
-		outFile.WriteString(str)
-	}
 }
 
 func GetCallingFunctionInfo(pos int) (function, file string, line int) {
@@ -340,4 +334,54 @@ func SetProfilingHandle(r *mux.Router) {
 	// r.HandleFunc("/debug/pprof/heap", pprof.Index)
 	//	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	//	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
+}
+
+func HandlePanic(exit bool) error {
+	if PanicHandler == nil {
+		return nil
+	}
+	if runtime.GOOS == "js" {
+		return nil
+	}
+	r := recover()
+	if r != nil {
+		Info("\n🟥HandlePanic:", r)
+		str := fmt.Sprint(r)
+		PanicHandler(str, exit)
+		e, _ := r.(error)
+		if e != nil {
+			return e
+		}
+		return errors.New(str)
+	}
+	return nil
+}
+
+var debugLines []string
+var debugStarts []time.Time
+
+func PushTimingLog() {
+	debugStarts = append(debugStarts, time.Now())
+	debugLines = append(debugLines, "")
+}
+
+func PrintTimingLog(parts ...interface{}) {
+	d := len(debugLines) - 1
+	parts = append(parts, ":", time.Since(debugStarts[d]))
+	str := zstr.SprintSpaced(parts...)
+	debugLines[d] += str + "\n"
+}
+
+func PopPrintTimingLog() {
+	str := strings.TrimSpace(debugLines[len(debugLines)-1])
+	RemoveTimingLog()
+	for _, s := range strings.Split(str, "\n") {
+		Info(s + "\n")
+	}
+}
+
+func RemoveTimingLog() {
+	d := len(debugLines) - 1
+	debugLines = debugLines[:d]
+	debugStarts = debugStarts[:d]
 }

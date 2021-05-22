@@ -91,7 +91,7 @@ type Parameters struct {
 func MakeParameters() Parameters {
 	return Parameters{
 		Headers:     map[string]string{},
-		TimeoutSecs: -1,
+		TimeoutSecs: 25,
 	}
 }
 
@@ -149,14 +149,14 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (resp *
 	return processResponse(surl, resp, params.PrintBody, receive)
 }
 
-var normalClient = &http.Client{
-	Timeout: 15 * time.Second,
-	// Transport: &http.Transport{
-	// 	MaxIdleConnsPerHost: 100,
-	// },
-}
+// var normalClient = &http.Client{
+// 	Timeout: 15 * time.Second,
+// 	// Transport: &http.Transport{
+// 	// 	MaxIdleConnsPerHost: 100,
+// 	// },
+// }
 
-var noVerifyClient = &http.Client{
+var NoVerifyClient = &http.Client{
 	Timeout: 15 * time.Second,
 	Transport: &http.Transport{
 		//		MaxIdleConnsPerHost: 100,
@@ -171,7 +171,7 @@ var defSkipClient *http.Client
 
 func makeClient(skipVerify bool) *http.Client {
 	return &http.Client{
-		Timeout: 25 * time.Second,
+		Timeout: 15 * time.Second,
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 5,
 			TLSClientConfig: &tls.Config{
@@ -196,7 +196,6 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 	} else {
 		client = defClient
 	}
-	zlog.Assert(params.TimeoutSecs == -1, params.TimeoutSecs) // check if we actually do this...
 	// we need to remember a new client for each timeout?
 	if params.TimeoutSecs != -1 {
 		c := *client

@@ -1,6 +1,9 @@
 package zdict
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -190,6 +193,27 @@ func (d Dict) Dump() {
 	for k, v := range d {
 		fmt.Print(k, ": '", v, "' ", reflect.ValueOf(v).Kind(), reflect.ValueOf(v).Type(), "\n")
 	}
+}
+
+func (d Dict) Value() (driver.Value, error) {
+	// zlog.Info("JSONStringInterfaceMap Value")
+	if d == nil {
+		return nil, nil
+	}
+	return json.Marshal(d)
+}
+
+func (d *Dict) Scan(val interface{}) error {
+	//	zlog.Info("JSONStringInterfaceMap scan")
+	if val == nil {
+		*d = Dict{}
+		return nil
+	}
+	data, ok := val.([]byte)
+	if !ok {
+		return errors.New("zdict.Dict Scan unsupported data type")
+	}
+	return json.Unmarshal(data, d)
 }
 
 func (d Items) FindName(name string) *Item {

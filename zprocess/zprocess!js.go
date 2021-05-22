@@ -12,11 +12,17 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/mitchellh/go-ps"
 	"github.com/shirou/gopsutil/process"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
 )
+
+func RunBashCommand(command string, timeoutSecs float64) (string, error) {
+	return RunCommand("/bin/bash", timeoutSecs, []string{"-c", command}...)
+}
 
 func RunCommand(command string, timeoutSecs float64, args ...string) (string, error) {
 	var cmd *exec.Cmd
@@ -190,4 +196,20 @@ func SetMaxOpenFileConnections(max int) {
 	if err != nil {
 		zlog.Error(err, str)
 	}
+	zlog.Info("set ulimit:", max)
+}
+
+func SetNumberOfOpenFiles(n int) {
+	var rlimit unix.Rlimit
+
+	err := unix.Getrlimit(unix.RLIMIT_NOFILE, &rlimit)
+	zlog.OnError(err)
+	zlog.Info("RLIMIT:", rlimit.Cur, rlimit.Max)
+	if n <= 0 {
+		rlimit.Cur = rlimit.Max
+	} else if uint64(n) < rlimit.Max {
+		rlimit.Cur = uint64(n)
+	}
+	err = unix.Setrlimit(unix.RLIMIT_NOFILE, &rlimit)
+	zlog.OnError(err)
 }

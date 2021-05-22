@@ -1,22 +1,24 @@
+// +build server
+
 package zsql
 
 import (
 	"database/sql"
 	"database/sql/driver"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zfile"
+
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zprocess"
+	"github.com/torlangballe/zutil/ztime"
+	"github.com/torlangballe/zutil/ztimer"
 )
-
-// type RawString string
-
-// var ZeroTimeString = "0001-01-01 00:00:00"
 
 func ReplaceDollarArguments(squery string, args ...interface{}) string {
 	var to string
@@ -46,8 +48,6 @@ func ReplaceDollarArguments(squery string, args ...interface{}) string {
 // 	return
 // }
 
-type JSONStringArrayPtr []string
-
 func (s *JSONStringArrayPtr) Value() (driver.Value, error) {
 	if s == nil {
 		return nil, nil
@@ -70,8 +70,6 @@ func (s *JSONStringArrayPtr) Join(sep string) string {
 	return strings.Join(*s, sep)
 }
 
-type JSONStringArray []string
-
 func (s JSONStringArray) Value() (driver.Value, error) {
 	if s == nil {
 		return nil, nil
@@ -89,7 +87,7 @@ func (s *JSONStringArray) Scan(val interface{}) error {
 	return json.Unmarshal(data, s)
 }
 
-type JSONStringMapForPtr map[string]string
+type JSONStringMapForPtr map[string]string // we might not use this in future, move to JSONer?
 
 func (s *JSONStringMapForPtr) GetFromLangKeyOrEng(lang, def string) string {
 	if s == nil {
@@ -160,6 +158,8 @@ func (s *JSONStringMap) Scan(val interface{}) error {
 	}
 	return json.Unmarshal(data, s)
 }
+
+/* see zgeo.Pos, zgeo.
 
 // GisGeoPoint maps against Postgis geographical Point
 type GisGeoPoint struct {
@@ -264,7 +264,6 @@ func (p *GisGeoPoint) Value() (driver.Value, error) {
 	return []byte(str), nil
 }
 
-/*
 // GisGeoPoint maps against Postgis geographical Point
 type GisGeoPolygon [][]ugeo.FPoint
 
@@ -331,7 +330,6 @@ func (p *GisGeoPolygon) Value() (driver.Value, error) {
 	//	zlog.Info("GisGeoPolygon.Value:", string(data))
 	return data, nil
 }
-*/
 
 func MakeNDollarParametersInBrackets(n int, start int) string {
 	str := "("
@@ -343,55 +341,12 @@ func MakeNDollarParametersInBrackets(n int, start int) string {
 	}
 	return str + ")"
 }
-
-/*
-func printRows(writer io.Writer, rows *sql.Rows, limitWidth bool) {
-	quit := false
-	cols, _ := rows.Columns()
-	header := "" // zstr.EscGreen)
-	for i, c := range cols {
-		if i != 0 {
-			header += "\t"
-		}
-		header += c
-	}
-	fmt.Fprintln(writer, header)
-	maxWidth := 200 / len(cols)
-	for rows.Next() && !quit {
-		var values []interface{}
-		var generic = reflect.TypeOf(values).Elem()
-		for i := 0; i < len(cols); i++ {
-			values = append(values, reflect.New(generic).Interface())
-		}
-		rows.Scan(values...)
-		for i := 0; i < len(cols); i++ {
-			var raw_value = *(values[i].(*interface{}))
-			switch reflect.TypeOf(raw_value) {
-			case reflect.TypeOf([]byte{}):
-				str := string(raw_value.([]uint8))
-				if limitWidth {
-					str = zstr.Head(str, maxWidth)
-				}
-				fmt.Fprintf(writer, "%s\t", str)
-			case reflect.TypeOf(time.Time{}):
-				if raw_value.(time.Time).IsZero() {
-					fmt.Fprint(writer, "0\t")
-				} else {
-					fmt.Fprintf(writer, "%s\t", raw_value.(time.Time).Local().Format("2006-01-02T15:04:05"))
-				}
-			default:
-				fmt.Fprintf(writer, "%v\t", raw_value)
-			}
-		}
-		fmt.Fprintln(writer, "")
-	}
-}
 */
 
-func SetupPostgres(userName, dbName string) (db *sql.DB, err error) {
+func SetupPostgres(userName, dbName, address string) (db *sql.DB, err error) {
 	pqStr := fmt.Sprintf(
 		"host=%s port=%d sslmode=%s dbname=%s user=%s", //  password=%s
-		"127.0.0.1",
+		address,
 		5432,
 		"disable",
 		dbName,
@@ -410,20 +365,17 @@ func SetupPostgres(userName, dbName string) (db *sql.DB, err error) {
 	return
 }
 
-var insertQueries = map[string]string{}
-
-func InsertIDStruct(rq RowQuerier, s interface{}, table string) (id int64, err error) {
-	key := table + "_insertStruct"
-	skip := []string{"id"}
-	query := insertQueries[key]
-	if query == "" {
-		params := FieldParametersFromStruct(s, skip, 1)
-		query = "INSERT INTO " + table + " (" + FieldNamesFromStruct(s, skip, "") + ") VALUES (" + params + ") RETURNING id"
-		insertQueries[key] = query
-	}
-	vals := FieldValuesFromStruct(s, skip)
-	row := rq.QueryRow(query, vals...)
-	err = row.Scan(&id)
-	zlog.AssertNotError(err, insertQueries, vals)
-	return
+func PeriodicDump() {
+	folder := "dumps/"
+	ztimer.RepeatIn(60, func() bool {
+		file := folder + "latest.db"
+		if zfile.Exists(file) && time.Since(zfile.Modified(file)) > ztime.Day {
+			zfile.MakeDirAllIfNotExists(folder)
+			timeFile := time.Now().Format(ztime.Iso8601DateFormat) + ".db"
+			os.Rename(file, timeFile)
+			zlog.Info("Dump DB")
+			zprocess.RunBashCommand("pg_dump etheros > "+file, 0)
+		}
+		return true
+	})
 }

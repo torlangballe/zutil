@@ -3,11 +3,11 @@ package zvnc
 import (
 	"context"
 	"fmt"
+	"image"
 	"net"
 	"time"
 
 	vnc "github.com/amitbet/vnc2video"
-	"github.com/torlangballe/zui"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztimer"
 )
@@ -20,7 +20,7 @@ func (c *Client) Close() {
 	c.client.Close()
 }
 
-func Connect(address, password string, updateSecs float64, got func(i *zui.Image, err error)) (*Client, error) {
+func Connect(address, password string, updateSecs float64, got func(i image.Image, err error)) (*Client, error) {
 	nc, err := net.DialTimeout("tcp", address, 25*time.Second)
 	if err != nil {
 		return nil, zlog.Error(err, "dial")
@@ -83,8 +83,7 @@ func Connect(address, password string, updateSecs float64, got func(i *zui.Image
 					// reqPerSec := float64(frameBufferReq) / secsPassed
 					// fmt.Println("New screen!", screenImage.Bounds())
 					if got != nil {
-						image := zui.ImageFromGo(screenImage)
-						got(image, nil)
+						got(screenImage, nil)
 					}
 					// zlog.Info("Start new vnc fetch", updateSecs)
 					ztimer.StartIn(updateSecs, func() {

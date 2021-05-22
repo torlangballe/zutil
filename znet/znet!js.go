@@ -17,7 +17,6 @@ import (
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 const osxCmd = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
@@ -249,10 +248,10 @@ func copyIO(src, dest net.Conn) {
 	io.Copy(src, dest)
 }
 
-var certManager = autocert.Manager{
-	Prompt: autocert.AcceptTOS,
-	Cache:  autocert.DirCache("certs"),
-}
+// var certManager = autocert.Manager{
+// 	Prompt: autocert.AcceptTOS,
+// 	Cache:  autocert.DirCache("certs"),
+// }
 
 func ShowGenerateTLSCertificatesCommands(certName string) {
 	os.Mkdir("certs", 0775|os.ModeDir)
@@ -265,16 +264,16 @@ func ShowGenerateTLSCertificatesCommands(certName string) {
 	zlog.Info("🟨openssl req -new -x509 -sha256 -key certs/" + certName + ".key -out certs/" + certName + ".crt -days 3650")
 }
 
-func ServeHTTPS(port int, certName string, handler http.Handler) {
+func ServeHTTPS(port int, certSuffix string, handler http.Handler) error {
 	// https://ap.www.namecheap.com/Domains/DomainControlPanel/etheros.online/advancedns
 	// https://github.com/denji/golang-tls
 	if port == 0 {
 		port = 443
 	}
 	address := fmt.Sprintf(":%d", port)
-	err := http.ListenAndServeTLS(address, "certs/"+certName+".crt", "certs/"+certName+".key", handler)
+	err := http.ListenAndServeTLS(address, certSuffix+".crt", certSuffix+".key", handler)
 	if err != nil {
-		zlog.Error(err, "serve https listen err:", address)
+		zlog.Error(err, "serve https listen err:", address, certSuffix)
 	}
-	zlog.Info("Here")
+	return err
 }

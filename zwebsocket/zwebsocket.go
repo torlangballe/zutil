@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sasha-s/go-deadlock"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/ztimer"
 )
 
@@ -58,9 +59,11 @@ func handleSocketRequest(w http.ResponseWriter, req *http.Request, ping bool, se
 	c := &connection{}
 	conn, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
+		zlog.Error(err, "upgrade")
 		got(server, "", nil, false, zlog.Error(err, "upgrade"))
 		return
 	}
+	// fmt.Println("ws.handle2:", req.RemoteAddr)
 	conn.SetPongHandler(func(string) error {
 		// zlog.Info("ws.Pong!")
 		conn.SetReadDeadline(time.Now().Add(15))
@@ -70,6 +73,7 @@ func handleSocketRequest(w http.ResponseWriter, req *http.Request, ping bool, se
 	defer conn.Close()
 	for {
 		mt, message, err := conn.ReadMessage()
+		// fmt.Println("ws.handle3:", err, message, mt)
 		if err != nil {
 			got(server, id, nil, true, zlog.Error(err, "read message")) // we close on error, it might be only way to exit
 			return
@@ -108,15 +112,23 @@ func handleSocketRequest(w http.ResponseWriter, req *http.Request, ping bool, se
 	}
 }
 
-func NewServer(prefix string, port int, ping bool, got func(s *Server, id string, data []byte, close bool, err error)) *Server { // "/ws"
+func NewServer(prefix, certFilesSuffix string, port int, ping bool, got func(s *Server, id string, data []byte, close bool, err error)) *Server { // "/ws"
 	server := &Server{}
 	server.connections = map[string]*connection{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+
 	http.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
+		zlog.Info("HANDLE WEBSOCK", prefix)
 		handleSocketRequest(w, r, ping, server, got)
 	})
+
 	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+		var err error
+		if certFilesSuffix != "" {
+			err = znet.ServeHTTPS(port, certFilesSuffix, nil)
+		} else {
+			err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+		}
 		if err != nil {
 			got(server, "", nil, false, zlog.Error(err, "listen"))
 		}

@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/torlangballe/zutil/zhttp"
+
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc"
 	rpcjson "github.com/gorilla/rpc/json"
@@ -32,7 +34,7 @@ var (
 	updatedResourcesMutex        sync.Mutex
 )
 
-func InitServer(router *mux.Router, port int, httpsAddress string) error {
+func InitServer(router *mux.Router, port int, certFilesSuffix string) error {
 	//	go http.ListenAndServeTLS(fmt.Sprintf(":%d", ServerPort), "https/server.crt", "https/server.key", router)
 	if port == 0 {
 		port = 1200
@@ -40,8 +42,8 @@ func InitServer(router *mux.Router, port int, httpsAddress string) error {
 	ServerPort = port
 	server = rpc.NewServer()
 	registeredOwners = map[string]bool{}
-	if httpsAddress != "" {
-		go znet.ServeHTTPS(ServerPort, httpsAddress, router)
+	if certFilesSuffix != "" {
+		go znet.ServeHTTPS(ServerPort, certFilesSuffix, router)
 	} else {
 		go http.ListenAndServe(fmt.Sprintf(":%d", ServerPort), router)
 	}
@@ -66,6 +68,14 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "OPTIONS" {
 		return
 	}
+	defer zlog.HandlePanic(false)
+	// defer func() {
+	// 	zlog.Info("Defer")
+	// 	err := zlog.HandlePanic(false)
+	// 	if err != nil {
+	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	}
+	// }()
 	server.ServeHTTP(w, req)
 }
 
@@ -129,6 +139,13 @@ func (c *RPCCalls) GetUpdatedResources(req *http.Request, args *Any, reply *[]st
 	updatedResourcesMutex.Unlock()
 	// zlog.Info("GetUpdatedResources Got", *reply)
 	return nil
+}
+
+// GetURL is a convenience function to get the contents of a url via the server.
+func (c *RPCCalls) GetURL(req *http.Request, surl *string, reply *[]byte) error {
+	params := zhttp.MakeParameters()
+	_, err := zhttp.Get(*surl, params, reply)
+	return err
 }
 
 var Calls = new(RPCCalls)

@@ -183,23 +183,24 @@ func rawFromVector(vector Pos) uint64 {
 	if angle < 0 {
 		angle += 360
 	}
-	if angle < 45*0.5 {
+	switch {
+	case angle < 45*0.5:
 		raw = Right
-	} else if angle < 45*1.5 {
+	case angle < 45*1.5:
 		raw = Right | Top
-	} else if angle < 45*2.5 {
+	case angle < 45*2.5:
 		raw = Top
-	} else if angle < 45*3.5 {
+	case angle < 45*3.5:
 		raw = Top | Left
-	} else if angle < 45*4.5 {
+	case angle < 45*4.5:
 		raw = Left
-	} else if angle < 45*5.5 {
+	case angle < 45*5.5:
 		raw = Left | Bottom
-	} else if angle < 45*6.5 {
+	case angle < 45*6.5:
 		raw = Bottom
-	} else if angle < 45*7.5 {
+	case angle < 45*7.5:
 		raw = Bottom | Right
-	} else {
+	default:
 		raw = Right
 	}
 	return uint64(raw)
