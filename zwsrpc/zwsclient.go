@@ -8,7 +8,6 @@ import (
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
-
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
 )
@@ -57,7 +56,7 @@ func NewClients(ipAddress, id string, port int, send, receive **Client) (err err
 }
 
 func (c *Client) CallRPC(name string, arg interface{}, result interface{}) error {
-//	zlog.Info("CallRPC:", name)
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -75,6 +74,7 @@ func (c *Client) CallRPC(name string, arg interface{}, result interface{}) error
 		zlog.Error(err, "read")
 		return fmt.Errorf("%w: %v", TransportError, err)
 	}
+	zlog.Info("CallRPC:", name, time.Since(start))
 	if rp.Error != "" {
 		return errors.New(rp.Error)
 	}

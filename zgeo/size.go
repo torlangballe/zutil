@@ -274,3 +274,13 @@ func (s *Sizes) IndexOf(size Size) int {
 func (s Size) Swapped() Size {
 	return Size{s.H, s.W}
 }
+
+type ISize struct {
+	W int `json:"w"`
+	H int `json:"h"`
+}
+
+type FSize struct {
+	W float32 `json:"w"`
+	H float32 `json:"h"`
+}
