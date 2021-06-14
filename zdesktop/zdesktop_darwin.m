@@ -2,15 +2,32 @@
 #import <CoreVideo/CoreVideo.h>
 #import <AppKit/AppKit.h>
 
+#include <string.h>
+
 BOOL forceScreenRecording = true;
 
 struct WinInfo {
     long wid;
     long pid;
     NSString *title;
-    NSDictionary *boundsDict;
+    CGRect rect;
     int scale;
 };
+
+NSString *removeNonASCIIAndTruncate(NSString *str) {
+    NSMutableString *s = [NSMutableString stringWithCapacity:str.length];
+    for (NSUInteger i = 0; i < str.length; ++i) {
+        unichar c = [str characterAtIndex:i];
+        if (c >= 32 && c <= 127) {
+            [s appendFormat:@"%C", c];
+        }
+    }
+    NSRange range = [s rangeOfString:@" - "];
+    if (range.length != 0) {
+        s = (NSMutableString *)[s substringToIndex:range.location];
+    }
+    return s;
+}
 
 int canControlComputer(int prompt) {
     NSDictionary *options = @{(id)kAXTrustedCheckOptionPrompt: @NO};
@@ -44,41 +61,13 @@ int canRecordScreen() {
         if (stream != NULL) {
             can = 1;
         }
-        NSLog(@"NSCanRecord: %d", can);
+        // NSLog(@"NSCanRecord: %d", can);
         if (stream) {
             CFRelease(stream);
         }
         return can;
     } 
     return 1;
-}
-
-const char *getWindowIDs(void *data, BOOL debug, BOOL(*gotWin)(void *data, struct WinInfo w)) {
-    if (forceScreenRecording) {
-        if (!canRecordScreen()) {
-            NSLog(@"Can't record screen");
-            return "can't record screen";
-        }
-        forceScreenRecording = false;
-    }
-    CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
-    for (NSMutableDictionary* entry in (__bridge NSArray*)windowList)
-    {
-        struct WinInfo w;
-        w.title = [entry objectForKey:(id)kCGWindowName];
-        if (debug) {
-            NSLog(@"Win: %@\n", w.title);
-        }
-        w.pid = (long)[[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
-        w.wid = (long)[[entry objectForKey:(id)kCGWindowNumber] integerValue];
-        w.boundsDict = [entry objectForKey:(id)kCGWindowBounds];
-        if (!gotWin(data, w)) {
-            CFRelease(windowList);
-            return "";
-        }
-    }
-    CFRelease(windowList);
-    return "window not found";
 }
 
 NSScreen *getBestScreenForBounds(CGRect bounds) {
@@ -101,29 +90,61 @@ NSScreen *getBestScreenForBounds(CGRect bounds) {
     return bestScreen;
 }
 
-BOOL findTitle(void *data, struct WinInfo w) {
-    struct WinInfo *find = (struct WinInfo *)data;
-    CGRect bounds;
-    if (w.pid == find->pid && [w.title compare: find->title] == NSOrderedSame) {
-        find->wid = w.wid;
-        bounds.origin.x = (CGFloat)[(NSNumber *)w.boundsDict[@"X"] floatValue];
-        bounds.origin.y = (CGFloat)[(NSNumber *)w.boundsDict[@"Y"] floatValue];
-        bounds.size.width = (CGFloat)[(NSNumber *)w.boundsDict[@"Width"] floatValue];
-        bounds.size.height = (CGFloat)[(NSNumber *)w.boundsDict[@"Height"] floatValue];
-        find->scale = getBestScreenForBounds(bounds).backingScaleFactor;
-        // NSLog(@"scale:%d bounds: %f,%f %fx%f\n", find->scale, bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height);
-        return NO;
+const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct WinInfo *find, struct WinInfo w)) {
+    if (forceScreenRecording) {
+        if (!canRecordScreen()) {
+            NSLog(@"Can't record screen");
+            return "can't record screen";
+        }
+        forceScreenRecording = false;
     }
-    return YES;
+    CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
+    for (NSMutableDictionary* entry in (__bridge NSArray*)windowList)
+    {
+        struct WinInfo w;
+        w.title = [entry objectForKey:(id)kCGWindowName];
+        w.title = removeNonASCIIAndTruncate(w.title);
+        if (debug) {
+            NSLog(@"Win: %@\n", w.title);
+        }
+        w.pid = (long)[[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
+        w.wid = (long)[[entry objectForKey:(id)kCGWindowNumber] integerValue];
+
+        NSDictionary *dict = [entry objectForKey:(id)kCGWindowBounds];
+        w.rect.origin.x = (CGFloat)[(NSNumber *)dict[@"X"] floatValue];
+        w.rect.origin.y = (CGFloat)[(NSNumber *)dict[@"Y"] floatValue];
+        w.rect.size.width = (CGFloat)[(NSNumber *)dict[@"Width"] floatValue];
+        w.rect.size.height = (CGFloat)[(NSNumber *)dict[@"Height"] floatValue];
+        // NSLog(@"Size: %@ %g %g %g %g", w.title, (float)w.rect.origin.x, (float)w.rect.origin.y, (float)w.rect.size.width, (float)w.rect.size.height);
+        if (gotWin(find, w)) {
+            CFRelease(windowList);
+            return "";
+        }
+    }
+    CFRelease(windowList);
+    return "window not found";
+}
+
+BOOL findTitle(struct WinInfo *find, struct WinInfo w) {
+    if ([w.title compare: find->title] == NSOrderedSame) {
+        *find = w;
+        // NSLog(@"scale:%d bounds: %f,%f %fx%f\n", find->scale, bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height);
+        return YES;
+    }
+    return NO;
 }
 
 typedef struct WinIDInfo {
     long       winID;
     int        scale;
     const char *err;
+    int        x;
+    int        y;
+    int        w;
+    int        h;
 } WinIDInfo;
 
-WinIDInfo WindowGetIDAndScaleForTitle(const char *title, long pid) {
+WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title, long pid) {
     // NSLog(@"WindowGetIDAndScaleForTitle1\n");
     struct WinInfo find;
     struct WinIDInfo got;    
@@ -131,36 +152,21 @@ WinIDInfo WindowGetIDAndScaleForTitle(const char *title, long pid) {
     find.scale = 0;
     find.title = [NSString stringWithUTF8String: title];
     find.pid = pid;
-    // NSLog(@"WindowGetIDAndScaleForTitle2\n");
     got.err = getWindowIDs(&find, NO, findTitle);
-    // NSLog(@"WindowGetIDAndScaleForTitle3: %p\n", got.err);
-    // if (strlen(got.err) != 0) {
-    //     getWindowIDs(&find, YES, findTitle);
-    // }
+    if (got.err != nil && strlen(got.err) > 0) {
+        NSLog(@"getwin err: %s\n", got.err);
+        return got;
+    }
+    // NSLog(@"got win: %@ %g %g %g %g", find.title, (float)find.rect.origin.x, (float)find.rect.origin.y, (float)find.rect.size.width, (float)find.rect.size.height);
+    got.scale = getBestScreenForBounds(find.rect).backingScaleFactor;
     got.winID = find.wid;
-    got.scale = find.scale;
+    got.x = find.rect.origin.x;
+    got.y = find.rect.origin.y;
+    got.w = find.rect.size.width;
+    got.h = find.rect.size.height;
     CFRelease(find.title);
     return got;
 }
-
-// NSArray *getRunAppsForName(const char *app) {
-//     NSArray *apps = [[NSWorkspace sharedWorkspace] runningApplications];
-//     NSMutableArray *mine = [NSMutableArray arrayWithCapacity: 1];
-//     NSString *nsapp = [NSString stringWithUTF8String: app];
-//     for (NSRunningApplication *a in apps) {
-//         NSString *loc = [a localizedName];
-//         NSLog(@"getRunAppsForName: %@\n", loc);
-//         if ([loc compare:nsapp] == NSOrderedSame) {
-//             // NSLog(@"App: %@\n", loc);
-//             [mine addObject: a];
-//             CFRelease(loc);
-//             continue;      
-//         }
-//     }
-//     CFRelease(apps);
-//     CFRelease(nsapp);
-//     return mine;
-// }
 
 AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL debug) {
     NSString *nsTitle = [NSString stringWithUTF8String: title];
@@ -184,8 +190,10 @@ AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL de
             // NSLog(@"Win: <nil-title> # %@\n", nsTitle);
             continue;
         }
+        winTitle = removeNonASCIIAndTruncate(winTitle);
        if (debug) {
-            NSLog(@"Win: %@ # %@\n", winTitle, nsTitle);
+            NSLog(@"Win1: '%@' %d\n", winTitle, (int)[winTitle length]);
+            // NSLog(@"Win2: '%@' %d %lu\n", nsTitle, (int)[nsTitle length], strlen(title));
        }
         if ([winTitle compare:nsTitle] == NSOrderedSame) {
             matchinWinRef = winRef;
@@ -238,9 +246,10 @@ int ActivateWindowForTitle(const char *title, long pid) {
 
 int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h) {
     // NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
-    AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, YES);
+    AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, NO);
     if (winRef == nil) {
-        return -2;
+        NSLog(@"PlaceWindowForTitle no window for %s %ld\n", title, pid);
+        return 0;
     }
     NSSize winSize;
     winSize.width = w;
@@ -259,7 +268,7 @@ int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int 
     if (err != 0) {
         NSLog(@"SetWindowRectForTitle set pos error: %s %d\n", title, err);
     }
-    NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
+    // NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
     CFRelease(winRef);
     CFRelease(size);
 
@@ -285,6 +294,6 @@ CGImageRef GetWindowImage(long winID) {
      CGImageRef image = CGWindowListCreateImage(CGRectNull, 
                             kCGWindowListOptionIncludingWindow,
                             (CGWindowID)winID, 
-                            kCGWindowImageBoundsIgnoreFraming|kCGWindowImageNominalResolution);
+                            kCGWindowImageBoundsIgnoreFraming|kCGWindowImageNominalResolution|kCGWindowImageShouldBeOpaque);
     return image;
 }

@@ -20,6 +20,8 @@ import (
 	"github.com/torlangballe/zutil/ztimer"
 )
 
+// ALTER TABLE tbl_name ALTER COLUMN col_name TYPE varchar (11);
+
 func ReplaceDollarArguments(squery string, args ...interface{}) string {
 	var to string
 	for i, a := range args {

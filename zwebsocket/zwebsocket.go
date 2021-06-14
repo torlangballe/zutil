@@ -122,17 +122,7 @@ func NewServer(prefix, certFilesSuffix string, port int, ping bool, got func(s *
 		handleSocketRequest(w, r, ping, server, got)
 	})
 
-	go func() {
-		var err error
-		if certFilesSuffix != "" {
-			err = znet.ServeHTTPS(port, certFilesSuffix, nil)
-		} else {
-			err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
-		}
-		if err != nil {
-			got(server, "", nil, false, zlog.Error(err, "listen"))
-		}
-	}()
+	znet.ServeHTTPInBackground(port, certFilesSuffix, nil)
 	return server
 }
 

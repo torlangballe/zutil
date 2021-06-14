@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -30,7 +31,7 @@ const (
 )
 
 var (
-	ErrorPriority = Verbose
+	PrintPriority = Verbose
 	outputHooks   = map[string]func(s string){}
 	UseColor      = false
 	PanicHandler  func(reason string, exit bool)
@@ -79,7 +80,7 @@ func ErrorAtStack(err error, stackPos int, parts ...interface{}) error {
 	return baseLog(err, ErrorLevel, stackPos, parts...)
 }
 
-// Log returns a new error combined with err (if not nil), and parts. Printing done if priority >= ErrorPriority
+// Log returns a new error combined with err (if not nil), and parts. Printing done if priority >= PrintPriority
 func Log(err error, priority Priority, parts ...interface{}) error {
 	return baseLog(err, priority, 4, parts...)
 }
@@ -124,10 +125,13 @@ func NewError(parts ...interface{}) error {
 }
 
 func baseLog(err error, priority Priority, pos int, parts ...interface{}) error {
-	if len(parts) != 0 {
-		n, got := parts[0].(StackAdjust)
+	if priority < ErrorLevel && IsInTests {
+		return nil
+	}
+	for i, p := range parts {
+		n, got := p.(StackAdjust)
 		if got {
-			parts = parts[1:]
+			parts = append(parts[:i], parts[i+1:]...)
 			pos += int(n)
 		}
 	}
@@ -258,6 +262,7 @@ func GetCallingFunctionString(pos int) string {
 func Assert(success bool, parts ...interface{}) {
 	if !success {
 		parts = append([]interface{}{StackAdjust(1)}, parts...)
+		fmt.Println("ASSERT", parts)
 		Fatal(errors.New("assert failed"), parts...)
 	}
 }
@@ -345,7 +350,7 @@ func HandlePanic(exit bool) error {
 	}
 	r := recover()
 	if r != nil {
-		Info("\n🟥HandlePanic:", r)
+		Info("\n🟥HandlePanic:", r, "\n", GetCallingStackString())
 		str := fmt.Sprint(r)
 		PanicHandler(str, exit)
 		e, _ := r.(error)
@@ -357,31 +362,76 @@ func HandlePanic(exit bool) error {
 	return nil
 }
 
-var debugLines []string
-var debugStarts []time.Time
-
-func PushTimingLog() {
-	debugStarts = append(debugStarts, time.Now())
-	debugLines = append(debugLines, "")
+type Profile struct {
+	Name  string
+	Start time.Time
+	Lines []Line
 }
 
-func PrintTimingLog(parts ...interface{}) {
-	d := len(debugLines) - 1
-	parts = append(parts, ":", time.Since(debugStarts[d]))
+type Line struct {
+	Text     string
+	Duration time.Duration
+	Time     time.Time
+}
+
+var profiles []Profile
+
+func PushProfile(name string) {
+	p := Profile{}
+	p.Name = name
+	p.Start = time.Now()
+	profiles = append(profiles, p)
+}
+
+func ProfileLog(parts ...interface{}) {
+	var line *Line
+	previ := -1
+	p := &profiles[len(profiles)-1]
 	str := zstr.SprintSpaced(parts...)
-	debugLines[d] += str + "\n"
-}
-
-func PopPrintTimingLog() {
-	str := strings.TrimSpace(debugLines[len(debugLines)-1])
-	RemoveTimingLog()
-	for _, s := range strings.Split(str, "\n") {
-		Info(s + "\n")
+	for i, l := range p.Lines {
+		if l.Text == str {
+			line = &p.Lines[i]
+			previ = i - 1
+			break
+		}
 	}
+	if line == nil {
+		previ = len(p.Lines) - 1
+		p.Lines = append(p.Lines, Line{})
+		line = &p.Lines[previ+1]
+		line.Time = time.Now()
+		line.Text = str
+	}
+	start := p.Start
+	if previ > -1 {
+		start = p.Lines[previ].Time
+	}
+	line.Duration += time.Since(start)
+	// Info("Add:", p.Name, line.Duration)
 }
 
-func RemoveTimingLog() {
-	d := len(debugLines) - 1
-	debugLines = debugLines[:d]
-	debugStarts = debugStarts[:d]
+func EndProfile(parts ...interface{}) {
+	if len(parts) != 0 {
+		ProfileLog(parts...)
+	}
+	p := &profiles[len(profiles)-1]
+	dur := time.Since(p.Start)
+	for _, l := range p.Lines {
+		percent := int(float64(l.Duration) / float64(dur) * 100)
+		Info(p.Name+":", l.Text, time.Since(p.Start), "    ", l.Duration, percent, "%")
+	}
+	RemoveProfile()
+}
+
+func RemoveProfile() {
+	profiles = profiles[:len(profiles)-1]
+}
+
+func OnErrorTestError(t *testing.T, err error, items ...interface{}) bool {
+	if err != nil {
+		items = append([]interface{}{err}, items...)
+		t.Error(items...)
+		return true
+	}
+	return false
 }

@@ -23,10 +23,7 @@ func InitServer(certFilesSuffix string, port int) {
 	http.HandleFunc("/ws", acceptWS)
 	zlog.Info("zwsrpc.InitServer", certFilesSuffix, port)
 	go func() {
-		err := znet.ServeHTTPS(port, certFilesSuffix, nil)
-		if err != nil {
-			zlog.Error(err, "serve")
-		}
+		znet.ServeHTTPInBackground(port, certFilesSuffix, nil)
 	}()
 }
 

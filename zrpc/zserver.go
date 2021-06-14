@@ -3,7 +3,6 @@
 package zrpc
 
 import (
-	"fmt"
 	"net/http"
 	"reflect"
 	"sync"
@@ -29,12 +28,12 @@ var (
 	server           *rpc.Server
 	registeredOwners = map[string]bool{}
 
-	// updatedResourcesSentToClient stores Which clients have I sent info about resource being updated to [res][client]bool
+	// updatedResourcesSentToClient stores which clients have been sent info about resource being updated [res][client]bool
 	updatedResourcesSentToClient = map[string]map[string]bool{}
 	updatedResourcesMutex        sync.Mutex
 )
 
-func InitServer(router *mux.Router, port int, certFilesSuffix string) error {
+func InitServer(router *mux.Router, port int, certFilesSuffix string) (hserver *http.Server, err error) {
 	//	go http.ListenAndServeTLS(fmt.Sprintf(":%d", ServerPort), "https/server.crt", "https/server.key", router)
 	if port == 0 {
 		port = 1200
@@ -42,20 +41,16 @@ func InitServer(router *mux.Router, port int, certFilesSuffix string) error {
 	ServerPort = port
 	server = rpc.NewServer()
 	registeredOwners = map[string]bool{}
-	if certFilesSuffix != "" {
-		go znet.ServeHTTPS(ServerPort, certFilesSuffix, router)
-	} else {
-		go http.ListenAndServe(fmt.Sprintf(":%d", ServerPort), router)
-	}
-	zlog.Info("🟨Serve RPC On:", ServerPort)
+	hserver = znet.ServeHTTPInBackground(ServerPort, certFilesSuffix, router)
+	// fmt.Println("🟨Serve RPC On:", ServerPort)
 	server.RegisterCodec(rpcjson.NewCodec(), "application/json")
 	zrest.AddHandler(router, "rpc", doServeHTTP).Methods("POST", "OPTIONS")
-	return nil
+	return hserver, nil
 }
 
 func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// TODO: See how little of this we can get away with
-	// zlog.Info("zrpc.DoServeHTTP:", req.Method, "from:", req.Header.Get("Origin"), req.URL)
+	// fmt.Println("zrpc.DoServeHTTP:", req.Method, "from:", req.Header.Get("Origin"), req.URL)
 
 	zrest.AddCORSHeaders(w, req)
 	// w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
@@ -86,7 +81,7 @@ func Register(owners ...interface{}) {
 		if registeredOwners[name] {
 			zlog.Fatal(nil, "calls owner with same name exists:", name)
 		}
-		// zlog.Info("zrpc.Register name:", name)
+		// fmt.Println("zrpc.Register name:", name)
 		registeredOwners[name] = true
 		err := server.RegisterService(o, "")
 		if err != nil {
@@ -101,18 +96,26 @@ func AuthenticateRequest(req *http.Request) (client string, err error) {
 }
 
 func SetResourceUpdated(resID, byClientID string) {
-	// zlog.Info("SetResourceUpdated:", resID) //, "\n", zlog.GetCallingStackString())
 	m := map[string]bool{}
 	if byClientID != "" {
 		m[byClientID] = true
 	}
 	updatedResourcesMutex.Lock()
+	// fmt.Println("SetResourceUpdated:", resID, byClientID) //, "\n", zlog.GetCallingStackString())
 	updatedResourcesSentToClient[resID] = m
 	updatedResourcesMutex.Unlock()
 }
 
-func ClearResourceUpdated(resID, clientID string) {
-	// zlog.Info("ClearResourceUpdated:", resID, clientID) //, "\n", zlog.GetCallingStackString())
+func ClearResourceID(resID string) {
+	updatedResourcesMutex.Lock()
+	// fmt.Println("ClearResourceID:", resID)
+	updatedResourcesSentToClient[resID] = map[string]bool{}
+	// fmt.Printf("ClearResourceID DONE: %s %+v\n", resID, updatedResourcesSentToClient)
+	updatedResourcesMutex.Unlock()
+}
+
+func SetClientKnowsResourceUpdated(resID, clientID string) {
+	// zlog.Info("SetClientKnowsResourceUpdated:", resID, clientID) //, "\n", zlog.GetCallingStackString())
 	updatedResourcesMutex.Lock()
 	if updatedResourcesSentToClient[resID] == nil {
 		updatedResourcesSentToClient[resID] = map[string]bool{}
@@ -121,13 +124,22 @@ func ClearResourceUpdated(resID, clientID string) {
 	updatedResourcesMutex.Unlock()
 }
 
-func (c *RPCCalls) GetUpdatedResources(req *http.Request, args *Any, reply *[]string) error {
-	// zlog.Info("GetUpdatedResources")
+func (c *RPCCalls) SetResourceUpdatedFromClient(req *http.Request, resID *string, reply *Any) error {
 	clientID, err := AuthenticateRequest(req)
 	if err != nil {
 		return err
 	}
-	// zlog.Info("GetUpdatedResources", clientID, updatedResourcesSentToClient)
+	SetResourceUpdated(*resID, clientID)
+	return nil
+}
+
+func (c *RPCCalls) GetUpdatedResourcesAndSetSent(req *http.Request, args *Any, reply *[]string) error {
+	clientID, err := AuthenticateRequest(req)
+	if err != nil {
+		return err
+	}
+	// fmt.Println("GetUpdatedResourcesAndSetSent", clientID)
+	// zlog.Info("GetUpdatedResourcesAndSetSent", clientID, updatedResourcesSentToClient)
 	*reply = []string{}
 	updatedResourcesMutex.Lock()
 	for res, m := range updatedResourcesSentToClient {
@@ -139,6 +151,20 @@ func (c *RPCCalls) GetUpdatedResources(req *http.Request, args *Any, reply *[]st
 	updatedResourcesMutex.Unlock()
 	// zlog.Info("GetUpdatedResources Got", *reply)
 	return nil
+}
+
+// GetClientsWhoKnowResourceIsUpdated
+func GetClientsWhoKnowResourceIsUpdated(resID string) (clients []string) {
+	updatedResourcesMutex.Lock()
+	defer updatedResourcesMutex.Unlock()
+	m := updatedResourcesSentToClient[resID]
+	for cid, sent := range m {
+		if sent {
+			clients = append(clients, cid)
+		}
+	}
+	// fmt.Println("GetClientsWhoKnowResourceIsUpdated1:", resID, clients)
+	return
 }
 
 // GetURL is a convenience function to get the contents of a url via the server.

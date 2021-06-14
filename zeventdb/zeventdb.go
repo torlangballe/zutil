@@ -89,14 +89,9 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 		ztimer.RepeatNow(deleteFreqSecs, func() bool {
 			at := time.Now().Add(-time.Duration(float64(ztime.Day) * deleteDays))
 			query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", tableName)
-			r, err := db.DB.Exec(query, at)
+			_, err := db.DB.Exec(query, at)
 			if err != nil {
 				zlog.Error(err, "query", query, at)
-			} else {
-				if !zlog.IsInTests {
-					count, _ := r.RowsAffected()
-					zlog.Info("deleted", count, "events")
-				}
 			}
 			return true
 		})

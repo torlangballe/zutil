@@ -31,12 +31,15 @@ const ClientIDKey = "ZRPC-Client-Id"
 var ToServerClient *Client
 var ToNativeClient *Client
 
-func NewClient(useTokenAuth bool) *Client {
+func NewClient(useTokenAuth bool, port int) *Client {
 	c := &Client{}
 	if !useTokenAuth {
 		c.ID = zstr.GenerateRandomHexBytes(8)
 	}
-	c.Port = 1200
+	if port == 0 {
+		port = 1200
+	}
+	c.Port = port
 	c.ToAddress = "http://127.0.0.1"
 	return c
 }

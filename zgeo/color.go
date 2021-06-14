@@ -2,6 +2,7 @@ package zgeo
 
 import (
 	"fmt"
+	"image/color"
 	"math"
 	"strconv"
 	"strings"
@@ -178,10 +179,11 @@ func (c Color) WithOpacity(opacity float32) Color {
 func (c Color) Mixed(withColor Color, amount float32) Color {
 	wc := withColor.GetRGBA()
 	col := c.GetRGBA()
+	amount *= wc.A
 	r := (1-amount)*col.R + wc.R*amount
 	g := (1-amount)*col.G + wc.G*amount
 	b := (1-amount)*col.B + wc.B*amount
-	a := (1-amount)*col.A + wc.A*amount
+	a := c.Colors.A
 	return ColorNew(r, g, b, a)
 }
 
@@ -205,6 +207,18 @@ func (c Color) GetContrastingGray() Color {
 		return ColorWhite
 	}
 	return ColorBlack
+}
+
+// Difference returns the difference brween c and a, where 0 is same, 1 is black to white. Opacity is used, so each 4 components contribute 25% each
+func (c Color) Difference(a Color) float32 {
+	if c.Valid != a.Valid {
+		return 1
+	}
+	dr := math.Abs(float64(c.Colors.R - a.Colors.R))
+	dg := math.Abs(float64(c.Colors.G - a.Colors.G))
+	db := math.Abs(float64(c.Colors.B - a.Colors.B))
+	da := math.Abs(float64(c.Colors.A - a.Colors.A))
+	return float32(dr+dg+db+da) / 4
 }
 
 func getHexAsValue(str string, len int) float32 {
@@ -318,6 +332,23 @@ func ColorFromString(str string) Color {
 	}
 	zlog.Error(nil, "bad color string", str)
 	return Color{}
+}
+
+func ColorFromGo(c color.Color) Color {
+	r, g, b, a := c.RGBA()
+	af := float32(a) / 0xFFFF
+	if af == 0 {
+		return ColorClear
+	}
+	return ColorNew(float32(r)/0xFFFF/af, float32(g)/0xFFFF/af, float32(b)/0xFFFF/af, af)
+}
+
+func (c Color) GoColor() (gcol color.NRGBA64) {
+	gcol.R = uint16(c.Colors.R * 0xFFFF)
+	gcol.G = uint16(c.Colors.G * 0xFFFF)
+	gcol.B = uint16(c.Colors.B * 0xFFFF)
+	gcol.A = uint16(c.Colors.A * 0xFFFF)
+	return
 }
 
 var ColorDarkGray = ColorNewGray(0.25, 1)

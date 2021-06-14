@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"time"
 
 	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 const MathDegreesToMeters = (111.32 * 1000)
@@ -213,4 +215,36 @@ func IndexOfMostFrequent(length int, compare func(i, j int) bool) int {
 		}
 	}
 	return imax
+}
+
+// LengthIntoDividePoints finds point then splits len in 2, then 2 points that split in 3, 4, etc, skipping ones already used.
+// Final pass adds all not used yet.
+func LengthIntoDividePoints(len int) (points []int) {
+	start := time.Now()
+	ln := len - 1
+	l2 := len / 2
+	set := make([]bool, len, len)
+	points = make([]int, len, len)
+	pi := 0
+	for parts := 1; parts < l2; parts++ {
+		pp := parts + 1
+		for i := 1; i <= parts; i++ {
+			x := ln * i / pp
+			if !set[x] {
+				points[pi] = x
+				pi++
+				set[x] = true
+			}
+		}
+	}
+	for x := 0; x < len; x++ {
+		if !set[x] {
+			points[pi] = x
+			pi++
+			// set[x] = true -- we don't need to set it
+		}
+	}
+	zlog.Info("Points:", len, time.Since(start))
+
+	return
 }

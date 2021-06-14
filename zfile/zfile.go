@@ -10,7 +10,6 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
-	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -437,9 +436,9 @@ func ReadLastLine(fpath string, pos int64) (line string, startpos, newpos int64,
 // This may be slow, but only way that seems to work with launchd logs on mac.
 func PeriodicFileBackup(filepath, postfixForOld string, checkHours float64, maxMB int) {
 	ztimer.RepeatNow(checkHours*3600, func() bool {
-		fmt.Println("PeriodicFileBackup", checkHours*3600)
+		// fmt.Println("PeriodicFileBackup", checkHours*3600)
 		if Size(filepath) >= int64(maxMB*1024*1024) {
-			fmt.Println("PeriodicFileBackup need to do swap")
+			// fmt.Println("PeriodicFileBackup need to do swap")
 			dir, _, stub, ext := Split(filepath)
 			newPath := dir + stub + postfixForOld + ext
 			err := os.Remove(newPath)
@@ -460,15 +459,4 @@ func PeriodicFileBackup(filepath, postfixForOld string, checkHours float64, maxM
 		}
 		return true
 	})
-}
-
-func MimeToExtension(smime string) string {
-	var ext string
-	es, _ := mime.ExtensionsByType(smime)
-	for _, s := range es {
-		if len(s) > len(ext) {
-			ext = s
-		}
-	}
-	return ext
 }

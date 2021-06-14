@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -191,20 +190,12 @@ func GetRunningProcessUserName() (string, error) {
 	return name, nil
 }
 
-func SetMaxOpenFileConnections(max int) {
-	str, err := RunCommand("ulimit", 5, "-n", strconv.Itoa(max))
-	if err != nil {
-		zlog.Error(err, str)
-	}
-	zlog.Info("set ulimit:", max)
-}
-
 func SetNumberOfOpenFiles(n int) {
 	var rlimit unix.Rlimit
 
 	err := unix.Getrlimit(unix.RLIMIT_NOFILE, &rlimit)
 	zlog.OnError(err)
-	zlog.Info("RLIMIT:", rlimit.Cur, rlimit.Max)
+	// zlog.Info("RLIMIT:", rlimit.Cur, rlimit.Max)
 	if n <= 0 {
 		rlimit.Cur = rlimit.Max
 	} else if uint64(n) < rlimit.Max {

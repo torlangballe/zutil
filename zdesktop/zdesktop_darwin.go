@@ -9,8 +9,12 @@ package zdesktop
 //     long       winID;
 //     int        scale;
 //     const char *err;
+// 	   int        x;
+//     int        y;
+//     int        w;
+//     int        h;
 // } WinIDInfo;
-// WinIDInfo WindowGetIDAndScaleForTitle(const char *title, long pid);
+// WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title, long pid);
 // int TerminateAppForPID(long *pid);
 // int CloseWindowForTitle(const char *title, long pid);
 // int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h);
@@ -114,10 +118,10 @@ func RunURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) (*exe
 }
 
 func WindowWithTitleExists(title, app string) bool {
-	title = getTitleWithApp(title, app)
+	//	title = getTitleWithApp(title, app)
 	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
-		wInfo := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
+		wInfo := C.WindowGetIDScaleAndRectForTitle(C.CString(title), C.long(pid))
 		if int(wInfo.winID) != 0 {
 			return true
 		}
@@ -125,19 +129,20 @@ func WindowWithTitleExists(title, app string) bool {
 	return false
 }
 
-func GetIDAndScaleForWindowTitle(title, app string) (id string, scale int, err error) {
+func GetIDScaleAndRectForWindowTitle(title, app string) (id string, scale int, rect zgeo.Rect, err error) {
 	// fmt.Println("GetIDAndScaleForWindowTitle title, app:", title, app)
 	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
-		w := C.WindowGetIDAndScaleForTitle(C.CString(title), C.long(pid))
-		// fmt.Println("GetIDAndScaleForWindowTitle2 go:", w)
+		w := C.WindowGetIDScaleAndRectForTitle(C.CString(title), C.long(pid))
 		serr := C.GoString(w.err)
+		// fmt.Println("GetIDAndScaleForWindowTitle2 go:", serr, w.winID)
 		if serr != "" {
 			err = errors.New(serr)
 		}
 		if int64(w.winID) != 0 {
-			return strconv.FormatInt(int64(w.winID), 10), int(w.scale), err
+			r := zgeo.RectFromXYWH(float64(w.x), float64(w.y), float64(w.w), float64(w.h))
+			return strconv.FormatInt(int64(w.winID), 10), int(w.scale), r, err
 		} else {
 			err = errors.New("bad window id: " + title)
 		}
@@ -151,8 +156,8 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 	// crop.Pos = zgeo.Pos{0, 100}
 	// screenLock.Lock() -- for windows
 	// defer screenLock.Unlock()
-	winID, _, err := GetIDAndScaleForWindowTitle(title, app)
-	// zlog.Info("GetImageForWindowTitle:", winID, err)
+	winID, _, _, err := GetIDScaleAndRectForWindowTitle(title, app)
+	// fmt.Println("GetImageForWindowTitle:", winID, err, title, app)
 	if err != nil {
 		return nil, zlog.Error(err, "get id scale")
 	}
@@ -162,50 +167,8 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 	return GetWindowImage(winID, crop)
 }
 
-/*
-func GetImageForWindowTitle2(title, app string, crop zgeo.Rect, activateWindow bool) (image.Image, error) {
-	filepath := zfile.CreateTempFilePath("win.jpeg")
-
-	start := time.Now()
-	zlog.Info("GetImageForWindowTitle Since1:", time.Since(start), filepath)
-
-	screenLock.Lock()
-	defer screenLock.Unlock()
-
-	zlog.Info("GetImageForWindowTitle Since2:", time.Since(start))
-	winID, scale, err := GetIDAndScaleForWindowTitle(title, app)
-	if err != nil {
-		return nil, zlog.Error(err, "get id scale")
-	}
-	if activateWindow {
-		ActivateWindow(title, app)
-	}
-	zlog.Info("GetImageForWindowTitle Since3:", time.Since(start))
-	_, err = zprocess.RunCommand("screencapture", 0, "-o", "-x", "-l", winID, filepath) // -o is no shadow, -x is no sound, -l is window id
-	if err != nil {
-		return nil, zlog.Error(err, "call screen capture. id:", winID)
-	}
-	// defer os.Remove(filepath)
-	zlog.Info("GetImageForWindowTitle Since4:", time.Since(start))
-	file, err := os.Open(filepath)
-	if err != nil {
-		return nil, zlog.Error(err, "open", filepath)
-	}
-	goimage, _, err := image.Decode(file)
-	if err != nil {
-		return nil, zlog.Error(err, "decode", filepath)
-	}
-	zlog.Info("GetImageForWindowTitle Since5:", time.Since(start), goimage.Bounds())
-	rect := crop.TimesD(float64(scale))
-	r := image.Rect(int(rect.Min().X), int(rect.Min().Y), int(rect.Max().X), int(rect.Max().Y))
-	newImage := imaging.Crop(goimage, r)
-	zlog.Info("GetImageForWindowTitle Since6:", time.Since(start))
-	// TODO: set image scale
-	return newImage, nil
-}
-*/
 func CloseWindowForTitle(title, app string) error {
-	title = getTitleWithApp(title, app)
+	//	title = getTitleWithApp(title, app)
 	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
@@ -216,20 +179,20 @@ func CloseWindowForTitle(title, app string) error {
 	return errors.New("not found")
 }
 
-func getTitleWithApp(title, app string) string {
-	if app == "Google Chrome" {
-		return title + " - " + app
-	}
-	return title
-}
+// func getTitleWithApp(title, app string) string {
+// 	if app == "Google Chrome" {
+// 		return title + " - " + app
+// 	}
+// 	return title
+// }
 
 func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
-	title = getTitleWithApp(title, app)
+	//	title = getTitleWithApp(title, app)
 	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
-		// zlog.Info("SetWindowRectForTitle:", title, app, pid)
+		// fmt.Println("SetWindowRectForTitle:", title, app, rect)
 		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
-		// zlog.Info("SetWindowRectForTitle:", title, app, r)
+		// fmt.Println("SetWindowRectForTitle:", title, app, r)
 		if r != 0 {
 			return nil
 		}
@@ -244,7 +207,7 @@ func SendQuitCommandToApp(app string) error {
 }
 
 func ActivateWindow(title, app string) {
-	title = getTitleWithApp(title, app)
+	//	title = getTitleWithApp(title, app)
 	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
 		C.ActivateWindowForTitle(C.CString(title), C.long(pid))
@@ -282,17 +245,21 @@ func createBitmapContext(width int, height int, data *C.uint32_t, bytesPerRow in
 }
 
 func CGImageToGoImage(cgimage C.CGImageRef, crop zgeo.Rect) (image.Image, error) {
-	cw := int(crop.Size.W)
-	ch := int(crop.Size.H)
+	var cw, ch int
+	iw := int(C.CGImageGetWidth(cgimage))
+	ih := int(C.CGImageGetHeight(cgimage))
+	cw = iw
+	ch = ih
+	if !crop.IsNull() {
+		cw = int(crop.Size.W)
+		ch = int(crop.Size.H)
+	}
 	img := image.NewNRGBA(image.Rect(0, 0, cw, ch))
 	if img == nil {
 		return nil, zlog.Error(nil, "NewRGBA returned nil", cw, ch)
 	}
-	iw := int(C.CGImageGetWidth(cgimage))
-	ih := int(C.CGImageGetHeight(cgimage))
-
+	// zlog.Info("THUMB CROP:", crop)
 	ctx := createBitmapContext(cw, ch, (*C.uint32_t)(unsafe.Pointer(&img.Pix[0])), img.Stride)
-
 	diff := float64(ih - ch)
 	x := C.CGFloat(-crop.Pos.X)
 	y := C.CGFloat(-diff + crop.Pos.Y)

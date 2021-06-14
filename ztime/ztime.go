@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zwords"
 )
@@ -25,12 +26,16 @@ const (
 	Week = Day * time.Duration(7)
 )
 
+type JSONTime time.Time
+type SQLTime struct {
+	time.Time
+}
+
 // Distant is a very far-future time when you want to do things forever etc
 var Distant = time.Unix(1<<62, 0)
+var BigTime = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000
 
 // https://github.com/jinzhu/now -- interesting library for getting start of this minute etc
-
-type JSONTime time.Time
 
 func (jt *JSONTime) UnmarshalJSON(raw []byte) error {
 	s := strings.Trim(string(raw), "\"")
@@ -45,10 +50,6 @@ func (jt *JSONTime) UnmarshalJSON(raw []byte) error {
 		return nil
 	}
 	return err
-}
-
-type SQLTime struct {
-	time.Time
 }
 
 func (t *SQLTime) Scan(value interface{}) error {
@@ -228,7 +229,12 @@ func GetSecsFromHMSString(str string, hour, min, sec bool) (float64, error) {
 	return secs, nil
 }
 
-var BigTime = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000
+// MustParse is ued to parse a RFC3339Nano time from string, typically for using in literals.
+func MustParse(s string) time.Time {
+	t, err := time.Parse(time.RFC3339Nano, s)
+	zlog.AssertNotError(err)
+	return t
+}
 
 func ReplaceOldUnixTimeZoneNamesWithNew(name string) string {
 	var names = map[string]string{

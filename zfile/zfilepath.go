@@ -1,6 +1,7 @@
 package zfile
 
 import (
+	"mime"
 	"net/url"
 	"os/user"
 	"path"
@@ -93,4 +94,15 @@ func MakePathRelativeTo(path, rel string) string {
 		return ReplaceHomeDirPrefixWithTilde(origPath)
 	}
 	return str
+}
+
+func MimeToExtension(smime string) string {
+	var ext string
+	es, _ := mime.ExtensionsByType(smime)
+	for _, s := range es {
+		if len(s) > len(ext) {
+			ext = s
+		}
+	}
+	return ext
 }

@@ -91,6 +91,9 @@ func Architecture() ArchitectureType {
 
 // CPUUsage returns a slice of 0-1 where 1 is 100% of how much each CPU is utilized. Order unknown, but hopefully doesn't change
 func CPUUsage() (out []float64) {
+	if zlog.IsInTests {
+		return []float64{0.1, 0.2, 0.3, 0.4}
+	}
 	coresVirtual, _ := cpu.Counts(true)
 	coresPhysical, _ := cpu.Counts(false)
 

@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/torlangballe/zutil/zstr"
+
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
 )
@@ -46,7 +48,6 @@ var LegalCORSOrigins = map[string]bool{}
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	o := req.Header.Get("Origin")
-	// zlog.Info("AddCorsHeaders:", o, LegalCORSOrigins) // req.Header,
 	if LegalCORSOrigins[o] {
 		// zlog.Info("AddCorsHeaders:", o, "allowed:", LegalCORSOrigins)
 		w.Header().Set("Access-Control-Allow-Origin", o)
@@ -54,6 +55,18 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Headers", "Origin, ZRPC-Client-Id, X-TimeZone-Offset-Hours, X-Requested-With, Content-Type, Accept, Access-Token")
+		return
+	}
+	if o != "" {
+		var sport string
+		if zstr.SplitN(o, ":", nil, &sport) {
+			port, _ := strconv.Atoi(sport)
+			if o != "" && port < 50000 || port > 60000 {
+				zlog.Info("🟥AddCorsHeaders Fail:", port, req.RemoteAddr, req.URL, o, ":", LegalCORSOrigins) // req.Header,
+			}
+		} else {
+			zlog.Info("🟥AddCorsHeaders Fail: bad origin:", o)
+		}
 	}
 }
 

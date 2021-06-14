@@ -2,7 +2,6 @@ package zvnc
 
 import (
 	"context"
-	"fmt"
 	"image"
 	"net"
 	"time"
@@ -25,7 +24,7 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 	if err != nil {
 		return nil, zlog.Error(err, "dial")
 	}
-	fmt.Println("starting up the vnc client, connecting to:", address)
+	zlog.Info("starting up the vnc client, connecting to:", address)
 	// Negotiate connection with the server.
 	cchServer := make(chan vnc.ServerMessage)
 	cchClient := make(chan vnc.ClientMessage)
@@ -74,9 +73,8 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 				}
 				return
 			case msg := <-cchClient:
-				fmt.Printf("Received client message type:%v msg:%v\n", msg.Type(), msg)
+				zlog.Info("Received client message type:%v msg:%v\n", msg.Type(), msg)
 			case msg := <-cchServer:
-				// fmt.Println("MSG:", msg)
 				if msg.Type() == vnc.FramebufferUpdateMsgType {
 					// secsPassed := time.Now().Sub(timeStart).Seconds()
 					// frameBufferReq++
@@ -111,7 +109,7 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 	}
 	// var out *os.File
 
-	fmt.Println("vnc connected to:", address)
+	zlog.Info("vnc connected to:", address)
 
 	cc.SetEncodings([]vnc.EncodingType{
 		vnc.EncCursorPseudo,

@@ -264,17 +264,35 @@ func ShowGenerateTLSCertificatesCommands(certName string) {
 	zlog.Info("🟨openssl req -new -x509 -sha256 -key certs/" + certName + ".key -out certs/" + certName + ".crt -days 3650")
 }
 
-func ServeHTTPS(port int, certSuffix string, handler http.Handler) error {
+func ServeHTTPInBackground(port int, certSuffix string, handler http.Handler) (server *http.Server) {
 	// https://ap.www.namecheap.com/Domains/DomainControlPanel/etheros.online/advancedns
 	// https://github.com/denji/golang-tls
 	//
+	fmt.Println("ServeHTP:", port)
+	stack := zlog.GetCallingStackString()
 	if port == 0 {
-		port = 443
+		if certSuffix != "" {
+			port = 443
+		} else {
+			port = 80
+		}
 	}
 	address := fmt.Sprintf(":%d", port)
-	err := http.ListenAndServeTLS(address, certSuffix+".crt", certSuffix+".key", handler)
-	if err != nil {
-		zlog.Error(err, "serve https listen err:", address, certSuffix)
-	}
-	return err
+	server = &http.Server{Addr: address}
+	server.Handler = handler
+	go func() {
+		var err error
+		if certSuffix != "" {
+			err = server.ListenAndServeTLS(certSuffix+".crt", certSuffix+".key")
+		} else {
+			err = server.ListenAndServe()
+		}
+		if err != http.ErrServerClosed {
+			if err != nil {
+				zlog.Error(err, "serve http listen err:", address, certSuffix, stack)
+				os.Exit(-1)
+			}
+		}
+	}()
+	return server
 }
