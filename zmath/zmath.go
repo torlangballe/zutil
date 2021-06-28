@@ -217,7 +217,7 @@ func IndexOfMostFrequent(length int, compare func(i, j int) bool) int {
 	return imax
 }
 
-// LengthIntoDividePoints finds point then splits len in 2, then 2 points that split in 3, 4, etc, skipping ones already used.
+// LengthIntoDividePoints finds the point that splits len in 2, then 2 points that split in 3, 4, etc, skipping ones already used.
 // Final pass adds all not used yet.
 func LengthIntoDividePoints(len int) (points []int) {
 	start := time.Now()
@@ -226,10 +226,9 @@ func LengthIntoDividePoints(len int) (points []int) {
 	set := make([]bool, len, len)
 	points = make([]int, len, len)
 	pi := 0
-	for parts := 1; parts < l2; parts++ {
-		pp := parts + 1
-		for i := 1; i <= parts; i++ {
-			x := ln * i / pp
+	for parts := 2; parts < l2; parts *= parts {
+		for i := 1; i < parts; i++ {
+			x := ln * i / parts
 			if !set[x] {
 				points[pi] = x
 				pi++

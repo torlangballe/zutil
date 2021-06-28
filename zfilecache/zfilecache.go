@@ -90,23 +90,27 @@ func (c *Cache) IsTokenValid(t string) bool {
 
 // CacheFromReader reads bytes from reader with stype png or jpeg and caches is with CacheFromData
 // This name is used to get a path or a url for getting
-func (c *Cache) CacheFromReader(reader io.Reader, ext string) (string, error) {
+func (c *Cache) CacheFromReader(reader io.Reader, ext, id string) (string, error) {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return "", zlog.Error(err, "read from reader")
 	}
-	return c.CacheFromData(data, ext)
+	return c.CacheFromData(data, ext, id)
 }
 
-// CacheFromData reads in data saving with hash name and extension
-// This string return is a hash of data, used to get a path or a url for fetching.
-func (c *Cache) CacheFromData(data []byte, ext string) (string, error) {
+// CacheFromData reads in data, using id as filename, or hash of data, and extension
+// This string return is this id/hash, used to get a path or a url for fetching.
+func (c *Cache) CacheFromData(data []byte, ext, id string) (string, error) {
 	var err error
 	h := fnv.New64a()
 	h.Write(data)
 
-	hash := h.Sum64()
-	name := fmt.Sprintf("%x%s", hash, ext)
+	name := id
+	if id == "" {
+		hash := h.Sum64()
+		name = fmt.Sprintf("%x", hash)
+	}
+	name += ext
 
 	path, dir := c.GetPathForName(name)
 	err = zfile.MakeDirAllIfNotExists(dir)

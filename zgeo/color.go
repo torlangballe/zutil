@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"math/rand"
 	"strconv"
 	"strings"
 
@@ -166,7 +167,7 @@ func (c Color) GrayScaleAndAlpha() (float32, float32) { // white, alpha
 }
 
 func (c Color) GrayScale() float32 {
-	return 0.2126*c.Colors.R + 0.7152*c.Colors.G + 0722*c.Colors.B
+	return 0.2126*c.Colors.R + 0.7152*c.Colors.G + 0.722*c.Colors.B
 }
 func (c Color) Opacity() float32 {
 	return c.Colors.A
@@ -177,6 +178,9 @@ func (c Color) WithOpacity(opacity float32) Color {
 }
 
 func (c Color) Mixed(withColor Color, amount float32) Color {
+	if amount == 1 {
+		return withColor
+	}
 	wc := withColor.GetRGBA()
 	col := c.GetRGBA()
 	amount *= wc.A
@@ -203,6 +207,9 @@ func (c Color) AlteredContrast(contrast float32) Color {
 
 func (c Color) GetContrastingGray() Color {
 	g := c.GrayScale()
+
+	zlog.Info("CONTRAST2:", c, g)
+
 	if g < 0.5 {
 		return ColorWhite
 	}
@@ -349,6 +356,10 @@ func (c Color) GoColor() (gcol color.NRGBA64) {
 	gcol.B = uint16(c.Colors.B * 0xFFFF)
 	gcol.A = uint16(c.Colors.A * 0xFFFF)
 	return
+}
+
+func ColorRandom() Color {
+	return ColorNew(rand.Float32(), rand.Float32(), rand.Float32(), 1)
 }
 
 var ColorDarkGray = ColorNewGray(0.25, 1)

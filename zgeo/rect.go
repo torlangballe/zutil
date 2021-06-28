@@ -135,7 +135,7 @@ func MergeAll(rects []Rect) []Rect {
 }
 
 func (r Rect) ExpandedD(n float64) Rect {
-	return r.Expanded(Size{n, n})
+	return r.Expanded(SizeBoth(n))
 }
 
 func (r Rect) Centered(center Pos) Rect {

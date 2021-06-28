@@ -98,6 +98,16 @@ func IndexInSlice64(n int64, slice []int64) int {
 	return -1
 }
 
+func RemoveFromSet64(set *[]int64, n int64) bool {
+	for i, num := range *set {
+		if num == n {
+			*set = append((*set)[:i], (*set)[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
 func IsInSlice32(n int32, slice []int32) bool {
 	for _, s := range slice {
 		if s == n {

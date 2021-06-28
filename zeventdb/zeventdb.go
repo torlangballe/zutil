@@ -222,6 +222,7 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	if count != 0 {
 		query += fmt.Sprint(" LIMIT ", count)
 	}
+	now := time.Now()
 	db.lock.RLock()
 	defer db.lock.RUnlock()
 	rows, err := db.DB.Query(query, values...)
@@ -239,8 +240,9 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 		err = rows.Scan(resultPointers...)
 		sliceVal = reflect.Append(sliceVal, reflect.Indirect(resultStructVal))
 	}
-	// zlog.Info("eventsdb.Got:", time.Since(now), sliceVal.Len(), query, values)
+	zlog.Info("eventsdb.Got:", time.Since(now), sliceVal.Len(), query, values)
 	reflect.Indirect(slicePtrVal).Set(sliceVal)
+
 	return nil
 }
 
