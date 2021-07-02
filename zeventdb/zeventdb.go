@@ -240,7 +240,7 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 		err = rows.Scan(resultPointers...)
 		sliceVal = reflect.Append(sliceVal, reflect.Indirect(resultStructVal))
 	}
-	zlog.Info("eventsdb.Got:", time.Since(now), sliceVal.Len(), query, values)
+	// zlog.Info("eventsdb.Got:", time.Since(now), sliceVal.Len(), query, values)
 	reflect.Indirect(slicePtrVal).Set(sliceVal)
 
 	return nil

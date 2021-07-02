@@ -1,6 +1,8 @@
 package zgeo
 
-import "github.com/torlangballe/zutil/zbool"
+import (
+	"github.com/torlangballe/zutil/zbool"
+)
 
 type Alignment int32
 
@@ -94,24 +96,24 @@ func AlignmentFromVector(fromVector Pos) Alignment {
 
 func (a Alignment) FlippedVertical() Alignment {
 	var r = a
-	r.AndWith(Horizontal)
+	r = r.And(Horizontal)
 	if a&Top != 0 {
-		r.UnionWith(Bottom)
+		r = r.Union(Bottom)
 	}
 	if a&Bottom != 0 {
-		r.UnionWith(Top)
+		r = r.Union(Top)
 	}
 	return r
 }
 
 func (a Alignment) FlippedHorizontal() Alignment {
 	var r = a
-	r.AndWith(Vertical)
+	r = r.And(Vertical)
 	if a&Left != 0 {
-		r.UnionWith(Right)
+		r = r.Union(Right)
 	}
 	if a&Right != 0 {
-		r.UnionWith(Left)
+		r = r.Union(Left)
 	}
 	return r
 }
@@ -169,11 +171,11 @@ func (a Alignment) Only(vertical bool) Alignment {
 	return a.Subtracted(Vertical | VertExpand | VertShrink | VertOut)
 }
 
-func (a Alignment) UnionWith(b Alignment) Alignment {
+func (a Alignment) Union(b Alignment) Alignment {
 	return a | b
 }
 
-func (a Alignment) AndWith(b Alignment) Alignment {
+func (a Alignment) And(b Alignment) Alignment {
 	return a & b
 }
 

@@ -207,9 +207,6 @@ func (c Color) AlteredContrast(contrast float32) Color {
 
 func (c Color) GetContrastingGray() Color {
 	g := c.GrayScale()
-
-	zlog.Info("CONTRAST2:", c, g)
-
 	if g < 0.5 {
 		return ColorWhite
 	}
