@@ -10,7 +10,10 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 )
 
-func UnmarshalFromFile(to interface{}, fpath string) error {
+func UnmarshalFromFile(to interface{}, fpath string, allowNoFile bool) error {
+	if allowNoFile && zfile.NotExist(fpath) {
+		return nil
+	}
 	file, err := os.Open(fpath)
 	if err != nil {
 		return err

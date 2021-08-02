@@ -39,7 +39,7 @@ func convertWithRenderer(input, title string, renderer blackfriday.Renderer) (st
 func ConvertToPDF(input, title, localFilePathPrefix, hostPrefix string) (string, error) {
 	tempFile := zfile.CreateTempFilePath(title + ".pdf")
 	renderer := mdtopdf.NewPdfRenderer("", "", tempFile, "trace.log")
-	 zlog.Info("ConvertToPDF:", localFilePathPrefix)
+	zlog.Info("ConvertToPDF:", localFilePathPrefix)
 	renderer.LocalFilePathPrefix = localFilePathPrefix
 	renderer.LocalHostPrefix = hostPrefix
 	err := renderer.Process([]byte(input))

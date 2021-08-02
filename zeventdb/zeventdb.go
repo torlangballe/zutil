@@ -31,7 +31,7 @@ type Database struct {
 	FieldInfos   []zsql.FieldInfo
 	StructType   reflect.Type
 	istruct      interface{}
-	lock         sync.RWMutex
+	lock         sync.Mutex // sync.RWMutex might cause corruptions, trying regular
 }
 
 const TimeStampFormat = "2006-01-02 15:04:05.999999999"
@@ -40,7 +40,7 @@ const TimeStampFormat = "2006-01-02 15:04:05.999999999"
 // It creates a table *tableName* using the structure istruct as it's column names.
 // The field with db:",primary" set, is the primary key.
 // If there is more than one time.Time type, set db:",eventtime" tag to make it the event's time.
-func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays, deleteFreqSecs float64) (db *Database, err error) {
+func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays, deleteFreqSecs float64, indexFields []string) (db *Database, err error) {
 	if !zfile.Exists(filepath) {
 		file, err := os.Create(filepath) // Create SQLite file
 		if err != nil {
@@ -71,10 +71,13 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 			return
 		}
 	}
-	query = "CREATE INDEX IF NOT EXISTS idx_events_time ON events (time)" // UNIQUE
-	_, err = db.DB.Exec(query)
-	if err != nil {
-		zlog.Error(err, "create time index", query)
+	indexFields = append(indexFields, "time")
+	for _, field := range indexFields {
+		query = fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_events_%s ON events (%s)", field, field)
+		_, err = db.DB.Exec(query)
+		if err != nil {
+			zlog.Error(err, "create index", query)
+		}
 	}
 
 	for _, f := range db.FieldInfos {
@@ -87,12 +90,17 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 	}
 	if deleteDays != 0 && deleteFreqSecs != 0 {
 		ztimer.RepeatNow(deleteFreqSecs, func() bool {
-			at := time.Now().Add(-time.Duration(float64(ztime.Day) * deleteDays))
+			start := time.Now()
+			zlog.Info("🟩EventDB purged start")
+			at := start.Add(-time.Duration(float64(ztime.Day) * deleteDays))
 			query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", tableName)
+			db.lock.Lock()
 			_, err := db.DB.Exec(query, at)
+			db.lock.Unlock()
 			if err != nil {
 				zlog.Error(err, "query", query, at)
 			}
+			zlog.Info("🟩EventDB purged:", time.Since(start))
 			return true
 		})
 	}
@@ -223,10 +231,11 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 		query += fmt.Sprint(" LIMIT ", count)
 	}
 	now := time.Now()
-	db.lock.RLock()
-	defer db.lock.RUnlock()
+	db.lock.Lock()
+	aquery := zsql.ReplaceQuestionMarkArguments(query, values...)
+	zlog.Info("🟩eventsdb.Get:", aquery)
+	defer db.lock.Unlock()
 	rows, err := db.DB.Query(query, values...)
-	// zlog.Info("eventbd:", time.Since(now), query, values)
 	if err != nil {
 		return zlog.Error(err, "query", query, "vals:", values)
 	}
@@ -238,9 +247,10 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	resultPointers := zsql.FieldPointersFromStruct(resultStructVal.Interface(), nil)
 	for rows.Next() {
 		err = rows.Scan(resultPointers...)
+		zlog.AssertNotError(err)
 		sliceVal = reflect.Append(sliceVal, reflect.Indirect(resultStructVal))
 	}
-	// zlog.Info("eventsdb.Got:", time.Since(now), sliceVal.Len(), query, values)
+	zlog.Info("🟩eventsdb.Got:", time.Since(now), sliceVal.Len())
 	reflect.Indirect(slicePtrVal).Set(sliceVal)
 
 	return nil
@@ -249,8 +259,8 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 func (db *Database) DeleteEvent(id int64) error {
 	query := "DELETE FROM events WHERE id=$1"
 	db.lock.Lock()
-	defer db.lock.Unlock()
 	_, err := db.DB.Exec(query, id)
+	db.lock.Unlock()
 	if err != nil {
 		return zlog.Error(err, "delete", query, id)
 	}

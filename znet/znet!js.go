@@ -3,6 +3,7 @@
 package znet
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -264,11 +265,16 @@ func ShowGenerateTLSCertificatesCommands(certName string) {
 	zlog.Info("🟨openssl req -new -x509 -sha256 -key certs/" + certName + ".key -out certs/" + certName + ".crt -days 3650")
 }
 
-func ServeHTTPInBackground(port int, certSuffix string, handler http.Handler) (server *http.Server) {
+type HTTPServer struct {
+	Server      *http.Server
+	doneChannel chan bool
+}
+
+func ServeHTTPInBackground(port int, certSuffix string, handler http.Handler) *HTTPServer {
 	// https://ap.www.namecheap.com/Domains/DomainControlPanel/etheros.online/advancedns
 	// https://github.com/denji/golang-tls
 	//
-	fmt.Println("ServeHTP:", port)
+	zlog.Info("ServeHTP:", port)
 	stack := zlog.GetCallingStackString()
 	if port == 0 {
 		if certSuffix != "" {
@@ -277,15 +283,17 @@ func ServeHTTPInBackground(port int, certSuffix string, handler http.Handler) (s
 			port = 80
 		}
 	}
+	s := &HTTPServer{}
 	address := fmt.Sprintf(":%d", port)
-	server = &http.Server{Addr: address}
-	server.Handler = handler
+	s.Server = &http.Server{Addr: address}
+	s.Server.Handler = handler
+	s.doneChannel = make(chan bool, 100)
 	go func() {
 		var err error
 		if certSuffix != "" {
-			err = server.ListenAndServeTLS(certSuffix+".crt", certSuffix+".key")
+			err = s.Server.ListenAndServeTLS(certSuffix+".crt", certSuffix+".key")
 		} else {
-			err = server.ListenAndServe()
+			err = s.Server.ListenAndServe()
 		}
 		if err != http.ErrServerClosed {
 			if err != nil {
@@ -293,6 +301,18 @@ func ServeHTTPInBackground(port int, certSuffix string, handler http.Handler) (s
 				os.Exit(-1)
 			}
 		}
+		s.doneChannel <- true
 	}()
-	return server
+	return s
+}
+
+func (s *HTTPServer) Shutdown(wait bool) error {
+	err := s.Server.Shutdown(context.TODO())
+	if err != nil {
+		return err
+	}
+	if wait {
+		<-s.doneChannel
+	}
+	return nil
 }

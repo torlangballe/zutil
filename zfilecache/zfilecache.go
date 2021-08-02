@@ -27,8 +27,9 @@ type Cache struct {
 	cacheName       string
 	getURL          string
 	ServeEmptyImage bool
-	Valid           time.Duration
-	UseToken        bool
+	DeleteAfter     time.Duration // Delete files when modified more than this long ago
+	UseToken        bool          // Not implemented
+	DeleteRatio     float32       // When deleting files, only do some of sub-folders (randomly) each time 0.1 is do 10% of them at random
 }
 
 func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -42,41 +43,41 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		zlog.Info("Serve empty cached image:", file)
 		file = "www/images/empty.png"
 	}
+	// zlog.Info("Serve cached image:", req.URL.Path, file)
 	http.ServeFile(w, req, file)
 }
 
 func Init(workDir, urlPrefix, cacheName string) *Cache {
-	if !strings.HasPrefix(urlPrefix, "/") {
-		zlog.Error(nil, "url should start with /", urlPrefix)
-	}
-	if !strings.HasSuffix(urlPrefix, "/") {
+	// if strings.HasPrefix(urlPrefix, "/") {
+	// 	zlog.Error(nil, "url should not start with /", urlPrefix)
+	// }
+	if urlPrefix != "" && !strings.HasSuffix(urlPrefix, "/") {
 		zlog.Fatal(nil, "url should end with /", urlPrefix)
 	}
 	c := &Cache{}
-	c.Valid = time.Hour * 24
+	c.DeleteAfter = time.Hour * 24
 	c.workDir = workDir
 	c.cacheName = cacheName
-	c.getURL = urlPrefix + cacheName
+	path := zstr.Concat("/", urlPrefix, cacheName)
+	c.getURL = path //zstr.Concat("/", zrest.AppURLPrefix, path) // let's make image standalone and remove this dependency soon
 	err := os.MkdirAll(c.workDir+cacheName, 0775|os.ModeDir)
 	if err != nil {
-		zlog.Log(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
+		zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
 	}
-	zrest.Handle(c.getURL, c)
-	// zlog.Info("Handle:", "/qtt"+c.getURL)
-	ztimer.RepeatNow(3600+200*rand.Float64(), func() bool {
+	zrest.Handle(path, c)
+	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
+		start := time.Now()
 		dir := c.workDir + c.cacheName
-		// zlog.Info("\n\n##Start cache:", dir)
-		zfile.Walk(dir, "*.jpeg\t*.png", func(fpath string, info os.FileInfo) error {
-			if c.Valid != 0 && time.Since(info.ModTime()) > c.Valid {
-				// zlog.Info("Remove cache:", fpath)
-				os.Remove(fpath)
-			}
-			return nil
+		cutoff := time.Now().Add(-c.DeleteAfter)
+		err := zfile.DeleteOldInSubFolders(dir, time.Millisecond*1, cutoff, c.DeleteRatio, func(p float32, count, total int) {
+			fmt.Printf("DeleteCache: %s %d%% %d/%d\n", dir, int(p*100), count, total)
 		})
-		// zlog.Info("\n\n**Finished cache:", cacheName)
+		if err != nil {
+			zlog.Error(err, "delete cache", c.cacheName)
+		}
+		zlog.Info("Deleted cache:", c.workDir+c.cacheName, time.Since(start))
 		return true
 	})
-	// zlog.Info("init zfilecache:", c.workDir+c.cacheName, c.getURL)
 	return c
 }
 
@@ -144,12 +145,8 @@ func (c *Cache) GetPathForName(name string) (path, dir string) {
 }
 
 func (c *Cache) GetUrlForName(name string) string {
-	addAppURL := true
-	str := c.getURL
-	if addAppURL {
-		str = path.Join(zrest.AppURLPrefix, str)
-	}
-	str = path.Join(str, name)
+	str := zstr.Concat("/", c.getURL, name) // zrest.AppURLPrefix,
+	// zlog.Info("CACHE:", str)
 	if c.UseToken {
 		str += "?token=" + c.getToken()
 	}

@@ -41,7 +41,7 @@ var (
 func init() {
 	IsInTests = (strings.HasSuffix(os.Args[0], ".test"))
 	PanicHandler = func(reason string, exit bool) {
-		Info("panic handler:", reason)
+		Error(nil, "panic handler:", reason)
 		if exit {
 			panic(reason)
 		}
@@ -350,7 +350,7 @@ func HandlePanic(exit bool) error {
 	}
 	r := recover()
 	if r != nil {
-		Info("\n🟥HandlePanic:", r, "\n", GetCallingStackString())
+		Error(nil, "\n🟥HandlePanic:", r, "\n", GetCallingStackString())
 		str := fmt.Sprint(r)
 		PanicHandler(str, exit)
 		e, _ := r.(error)

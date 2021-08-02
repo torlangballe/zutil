@@ -33,7 +33,7 @@ var (
 	updatedResourcesMutex        sync.Mutex
 )
 
-func InitServer(router *mux.Router, port int, certFilesSuffix string) (hserver *http.Server, err error) {
+func InitServer(router *mux.Router, port int, certFilesSuffix string) (hserver *znet.HTTPServer, err error) {
 	//	go http.ListenAndServeTLS(fmt.Sprintf(":%d", ServerPort), "https/server.crt", "https/server.key", router)
 	if port == 0 {
 		port = 1200

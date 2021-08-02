@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztimer"
 )
@@ -149,12 +150,10 @@ func CalcMD5(filepath string) (data []byte, err error) {
 }
 
 func CopyFile(dest, source string) (err error) {
-	// if runtime.GOOS == "darwin" {
-	// 	err = unix.Clonefile(source, dest, 0)
-	// 	if err == nil {
-	// 		return nil
-	// 	}
-	// }
+	err = CloneFile(dest, source)
+	if err == nil {
+		return
+	}
 	in, err := os.Open(source)
 	if err != nil {
 		return err
@@ -436,9 +435,9 @@ func ReadLastLine(fpath string, pos int64) (line string, startpos, newpos int64,
 // This may be slow, but only way that seems to work with launchd logs on mac.
 func PeriodicFileBackup(filepath, postfixForOld string, checkHours float64, maxMB int) {
 	ztimer.RepeatNow(checkHours*3600, func() bool {
-		// fmt.Println("PeriodicFileBackup", checkHours*3600)
+		zlog.Info("🟩PeriodicFileBackup", checkHours*3600, filepath, Size(filepath), int64(maxMB*1024*1024))
 		if Size(filepath) >= int64(maxMB*1024*1024) {
-			// fmt.Println("PeriodicFileBackup need to do swap")
+			zlog.Info("🟩PeriodicFileBackup need to do swap")
 			dir, _, stub, ext := Split(filepath)
 			newPath := dir + stub + postfixForOld + ext
 			err := os.Remove(newPath)
@@ -459,4 +458,49 @@ func PeriodicFileBackup(filepath, postfixForOld string, checkHours float64, maxM
 		}
 		return true
 	})
+}
+
+func DeleteOldInSubFolders(dir string, sleep time.Duration, before time.Time, deleteRatio float32, progress func(p float32, count, total int)) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	names, err := d.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	var total, count int
+	var t time.Time
+	nlen := float32(len(names))
+	for i, name := range names {
+		if deleteRatio < 1 {
+			if rand.Float32() > deleteRatio {
+				// zlog.Info("Skipping folder for cache:", dir, i, onlyRandomOneOf)
+				continue
+			}
+		}
+		filepath.Walk(dir+name, func(fpath string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			if info.ModTime().Sub(before) < 0 {
+				count++
+				os.Remove(fpath)
+			}
+			total++
+			return nil
+		})
+		if progress != nil && time.Since(t) > time.Second*10 {
+			t = time.Now()
+			progress(float32(i)/nlen, count, total)
+		}
+		if sleep != 0 {
+			time.Sleep(sleep)
+		}
+	}
+	if progress != nil {
+		progress(1, count, total)
+	}
+	return nil
 }

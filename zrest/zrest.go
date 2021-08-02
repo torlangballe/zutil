@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/zbool"
 
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
@@ -57,17 +57,18 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Access-Control-Allow-Headers", "Origin, ZRPC-Client-Id, X-TimeZone-Offset-Hours, X-Requested-With, Content-Type, Accept, Access-Token")
 		return
 	}
-	if o != "" {
-		var sport string
-		if zstr.SplitN(o, ":", nil, &sport) {
-			port, _ := strconv.Atoi(sport)
-			if o != "" && port < 50000 || port > 60000 {
-				zlog.Info("🟥AddCorsHeaders Fail:", port, req.RemoteAddr, req.URL, o, ":", LegalCORSOrigins) // req.Header,
-			}
-		} else {
-			zlog.Info("🟥AddCorsHeaders Fail: bad origin:", o)
-		}
-	}
+	// if o != "" {
+	// 	var sport string
+	// 	u, err := url.Parse(o)
+	// 	if err == nil && port != 0 {
+	// 		port, _ := strconv.Atoi(sport)
+	// 		if o != "" && sport != "" && (port < 5000) || port > 60000 {
+	// 			zlog.Info("🟥AddCorsHeaders Fail2:", sport, port, req.RemoteAddr, req.URL, o, ":", LegalCORSOrigins) // req.Header,
+	// 		}
+	// 	} else {
+	// 		zlog.Info("🟥AddCorsHeaders Fail: bad origin:", o)
+	// 	}
+	// }
 }
 
 // Returns JSON representation of given object. JSONP if callback parameter is specified.
@@ -149,6 +150,11 @@ func GetTimeZoneFromRequest(req *http.Request) *time.Location {
 		return loc
 	}
 	return nil
+}
+
+func GetBoolVal(vals url.Values, name string) bool {
+	str := vals.Get(name)
+	return zbool.FromString(str, false)
 }
 
 func GetIntVal(vals url.Values, name string, def int) int {

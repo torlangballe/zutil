@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
 )
 
@@ -29,6 +28,7 @@ func StartIn(secs float64, perform func()) *Timer {
 	return t
 }
 
+/*
 func (t *Timer) check(perform func()) {
 	t.mutex.Lock()
 	// fmt.Printf("timer start1: %p %v\n", t, t.timer)
@@ -67,6 +67,26 @@ func (t *Timer) Stop() {
 	}
 	t.mutex.Unlock()
 	// fmt.Printf("timer stop end: %p %p\n", t, t.timer)
+}
+*/
+
+func (t *Timer) StartIn(secs float64, perform func()) {
+	t.Stop()
+	t.timer = time.AfterFunc(ztime.SecondsDur(secs), func() {
+		t.timer = nil
+		perform()
+	})
+}
+
+func (t *Timer) Stop() {
+	if t.timer != nil {
+		t.timer.Stop()
+		t.timer = nil
+	}
+}
+
+func (t *Timer) IsRunning() bool {
+	return t.timer != nil
 }
 
 // create a RateLimiter to only do a function every n seconds since last time it was done for a given id.

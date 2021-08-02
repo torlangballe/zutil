@@ -45,6 +45,9 @@ func NewClient(useTokenAuth bool, port int) *Client {
 }
 
 func (c *Client) makeUrl() string {
+	if c.Port == 0 {
+		return c.ToAddress + zrest.AppURLPrefix + "rpc"
+	}
 	return fmt.Sprintf("%s:%d%srpc", c.ToAddress, c.Port, zrest.AppURLPrefix)
 }
 
@@ -56,7 +59,8 @@ func (c *Client) SetAddressFromHost(scheme, address string) {
 func (c *Client) SetAddressFromURL(surl string) {
 	u, err := url.Parse(surl)
 	zlog.AssertNotError(err, "href parse")
-	c.SetAddressFromHost(u.Scheme, u.Hostname())
+	u.Host = zstr.HeadUntil(u.Host, ":")
+	c.ToAddress = u.String()
 }
 
 func (c *Client) CallRemoteFunc(method interface{}, args interface{}, reply interface{}, timeoutSecs ...float64) error {

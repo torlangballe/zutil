@@ -11,6 +11,7 @@ import (
 
 type Repeater struct {
 	ticker *time.Ticker
+	stop   chan bool
 }
 
 func RepeaterNew() *Repeater {
@@ -33,6 +34,7 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	// zlog.Info("\nTimer Repeater:", secs, now, zlog.GetCallingStackString(), "\n")
 	r.Stop()
 	r.ticker = time.NewTicker(ztime.SecondsDur(secs))
+	r.stop = make(chan bool, 1)
 	go func() {
 		defer zlog.HandlePanic(true)
 		if now {
@@ -45,13 +47,14 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 			return
 		}
 		ch := t.C //
-		for range ch {
-			if !perform() {
-				t.Stop()
-				break
-			}
-			if r.ticker == nil {
-				break
+		for {
+			select {
+			case <-ch:
+				if !perform() {
+					r.stop <- true
+				}
+			case <-r.stop:
+				return
 			}
 		}
 	}()
@@ -60,6 +63,7 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 func (r *Repeater) Stop() {
 	if r.ticker != nil {
 		r.ticker.Stop()
+		r.stop <- true
 		r.ticker = nil
 	}
 }
