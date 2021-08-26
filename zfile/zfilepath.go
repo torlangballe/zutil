@@ -24,6 +24,11 @@ func Split(spath string) (dir, name, stub, ext string) {
 	return
 }
 
+func ChangedExtension(spath, ext string) string {
+	dir, _, sub, _ := Split(spath)
+	return path.Join(dir, sub, ext)
+}
+
 func SanitizeStringForFilePath(s string) string {
 	s = url.QueryEscape(s)
 	s = zstr.FileEscapeReplacer.Replace(s)

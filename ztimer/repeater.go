@@ -47,12 +47,21 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 			return
 		}
 		ch := t.C //
+		doing := false
 		for {
 			select {
 			case <-ch:
-				if !perform() {
-					r.stop <- true
+				if doing {
+					continue
 				}
+				doing = true
+				if !perform() {
+					// zlog.Info("Stopping")
+					doing = false
+					r.stop <- true
+					return
+				}
+				doing = false
 			case <-r.stop:
 				return
 			}

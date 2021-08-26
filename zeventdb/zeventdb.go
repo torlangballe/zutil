@@ -31,7 +31,7 @@ type Database struct {
 	FieldInfos   []zsql.FieldInfo
 	StructType   reflect.Type
 	istruct      interface{}
-	lock         sync.Mutex // sync.RWMutex might cause corruptions, trying regular
+	Lock         sync.Mutex // sync.RWMutex might cause corruptions, trying regular
 }
 
 const TimeStampFormat = "2006-01-02 15:04:05.999999999"
@@ -73,8 +73,11 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 	}
 	indexFields = append(indexFields, "time")
 	for _, field := range indexFields {
-		query = fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_events_%s ON events (%s)", field, field)
+		name := strings.Replace(field, ",", "_", -1)
+		query = fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_events_%s ON events (%s)", name, field)
+		zlog.Info("index:", query)
 		_, err = db.DB.Exec(query)
+		zlog.Info("index done:", err)
 		if err != nil {
 			zlog.Error(err, "create index", query)
 		}
@@ -94,9 +97,9 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 			zlog.Info("🟩EventDB purged start")
 			at := start.Add(-time.Duration(float64(ztime.Day) * deleteDays))
 			query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", tableName)
-			db.lock.Lock()
+			db.Lock.Lock()
 			_, err := db.DB.Exec(query, at)
-			db.lock.Unlock()
+			db.Lock.Unlock()
 			if err != nil {
 				zlog.Error(err, "query", query, at)
 			}
@@ -123,8 +126,8 @@ func (db *Database) Add(istruct interface{}) (id int64, err error) {
 
 	// zlog.Info("ADD-QUERY:", query, vals)
 
-	db.lock.Lock()
-	defer db.lock.Unlock()
+	db.Lock.Lock()
+	defer db.Lock.Unlock()
 	r, err := db.DB.Exec(query, vals...)
 	if err != nil {
 		return 0, zlog.Error(err, "query", query, vals)
@@ -142,17 +145,14 @@ type CompareItem struct {
 	Values []interface{}
 }
 
-func getTimeCompare(db *Database, addTo *[]string, t time.Time, start bool) {
+func getTimeCompare(db *Database, t time.Time, start bool) string {
 	// zlog.Info("zeventsdb get time compare:", t, start)
-	if t.IsZero() {
-		return
-	}
 	op := ">"
 	if !start {
 		op = "<"
 	}
 	w := db.TimeField + op + `'` + t.UTC().Format(TimeStampFormat) + `'`
-	*addTo = append(*addTo, w)
+	return w
 }
 
 func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, start, end time.Time, startID, endID int64, decending bool, keepID int64, count int) error {
@@ -208,8 +208,12 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	if decending {
 		dir = "DESC"
 	}
-	getTimeCompare(db, &wheres, start, true)
-	getTimeCompare(db, &wheres, end, false)
+	if !start.IsZero() {
+		wheres = append(wheres, getTimeCompare(db, start, true))
+	}
+	if !end.IsZero() {
+		wheres = append(wheres, getTimeCompare(db, end, false))
+	}
 	if startID != 0 || endID != 0 {
 		op := ">"
 		id := startID
@@ -231,10 +235,9 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 		query += fmt.Sprint(" LIMIT ", count)
 	}
 	now := time.Now()
-	db.lock.Lock()
-	aquery := zsql.ReplaceQuestionMarkArguments(query, values...)
-	zlog.Info("🟩eventsdb.Get:", aquery)
-	defer db.lock.Unlock()
+	db.Lock.Lock()
+	zlog.Info("🟩eventsdb.Get:", zsql.ReplaceQuestionMarkArguments(query, values...))
+	defer db.Lock.Unlock()
 	rows, err := db.DB.Query(query, values...)
 	if err != nil {
 		return zlog.Error(err, "query", query, "vals:", values)
@@ -258,9 +261,9 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 
 func (db *Database) DeleteEvent(id int64) error {
 	query := "DELETE FROM events WHERE id=$1"
-	db.lock.Lock()
+	db.Lock.Lock()
 	_, err := db.DB.Exec(query, id)
-	db.lock.Unlock()
+	db.Lock.Unlock()
 	if err != nil {
 		return zlog.Error(err, "delete", query, id)
 	}

@@ -37,8 +37,9 @@ type Color struct {
 	Colors RGBA
 }
 
-var ColorDefaultForeground = ColorBlack
-var ColorDefaultBackground = ColorWhite
+func ColorF(c Color) func() Color {
+	return func() Color { return c }
+}
 
 // RGBA returns r, g, b, a as 0-255 uint32 values.
 // Makes it conform to image/color Color interface
@@ -171,6 +172,10 @@ func (c Color) GrayScale() float32 {
 }
 func (c Color) Opacity() float32 {
 	return c.Colors.A
+}
+
+func (c *Color) SetOpacity(opacity float32) {
+	c.Colors.A = opacity
 }
 
 func (c Color) WithOpacity(opacity float32) Color {

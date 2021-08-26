@@ -50,7 +50,7 @@ func InitServer(router *mux.Router, port int, certFilesSuffix string) (hserver *
 
 func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// TODO: See how little of this we can get away with
-	// fmt.Println("zrpc.DoServeHTTP:", req.Method, "from:", req.Header.Get("Origin"), req.URL)
+	// fmt.Println("zrpc.DoServeHTTP:", req.Method, req.URL.Port(), "from:", req.Header.Get("Origin"), req.URL)
 
 	zrest.AddCORSHeaders(w, req)
 	// w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))

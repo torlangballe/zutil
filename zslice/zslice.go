@@ -80,3 +80,12 @@ func Reverse(s interface{}) {
 		swap(i, j)
 	}
 }
+
+func IndexOf(length int, is func(i int) bool) int {
+	for i := 0; i < length; i++ {
+		if is(i) {
+			return i
+		}
+	}
+	return -1
+}

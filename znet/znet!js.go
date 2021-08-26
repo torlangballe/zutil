@@ -274,7 +274,11 @@ func ServeHTTPInBackground(port int, certSuffix string, handler http.Handler) *H
 	// https://ap.www.namecheap.com/Domains/DomainControlPanel/etheros.online/advancedns
 	// https://github.com/denji/golang-tls
 	//
-	zlog.Info("ServeHTP:", port)
+	str := "Serve HTTP"
+	if certSuffix != "" {
+		str += "S"
+	}
+	zlog.Info(str+":", port)
 	stack := zlog.GetCallingStackString()
 	if port == 0 {
 		if certSuffix != "" {

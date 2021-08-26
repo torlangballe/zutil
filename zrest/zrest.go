@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zutil/zstr"
 
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
@@ -48,8 +49,10 @@ var LegalCORSOrigins = map[string]bool{}
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	o := req.Header.Get("Origin")
-	if LegalCORSOrigins[o] {
-		// zlog.Info("AddCorsHeaders:", o, "allowed:", LegalCORSOrigins)
+	obase := zstr.HeadUntilLast(o, ":")
+	// zlog.Info("AddCorsHeaders:", o, obase, "allowed:", LegalCORSOrigins)
+	if LegalCORSOrigins[o] || LegalCORSOrigins[obase] {
+		// zlog.Info("AddCorsHeaders2:", o, "allowed:", LegalCORSOrigins)
 		w.Header().Set("Access-Control-Allow-Origin", o)
 		// w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")

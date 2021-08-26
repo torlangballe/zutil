@@ -153,6 +153,14 @@ func HeadUntil(str, sep string) string {
 	return str[:i]
 }
 
+func HeadUntilLast(str, sep string) string {
+	i := strings.LastIndex(str, sep)
+	if i == -1 {
+		return str
+	}
+	return str[:i]
+}
+
 func HeadUntilIncluding(str, sep string) string {
 	i := strings.Index(str, sep)
 	if i == -1 {

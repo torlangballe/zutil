@@ -306,6 +306,10 @@ func CanGetWindowInfo() bool {
 	return C.getWindowCountForPID(C.long(pid)) != -1
 }
 
+func GetWindowCountForPid(pid int64) int {
+	return int(C.getWindowCountForPID(C.long(pid)))
+}
+
 func CanRecordScreen() bool {
 	return C.canRecordScreen() == 1
 }

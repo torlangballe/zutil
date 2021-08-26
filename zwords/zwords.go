@@ -46,7 +46,7 @@ func GetBandwidthString(b int64, langCode string, maxSignificant int) string {
 		s = "T" + s
 		v = float64(b) / float64(1000*1000*1000)
 	}
-	return PluralWord(s, v, langCode, "", maxSignificant)
+	return PluralWordWithCount(s, v, langCode, "", maxSignificant)
 }
 
 func GetMemoryString(b int64, langCode string, maxSignificant int) string {
@@ -68,7 +68,7 @@ func GetMemoryString(b int64, langCode string, maxSignificant int) string {
 		s = "T" + s
 		v = float64(b) / float64(KGigaByte)
 	}
-	return PluralWord(s, v, langCode, "", maxSignificant)
+	return PluralWordWithCount(s, v, langCode, "", maxSignificant)
 }
 
 func NiceFloat(f float64, significant int) string {
@@ -86,11 +86,11 @@ func NiceFloat(f float64, significant int) string {
 	return s
 }
 
-func PluralWord(word string, count float64, langCode, plural string, significant int) string { // maybe just make the plural mandetory
+func PluralizeWord(word string, count float64, langCode, plural string) string {
 	if langCode == "" {
 		langCode = DefaultLanguage
 	}
-	str := NiceFloat(count, significant) + " "
+	var str string
 	if int64(count) != 1 {
 		if plural != "" {
 			str += plural
@@ -111,6 +111,27 @@ func PluralWord(word string, count float64, langCode, plural string, significant
 		str += word
 	}
 	return str
+}
+
+func PluralizeWordAndCountWords(word string, count float64, langCode, plural string, countWords map[int]string) string {
+	var cw string
+	for n, w := range countWords {
+		if int(count) == n {
+			cw = w
+		}
+	}
+	if cw == "" {
+		cw = strconv.Itoa(int(count))
+	}
+	return cw + " " + PluralizeWord(word, count, langCode, plural)
+}
+
+func PluralWordWithCount(word string, count float64, langCode, plural string, significant int) string { // maybe just make the plural mandetory
+	if langCode == "" {
+		langCode = DefaultLanguage
+	}
+	scount := NiceFloat(count, significant) + " "
+	return PluralizeWordAndCountWords(word, count, langCode, plural, map[int]string{0: scount})
 }
 
 func Login() string {
