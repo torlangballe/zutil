@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
 )
 
@@ -74,6 +75,7 @@ func (t *Timer) StartIn(secs float64, perform func()) {
 	t.Stop()
 	t.timer = time.AfterFunc(ztime.SecondsDur(secs), func() {
 		t.timer = nil
+		defer zlog.HandlePanic(true)
 		perform()
 	})
 }

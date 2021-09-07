@@ -53,7 +53,8 @@ func ExpandTildeInFilepath(path string) string {
 	usr, err := user.Current()
 	if err == nil {
 		dir := usr.HomeDir
-		return strings.Replace(path, "~", dir, 1)
+		str := strings.Replace(path, "~", dir, 1)
+		return str
 	}
 	return ""
 }

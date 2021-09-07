@@ -38,7 +38,7 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	fpath := path.Join(c.workDir, spath)
 	dir, file := filepath.Split(fpath)
 	file = filepath.Join(dir, file[:3]+"/"+file[3:])
-	zlog.Info("FileCache serve:", file, spath)
+	// zlog.Info("FileCache serve:", file, spath)
 	if c.ServeEmptyImage && !zfile.Exists(file) {
 		zlog.Info("Serve empty cached image:", file)
 		file = "www/images/empty.png"

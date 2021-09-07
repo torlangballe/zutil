@@ -27,5 +27,6 @@ require (
 	github.com/torlangballe/mdtopdf v0.0.0-20201126230225-1d4b4048b450
 	github.com/torlangballe/zui v0.0.0-20201207095153-588fb27498a2
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+	golang.org/x/sys v0.0.0-20201018230417-eeed37f84f13
 	golang.org/x/text v0.3.3
 )

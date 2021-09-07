@@ -36,6 +36,11 @@ type Database struct {
 
 const TimeStampFormat = "2006-01-02 15:04:05.999999999"
 
+var (
+	itemsToStore []interface{}
+	storeLock    sync.Mutex
+)
+
 // CreateDB creates (if *filepath* doesn't exist) a file and a sqlite DB pointer opened to it.
 // It creates a table *tableName* using the structure istruct as it's column names.
 // The field with db:",primary" set, is the primary key.
@@ -71,7 +76,7 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 			return
 		}
 	}
-	indexFields = append(indexFields, "time")
+	zstr.AddToSet(&indexFields, "time")
 	for _, field := range indexFields {
 		name := strings.Replace(field, ",", "_", -1)
 		query = fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_events_%s ON events (%s)", name, field)
@@ -92,25 +97,100 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 		}
 	}
 	if deleteDays != 0 && deleteFreqSecs != 0 {
-		ztimer.RepeatNow(deleteFreqSecs, func() bool {
-			start := time.Now()
-			zlog.Info("🟩EventDB purged start")
-			at := start.Add(-time.Duration(float64(ztime.Day) * deleteDays))
-			query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", tableName)
-			db.Lock.Lock()
-			_, err := db.DB.Exec(query, at)
-			db.Lock.Unlock()
-			if err != nil {
-				zlog.Error(err, "query", query, at)
-			}
-			zlog.Info("🟩EventDB purged:", time.Since(start))
-			return true
-		})
+		db.repeatPurge(deleteDays, deleteFreqSecs, tableName)
 	}
+	go db.repeatWriteItems()
 	return
 }
 
-func (db *Database) Add(istruct interface{}) (id int64, err error) {
+func (db *Database) repeatPurge(deleteDays, deleteFreqSecs float64, tableName string) {
+	ztimer.RepeatNow(deleteFreqSecs, func() bool {
+		start := time.Now()
+		zlog.Info("🟩EventDB purged start")
+		at := start.Add(-time.Duration(float64(ztime.Day) * deleteDays))
+		query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", tableName)
+		db.Lock.Lock()
+		_, err := db.DB.Exec(query, at)
+		db.Lock.Unlock()
+		if err != nil {
+			zlog.Error(err, "query", query, at)
+		}
+		zlog.Info("🟩EventDB purged:", time.Since(start))
+		return true
+	})
+}
+
+func (db *Database) Add(istruct interface{}, flush bool) {
+	storeLock.Lock()
+	itemsToStore = append(itemsToStore, istruct)
+	storeLock.Unlock()
+	if flush {
+		db.writeItems()
+	}
+}
+
+func (db *Database) repeatWriteItems() {
+	for {
+		if len(itemsToStore) > 0 {
+			db.writeItems()
+			time.Sleep(time.Second)
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+}
+
+func (db *Database) writeItems() {
+	skip := []string{db.PrimaryField}
+	params := "(" + strings.Repeat("?,", len(db.FieldInfos)-2) + "?)"
+
+	storeLock.Lock()
+	query := "INSERT INTO " + db.TableName + " (" + zsql.FieldNamesFromStruct(itemsToStore[0], skip, "") +
+		") VALUES "
+
+	var vals []interface{}
+	for i, item := range itemsToStore {
+		if i != 0 {
+			query += ", "
+		}
+		query += params
+		vals = append(vals, zsql.FieldValuesFromStruct(item, skip)...)
+	}
+	storeLock.Unlock()
+
+	// zlog.Info("ADD-QUERY:", len(vals), query)
+
+	db.Lock.Lock()
+	defer db.Lock.Unlock()
+	_, err := db.DB.Exec(query, vals...)
+	if err != nil {
+		zlog.Error(err, "query", query, vals)
+		return
+	}
+	storeLock.Lock()
+	itemsToStore = itemsToStore[:0]
+	storeLock.Unlock()
+}
+
+/*
+func (db *Database) repeatWriteItems() {
+	for {
+		var item interface{}
+		zlog.Info("DB.writing?", len(itemsToStore))
+		storeLock.Lock()
+		if len(itemsToStore) > 0 {
+			item = itemsToStore[0]
+			itemsToStore = itemsToStore[1:]
+		}
+		storeLock.Unlock()
+		if item == nil {
+			time.Sleep(time.Second)
+			continue
+		}
+		db.writeItem(item)
+	}
+}
+
+func (db *Database) writeItem(istruct interface{}) {
 	skip := []string{db.PrimaryField}
 	params := ""
 	for i := 0; i < len(db.FieldInfos)-1; i++ {
@@ -130,15 +210,17 @@ func (db *Database) Add(istruct interface{}) (id int64, err error) {
 	defer db.Lock.Unlock()
 	r, err := db.DB.Exec(query, vals...)
 	if err != nil {
-		return 0, zlog.Error(err, "query", query, vals)
+		zlog.Error(err, "query", query, vals)
+		return
 	}
-	id, err = r.LastInsertId()
+	id, err := r.LastInsertId()
 	// zlog.Info("Add2DB:", id)
 	if err != nil {
-		return 0, zlog.Error(err, "get lastinsert", query, vals)
+		zlog.Error(err, "get lastinsert", query, vals, id)
+		return
 	}
-	return id, nil
 }
+*/
 
 type CompareItem struct {
 	Name   string
@@ -247,13 +329,14 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	slicePtrVal := reflect.ValueOf(resultsSlicePtr)
 	sliceVal := reflect.Indirect(slicePtrVal)
 
+	qtime := time.Since(now)
 	resultPointers := zsql.FieldPointersFromStruct(resultStructVal.Interface(), nil)
 	for rows.Next() {
 		err = rows.Scan(resultPointers...)
 		zlog.AssertNotError(err)
 		sliceVal = reflect.Append(sliceVal, reflect.Indirect(resultStructVal))
 	}
-	zlog.Info("🟩eventsdb.Got:", time.Since(now), sliceVal.Len())
+	zlog.Info("🟩eventsdb.Got:", qtime, time.Since(now), sliceVal.Len())
 	reflect.Indirect(slicePtrVal).Set(sliceVal)
 
 	return nil

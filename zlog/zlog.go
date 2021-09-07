@@ -350,6 +350,7 @@ func HandlePanic(exit bool) error {
 	}
 	r := recover()
 	if r != nil {
+		fmt.Println("**HandlePanic")
 		Error(nil, "\n🟥HandlePanic:", r, "\n", GetCallingStackString())
 		str := fmt.Sprint(r)
 		PanicHandler(str, exit)

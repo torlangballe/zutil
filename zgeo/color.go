@@ -149,7 +149,7 @@ func ColorNewHSBA(h, s, b, a float32) (c Color) {
 	return
 }
 
-func (c Color) GetHSBA() HSBA {
+func (c Color) HSBA() HSBA {
 	var h, s, b, a float32
 	var hsba HSBA
 	hsba.H = float32(h)
@@ -159,7 +159,7 @@ func (c Color) GetHSBA() HSBA {
 	return hsba
 }
 
-func (c Color) GetRGBA() RGBA {
+func (c Color) RGBAValue() RGBA {
 	return c.Colors
 }
 
@@ -186,8 +186,8 @@ func (c Color) Mixed(withColor Color, amount float32) Color {
 	if amount == 1 {
 		return withColor
 	}
-	wc := withColor.GetRGBA()
-	col := c.GetRGBA()
+	wc := withColor.RGBAValue()
+	col := c.RGBAValue()
 	amount *= wc.A
 	r := (1-amount)*col.R + wc.R*amount
 	g := (1-amount)*col.G + wc.G*amount
@@ -197,20 +197,20 @@ func (c Color) Mixed(withColor Color, amount float32) Color {
 }
 
 func (c Color) MultipliedBrightness(multiply float32) Color {
-	hsba := c.GetHSBA()
+	hsba := c.HSBA()
 	return ColorNewHSBA(hsba.H, hsba.S, hsba.B*multiply, hsba.A)
 }
 
 func (c Color) AlteredContrast(contrast float32) Color {
 	multi := float32(math.Pow((float64(1+contrast))/1, 2.0))
-	var col = c.GetRGBA()
+	var col = c.RGBAValue()
 	col.R = (col.R-0.5)*multi + 0.5
 	col.G = (col.G-0.5)*multi + 0.5
 	col.B = (col.B-0.5)*multi + 0.5
 	return ColorNew(col.R, col.G, col.B, col.A)
 }
 
-func (c Color) GetContrastingGray() Color {
+func (c Color) ContrastingGray() Color {
 	g := c.GrayScale()
 	if g < 0.5 {
 		return ColorWhite

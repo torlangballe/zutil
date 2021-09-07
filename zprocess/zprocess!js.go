@@ -54,12 +54,12 @@ func RunCommand(command string, timeoutSecs float64, args ...string) (string, er
 	return str, err
 }
 
-func getAppProgramPath(appName string) string {
+func GetAppProgramPath(appName string) string {
 	return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
 }
 
 func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
-	path := getAppProgramPath(appName)
+	path := GetAppProgramPath(appName)
 	return MakeCommand(path, true, args...)
 }
 
@@ -204,3 +204,8 @@ func SetNumberOfOpenFiles(n int) {
 	err = unix.Setrlimit(unix.RLIMIT_NOFILE, &rlimit)
 	zlog.OnError(err)
 }
+
+// func SetPriority(pid, priority int) error {
+// 	err := syscall.Setpriority(syscall.PRIO_PROCESS, pid, priority)
+// 	return err
+// }

@@ -18,7 +18,12 @@ func ReplaceQuestionMarkArguments(squery string, args ...interface{}) string {
 		if got {
 			sa = t.Format(time.RFC3339Nano)
 		} else {
-			sa = fmt.Sprintf("'%v'", a)
+			str, got := a.(string)
+			if got {
+				sa = "'" + str + "'"
+			} else {
+				sa = fmt.Sprint(a)
+			}
 		}
 		squery = strings.Replace(squery, "?", sa, 1)
 	}

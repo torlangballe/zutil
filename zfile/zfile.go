@@ -323,6 +323,16 @@ func RemoveContents(dir string) error {
 	return nil
 }
 
+func AppendToFile(fpath, str string) error {
+	f, err := os.OpenFile(fpath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString(str)
+	f.Close()
+	return err
+}
+
 // WriteToFileAtomically  opens a temporary file in same directory as fpath, calls write with it's file,
 // closes it, and renames it to fpath
 func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error {
