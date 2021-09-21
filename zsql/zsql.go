@@ -16,7 +16,7 @@ func ReplaceQuestionMarkArguments(squery string, args ...interface{}) string {
 		var sa string
 		t, got := a.(time.Time)
 		if got {
-			sa = t.Format(time.RFC3339Nano)
+			sa = `'` + t.Format("2006-01-02 15:04:05.999999999Z07:00"+`'`)
 		} else {
 			str, got := a.(string)
 			if got {

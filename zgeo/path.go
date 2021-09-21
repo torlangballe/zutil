@@ -110,13 +110,14 @@ func (p *Path) GetPos() Pos {
 	return Pos{}
 }
 
-func (p *Path) MoveOrLineTo(pos Pos) {
+func (p *Path) MoveOrLineTo(pos Pos) bool {
 	plen := len(p.nodes)
 	if plen == 0 || p.nodes[plen-1].Type == PathClose {
 		p.MoveTo(pos)
-	} else {
-		p.LineTo(pos)
+		return false
 	}
+	p.LineTo(pos)
+	return true
 }
 
 func (p *Path) MoveTo(pos Pos) {

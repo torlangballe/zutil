@@ -236,6 +236,11 @@ func MustParse(s string) time.Time {
 	return t
 }
 
+func WithIntegerSeconds(t time.Time) time.Time {
+	n := t.Unix()
+	return time.Unix(n, 0).In(t.Location())
+}
+
 func ReplaceOldUnixTimeZoneNamesWithNew(name string) string {
 	var names = map[string]string{
 		"Africa/Asmera":                   "Africa/Asmara",
@@ -367,18 +372,30 @@ func ReplaceOldUnixTimeZoneNamesWithNew(name string) string {
 	return name
 }
 
-func GetStartOfToday(t time.Time) time.Time {
+func GetStartOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
-func IsToday(t time.Time) bool {
-	now := time.Now().In(t.Location())
-	s := GetStartOfToday(now)
-	e := s.Add(Day)
-	if t.Sub(s) >= 0 && e.Sub(t) > 0 {
-		return true
+func GetStartOfToday() time.Time {
+	return GetStartOfDay(time.Now().Local())
+}
+
+func IsSameDay(a, b time.Time) bool {
+	if a.Year() != b.Year() {
+		return false
 	}
-	return false
+	if a.Month() != b.Month() {
+		return false
+	}
+	if a.Day() != b.Day() {
+		return false
+	}
+	return true
+}
+
+// IsToday returns true if t in local time is same day as now local.
+func IsToday(t time.Time) bool {
+	return IsSameDay(t.Local(), time.Now())
 }
 
 func TimeZoneNameFromHourOffset(offset float32) string {

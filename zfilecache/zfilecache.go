@@ -58,6 +58,7 @@ func Init(workDir, urlPrefix, cacheName string) *Cache {
 	c.DeleteAfter = time.Hour * 24
 	c.workDir = workDir
 	c.cacheName = cacheName
+	c.DeleteRatio = 1
 	path := zstr.Concat("/", urlPrefix, cacheName)
 	c.getURL = path //zstr.Concat("/", zrest.AppURLPrefix, path) // let's make image standalone and remove this dependency soon
 	err := os.MkdirAll(c.workDir+cacheName, 0775|os.ModeDir)

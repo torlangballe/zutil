@@ -155,20 +155,17 @@ func (db *Database) writeItems() {
 		query += params
 		vals = append(vals, zsql.FieldValuesFromStruct(item, skip)...)
 	}
-	storeLock.Unlock()
-
-	// zlog.Info("ADD-QUERY:", len(vals), query)
-
-	db.Lock.Lock()
-	defer db.Lock.Unlock()
-	_, err := db.DB.Exec(query, vals...)
-	if err != nil {
-		zlog.Error(err, "query", query, vals)
-		return
-	}
-	storeLock.Lock()
 	itemsToStore = itemsToStore[:0]
 	storeLock.Unlock()
+
+	//	for c := 0; c < 10; c++ {
+	db.Lock.Lock()
+	_, err := db.DB.Exec(query, vals...)
+	db.Lock.Unlock()
+	if err != nil {
+		zlog.Error(err, "query", query, vals)
+	}
+	//	}
 }
 
 /*

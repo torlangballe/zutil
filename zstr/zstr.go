@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -1103,6 +1104,19 @@ func IsValidEmail(email string) bool {
 		return false
 	}
 	return emailRegex.MatchString(email)
+}
+
+func SortedMapKeys(m interface{}) (keys []string) {
+	val := reflect.ValueOf(m)
+	if val.Kind() != reflect.Map {
+		panic("not map")
+	}
+	for _, key := range val.MapKeys() {
+		str := fmt.Sprint(key)
+		keys = append(keys, str)
+	}
+	sort.Strings(keys)
+	return
 }
 
 var EscapeQuoteReplacer = strings.NewReplacer(

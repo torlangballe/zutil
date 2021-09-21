@@ -254,7 +254,14 @@ func GetTagAsMap(stag string) map[string][]string {
 		if len(matches) > 0 {
 			for _, groups := range matches {
 				label := groups[1]
-				vars := strings.Split(groups[2], ",")
+				g := groups[2]
+				g = strings.Replace(g, "\\n", "\n", -1)
+				const chars = "•°©" // hack. Convert to weird chars, then back to single comma
+				g = strings.Replace(g, ",,", chars, -1)
+				vars := strings.Split(g, ",")
+				for i, v := range vars {
+					vars[i] = strings.Replace(v, chars, ",", -1)
+				}
 				m[label] = vars
 			}
 			return m
