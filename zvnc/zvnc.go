@@ -8,7 +8,7 @@ import (
 
 	vnc "github.com/amitbet/vnc2video"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/ztimer"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 type Client struct {
@@ -59,36 +59,40 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 	var screenImage *vnc.VncCanvas
 	var cc *vnc.ClientConn
 
+	ticker := time.NewTicker(ztime.SecondsDur(updateSecs))
+	var getScreen bool
 	go func() { // because vnc2video.Connect puts error on error channel during setup, we need to do for/select to pop it before calling:
 		// defer zlog.LogRecover()
 		for {
 			select {
+			case <-ticker.C:
+				// send message to update frame:
+				// zlog.Info("en", updateSecs, screenImage.Bounds())
+				getScreen = true
+				reqMsg := vnc.FramebufferUpdateRequest{Inc: 1, X: 0, Y: 0, Width: cc.Width(), Height: cc.Height()}
+				reqMsg.Write(cc)
+
 			case <-quitCh:
 				// zlog.Info("quit")
 				return
+
 			case err := <-errorCh:
-				// zlog.Info(err, "error received on channel")
+				zlog.Error(err, "VNC error received on channel")
 				if got != nil {
 					got(nil, err)
 				}
 				return
+
 			case msg := <-cchClient:
-				zlog.Info("Received client message type:%v msg:%v\n", msg.Type(), msg)
+				zlog.Info("VNC Received client message type:%v msg:%v\n", msg.Type(), msg)
+
 			case msg := <-cchServer:
 				if msg.Type() == vnc.FramebufferUpdateMsgType {
-					// secsPassed := time.Now().Sub(timeStart).Seconds()
-					// frameBufferReq++
-					// reqPerSec := float64(frameBufferReq) / secsPassed
-					// fmt.Println("New screen!", screenImage.Bounds())
-					if got != nil {
+					// zlog.Info("VNC New screen!", getScreen, updateSecs, screenImage.Bounds())
+					if getScreen && got != nil {
 						got(screenImage, nil)
 					}
-					// zlog.Info("Start new vnc fetch", updateSecs)
-					ztimer.StartIn(updateSecs, func() {
-						reqMsg := vnc.FramebufferUpdateRequest{Inc: 1, X: 0, Y: 0, Width: cc.Width(), Height: cc.Height()}
-						//cc.ResetAllEncodings()
-						reqMsg.Write(cc)
-					})
+					getScreen = false
 				}
 			}
 		}

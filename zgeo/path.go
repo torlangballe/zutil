@@ -98,16 +98,16 @@ func (p *Path) Rect() Rect {
 func (p *Path) AddOval(inrect Rect) {
 }
 
-func (p *Path) GetPos() Pos {
+func (p *Path) GetPos() (Pos, bool) {
 	l := len(p.nodes)
 	if l != 0 {
-		p := p.nodes[l].Points
+		p := p.nodes[l-1].Points
 		pl := len(p)
 		if pl != 0 {
-			return p[pl-1]
+			return p[pl-1], true
 		}
 	}
-	return Pos{}
+	return Pos{}, false
 }
 
 func (p *Path) MoveOrLineTo(pos Pos) bool {

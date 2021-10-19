@@ -71,7 +71,7 @@ func Init(workDir, urlPrefix, cacheName string) *Cache {
 		dir := c.workDir + c.cacheName
 		cutoff := time.Now().Add(-c.DeleteAfter)
 		err := zfile.DeleteOldInSubFolders(dir, time.Millisecond*1, cutoff, c.DeleteRatio, func(p float32, count, total int) {
-			fmt.Printf("DeleteCache: %s %d%% %d/%d\n", dir, int(p*100), count, total)
+			zlog.Info("DeleteCache:", dir, int(p*100), count, "/", total)
 		})
 		if err != nil {
 			zlog.Error(err, "delete cache", c.cacheName)

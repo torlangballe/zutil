@@ -249,6 +249,8 @@ func (c Color) Hex() string {
 func ColorFromString(str string) Color {
 	// zlog.Info("ColorFromString:", str)
 	switch str {
+	case "initial":
+		return Color{}
 	case "red":
 		return ColorRed
 	case "white":
@@ -298,21 +300,27 @@ func ColorFromString(str string) Color {
 		if !zstr.HasSuffix(str, ")", &str) {
 			return Color{}
 		}
-		parts := strings.Split(str, ",")
-		if len(parts) != 4 && len(parts) != 3 {
-			return Color{}
-		}
-		var cols = make([]float32, len(parts), len(parts))
-		for i, p := range parts {
+		var r, g, b, a float32
+		a = 1
+		for i, p := range strings.Split(str, ",") {
 			p = strings.TrimSpace(p)
-			f, err := strconv.ParseFloat(p, 32)
-			if err != nil {
-				zlog.Error(err)
+			f, _ := strconv.ParseFloat(p, 32)
+			f32 := float32(f)
+			switch i {
+			case 0:
+				r = f32 / 255
+			case 1:
+				g = f32 / 255
+			case 2:
+				b = f32 / 255
+			case 3:
+				a = f32
+			default:
+				zlog.Info("Too many parts")
 				return Color{}
 			}
-			cols[i] = float32(f) / 255
 		}
-		return ColorFromSlice(cols)
+		return ColorNew(r, g, b, a)
 	} else if zstr.HasPrefix(str, "#", &str) {
 		slen := len(str)
 		switch slen {
@@ -339,7 +347,7 @@ func ColorFromString(str string) Color {
 			return ColorNew(r, g, b, a)
 		}
 	}
-	zlog.Error(nil, "bad color string", str)
+	zlog.Error(nil, "bad color string", str, zlog.GetCallingStackString())
 	return Color{}
 }
 

@@ -38,7 +38,7 @@ const Digits = "0123456789"
 
 type StrInt struct {
 	String string
-	Int    int64
+	Int64  int64
 }
 
 func GetColorEscapeCode(r, g, b int) string {

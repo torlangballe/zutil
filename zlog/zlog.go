@@ -57,6 +57,10 @@ func Fatal(err error, parts ...interface{}) error {
 	return baseLog(err, FatalLevel, 4, parts...)
 }
 
+func FatalNotImplemented() {
+	Fatal(nil, "Not Implemented")
+}
+
 // Info performs Log with InfoLevel priority
 func Info(parts ...interface{}) {
 	baseLog(nil, InfoLevel, 4, parts...)
@@ -133,6 +137,10 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		if got {
 			parts = append(parts[:i], parts[i+1:]...)
 			pos += int(n)
+		}
+		t, got := p.(time.Time)
+		if got {
+			parts[i] = t.Local().Format("06-Jan-02 15:04:05.9-07")
 		}
 	}
 	col := ""

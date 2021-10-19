@@ -21,6 +21,7 @@ const (
 	ShortFormat       = "2006-01-02 15:04"
 	JavascriptFormat  = "2006-01-02T15:04:05-07:00"
 	JavascriptISO     = "2006-01-02T15:04:05.999Z"
+	FullCompact       = "06-Jan-02T15:04:05.9"
 
 	Day  = time.Hour * time.Duration(24)
 	Week = Day * time.Duration(7)

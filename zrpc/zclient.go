@@ -102,7 +102,7 @@ func (c *Client) CallRemote(name string, args interface{}, reply interface{}, ti
 		params.TimeoutSecs = timeoutSecs[0]
 	}
 	resp, _, err := zhttp.SendBytesSetContentLength(surl, params) //, message, map[string]string{
-	// zlog.Info("CallRemote:", name, surl, err)
+	// fmt.Println("CallRemote:", name, surl, err)
 	// 	"js.fetch:mode": "no-cors",
 	// })
 	// zlog.Info("POST RPC:", err, surl, zhttp.GetCopyOfResponseBodyAsString(resp))

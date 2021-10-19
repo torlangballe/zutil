@@ -140,6 +140,9 @@ func (db *Database) repeatWriteItems() {
 }
 
 func (db *Database) writeItems() {
+	if len(itemsToStore) == 0 {
+		return
+	}
 	skip := []string{db.PrimaryField}
 	params := "(" + strings.Repeat("?,", len(db.FieldInfos)-2) + "?)"
 

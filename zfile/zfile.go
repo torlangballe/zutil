@@ -342,19 +342,21 @@ func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error
 		//		fmt.Println("WriteToFileAtomically create:", err)
 		return err
 	}
-	defer file.Close()
 	err = write(file)
 	if err != nil {
+		file.Close()
 		os.Remove(tempPath)
 		fmt.Println(err, "{nolog}WriteToFileAtomically call write func")
 		return err
 	}
 	err = os.Rename(tempPath, fpath)
 	if err != nil {
+		file.Close()
 		os.Remove(tempPath)
 		fmt.Println("{nolog}WriteToFileAtomically rename", err, tempPath, fpath)
 		return err
 	}
+	file.Close()
 	return nil
 }
 

@@ -125,6 +125,7 @@ func SetClientKnowsResourceUpdated(resID, clientID string) {
 }
 
 func (c *RPCCalls) SetResourceUpdatedFromClient(req *http.Request, resID *string, reply *Any) error {
+	// fmt.Println("SetResourceUpdatedFromClient:", *resID)
 	clientID, err := AuthenticateRequest(req)
 	if err != nil {
 		return err
@@ -163,7 +164,6 @@ func GetClientsWhoKnowResourceIsUpdated(resID string) (clients []string) {
 			clients = append(clients, cid)
 		}
 	}
-	// fmt.Println("GetClientsWhoKnowResourceIsUpdated1:", resID, clients)
 	return
 }
 
