@@ -37,7 +37,7 @@ func ToBoolInd(b bool) BoolInd {
 	return False
 }
 
-func (b BoolInd) BoolValue() bool {
+func (b BoolInd) Bool() bool {
 	return b == 1
 }
 
@@ -58,7 +58,7 @@ func FromString(str string, def bool) bool {
 	if bind == Unknown {
 		return def
 	}
-	return bind.BoolValue()
+	return bind.Bool()
 }
 
 func FromStringWithInd(str string, def BoolInd) BoolInd {

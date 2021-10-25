@@ -282,3 +282,7 @@ func (p *Path) ArcDegFromCenter(center Pos, radius Size, degStart float64, degEn
 	rect = rect.ExpandedToInt()
 	p.ArcTo(rect, degStart, degEnd-degStart, clockwise)
 }
+
+func (p *Path) Circle(center Pos, radius Size) {
+	p.ArcDegFromCenter(center, radius, 0, 360)
+}

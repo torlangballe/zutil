@@ -22,6 +22,7 @@ const (
 	JavascriptFormat  = "2006-01-02T15:04:05-07:00"
 	JavascriptISO     = "2006-01-02T15:04:05.999Z"
 	FullCompact       = "06-Jan-02T15:04:05.9"
+	NiceFormat        = "15:04:05 02-Jan-2006" // MaxSize of GetNice()
 
 	Day  = time.Hour * time.Duration(24)
 	Week = Day * time.Duration(7)
@@ -459,27 +460,29 @@ func GetDurNice(d time.Duration, fractDigits int) string {
 
 func GetDurationString(d time.Duration, secs, mins, hours bool, subDigits int) (str string, overflow bool) {
 	h, m, s, fract := GetDurationHourMinSec(d)
-	if secs {
-		if subDigits > 0 {
-			str = zwords.NiceFloat(float64(s)+fract, subDigits)
+	if h > 0 {
+		if hours {
+			str = fmt.Sprint(h)
 		} else {
-			str = fmt.Sprint(s)
-		}
-		if s < 10 && mins {
-			str = "0" + str
+			overflow = true
 		}
 	}
 	if mins {
 		str = zstr.Concat(":", str, fmt.Sprintf("%02d", m))
-		overflow = false
 	} else if m > 0 {
 		overflow = true
 	}
-	if hours {
-		str = zstr.Concat(":", str, h)
-		overflow = false
-	} else if h > 0 {
-		overflow = true
+	if secs {
+		var ss string
+		if subDigits > 0 {
+			ss = zwords.NiceFloat(float64(s)+fract, subDigits)
+		} else {
+			ss = fmt.Sprint(s)
+		}
+		if s < 10 && mins {
+			ss = "0" + ss
+		}
+		str = zstr.Concat(":", str, ss)
 	}
 	return
 }

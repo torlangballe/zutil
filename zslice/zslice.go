@@ -66,11 +66,12 @@ func RemoveIf(slice interface{}, remove func(i int) bool) {
 	}
 }
 
-func CopyTo(slice, to interface{}) {
-	toVal := reflect.ValueOf(to)
+func CopyTo(to, slice interface{}) {
 	sliceVal := reflect.ValueOf(slice)
-	toVal.SetCap(sliceVal.Len())
-	reflect.Copy(toVal, sliceVal)
+	destVal := reflect.MakeSlice(sliceVal.Type(), sliceVal.Len(), sliceVal.Len())
+	reflect.Copy(destVal, sliceVal)
+	toVal := reflect.ValueOf(to)
+	toVal.Elem().Set(destVal)
 }
 
 func Reverse(s interface{}) {

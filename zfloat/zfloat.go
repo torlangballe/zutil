@@ -84,10 +84,11 @@ func GetAny(i interface{}) (float64, error) {
 }
 
 func SetAny(any interface{}, f float64) error {
-	switch any.(type) {
-	case float32:
-		*any.(*float32) = float32(f)
-	case float64:
+	// zlog.Info("SetAnyF:", reflect.ValueOf(any).Type())
+	switch atype := any.(type) {
+	case *float32:
+		*atype = float32(f)
+	case *float64:
 		*any.(*float64) = f
 	case bool:
 		*any.(*bool) = (f != 0)
@@ -266,4 +267,3 @@ func MixedValueAtIndex(slice []float64, index float64) float64 {
 	}
 	return 0
 }
-

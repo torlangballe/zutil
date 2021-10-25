@@ -16,6 +16,7 @@ type LayoutCell struct {
 	Free              bool      // Free Cells are placed using simple aligning to parent rect, not stacked etc
 	ExpandFromMinSize bool      // Makes cell expand into extra space in addition to minsize, not current size, will probabbly be remoed when newstack exclusive
 	OriginalSize      Size      // Original size of object before layout
+	Divider           float64   // This cell is a divider, want's value less for items before it, added to items after
 	Name              string    // A name just for debugging
 }
 
@@ -192,6 +193,13 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 			}
 			// zlog.Info(vertical, biggiesTotalWidth, diff, "addLeftoverSpaceToWidths biggies:", sc.Name, w, newWidth, sc.MaxSize)
 			scells[i].size.W = newWidth
+		}
+	}
+	for i, sc := range scells {
+		if sc.Divider != 0 {
+			scells[i-1].size.W += sc.Divider
+			scells[i+1].size.W += sc.Divider
+			break
 		}
 	}
 }
