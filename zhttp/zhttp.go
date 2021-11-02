@@ -116,7 +116,6 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (resp *
 		if params.ContentType == "" {
 			params.ContentType = "raw"
 		}
-		// zlog.Info("sendBody: byes", surl)
 	} else {
 		m, got := send.(map[string]string)
 		if got {
@@ -126,7 +125,6 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (resp *
 			}
 		} else {
 			bout, err = json.Marshal(send)
-			// zlog.Info("POST:", err, string(bout))
 			if err != nil {
 				err = zlog.Error(err, "marshal")
 				return
@@ -139,6 +137,9 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (resp *
 	params.Body = bout
 	resp, code, err := SendBytesSetContentLength(surl, params)
 	if err != nil || code >= 300 {
+		if params.PrintBody && resp != nil {
+			zlog.Info("Body:\n", GetCopyOfResponseBodyAsString(resp))
+		}
 		if resp != nil {
 			resp.Body.Close()
 		}
@@ -360,11 +361,14 @@ func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Respo
 	zlog.Assert(len(params.Body) != 0, surl)
 	zlog.Assert(params.ContentType != "")
 	zlog.Assert(params.Method != "")
-	params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
+	// params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
 	params.Headers["Content-Type"] = params.ContentType
 	// zlog.Info("SendBytesSetContentLength:", params.Method, surl)
 	if params.PrintBody {
 		zlog.Info("zhttp.SendBytesSetContentLength:", surl, "\n", string(params.Body))
+		for h, s := range params.Headers {
+			zlog.Info(h+":", s)
+		}
 	}
 	req, client, err := MakeRequest(surl, params)
 	if err != nil {

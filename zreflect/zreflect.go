@@ -236,11 +236,11 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 
 func ItterateStruct(istruct interface{}, options Options) (item Item, err error) {
 	rval := reflect.ValueOf(istruct)
-	if !rval.IsValid() || rval.IsZero() { //  && rval.Kind() != reflect.StructKind
+	if !rval.IsValid() { //|| rval.IsZero() { //  && rval.Kind() != reflect.StructKind
 		zlog.Info("ItterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
 		return
 	}
-	zlog.Assert(rval.Kind() == reflect.Ptr, "not pointer", rval.Kind(), rval)
+	zlog.Assert(rval.Kind() == reflect.Ptr, "not pointer:", rval.Kind(), rval.Type(), rval)
 	return itterate(0, "", "", "", false, rval.Elem(), options)
 }
 

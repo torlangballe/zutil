@@ -16,7 +16,7 @@ type LayoutCell struct {
 	Free              bool      // Free Cells are placed using simple aligning to parent rect, not stacked etc
 	ExpandFromMinSize bool      // Makes cell expand into extra space in addition to minsize, not current size, will probabbly be remoed when newstack exclusive
 	OriginalSize      Size      // Original size of object before layout
-	Divider           float64   // This cell is a divider, want's value less for items before it, added to items after
+	Divider           float64   // This cell is a divider, wants its value subtracted from item before it, added to item after
 	Name              string    // A name just for debugging
 }
 
@@ -142,13 +142,21 @@ func getPossibleAdjustments(diff float64, scells []stackCell) []float64 {
 // it does two passes; First ones with a MaxSize or non-expanding, then rest with what is left.
 // it returns *added*, which is sum of width of all added cells
 func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vertical bool, spacing float64) {
-	width, space, marg := calcPreAddedTotalWidth(scells, spacing)
+	width, _, _ := calcPreAddedTotalWidth(scells, spacing) // space, marg
 	diff := r.Size.W - width
-	// zlog.Info("addLeftoverSpaceToWidths:", r.Size.W, "diff:", diff, "spacing:", spacing, "w:", width, "sp:", space, "marg:", marg)
+	adjustableCount := 0.0
 	adj := getPossibleAdjustments(diff, scells)
-	//		zlog.Info("Possible adj:", adj)
+	for _, a := range adj {
+		if a != 0 {
+			adjustableCount++
+		}
+	}
+	// if vertical {
+	// 	zlog.Info(adjustableCount, "addLeftoverSpaceToWidths:", debugName, r.Size.W, "diff:", diff, "spacing:", spacing, "w:", width, "sp:", space, "marg:", marg)
+	// }
+	// zlog.Info("Possible adj:", adj)
 	ndiff := diff
-	viewsWidth := width - space - marg
+	//	viewsWidth := width - space - marg
 	for {
 		adjusted := false
 		for i, sc := range scells {
@@ -156,9 +164,14 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 				continue
 			}
 			w := math.Max(1, sc.size.W)
-			shouldAdjust := w / viewsWidth * ndiff
-			if math.Abs(adj[i]) < math.Abs(shouldAdjust) {
-				// zlog.Info("addLeftoverSpaceToWidths adjust:", sc.Name, adj[i], ndiff)
+			shouldAdjust := ndiff / adjustableCount
+			// if vertical {
+			// 	zlog.Info("adj:", shouldAdjust, ndiff, sc.Name, adj[i])
+			// }
+			//			if math.Abs(adj[i]) < math.Abs(shouldAdjust) {
+			amount := math.Min(adj[i], shouldAdjust)
+			if amount > 0 {
+				// zlog.Info("  addLeftoverSpaceToWidths adjust:", amount, sc.Name, adj[i], ndiff)
 				adjusted = true
 				scells[i].size.W = w + adj[i]
 				ndiff -= adj[i]
@@ -197,8 +210,10 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 	}
 	for i, sc := range scells {
 		if sc.Divider != 0 {
+			// zlog.Info("DIV1:", scells[i-1].Name, scells[i-1].size.W, scells[i+1].size.W, sc.Divider)
 			scells[i-1].size.W += sc.Divider
-			scells[i+1].size.W += sc.Divider
+			scells[i+1].size.W -= sc.Divider
+			// zlog.Info("DIV2:", scells[i+1].Name, scells[i+1].size.W, scells[i+1].size.W, sc.Divider)
 			break
 		}
 	}
@@ -208,6 +223,9 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 // it aligns the cell's original size within this with cells alignment.
 // any space not used by cells (see jump below), is added between left and center, and center and right.
 func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical bool, spacing float64, outRects []Rect) {
+	// if vertical {
+	// 	zlog.Info("layoutRectsInBoxes:", debugName)
+	// }
 	sx := r.Min().X
 	x := sx
 	prevAlign := Left
@@ -227,7 +245,6 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 			wright += w
 		}
 	}
-	//	zlog.Info("layoutRectsInBoxes", wcenter, wright)
 	for i, sc := range scells {
 		if (sc.Alignment&(Left|HorCenter|Right))&prevAlign == 0 { // if align is something new, ie. center/right
 			if sc.Alignment&HorCenter != 0 { // if we are starting on center cells, add half of space left, and halve it for before right cells
@@ -247,8 +264,17 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 		if i == len(scells)-1 && (sc.Alignment&Right != 0) {
 			box.SetMaxX(r.Max().X)
 		}
-		vr := box.AlignPro(sc.OriginalSize, sc.Alignment|Shrink, sc.Margin, sc.MaxSize, sc.MinSize)
-		// zlog.Info(i, sc.inputIndex, sc.MinSize, "  align:", sc.Name, r, i, len(scells), box, sc.OriginalSize, sc.Alignment, "=", vr)
+		a := sc.Alignment
+		if a&HorExpand == 0 {
+			a |= HorShrink
+		}
+		if a&VertExpand == 0 {
+			a |= VertShrink
+		}
+		vr := box.AlignPro(sc.OriginalSize, a, sc.Margin, sc.MaxSize, sc.MinSize)
+		if vertical {
+			// zlog.Info(i, sc.inputIndex, sc.MinSize, "  align:", sc.Name, r, i, len(scells), box, sc.OriginalSize, sc.Alignment, "=", vr)
+		}
 		x = box.Max().X + spacing // was vr.Max!!!
 		if vertical {
 			vr = vr.Swapped()

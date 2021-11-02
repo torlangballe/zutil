@@ -67,16 +67,16 @@ func Init(workDir, urlPrefix, cacheName string) *Cache {
 	}
 	zrest.Handle(path, c)
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
-		start := time.Now()
+		// start := time.Now()
 		dir := c.workDir + c.cacheName
 		cutoff := time.Now().Add(-c.DeleteAfter)
 		err := zfile.DeleteOldInSubFolders(dir, time.Millisecond*1, cutoff, c.DeleteRatio, func(p float32, count, total int) {
-			zlog.Info("DeleteCache:", dir, int(p*100), count, "/", total)
+			// zlog.Info("DeleteCache:", dir, int(p*100), count, "/", total)
 		})
 		if err != nil {
 			zlog.Error(err, "delete cache", c.cacheName)
 		}
-		zlog.Info("Deleted cache:", c.workDir+c.cacheName, time.Since(start))
+		// zlog.Info("Deleted cache:", c.workDir+c.cacheName, time.Since(start))
 		return true
 	})
 	return c

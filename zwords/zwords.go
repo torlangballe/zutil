@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	KKiloByte  = 1024
-	KMegaByte  = 1024 * 1024
-	KGigaByte  = 1024 * 1024 * 1024
-	KTerraByte = 1024 * 1024 * 1024 * 1024
+	KiloByte  = 1024
+	MegaByte  = 1024 * 1024
+	GigaByte  = 1024 * 1024 * 1024
+	TerraByte = 1024 * 1024 * 1024 * 1024
 )
 
 // DefaultLanguage can be set with language gotten os/browser, if you use functions with langCode == "", this is used
@@ -27,48 +27,31 @@ var TSL = func(str, langCode string) string {
 	return str
 }
 
-func GetBandwidthString(b int64, langCode string, maxSignificant int) string {
+func getSizeString(b int64, multiples int64, suffix, langCode string, maxSignificant int) string {
+	prefs := []string{"", "K", "M", "G", "T", "P"}
 	if langCode == "" {
 		langCode = DefaultLanguage
 	}
-	s := "Bit"
-	v := 0.0
-	switch {
-	case b < 1000:
-		v = float64(b)
-	case b < 1000*1000:
-		s = "K" + s
-		v = float64(b) / float64(1000)
-	case b < 1000*1000*1000:
-		s = "M" + s
-		v = float64(b) / float64(1000*1000)
-	default:
-		s = "T" + s
-		v = float64(b) / float64(1000*1000*1000)
+	var n int64 = 1
+	for _, pref := range prefs {
+		if b < n*multiples {
+			return PluralWordWithCount(pref+suffix, float64(b)/float64(n), langCode, "", maxSignificant)
+		}
+		n *= multiples
 	}
-	return PluralWordWithCount(s, v, langCode, "", maxSignificant)
+	return "too big"
+}
+
+func GetBandwidthString(b int64, langCode string, maxSignificant int) string {
+	return getSizeString(b, 1000, "Bit", langCode, maxSignificant)
+}
+
+func GetStorageSizeString(b int64, langCode string, maxSignificant int) string {
+	return getSizeString(b, 1000, "Byte", langCode, maxSignificant)
 }
 
 func GetMemoryString(b int64, langCode string, maxSignificant int) string {
-	if langCode == "" {
-		langCode = DefaultLanguage
-	}
-	s := "Byte"
-	v := 0.0
-	switch {
-	case b < KKiloByte:
-		v = float64(b)
-	case b < KMegaByte:
-		s = "K" + s
-		v = float64(b) / float64(KKiloByte)
-	case b < KGigaByte:
-		s = "M" + s
-		v = float64(b) / float64(KMegaByte)
-	default:
-		s = "T" + s
-		v = float64(b) / float64(KGigaByte)
-	}
-	return PluralWordWithCount(s, v, langCode, "", maxSignificant)
+	return getSizeString(b, 1024, "Byte", langCode, maxSignificant)
 }
 
 func NiceFloat(f float64, significant int) string {

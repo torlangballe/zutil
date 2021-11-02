@@ -653,3 +653,26 @@ func DurationFromString(str string) time.Duration {
 	}
 	return 0
 }
+
+func Maximize(t *time.Time, with time.Time) {
+	if with.Sub(*t) > 0 {
+		*t = with
+	}
+}
+
+func Minimize(t *time.Time, with time.Time) {
+	if with.Sub(*t) < 0 {
+		*t = with
+	}
+}
+
+func XToTime(minX, maxX float64, x float64, start, end time.Time) time.Time {
+	tdiff := DurSeconds(end.Sub(start))
+	dur := SecondsDur((x - minX) / (maxX - minX) * tdiff)
+	return start.Add(dur)
+}
+
+func TimeToX(minX, maxX float64, t, start, end time.Time) float64 {
+	diff := DurSeconds(end.Sub(start))
+	return minX + DurSeconds(t.Sub(start))*(maxX-minX)/diff
+}

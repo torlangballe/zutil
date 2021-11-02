@@ -399,6 +399,10 @@ func (r Rect) UnionedWith(rect Rect) Rect {
 }
 
 func (r *Rect) UnionWithPos(pos Pos) {
+	if r.IsNull() {
+		r.Pos = pos
+		return
+	}
 	min := r.Min()
 	max := r.Max()
 	if pos.X > max.X {

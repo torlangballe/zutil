@@ -80,9 +80,9 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 	for _, field := range indexFields {
 		name := strings.Replace(field, ",", "_", -1)
 		query = fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_events_%s ON events (%s)", name, field)
-		zlog.Info("index:", query)
+		// zlog.Info("index:", query)
 		_, err = db.DB.Exec(query)
-		zlog.Info("index done:", err)
+		// zlog.Info("index done:", err)
 		if err != nil {
 			zlog.Error(err, "create index", query)
 		}
