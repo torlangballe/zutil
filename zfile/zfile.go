@@ -443,15 +443,15 @@ func ReadLastLine(fpath string, pos int64) (line string, startpos, newpos int64,
 
 // PeriodicFileBackup checks if *filepath* is larger than maxMB megabytes
 // every *checkHours*. If so, the file is copied to a file in the  same directory
-// with a postfix before extension. "path/file_postfix.log", and the file truncated.
+// with a suffix before extension. "path/file_suffix.log", and the file truncated.
 // This may be slow, but only way that seems to work with launchd logs on mac.
-func PeriodicFileBackup(filepath, postfixForOld string, checkHours float64, maxMB int) {
+func PeriodicFileBackup(filepath, suffixForOld string, checkHours float64, maxMB int) {
 	ztimer.RepeatNow(checkHours*3600, func() bool {
 		zlog.Info("🟩PeriodicFileBackup", checkHours*3600, filepath, Size(filepath), int64(maxMB*1024*1024))
 		if Size(filepath) >= int64(maxMB*1024*1024) {
 			zlog.Info("🟩PeriodicFileBackup need to do swap")
 			dir, _, stub, ext := Split(filepath)
-			newPath := dir + stub + postfixForOld + ext
+			newPath := dir + stub + suffixForOld + ext
 			err := os.Remove(newPath)
 			if err != nil && !errors.Is(err, os.ErrNotExist) {
 				fmt.Println(err, "remove old", filepath, newPath)
