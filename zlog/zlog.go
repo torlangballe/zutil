@@ -261,8 +261,8 @@ func GetCallingFunctionString(pos int) string {
 	}
 	_, function = path.Split(function)
 
-	home, _ := os.Getwd()
-	file = makePathRelativeTo(file, home)
+	wd, _ := os.Getwd()
+	file = makePathRelativeTo(file, wd)
 
 	return fmt.Sprintf("%s:%d %s()", file, line, function)
 }

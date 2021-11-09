@@ -36,6 +36,7 @@ type SQLTime struct {
 // Distant is a very far-future time when you want to do things forever etc
 var Distant = time.Unix(1<<62, 0)
 var BigTime = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000
+var TestTime = MustParse("2020-05-17T10:30:45.0+02:00")     // Random time we can use in tests when it has to look normal and be a fixed time
 
 // https://github.com/jinzhu/now -- interesting library for getting start of this minute etc
 
