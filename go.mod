@@ -11,22 +11,20 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/hirokidaichi/goviz v0.0.0-20140425160843-c57591cb2ad9 // indirect
-	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/lib/pq v1.8.0
 	github.com/mattn/go-sqlite3 v1.14.6
 	github.com/mileusna/useragent v1.0.2
 	github.com/mitchellh/go-ps v1.0.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/sasha-s/go-deadlock v0.2.0
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
-	github.com/shirou/gopsutil v3.20.10+incompatible
-	github.com/stretchr/testify v1.6.1 // indirect
+	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01
 	github.com/torlangballe/mdtopdf v0.0.0-20201126230225-1d4b4048b450
+	github.com/torlangballe/zfields v0.0.0-20211103142320-cc166af2a5ac
 	github.com/torlangballe/zui v0.0.0-20201207095153-588fb27498a2
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 	golang.org/x/sys v0.0.0-20201018230417-eeed37f84f13
 	golang.org/x/text v0.3.3
+	nhooyr.io/websocket v1.8.7
 )

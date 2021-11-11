@@ -310,6 +310,7 @@ func processResponse(surl string, resp *http.Response, printBody bool, receive i
 	return resp, nil
 }
 
+// TODO: Remove, old:
 func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorization, authKey string) (resp *http.Response, err error) {
 	client := http.DefaultClient
 	req, err := http.NewRequest("GET", surl, nil)
