@@ -61,7 +61,6 @@ github.com/icza/mjpeg v0.0.0-20170217094447-85dfbe473743/go.mod h1:Eja3x31oRrEOz
 github.com/json-iterator/go v1.1.9 h1:9yzud/Ht36ygwatGx56VwCZtlI/2AD15T1X2sjSuGns=
 github.com/json-iterator/go v1.1.9/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/uOdHXbAo4=
 github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
-github.com/jung-kurt/gofpdf v1.16.2 h1:jgbatWHfRlPYiK85qgevsZTHviWXKwB1TTiKdz5PtRc=
 github.com/jung-kurt/gofpdf v1.16.2/go.mod h1:1hl7y57EsiPAkLbOwzpzqgx1A30nQCk/YmFV8S2vmK0=
 github.com/kbinani/screenshot v0.0.0-20191211154542-3a185f1ce18f/go.mod h1:f8GY5V3lRzakvEyr49P7hHRYoHtPr8zvj/7JodCoRzw=
 github.com/klauspost/compress v1.10.3 h1:OP96hzwJVBIHYU52pVTI6CczrxPvrGfgqF9N5eTO0Q8=
@@ -118,10 +117,8 @@ github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01 h1:tqAY
 github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01/go.mod h1:T5m9qOyCR7mU/EEFH0WwuwqA/gcAiAgoPdkdLOnJo/Q=
 github.com/torlangballe/mdtopdf v0.0.0-20201126230225-1d4b4048b450 h1:3kMFMrsPcPTsGee03lFOGFz8EbkgDPj0ZHsBhphadzE=
 github.com/torlangballe/mdtopdf v0.0.0-20201126230225-1d4b4048b450/go.mod h1:FjMRIFWBfC3IIQIe6HmwMd9mhfCi+BNYPqNXeE9tYzk=
-github.com/torlangballe/zfields v0.0.0-20211103142320-cc166af2a5ac h1:YeK8kQ5eKlmEFRstpnbFb2K2+GThJTzKUQUm+TGjNnQ=
 github.com/torlangballe/zfields v0.0.0-20211103142320-cc166af2a5ac/go.mod h1:2xPg1ZlxCRKH6IrQcFPkEXSoxIkot4RThH1FpHLX0rk=
 github.com/torlangballe/zui v0.0.0-20201125142540-fd9688fb924d/go.mod h1:4TzBHLnFKMRLm0nsvCQyLHR6Dql6y6M/E9IOSHdRPMg=
-github.com/torlangballe/zui v0.0.0-20201207095153-588fb27498a2 h1:YXRfQgOWX8tO12nLLGkRr+vRBlmJHV5EkLE41VpD+0s=
 github.com/torlangballe/zui v0.0.0-20201207095153-588fb27498a2/go.mod h1:m/e7Adcg6Et4Ynbpu9nysyJLvGTNXAh3BLWHUHn+uGM=
 github.com/torlangballe/zutil v0.0.0-20201126235223-ae6e8fe16b25/go.mod h1:4dWRU4ru0tlCkTnx4RKjNrzmctjgQJlVVXLSbx7+v70=
 github.com/torlangballe/zutil v0.0.0-20201207093958-4c84b65f22c0/go.mod h1:fQwfWa97s92tr4eiDBK4wwyosDRgHXPZeQbVLVrjp+0=
