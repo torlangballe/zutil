@@ -122,9 +122,13 @@ github.com/torlangballe/gofpdfv2 v0.0.0-20211112110848-c4a4c1a7ffdb/go.mod h1:Bg
 github.com/torlangballe/mdtopdf v0.0.0-20201126230225-1d4b4048b450/go.mod h1:FjMRIFWBfC3IIQIe6HmwMd9mhfCi+BNYPqNXeE9tYzk=
 github.com/torlangballe/mdtopdf v0.0.0-20211112121132-cd8a6d6db73d h1:u7wCkeXjKYwCDPAxpUgf1OnTy0r+gHhEySv+dY/vWLw=
 github.com/torlangballe/mdtopdf v0.0.0-20211112121132-cd8a6d6db73d/go.mod h1:3ygI0eIzcpiNO49etwjpTxZzExCwRO1KtJ1wU0KPego=
+github.com/torlangballe/zfields v0.0.0-20211103142320-cc166af2a5ac h1:YeK8kQ5eKlmEFRstpnbFb2K2+GThJTzKUQUm+TGjNnQ=
+github.com/torlangballe/zfields v0.0.0-20211103142320-cc166af2a5ac/go.mod h1:2xPg1ZlxCRKH6IrQcFPkEXSoxIkot4RThH1FpHLX0rk=
 github.com/torlangballe/zui v0.0.0-20201125142540-fd9688fb924d/go.mod h1:4TzBHLnFKMRLm0nsvCQyLHR6Dql6y6M/E9IOSHdRPMg=
+github.com/torlangballe/zui v0.0.0-20201207095153-588fb27498a2 h1:YXRfQgOWX8tO12nLLGkRr+vRBlmJHV5EkLE41VpD+0s=
 github.com/torlangballe/zui v0.0.0-20201207095153-588fb27498a2/go.mod h1:m/e7Adcg6Et4Ynbpu9nysyJLvGTNXAh3BLWHUHn+uGM=
 github.com/torlangballe/zutil v0.0.0-20201126235223-ae6e8fe16b25/go.mod h1:4dWRU4ru0tlCkTnx4RKjNrzmctjgQJlVVXLSbx7+v70=
+github.com/torlangballe/zutil v0.0.0-20201207093958-4c84b65f22c0/go.mod h1:fQwfWa97s92tr4eiDBK4wwyosDRgHXPZeQbVLVrjp+0=
 github.com/torlangballe/zutil v0.0.0-20211103142248-5e7a1835013f h1:V7k3XRnwD2FW6D82zLA5xF9acO3Ol9RKClUR9qBogdc=
 github.com/torlangballe/zutil v0.0.0-20211103142248-5e7a1835013f/go.mod h1:YIIfjCud7zC42E3ckqp/TU6HRBjXxRays+djxomWW/0=
 github.com/ugorji/go v1.1.7 h1:/68gy2h+1mWMrwZFeD1kQialdSzAb432dtpeJ42ovdo=

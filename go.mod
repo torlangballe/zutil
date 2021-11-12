@@ -20,8 +20,11 @@ require (
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
 	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
-	github.com/torlangballe/mdtopdf v0.0.0-20211112121132-cd8a6d6db73d // indirect
-	github.com/torlangballe/zutil v0.0.0-20211103142248-5e7a1835013f // indirect
+	github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01
+	github.com/torlangballe/mdtopdf v0.0.0-20211112121132-cd8a6d6db73d
+	github.com/torlangballe/zfields v0.0.0-20211103142320-cc166af2a5ac
+	github.com/torlangballe/zui v0.0.0-20201207095153-588fb27498a2
+	github.com/torlangballe/zutil v0.0.0-20211103142248-5e7a1835013f
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 	golang.org/x/sys v0.0.0-20210816074244-15123e1e1f71
 	golang.org/x/text v0.3.3
