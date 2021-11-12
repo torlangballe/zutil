@@ -1,4 +1,4 @@
-module github.com/zutilangballe/zutil
+module github.com/torangballe/zutil/zutil
 
 go 1.15
 
