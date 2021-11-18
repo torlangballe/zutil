@@ -5,8 +5,8 @@ package zsql
 import (
 	"database/sql"
 	"database/sql/driver"
-	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/lib/pq"
@@ -110,10 +110,13 @@ func FieldPointersFromStruct(istruct interface{}, skip []string) (pointers []int
 		if item.IsSlice {
 			_, got := item.Interface.([]byte)
 			if !got {
-				a = pq.Array(a)
+				_, is := item.Interface.(JSONer)
+				if !is {
+					a = pq.Array(a)
+				}
 			}
 		}
-		// zlog.Info("FieldPointersFromStruct:", i.TypeName, i.Kind, i.FieldName, reflect.ValueOf(a).Type())
+		// zlog.Info("FieldPointersFromStruct:", item.TypeName, item.Kind, item.FieldName, reflect.ValueOf(a).Type())
 		pointers = append(pointers, a)
 	}
 	return
@@ -236,15 +239,19 @@ func CreateSQLite3TableCreateStatementFromStruct(istruct interface{}, table stri
 }
 
 func (j JSONer) Value() (driver.Value, error) {
-	zlog.Info("JSONer Value:", string(j))
+	// zlog.Info("JSONer Value:", string(j))
 	return driver.Value(j), nil
 }
 
 func (j *JSONer) Scan(val interface{}) error {
-	zlog.Info("JSONB Scan", val)
+	if val == nil {
+		*j = JSONer{}
+		return nil
+	}
+	// zlog.Info("JSONB Scan", val)
 	b, ok := val.([]byte)
 	if !ok {
-		return errors.New("type assertion to []byte failed")
+		return zlog.NewError("type assertion to []byte failed", reflect.ValueOf(val).Type())
 	}
 	*j = JSONer(b)
 	return nil
