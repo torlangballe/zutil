@@ -8,13 +8,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/garyburd/redigo/redis"
 	"github.com/lib/pq"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zredis"
 	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
-	"github.com/torlangballe/zutil/ztime"
 )
 
 type UsersCalls zrpc.CallsBase
@@ -25,9 +22,8 @@ var (
 	NoTokenError             = fmt.Errorf("no token for user: %w", AuthenticationFailedError)
 )
 
-func Init(db *sql.DB, redis *redis.Pool) error {
+func Init(db *sql.DB) (err error) {
 	database = db
-	redisPool = redis
 	squery := `
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
@@ -35,10 +31,50 @@ func Init(db *sql.DB, redis *redis.Pool) error {
 		passwordhash TEXT NOT NULL,
 		salt TEXT NOT NULL,
 		permissions TEXT[] NOT NULL DEFAULT '{}'
-	);
-	`
-	_, err := database.Exec(squery)
-	return err
+	)`
+	_, err = database.Exec(squery)
+	if err != nil {
+		zlog.Error(err, "create users", squery)
+		return err
+	}
+	squery = `
+	CREATE TABLE IF NOT EXISTS users_tokens (
+		token TEXT NOT NULL,
+		userid BIGINT,
+		time timestamp NOT NULL DEFAULT NOW()
+	);`
+	_, err = database.Exec(squery)
+	if err != nil {
+		zlog.Error(err, "create tokens", squery)
+		return err
+	}
+	squery = `CREATE INDEX IF NOT EXISTS idx_tokens_ids ON users_tokens (token, userid)`
+	_, err = database.Exec(squery)
+	zlog.Info("Createindex:", err)
+	if err != nil {
+		zlog.Error(err, "create token index", squery)
+		return err
+	}
+	/*
+	   	squery = `
+	   	CREATE FUNCTION expire_tokens_delete_old_rows() RETURNS trigger
+	       LANGUAGE plpgsql
+	       AS $$
+	   	BEGIN
+	     		DELETE FROM users_tokens WHERE time < NOW() - INTERVAL '30 days';
+	     		RETURN NEW;
+	   	END;
+	   	$$;`
+	   	_, err = database.Exec(squery)
+	   	zlog.Error(err, "add delete func for trigger")
+
+	   	squery = `CREATE TRIGGER expire_tokens_delete_old_rows_trigger
+	   		AFTER INSERT ON users_tokens
+	   		EXECUTE PROCEDURE expire_tokens_delete_old_rows();`
+	   	_, err = database.Exec(squery)
+	   	zlog.Error(err, "add trigger")
+	*/
+	return nil
 }
 
 func makeHash(str, salt string) string {
@@ -183,7 +219,7 @@ func Login(email, password string) (id int64, token string, err error) {
 	id = u.ID
 	err = setTokenForUserId(token, id)
 	if err != nil {
-		err = fmt.Errorf("Storage of authentication failed: %w", AuthenticationFailedError)
+		err = fmt.Errorf("Storage of authentication failed: %w (%v)", AuthenticationFailedError, err)
 		zlog.Info(err)
 		return
 	}
@@ -228,23 +264,30 @@ INSERT INTO users (email, passwordhash, salt, permissions) VALUES
 	return
 }
 
-func getUserIDFromRedisFromToken(token string) (id int64, err error) {
-	key := "user." + token
-	_, err = zredis.Get(redisPool, &id, key)
+func getUserIDFromFromToken(token string) (id int64, err error) {
+	squery := "SELECT userid FROM users_tokens WHERE token=$1 LIMIT 1"
+	row := database.QueryRow(squery, token)
+	err = row.Scan(&id)
 	if err != nil {
+		zlog.Error(err, squery, token)
 		return 0, AuthenticationFailedError
 	}
 	return
 }
 
 func setTokenForUserId(token string, id int64) (err error) {
-	key := "user." + token
-	err = zredis.Put(redisPool, key, ztime.Day*30, id)
+	squery := `INSERT INTO users_tokens (token, userid) VALUES ($1, $2)`
+	_, err = database.Exec(squery, token, id)
+	zlog.Error(err, squery, token, id)
+	if err != nil {
+		zlog.Error(err, "update")
+		return err
+	}
 	return
 }
 
 func GetUserFromToken(token string) (user User, err error) {
-	id, err := getUserIDFromRedisFromToken(token)
+	id, err := getUserIDFromFromToken(token)
 	if err != nil {
 		return
 	}
@@ -284,7 +327,7 @@ func (u *UsersCalls) Authenticate(req *http.Request, a *Authentication, r *Authe
 		r.ID, r.Token, err = Login(a.Email, a.Password)
 	}
 	if err != nil {
-		zlog.Error(err, "authenticate", *a)
+		zlog.Error(err, "authenticate", *a, a.IsRegister)
 		return err
 	}
 	return
