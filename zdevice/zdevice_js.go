@@ -81,7 +81,7 @@ func IsCharging() int {
 	return 0
 }
 
-func OSVersionstring() string {
+func OSVersion() string {
 	return ""
 }
 

@@ -3,11 +3,12 @@
 package zdevice
 
 import (
-	"runtime"
+	"os"
 
 	"github.com/denisbrodbeck/machineid"
-	"github.com/shirou/gopsutil/disk"
+	"github.com/matishsiao/goInfo"
 	"github.com/torlangballe/zutil/zlog"
+	"golang.org/x/sys/unix"
 )
 
 func WasmBrowser() string {
@@ -31,18 +32,17 @@ func OS() OSType {
 	return Platform()
 }
 
+func OSVersion() string {
+	gi, _ := goInfo.GetInfo()
+	return gi.Core
+}
+
 func FreeAndUsedDiskSpace() (free int64, used int64) {
-	parts, _ := disk.Partitions(true)
-	for _, p := range parts {
-		device := p.Mountpoint
-		if runtime.GOOS == "darwin" && device != "/System/Volumes/Data" {
-			continue
-		}
-		s, _ := disk.Usage(device)
-		// zlog.Info("Free:", device, s.Free, "used:", s.Used)
-		free += int64(s.Free)
-		used += int64(s.Used)
-	}
+	var stat unix.Statfs_t
+	wd, _ := os.Getwd()
+	unix.Statfs(wd, &stat)
+	free = int64(stat.Bfree * uint64(stat.Bsize))
+	used = int64(stat.Blocks * uint64(stat.Bsize))
 	zlog.Assert(used != 0)
 	return
 }

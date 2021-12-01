@@ -5,8 +5,10 @@ import (
 	"net"
 	"runtime"
 
+	// "github.com/shirou/gopsutil/cpu"
+
+	//	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/torlangballe/zutil/zlog"
 )
@@ -58,12 +60,6 @@ func Platform() OSType {
 
 func IsDesktop() bool {
 	return OS() != AndroidType && OS() != IOSType
-}
-
-func OSVersion() string {
-	info, err := host.Info()
-	zlog.OnError(err)
-	return info.PlatformVersion
 }
 
 func Model() string {
