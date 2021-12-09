@@ -8,7 +8,6 @@ require (
 	github.com/amitbet/vnc2video v0.0.0-20190616012314-9d50b9dab1d9
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/garyburd/redigo v1.6.2
-	github.com/gin-gonic/gin v1.7.0 // indirect
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
