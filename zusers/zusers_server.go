@@ -50,7 +50,7 @@ func Init(db *sql.DB) (err error) {
 	}
 	squery = `CREATE INDEX IF NOT EXISTS idx_tokens_ids ON users_tokens (token, userid)`
 	_, err = database.Exec(squery)
-	zlog.Info("Createindex:", err)
+	// zlog.Info("Createindex:", err)
 	if err != nil {
 		zlog.Error(err, "create token index", squery)
 		return err

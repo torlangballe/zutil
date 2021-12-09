@@ -920,15 +920,19 @@ func NumberToBase64Code(n int) string {
 	return string(table[i])
 }
 
-func GetArgsAsQuotedParameters(args map[string]string, div string) string {
-	str := ""
+func ArgsToString(args map[string]string, div, eq, quote string) string {
+	var str string
 	for k, v := range args {
 		if str != "" {
 			str += div
 		}
-		str += k + `="` + v + `"`
+		str += k + eq + quote + v + quote
 	}
 	return str
+}
+
+func GetArgsAsQuotedParameters(args map[string]string, div string) string {
+	return ArgsToString(args, div, "=", `"`)
 }
 
 func GetArgsAsURLParameters(args map[string]string) string {
