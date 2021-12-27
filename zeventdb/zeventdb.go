@@ -237,6 +237,42 @@ func getTimeCompare(db *Database, t time.Time, start bool) string {
 	return w
 }
 
+func addComps(wheres *[]string, values *[]interface{}, comps []CompareItem, isEqual bool) {
+	for _, c := range comps {
+		var w string
+		for j, v := range c.Values {
+			name := c.Name
+			neq := !zstr.HasPrefix(name, "!", &name)
+			if neq != isEqual {
+				continue
+			}
+			if j != 0 {
+				if isEqual {
+					w += " OR "
+				} else {
+					w += " AND "
+				}
+			}
+			sval, _ := v.(string)
+			if sval != "" && strings.Contains(sval, "*") {
+				sval = strings.Replace(sval, "*", "%", -1)
+				w += name + " LIKE ?"
+				*values = append(*values, sval)
+				continue
+			}
+			*values = append(*values, v)
+			if isEqual {
+				w += name + "=?"
+			} else {
+				w += name + "<>?"
+			}
+		}
+		if w != "" {
+			*wheres = append(*wheres, "("+w+")")
+		}
+	}
+}
+
 func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, start, end time.Time, startID, endID int64, decending bool, keepID int64, count int) error {
 	var comps []CompareItem
 	for _, e := range equalItems {
@@ -255,35 +291,8 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	}
 	var values []interface{}
 	var wheres []string
-	for _, c := range comps {
-		var w string
-		if len(c.Values) > 1 {
-			w += "("
-		}
-		for j, v := range c.Values {
-			if j != 0 {
-				w += " OR "
-			}
-			name := c.Name
-			sval, _ := v.(string)
-			if sval != "" && strings.Contains(sval, "*") {
-				sval = strings.Replace(sval, "*", "%", -1)
-				w += name + " LIKE ?"
-				values = append(values, sval)
-				continue
-			}
-			values = append(values, v)
-			if zstr.HasPrefix(name, "!", &name) {
-				w += name + "<>?"
-			} else {
-				w += name + "=?"
-			}
-		}
-		if len(c.Values) > 1 {
-			w += ")"
-		}
-		wheres = append(wheres, w)
-	}
+	addComps(&wheres, &values, comps, true)
+	addComps(&wheres, &values, comps, false)
 	resultStructVal := reflect.New(db.StructType)
 
 	dir := "ASC"
