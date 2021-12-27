@@ -18,10 +18,10 @@ type item struct {
 
 // Cache is a simple in-memory cached map;
 type Cache struct {
-	accurateExpiry   bool // If accurateExpiry set, items are not touched on get, and Get returns false if expired, even if not flushed out yet. Good for tokens etc that actually have an expiry time
-	defaultExpiry time.Duration
-	items         map[string]*item
-	lock          sync.Mutex
+	accurateExpiry bool // If accurateExpiry set, items are not touched on get, and Get returns false if expired, even if not flushed out yet. Good for tokens etc that actually have an expiry time
+	defaultExpiry  time.Duration
+	items          map[string]*item
+	lock           sync.Mutex
 }
 
 func New(expiry time.Duration, accurateExpiry bool) *Cache {
@@ -80,8 +80,12 @@ func (c *Cache) Get(toPtr interface{}, key string) (got bool) {
 		i.touched = time.Now()
 	}
 	a := reflect.ValueOf(toPtr).Elem()
-	v := reflect.ValueOf(i.value)
-	a.Set(v)
+	if i.value == nil {
+		a.Set(reflect.Zero(a.Type()))
+	} else {
+		v := reflect.ValueOf(i.value)
+		a.Set(v)
+	}
 	return true
 }
 
