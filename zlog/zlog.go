@@ -269,8 +269,8 @@ func GetCallingFunctionString(pos int) string {
 
 func Assert(success bool, parts ...interface{}) {
 	if !success {
-		parts = append([]interface{}{StackAdjust(1)}, parts...)
-		fmt.Println("ASSERT", parts)
+		parts = append([]interface{}{"Assert:", StackAdjust(1)}, parts...)
+		fmt.Println(parts...)
 		Fatal(errors.New("assert failed"), parts...)
 	}
 }
