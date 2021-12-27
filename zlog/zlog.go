@@ -444,3 +444,10 @@ func OnErrorTestError(t *testing.T, err error, items ...interface{}) bool {
 	}
 	return false
 }
+
+func PrintMemoryStats() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	fmt.Printf("MemAlloc:%vKB TotalAlloc:%vKB Sys:%vKB NumGC:%d", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
+}
