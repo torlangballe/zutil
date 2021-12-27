@@ -447,6 +447,7 @@ func ReadLastLine(fpath string, pos int64) (line string, startpos, newpos int64,
 // This may be slow, but only way that seems to work with launchd logs on mac.
 func PeriodicFileBackup(filepath, suffixForOld string, checkHours float64, maxMB int) {
 	ztimer.RepeatNow(checkHours*3600, func() bool {
+		start := time.Now()
 		zlog.Info("🟩PeriodicFileBackup", checkHours*3600, filepath, Size(filepath), int64(maxMB*1024*1024))
 		if Size(filepath) >= int64(maxMB*1024*1024) {
 			zlog.Info("🟩PeriodicFileBackup need to do swap")
@@ -468,6 +469,7 @@ func PeriodicFileBackup(filepath, suffixForOld string, checkHours float64, maxMB
 				return true
 			}
 		}
+		zlog.Info("🟩PeriodicFileBackup Done", time.Since(start))
 		return true
 	})
 }
