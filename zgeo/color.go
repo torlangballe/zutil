@@ -105,47 +105,47 @@ func ColorFromSlice(s []float32) Color {
 	return Color{}
 }
 
-func ColorNewHSBA(h, s, b, a float32) (c Color) {
+func ColorNewHSBA(hsba HSBA) (c Color) {
 	c.Valid = true
 
-	i, _ := math.Modf(float64(h * 6))
-	var f = h*6 - float32(i)
-	var p = b * (1 - s)
-	var q = b * (1 - f*s)
-	var t = b * (1 - (1-f)*s)
+	i, _ := math.Modf(float64(hsba.H * 6))
+	var f = hsba.H*6 - float32(i)
+	var p = hsba.B * (1 - hsba.S)
+	var q = hsba.B * (1 - f*hsba.S)
+	var t = hsba.B * (1 - (1-f)*hsba.S)
 
 	switch math.Mod(i, 6) {
 	case 0:
-		c.Colors.R = b
+		c.Colors.R = hsba.B
 		c.Colors.G = t
 		c.Colors.B = p
 
 	case 1:
 		c.Colors.R = q
-		c.Colors.G = b
+		c.Colors.G = hsba.B
 		c.Colors.B = p
 
 	case 2:
 		c.Colors.R = p
-		c.Colors.G = b
+		c.Colors.G = hsba.B
 		c.Colors.B = t
 
 	case 3:
 		c.Colors.R = p
 		c.Colors.G = q
-		c.Colors.B = b
+		c.Colors.B = hsba.B
 
 	case 4:
 		c.Colors.R = t
 		c.Colors.G = p
-		c.Colors.B = b
+		c.Colors.B = hsba.B
 
 	case 5:
-		c.Colors.R = b
+		c.Colors.R = hsba.B
 		c.Colors.G = p
 		c.Colors.B = q
 	}
-	c.Colors.A = a
+	c.Colors.A = hsba.A
 	return
 }
 
@@ -198,7 +198,7 @@ func (c Color) Mixed(withColor Color, amount float32) Color {
 
 func (c Color) MultipliedBrightness(multiply float32) Color {
 	hsba := c.HSBA()
-	return ColorNewHSBA(hsba.H, hsba.S, hsba.B*multiply, hsba.A)
+	return ColorNewHSBA(hsba)
 }
 
 func (c Color) AlteredContrast(contrast float32) Color {
