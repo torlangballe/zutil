@@ -31,7 +31,6 @@ func RepeatNow(secs float64, perform func() bool) *Repeater {
 }
 
 func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
-	// zlog.Info("\nTimer Repeater:", secs, now, zlog.GetCallingStackString(), "\n")
 	r.Stop()
 	r.ticker = time.NewTicker(ztime.SecondsDur(secs))
 	r.stop = make(chan bool, 1)
