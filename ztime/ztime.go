@@ -451,7 +451,7 @@ func GetDurNice(d time.Duration, fractDigits int) string {
 	}
 	if s != 0 {
 		if fractDigits == 0 {
-			parts = append(parts, fmt.Sprintf("%d m", s))
+			parts = append(parts, fmt.Sprintf("%d s", s))
 		} else {
 			parts = append(parts, zwords.NiceFloat(float64(s)+f, fractDigits))
 		}
