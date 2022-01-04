@@ -444,14 +444,14 @@ func GetDurNice(d time.Duration, fractDigits int) string {
 	var parts []string
 	h, m, s, f := GetDurationHourMinSec(d)
 	if h != 0 {
-		parts = append(parts, fmt.Sprintf("%d h", h))
+		parts = append(parts, fmt.Sprintf("%dh", h))
 	}
 	if m != 0 {
-		parts = append(parts, fmt.Sprintf("%d m", m))
+		parts = append(parts, fmt.Sprintf("%dm", m))
 	}
 	if s != 0 {
 		if fractDigits == 0 {
-			parts = append(parts, fmt.Sprintf("%d s", s))
+			parts = append(parts, fmt.Sprintf("%ds", s))
 		} else {
 			parts = append(parts, zwords.NiceFloat(float64(s)+f, fractDigits))
 		}
