@@ -86,7 +86,8 @@ func Architecture() ArchitectureType {
 }
 
 // CPUUsage returns a slice of 0-1 where 1 is 100% of how much each CPU is utilized. Order unknown, but hopefully doesn't change
-func CPUUsage() (out []float64) {
+// if more than maxCores, it is recursivly halved, summing first half with last
+func CPUUsage(maxCores int) (out []float64) {
 	if zlog.IsInTests {
 		return []float64{0.1, 0.2, 0.3, 0.4}
 	}
@@ -112,6 +113,18 @@ func CPUUsage() (out []float64) {
 	for j := 0; j < coresPhysical; j++ {
 		out[j] /= 100
 	}
+	for len(out) > maxCores {
+		if len(out)%2 == 1 {
+			out = out[:maxCores]
+			return
+		}
+		half := len(out) / 2
+		for i := 0; i < half; i++ {
+			out[i] = (out[i] + out[half+i]) / 2
+		}
+		out = out[:half]
+	}
+	zlog.Info("CPUUsage:", out, maxCores)
 	return
 }
 
