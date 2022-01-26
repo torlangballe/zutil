@@ -171,23 +171,23 @@ WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title, long pid) {
 AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL debug) {
     NSString *nsTitle = [NSString stringWithUTF8String: title];
     AXUIElementRef appElementRef = AXUIElementCreateApplication(pid);
-    //   NSLog(@"getAXElementOfWindowForTitle: %s %ld %p\n", title, pid, appElementRef);
+    // NSLog(@"getAXElementOfWindowForTitle1: %s %ld %p\n", title, pid, appElementRef);
     CFArrayRef windowArray = nil;
-    AXUIElementCopyAttributeValue(appElementRef, kAXWindowsAttribute, (CFTypeRef*)&windowArray);
+    AXError err = AXUIElementCopyAttributeValue(appElementRef, kAXWindowsAttribute, (CFTypeRef*)&windowArray);
     if (windowArray == nil) {
-        NSLog(@"getAXElementOfWindowForTitle is nil: %s %ld\n", title, pid);
+        NSLog(@"getAXElementOfWindowForTitle is nil: %s pid=%ld err=%d\n", title, pid, err);
         CFRelease(appElementRef);
         return nil;
     }
     AXUIElementRef matchinWinRef = nil;
     CFIndex nItems = CFArrayGetCount(windowArray);
-    // NSLog(@"getAXElementOfWindowForTitle: %s %p %d\n", title, windowArray, (int)nItems);
+    NSLog(@"getAXElementOfWindowForTitle: %s %p %d\n", title, windowArray, (int)nItems);
     for (int i = 0; i < nItems; i++) {
         AXUIElementRef winRef = (AXUIElementRef) CFArrayGetValueAtIndex(windowArray, i);
         NSString *winTitle = nil;
         AXUIElementCopyAttributeValue(winRef, kAXTitleAttribute, (CFTypeRef *)&winTitle);
         if (winTitle == nil) {
-            // NSLog(@"Win: <nil-title> # %@\n", nsTitle);
+            NSLog(@"Win: <nil-title> # %@\n", nsTitle);
             continue;
         }
         winTitle = removeNonASCIIAndTruncate(winTitle);
@@ -245,7 +245,7 @@ int ActivateWindowForTitle(const char *title, long pid) {
 }
 
 int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h) {
-    // NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
+    // NSLog(@"*******PlaceWindowForTitle %s %ld\n", title, pid);
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, NO);
     if (winRef == nil) {
         NSLog(@"PlaceWindowForTitle no window for %s %ld\n", title, pid);
