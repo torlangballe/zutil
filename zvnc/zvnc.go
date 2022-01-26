@@ -6,7 +6,8 @@ import (
 	"net"
 	"time"
 
-	vnc "github.com/amitbet/vnc2video"
+	//	vnc "github.com/amitbet/vnc2video"
+	vnc "github.com/torlangballe/vnc2video"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -21,7 +22,7 @@ func (c *Client) Close() {
 
 func Connect(address, password string, updateSecs float64, got func(i image.Image, err error)) (*Client, error) {
 	nc, err := net.DialTimeout("tcp", address, 25*time.Second)
-	if err != nil {
+	if err != nil || nc == nil {
 		return nil, zlog.Error(err, "dial")
 	}
 	zlog.Info("starting up the vnc client, connecting to:", address)
