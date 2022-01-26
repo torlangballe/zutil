@@ -449,5 +449,5 @@ func PrintMemoryStats() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	fmt.Printf("MemAlloc:%vKB TotalAlloc:%vKB Sys:%vKB NumGC:%d", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
+	fmt.Printf("MemAlloc:%vKB TotalAlloc:%vKB Sys:%vKB NumGC:%d\n", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
 }
