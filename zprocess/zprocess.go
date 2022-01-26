@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/ztimer"
 
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -49,11 +50,16 @@ type TimedMutex struct {
 }
 
 func (t *TimedMutex) Lock() {
+	stack := zlog.GetCallingStackString()
+	timer := ztimer.StartIn(5, func() {
+		zlog.Info("🟥TimeMutex slow lock > 1 sec:", stack)
+	})
 	t.Start = time.Now()
 	t.mutex.Lock()
+	timer.Stop()
 	since := time.Since(t.Start)
 	// zlog.Info("**TimeMutex lock:", since)
-	if since > time.Second*1 {
+	if since > time.Second*5 {
 		zlog.Info("🟥TimeMutex slow lock:", since, zlog.GetCallingStackString())
 	}
 }
@@ -61,7 +67,7 @@ func (t *TimedMutex) Lock() {
 func (t *TimedMutex) Unlock() {
 	t.mutex.Unlock()
 	since := time.Since(t.Start)
-	if since > time.Second*1 {
+	if since > time.Second*5 {
 		zlog.Info("🟥TimeMutex slow unlock:", since, zlog.GetCallingStackString())
 	}
 }
