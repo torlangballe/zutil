@@ -2,10 +2,11 @@ module github.com/torlangballe/zutil
 
 go 1.15
 
+replace github.com/torlangballe/vnc2video => /Users/tor/source/go/src/github.com/torlangballe/vnc2video
+
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
 	github.com/StackExchange/wmi v1.2.1 // indirect
-	github.com/amitbet/vnc2video v0.0.0-20190616012314-9d50b9dab1d9
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/garyburd/redigo v1.6.2
 	github.com/google/uuid v1.1.2
@@ -24,6 +25,7 @@ require (
 	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01
+	github.com/torlangballe/vnc2video v0.0.0-20220121094803-94d76b276c07 // indirect
 	github.com/torlangballe/mdtopdf v0.0.0-20211112121132-cd8a6d6db73d
 	github.com/torlangballe/zui v0.0.0-20211112142918-adf88be4cc4f
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
