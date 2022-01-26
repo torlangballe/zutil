@@ -1,8 +1,10 @@
+//go:build server
 // +build server
 
 package zrpc
 
 import (
+	"encoding/json"
 	"net/http"
 	"reflect"
 	"sync"
@@ -31,6 +33,7 @@ var (
 	// updatedResourcesSentToClient stores which clients have been sent info about resource being updated [res][client]bool
 	updatedResourcesSentToClient = map[string]map[string]bool{}
 	updatedResourcesMutex        sync.Mutex
+	globalDict                   = sync.Map{}
 )
 
 func InitServer(router *mux.Router, port int, certFilesSuffix string) (hserver *znet.HTTPServer, err error) {
@@ -46,6 +49,15 @@ func InitServer(router *mux.Router, port int, certFilesSuffix string) (hserver *
 	server.RegisterCodec(rpcjson.NewCodec(), "application/json")
 	zrest.AddHandler(router, "rpc", doServeHTTP).Methods("POST", "OPTIONS")
 	return hserver, nil
+}
+
+func getMethodFromRequest(req *http.Request) string {
+	var v struct {
+		Method string `json:"method"`
+	}
+	body := zhttp.GetCopyOfRequestBodyAsString(req)
+	json.Unmarshal([]byte(body), &v)
+	return v.Method
 }
 
 func doServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -71,7 +83,9 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	// 	}
 	// }()
+	// zlog.Info("zrpc.Serve:", getMethodFromRequest(req))
 	server.ServeHTTP(w, req)
+	// zlog.Info("zrpc.Serve done:", body)
 }
 
 func Register(owners ...interface{}) {
