@@ -73,7 +73,6 @@ func (c *Client) CallRemoteFunc(method interface{}, args interface{}, reply inte
 	if err != nil {
 		return err
 	}
-	// zlog.Info("Call:", name, err)
 	return nil
 }
 
@@ -101,11 +100,8 @@ func (c *Client) CallRemote(name string, args interface{}, reply interface{}, ti
 	if len(timeoutSecs) != 0 {
 		params.TimeoutSecs = timeoutSecs[0]
 	}
+	// zlog.Info("zrpc.Call:", name)
 	resp, _, err := zhttp.SendBytesSetContentLength(surl, params) //, message, map[string]string{
-	// fmt.Println("CallRemote:", name, surl, err)
-	// 	"js.fetch:mode": "no-cors",
-	// })
-	// zlog.Info("POST RPC:", err, surl, zhttp.GetCopyOfResponseBodyAsString(resp))
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -114,7 +110,6 @@ func (c *Client) CallRemote(name string, args interface{}, reply interface{}, ti
 		return err
 	}
 
-	// sbody := zhttp.GetCopyOfResponseBodyAsString(resp)
 	err = rpcjson.DecodeClientResponse(resp.Body, &reply)
 	if err != nil {
 		zlog.Error(err, zlog.StackAdjust(1), "call remote decode")
