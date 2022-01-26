@@ -4,7 +4,9 @@ import (
 	"math"
 	"syscall/js"
 
+	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 var printed bool
@@ -20,6 +22,10 @@ func GetAll() []Screen {
 	dpr := win.Get("devicePixelRatio").Float()
 	m.Rect = zgeo.RectMake(0, 0, w, h)
 	m.Scale = math.Round(dpr)
+	if zdevice.OS() == zdevice.MacOSType {
+		zlog.Info("SCALE:", m.Scale, win.Get("screen").Get("height").Float(), win.Get("devicePixelRatio").Float())
+		m.Scale = 2
+	}
 	m.IsMain = true
 	m.SoftScale = 1
 	// m.UsableRect = m.Rect
