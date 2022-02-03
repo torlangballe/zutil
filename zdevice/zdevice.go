@@ -147,10 +147,10 @@ func MACAddress() ([]byte, error) {
 	return mac, nil
 }
 
-func MemoryAvailableUsedAndTotal() (available uint64, used uint64, total uint64) {
+func MemoryAvailableUsedAndTotal() (available int64, used int64, total int64) {
 	vm, err := mem.VirtualMemory()
 	if err != nil {
 		zlog.Fatal(err, "get vm")
 	}
-	return vm.Available, vm.Used, vm.Total
+	return int64(vm.Available), int64(vm.Used), int64(vm.Total)
 }

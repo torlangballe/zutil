@@ -1,3 +1,4 @@
+//go:build !js
 // +build !js
 
 package zdevice
@@ -6,7 +7,6 @@ import (
 	"os"
 
 	"github.com/denisbrodbeck/machineid"
-	"github.com/matishsiao/goInfo"
 	"github.com/torlangballe/zutil/zlog"
 	"golang.org/x/sys/unix"
 )
@@ -30,11 +30,6 @@ func UUID() string {
 
 func OS() OSType {
 	return Platform()
-}
-
-func OSVersion() string {
-	gi, _ := goInfo.GetInfo()
-	return gi.Core
 }
 
 func FreeAndUsedDiskSpace() (free int64, used int64) {
