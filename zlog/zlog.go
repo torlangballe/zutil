@@ -206,7 +206,7 @@ func GetCallingFunctionInfo(pos int) (function, file string, line int) {
 func GetCallingStackString() string {
 	var parts []string
 	for i := 3; ; i++ {
-		s := GetCallingFunctionString(i)
+		s := GetFileLineAndCallingFunctionString(i)
 		if s == "" {
 			break
 		}
@@ -255,6 +255,11 @@ func makePathRelativeTo(path, rel string) string {
 }
 
 func GetCallingFunctionString(pos int) string {
+	function, _, _ := GetCallingFunctionInfo(pos)
+	return function
+}
+
+func GetFileLineAndCallingFunctionString(pos int) string {
 	function, file, line := GetCallingFunctionInfo(pos)
 	if function == "" {
 		return ""
