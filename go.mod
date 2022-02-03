@@ -25,11 +25,11 @@ require (
 	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01
-	github.com/torlangballe/vnc2video v0.0.0-20220121094803-94d76b276c07 // indirect
 	github.com/torlangballe/mdtopdf v0.0.0-20211112121132-cd8a6d6db73d
+	github.com/torlangballe/vnc2video v0.0.0-20220121094803-94d76b276c07 // indirect
 	github.com/torlangballe/zui v0.0.0-20211112142918-adf88be4cc4f
-	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 	golang.org/x/sys v0.0.0-20210816074244-15123e1e1f71
-	golang.org/x/text v0.3.3
+	golang.org/x/text v0.3.5
 	nhooyr.io/websocket v1.8.7
 )
