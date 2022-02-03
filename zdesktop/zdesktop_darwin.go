@@ -110,7 +110,7 @@ func OpenURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) erro
 func RunURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) (*exec.Cmd, error) {
 	args = append(args, surl)
 	name := GetAppNameOfBrowser(btype, true)
-	cmd, _, _, err := zprocess.RunApp(name, args...)
+	cmd, _, _, _, err := zprocess.RunApp(name, args...)
 	if err != nil {
 		return nil, zlog.Error(err, "RunURLInBrowser")
 	}

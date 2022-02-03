@@ -1,5 +1,4 @@
 //go:build !js
-// +build !js
 
 package zprocess
 
@@ -12,12 +11,11 @@ import (
 	"sort"
 	"strings"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/mitchellh/go-ps"
 	"github.com/shirou/gopsutil/process"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
+	"golang.org/x/sys/unix"
 )
 
 func RunBashCommand(command string, timeoutSecs float64) (string, error) {
@@ -59,12 +57,12 @@ func GetAppProgramPath(appName string) string {
 	return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
 }
 
-func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
+func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
 	path := GetAppProgramPath(appName)
 	return MakeCommand(path, true, args...)
 }
 
-func MakeCommand(command string, start bool, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
+func MakeCommand(command string, start bool, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
 	cmd = exec.Command(command, args...)
 	outPipe, err = cmd.StdoutPipe()
 	if err != nil {
@@ -74,6 +72,11 @@ func MakeCommand(command string, start bool, args ...string) (cmd *exec.Cmd, out
 	errPipe, err = cmd.StderrPipe()
 	if err != nil {
 		err = zlog.Error(err, "connect stderr pipe")
+		return
+	}
+	inPipe, err = cmd.StdinPipe()
+	if err != nil {
+		err = zlog.Error(err, "connect stdin pipe")
 		return
 	}
 	if start {
@@ -123,6 +126,9 @@ func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 		}
 	}
 	// zlog.Info("GetPIDsForAppName", app, len(procs), pids, time.Since(start))
+	sort.Slice(pids, func(i, j int) bool {
+		return pids[i] < pids[j]
+	})
 	return pids
 }
 

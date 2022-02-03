@@ -181,7 +181,7 @@ AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL de
     }
     AXUIElementRef matchinWinRef = nil;
     CFIndex nItems = CFArrayGetCount(windowArray);
-    NSLog(@"getAXElementOfWindowForTitle: %s %p %d\n", title, windowArray, (int)nItems);
+    // NSLog(@"getAXElementOfWindowForTitle: %s %p %d\n", title, windowArray, (int)nItems);
     for (int i = 0; i < nItems; i++) {
         AXUIElementRef winRef = (AXUIElementRef) CFArrayGetValueAtIndex(windowArray, i);
         NSString *winTitle = nil;
