@@ -1,3 +1,4 @@
+//go:build !js
 // +build !js
 
 package zfile
@@ -173,6 +174,10 @@ func CopyFile(dest, source string) (err error) {
 	return out.Close()
 }
 
+// ReadFromURLToFilepath http.Get's the file at surl, and stores it in a file at filepath.
+// If maxBytes != 0, it only downloads that many bytes.
+// If filepath == "", it creates a temporary file using name from surl.
+// The stored file is returned in path, or err if error.
 func ReadFromURLToFilepath(surl, filepath string, maxBytes int64) (path string, err error) {
 	if filepath == "" {
 		var name string
