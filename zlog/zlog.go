@@ -167,7 +167,12 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		timeLock.Unlock()
 	}
 	if priority != InfoLevel {
-		finfo += GetCallingFunctionString(pos) + ": "
+		if priority == DebugLevel {
+			finfo += GetCallingFunctionString(pos)
+		} else {
+			finfo += GetFileLineAndCallingFunctionString(pos)
+		}
+		finfo += ": "
 	}
 	if err != nil {
 		parts = append([]interface{}{err}, parts...)
