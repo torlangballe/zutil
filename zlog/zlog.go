@@ -31,11 +31,13 @@ const (
 )
 
 var (
-	PrintPriority = Verbose
-	outputHooks   = map[string]func(s string){}
-	UseColor      = false
-	PanicHandler  func(reason string, exit bool)
-	IsInTests     bool
+	PrintPriority      = Verbose
+	outputHooks        = map[string]func(s string){}
+	UseColor           = false
+	PanicHandler       func(reason string, exit bool)
+	IsInTests          bool
+	PrintGoRoutines    bool
+	LastGoRoutineCount int
 )
 
 func init() {
@@ -104,7 +106,6 @@ func expandTildeInFilepath(path string) string {
 var hookingLock sync.Mutex
 var hooking = false
 var timeLock sync.Mutex
-var datePrinted time.Time
 var linesPrintedSinceTimeStamp int
 
 func NewError(parts ...interface{}) error {
@@ -158,9 +159,10 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	if runtime.GOOS != "js" {
 		timeLock.Lock()
 		linesPrintedSinceTimeStamp++
-		if time.Since(datePrinted) > time.Second*60 || linesPrintedSinceTimeStamp > 10 {
-			finfo = fmt.Sprintln("goroutines:", runtime.NumGoroutine())
-			datePrinted = time.Now()
+		num := runtime.NumGoroutine()
+		if PrintGoRoutines && LastGoRoutineCount != num {
+			finfo = fmt.Sprintln("goroutines:", num)
+			LastGoRoutineCount = num
 		}
 		finfo += zstr.EscCyan + time.Now().Local().Format("15:04:05/02 ") + zstr.EscNoColor
 		linesPrintedSinceTimeStamp = 0
