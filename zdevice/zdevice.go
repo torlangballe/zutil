@@ -4,13 +4,12 @@ import (
 	"errors"
 	"net"
 	"runtime"
+	"strconv"
 
-	// "github.com/shirou/gopsutil/cpu"
-
-	//	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/torlangballe/zutil/zlog"
+	"golang.org/x/sys/unix"
 )
 
 // Interesting: https://github.com/jaypipes/ghw
@@ -63,12 +62,8 @@ func IsDesktop() bool {
 }
 
 func Model() string {
-	infos, err := cpu.Info()
-	if err != nil || len(infos) < 1 {
-		zlog.Error(err)
-		return ""
-	}
-	return infos[0].Model
+	model, _ := unix.SysctlUint32("machdep.cpu.model")
+	return strconv.FormatUint(uint64(model), 10)
 }
 
 // Architecture returns the main type of CPU used, ARM, AMD64, WASM
