@@ -183,16 +183,13 @@ func (c Color) WithOpacity(opacity float32) Color {
 }
 
 func (c Color) Mixed(withColor Color, amount float32) Color {
-	if amount == 1 {
-		return withColor
-	}
 	wc := withColor.RGBAValue()
 	col := c.RGBAValue()
 	amount *= wc.A
 	r := (1-amount)*col.R + wc.R*amount
 	g := (1-amount)*col.G + wc.G*amount
 	b := (1-amount)*col.B + wc.B*amount
-	a := c.Colors.A
+	a := c.Colors.A * withColor.Colors.A
 	return ColorNew(r, g, b, a)
 }
 
