@@ -36,7 +36,8 @@ var (
 	UseColor           = false
 	PanicHandler       func(reason string, exit bool)
 	IsInTests          bool
-	PrintGoRoutines    bool
+	PrintGoRoutines     = true
+	PrintDate          = true
 	LastGoRoutineCount int
 )
 
@@ -164,7 +165,9 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 			finfo = fmt.Sprintln("goroutines:", num)
 			LastGoRoutineCount = num
 		}
-		finfo += zstr.EscCyan + time.Now().Local().Format("15:04:05/02 ") + zstr.EscNoColor
+		if PrintDate {
+			finfo += zstr.EscCyan + time.Now().Local().Format("15:04:05/02 ") + zstr.EscNoColor
+		}
 		linesPrintedSinceTimeStamp = 0
 		timeLock.Unlock()
 	}
