@@ -59,6 +59,7 @@ func (t *TimedMutex) Lock() {
 	timer.Stop()
 	t.repeater = ztimer.RepeatIn(5, func() bool {
 		zlog.Info("🟥TimeMutex still locked for:", time.Since(start), stack)
+		return true
 	})
 }
 
