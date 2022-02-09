@@ -21,7 +21,7 @@ require (
 	github.com/sasha-s/go-deadlock v0.2.0
 	github.com/sendgrid/rest v2.6.5+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
-	github.com/shirou/gopsutil v3.21.10+incompatible
+	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01
 	github.com/torlangballe/mdtopdf v0.0.0-20211112121132-cd8a6d6db73d
