@@ -45,29 +45,24 @@ func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 }
 
 type TimedMutex struct {
-	mutex sync.Mutex
-	Start time.Time
+	mutex    sync.Mutex
+	repeater *ztimer.Repeater
 }
 
 func (t *TimedMutex) Lock() {
 	stack := zlog.GetCallingStackString()
 	timer := ztimer.StartIn(5, func() {
-		zlog.Info("🟥TimeMutex slow lock > 1 sec:", stack)
+		zlog.Info("🟥TimeMutex slow lock > 5 sec:", stack)
 	})
-	t.Start = time.Now()
+	start := time.Now()
 	t.mutex.Lock()
 	timer.Stop()
-	since := time.Since(t.Start)
-	// zlog.Info("**TimeMutex lock:", since)
-	if since > time.Second*5 {
-		zlog.Info("🟥TimeMutex slow lock:", since, zlog.GetCallingStackString())
-	}
+	t.repeater = ztimer.RepeatIn(5, func() bool {
+		zlog.Info("🟥TimeMutex still locked for:", time.Since(start), stack)
+	})
 }
 
 func (t *TimedMutex) Unlock() {
+	t.repeater.Stop()
 	t.mutex.Unlock()
-	since := time.Since(t.Start)
-	if since > time.Second*5 {
-		zlog.Info("🟥TimeMutex slow unlock:", since, zlog.GetCallingStackString())
-	}
 }
