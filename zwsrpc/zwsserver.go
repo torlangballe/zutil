@@ -1,7 +1,8 @@
-// +build !js
+//go:build !js
 
 package zwsrpc
 
+/*
 import (
 	"net/http"
 
@@ -65,3 +66,5 @@ func acceptWS(w http.ResponseWriter, req *http.Request) {
 func setNoVerifyClient(opts *websocket.DialOptions) {
 	opts.HTTPClient = zhttp.NoVerifyClient
 }
+
+*/
