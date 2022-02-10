@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
 	github.com/creack/pty v1.1.17
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/garyburd/redigo v1.6.2
 	github.com/google/uuid v1.3.0
