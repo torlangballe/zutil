@@ -1,5 +1,5 @@
-// +build !js
-// +build !windows
+//go:build !js && !windows
+// +build !js,!windows
 
 package zdevice
 
@@ -10,6 +10,7 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
+	"golang.org/x/sys/unix"
 )
 
 func HardwareTypeAndVersion() (string, float32) {
@@ -26,4 +27,9 @@ func HardwareTypeAndVersion() (string, float32) {
 	num, _ := strconv.ParseFloat(zstr.Body(str, i, -1), 32)
 
 	return name, float32(num)
+}
+
+func Model() string {
+	model, _ := unix.SysctlUint32("machdep.cpu.model")
+	return strconv.FormatUint(uint64(model), 10)
 }
