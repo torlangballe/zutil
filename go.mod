@@ -7,6 +7,7 @@ require (
 	github.com/creack/pty v1.1.17
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
+	github.com/gomodule/redigo v1.8.8
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
@@ -22,7 +23,6 @@ require (
 	github.com/sendgrid/rest v2.6.8+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
 	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01
 	github.com/torlangballe/mdtopdf v0.0.0-20211112121132-cd8a6d6db73d
