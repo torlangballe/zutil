@@ -15,15 +15,18 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.6
 	github.com/mileusna/useragent v1.0.2
 	github.com/mitchellh/go-ps v1.0.0
+	github.com/petermattis/goid v0.0.0-20220111183729-e033e1e0bdb5 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/riywo/loginshell v0.0.0-20200815045211-7d26008be1ab
 	github.com/sasha-s/go-deadlock v0.2.0
+	github.com/sendgrid/rest v2.6.8+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
 	github.com/shirou/gopsutil v3.21.11+incompatible
+	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01
 	github.com/torlangballe/mdtopdf v0.0.0-20211112121132-cd8a6d6db73d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
-	github.com/torlangballe/zui v0.0.0-20220210114437-7b2b27e2e0e1
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
