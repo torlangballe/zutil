@@ -1,5 +1,6 @@
 package zwsrpc
 
+/*
 import (
 	"context"
 	"errors"
@@ -83,3 +84,5 @@ func (c *Client) CallRPC(name string, arg interface{}, result interface{}) error
 	}
 	return nil
 }
+
+*/
