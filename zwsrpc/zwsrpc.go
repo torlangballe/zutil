@@ -1,5 +1,6 @@
 package zwsrpc
 
+/*
 import (
 	"context"
 	"encoding/json"
@@ -9,8 +10,6 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
 )
 
 type callPayload struct {
@@ -185,3 +184,5 @@ func handleIncoming(c *websocket.Conn) {
 		wsjson.Write(wctx, c, rp)
 	}
 }
+
+*/
