@@ -31,14 +31,15 @@ const (
 )
 
 var (
-	PrintPriority      = Verbose
-	outputHooks        = map[string]func(s string){}
-	UseColor           = false
-	PanicHandler       func(reason string, exit bool)
-	IsInTests          bool
-	PrintGoRoutines     = true
-	PrintDate          = true
-	LastGoRoutineCount int
+	PrintPriority           = Verbose
+	outputHooks             = map[string]func(s string){}
+	UseColor                = false
+	PanicHandler            func(reason string, exit bool)
+	IsInTests               bool
+	PrintGoRoutines         = true
+	PrintDate               = true
+	lastGoRoutineCount      int
+	lastGoRoutineOutputTime time.Time
 )
 
 func init() {
@@ -161,9 +162,10 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		timeLock.Lock()
 		linesPrintedSinceTimeStamp++
 		num := runtime.NumGoroutine()
-		if PrintGoRoutines && LastGoRoutineCount != num {
+		if PrintGoRoutines && lastGoRoutineCount != num && time.Since(lastGoRoutineOutputTime) > time.Second*10 {
 			finfo = fmt.Sprintln("goroutines:", num)
-			LastGoRoutineCount = num
+			lastGoRoutineCount = num
+			lastGoRoutineOutputTime = time.Now()
 		}
 		if PrintDate {
 			finfo += zstr.EscCyan + time.Now().Local().Format("15:04:05/02 ") + zstr.EscNoColor
