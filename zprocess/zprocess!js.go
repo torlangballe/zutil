@@ -4,6 +4,7 @@ package zprocess
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -15,6 +16,7 @@ import (
 	"github.com/shirou/gopsutil/process"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
+	"github.com/torlangballe/zutil/ztimer"
 	"golang.org/x/sys/unix"
 )
 
@@ -216,3 +218,11 @@ func SetNumberOfOpenFiles(n int) {
 // 	err := syscall.Setpriority(syscall.PRIO_PROCESS, pid, priority)
 // 	return err
 // }
+
+func RepeatLogProcessUse() {
+	ztimer.RepeatIn(60, func() bool {
+		procs, _ := ps.Processes()
+		fmt.Println("##ProcessCount:", len(procs))
+		return true
+	})
+}
