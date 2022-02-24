@@ -12,7 +12,6 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
-	// import "github.com/mandolyte/mdtopdf"
 )
 
 // For embedded editor:
