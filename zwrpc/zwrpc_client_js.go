@@ -1,4 +1,4 @@
-package zwsrpc
+package zwrpc
 
 import "nhooyr.io/websocket"
 
