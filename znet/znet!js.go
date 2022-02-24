@@ -1,3 +1,4 @@
+//go:build !js
 // +build !js
 
 package znet
@@ -16,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -270,18 +272,18 @@ type HTTPServer struct {
 	doneChannel chan bool
 }
 
-func ServeHTTPInBackground(port int, certSuffix string, handler http.Handler) *HTTPServer {
+func ServeHTTPInBackground(port int, certificatesPath string, handler http.Handler) *HTTPServer {
 	// https://ap.www.namecheap.com/Domains/DomainControlPanel/etheros.online/advancedns
 	// https://github.com/denji/golang-tls
 	//
 	str := "Serve HTTP"
-	if certSuffix != "" {
+	if certificatesPath != "" {
 		str += "S"
 	}
 	zlog.Info(str+":", port)
 	stack := zlog.GetCallingStackString()
 	if port == 0 {
-		if certSuffix != "" {
+		if certificatesPath != "" {
 			port = 443
 		} else {
 			port = 80
@@ -292,16 +294,21 @@ func ServeHTTPInBackground(port int, certSuffix string, handler http.Handler) *H
 	s.Server = &http.Server{Addr: address}
 	s.Server.Handler = handler
 	s.doneChannel = make(chan bool, 100)
+	fCRT := certificatesPath + ".crt"
+	fKey := certificatesPath + ".key"
+	if zfile.NotExist(fCRT) || zfile.NotExist(fKey) {
+		zlog.Fatal(nil, "missing certificate files:", fCRT, fKey)
+	}
 	go func() {
 		var err error
-		if certSuffix != "" {
-			err = s.Server.ListenAndServeTLS(certSuffix+".crt", certSuffix+".key")
+		if certificatesPath != "" {
+			err = s.Server.ListenAndServeTLS(fCRT, fKey)
 		} else {
 			err = s.Server.ListenAndServe()
 		}
 		if err != http.ErrServerClosed {
 			if err != nil {
-				zlog.Error(err, "serve http listen err:", address, certSuffix, stack)
+				zlog.Error(err, "serve http listen err:", address, certificatesPath, stack)
 				os.Exit(-1)
 			}
 		}
