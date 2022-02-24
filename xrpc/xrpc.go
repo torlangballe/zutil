@@ -1,11 +1,10 @@
-package zwsrpc
+package xrpc
 
-/*
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"go/token"
+	"net/http"
 	"reflect"
 	"time"
 
@@ -14,20 +13,18 @@ import (
 
 type callPayload struct {
 	Token string
-	Name  string
-	Arg   interface{}
-}
-
-type callPayloadReceive struct {
-	Token string
-	Name  string
-	Arg   json.RawMessage
+	//	Args       json.RawMessage
+	Args       interface{}
+	ToID       string
+	Method     string
+	InstanceID int64
 }
 
 type receivePayload struct {
 	Result         interface{}
 	Error          string
 	TransportError string
+	InstanceID     int64
 }
 
 type methodType struct {
@@ -37,10 +34,14 @@ type methodType struct {
 	ReplyType reflect.Type
 }
 
+const (
+	runMethodSecs = 30
+	pollSecs      = 20
+)
+
 var (
-	callMethods    = map[string]*methodType{}
-	typeOfError    = reflect.TypeOf((*error)(nil)).Elem()
-	TransportError = errors.New("transport error")
+	callMethods = map[string]*methodType{}
+	typeOfError = reflect.TypeOf((*error)(nil)).Elem()
 )
 
 func isExportedOrBuiltinType(t reflect.Type) bool {
@@ -113,25 +114,26 @@ func Register(callers ...interface{}) {
 	}
 }
 
-func callMethod(ctx context.Context, mtype *methodType, rawArg json.RawMessage) (rp receivePayload, err error) {
-	var argv, replyv reflect.Value
-	argIsValue := false // if true, need to indirect before calling.
-	if mtype.ArgType.Kind() == reflect.Ptr {
-		argv = reflect.New(mtype.ArgType.Elem())
-	} else {
-		argv = reflect.New(mtype.ArgType) // argv guaranteed to be a pointer now.
-		argIsValue = true
-	}
-	err = json.Unmarshal(rawArg, argv.Interface())
-	if err != nil {
-		zlog.Error(err, "UMARSH ERR:", argv.Kind())
-		return rp, err
-	}
-	if argIsValue {
-		argv = argv.Elem()
-	}
+func callMethod(ctx context.Context, mtype *methodType, args interface{}) (rp *receivePayload, err error) { // rawArg json.RawMessage
+	var replyv reflect.Value
+	// var argv, replyv reflect.Value
+	// argIsValue := false // if true, need to indirect before calling.
+	// if mtype.ArgType.Kind() == reflect.Ptr {
+	// 	argv = reflect.New(mtype.ArgType.Elem())
+	// } else {
+	// 	argv = reflect.New(mtype.ArgType) // argv guaranteed to be a pointer now.
+	// 	argIsValue = true
+	// }
+	// err = json.Unmarshal(rawArg, argv.Interface())
+	// if err != nil {
+	// 	zlog.Error(err, "UMARSH ERR:", argv.Kind())
+	// 	return rp, err
+	// }
+	// if argIsValue {
+	// 	argv = argv.Elem()
+	// }
 	replyv = reflect.New(mtype.ReplyType.Elem())
-
+	argv := reflect.ValueOf(args)
 	switch mtype.ReplyType.Elem().Kind() {
 	case reflect.Map:
 		replyv.Elem().Set(reflect.MakeMap(mtype.ReplyType.Elem()))
@@ -142,6 +144,7 @@ func callMethod(ctx context.Context, mtype *methodType, rawArg json.RawMessage) 
 	function := mtype.Method.Func
 	returnValues := function.Call([]reflect.Value{mtype.Receiver, argv, replyv})
 	errInter := returnValues[0].Interface()
+	rp = &receivePayload{}
 	if errInter != nil {
 		err := errInter.(error)
 		zlog.Error(err, "Call Error")
@@ -152,37 +155,38 @@ func callMethod(ctx context.Context, mtype *methodType, rawArg json.RawMessage) 
 	return rp, nil
 }
 
-func callName(ctx context.Context, name string, rawArg json.RawMessage) (rp receivePayload, err error) {
+func callName(ctx context.Context, name string, args interface{}) (rp *receivePayload, err error) { // args json.RawMessage
 	for n, m := range callMethods {
 		if n == name {
-			return callMethod(ctx, m, rawArg)
+			return callMethod(ctx, m, args)
 		}
 	}
 	return rp, zlog.NewError("no method registered:", name)
 }
 
-func handleIncoming(c *websocket.Conn) {
+func handleCallWithMethod(cp *callPayload) (rp *receivePayload, err error) {
 	ctx := context.Background()
 	// zlog.Info("start incomingWS")
-	for {
-		var cp callPayloadReceive
-		err := wsjson.Read(ctx, c, &cp)
-		// zlog.Info("incoming read", err, cp)
-		if err != nil {
-			zlog.Error(err)
-			c.Close(websocket.StatusInternalError, err.Error())
-			return
-		}
-		wctx, wcancel := context.WithTimeout(ctx, time.Second*10)
-		defer wcancel()
-		// zlog.Info("CALL:", cp.Name, cp.Arg)
-		rp, err := callName(ctx, cp.Name, cp.Arg)
-		if err != nil {
-			zlog.Error(err)
-			rp.TransportError = err.Error()
-		}
-		wsjson.Write(wctx, c, rp)
+	callCtx, wcancel := context.WithTimeout(ctx, time.Second*10)
+	defer wcancel()
+	zlog.Info("CALLED:", cp.Method, cp.Args)
+	rp, err = callName(callCtx, cp.Method, cp.Args)
+	if err != nil {
+		zlog.Error(err, "call")
+		rp.TransportError = err.Error()
 	}
+	return
 }
 
-*/
+func handleCallWithMethodWriteBack(w http.ResponseWriter, cp *callPayload) error {
+	rp, err := handleCallWithMethod(cp)
+	if err != nil {
+		return err
+	}
+	e := json.NewEncoder(w)
+	err = e.Encode(rp)
+	if err != nil {
+		return zlog.Error(err, "encode")
+	}
+	return nil
+}

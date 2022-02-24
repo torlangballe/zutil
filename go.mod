@@ -32,4 +32,5 @@ require (
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 	golang.org/x/sys v0.0.0-20211112143042-c6105e7cf70d
 	golang.org/x/text v0.3.5
+	nhooyr.io/websocket v1.8.7 // indirect
 )
