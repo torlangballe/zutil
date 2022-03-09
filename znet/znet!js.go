@@ -294,14 +294,14 @@ func ServeHTTPInBackground(port int, certificatesPath string, handler http.Handl
 	s.Server = &http.Server{Addr: address}
 	s.Server.Handler = handler
 	s.doneChannel = make(chan bool, 100)
-	fCRT := certificatesPath + ".crt"
-	fKey := certificatesPath + ".key"
-	if zfile.NotExist(fCRT) || zfile.NotExist(fKey) {
-		zlog.Fatal(nil, "missing certificate files:", fCRT, fKey)
-	}
 	go func() {
 		var err error
 		if certificatesPath != "" {
+			fCRT := certificatesPath + ".crt"
+			fKey := certificatesPath + ".key"
+			if zfile.NotExist(fCRT) || zfile.NotExist(fKey) {
+				zlog.Fatal(nil, "missing certificate files:", fCRT, fKey)
+			}
 			err = s.Server.ListenAndServeTLS(fCRT, fKey)
 		} else {
 			err = s.Server.ListenAndServe()
