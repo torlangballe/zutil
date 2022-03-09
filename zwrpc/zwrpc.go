@@ -41,6 +41,8 @@ type methodType struct {
 	ReplyType reflect.Type
 }
 
+type Any interface{} // Any is used in function definition args/result when argument is not used
+
 var (
 	callMethods    = map[string]*methodType{}
 	typeOfError    = reflect.TypeOf((*error)(nil)).Elem()

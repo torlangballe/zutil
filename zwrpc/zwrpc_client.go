@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
@@ -24,6 +25,9 @@ func NewClient(ipAddress string, port int, ipClientServerID string) (*Client, er
 
 	c := &Client{}
 	c.Token = zstr.GenerateRandomHexBytes(8)
+	if ipClientServerID != "" && !strings.Contains(ipClientServerID, ":") {
+		ipClientServerID += ":" + c.Token
+	}
 	surl := fmt.Sprintf("wss://%s:%d/ws", ipAddress, port)
 	if ipClientServerID != "" {
 		surl += fmt.Sprintf("?id=%s", ipClientServerID)
