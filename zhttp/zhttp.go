@@ -30,9 +30,9 @@ type BrowserType string
 
 const (
 	Safari  BrowserType = "safari"
-	Chrome              = "chrome"
-	Edge                = "edge"
-	Default             = "default"
+	Chrome  BrowserType = "chrome"
+	Edge    BrowserType = "edge"
+	Default BrowserType = "default"
 )
 
 type ErrJSON struct {
