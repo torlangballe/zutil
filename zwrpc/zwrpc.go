@@ -189,7 +189,7 @@ func readCallPayload(c *websocket.Conn) (cp *callPayloadReceive, dbytes []byte, 
 
 func handleIncomingCall(c *websocket.Conn, cp *callPayloadReceive) {
 	ctx := context.Background()
-	// zlog.Info("start incomingWS")
+	zlog.Info("start incomingWS", c != nil, cp != nil)
 	wctx, wcancel := context.WithTimeout(ctx, time.Second*10)
 	defer wcancel()
 	rp, err := callMethodName(ctx, cp.Method, cp.Args)
