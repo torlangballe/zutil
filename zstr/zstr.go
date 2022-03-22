@@ -170,7 +170,7 @@ func HeadUntilIncluding(str, sep string) string {
 	return str[:i] + sep
 }
 
-func HeadUntilStringWithRest(str, sep string, rest *string) string {
+func HeadUntilWithRest(str, sep string, rest *string) string {
 	i := strings.Index(str, sep)
 	if i == -1 {
 		return str
@@ -1168,4 +1168,39 @@ func termColor(r, g, b uint16) uint16 {
 	bterm := (((b * 5) + 127) / 255)
 
 	return rterm + gterm + bterm + 16 + 1 // termbox default color offset
+}
+
+func MatchWildcard(wild, str string) bool {
+	if wild == "" {
+		return str == wild
+	}
+
+	if wild == "*" {
+		return true
+	}
+	// Does extended wildcard '*' and '?' match.
+	return deepMatchRune([]rune(str), []rune(wild), false)
+}
+
+func deepMatchRune(str, wild []rune, simple bool) bool {
+	for len(wild) > 0 {
+		switch wild[0] {
+		default:
+			if len(str) == 0 || str[0] != wild[0] {
+				return false
+			}
+		case '?':
+			if len(str) == 0 && !simple {
+				return false
+			}
+		case '*':
+			return deepMatchRune(str, wild[1:], simple) ||
+				(len(str) > 0 && deepMatchRune(str[1:], wild, simple))
+		}
+
+		str = str[1:]
+		wild = wild[1:]
+	}
+
+	return len(str) == 0 && len(wild) == 0
 }
