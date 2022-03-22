@@ -72,6 +72,10 @@ func ColorNew(r, g, b, a float32) (c Color) {
 	return
 }
 
+func ColorNew255(r, g, b, a int) (c Color) {
+	return ColorNew(float32(r)/255, float32(g)/255, float32(b)/255, float32(a)/255)
+}
+
 func (c Color) Slice32() []float32 {
 	slice := make([]float32, 4, 4)
 	slice[0] = c.Colors.R
@@ -106,44 +110,28 @@ func ColorFromSlice(s []float32) Color {
 }
 
 func ColorNewHSBA(hsba HSBA) (c Color) {
+	// hsba.S = 1 - hsba.S
 	c.Valid = true
+	i := (hsba.H * 360.0) / 60.0
+	f := i - float32(int(i))
 
-	i, _ := math.Modf(float64(hsba.H * 6))
-	var f = hsba.H*6 - float32(i)
-	var p = hsba.B * (1 - hsba.S)
-	var q = hsba.B * (1 - f*hsba.S)
-	var t = hsba.B * (1 - (1-f)*hsba.S)
+	p := hsba.B * (1 - hsba.S)
+	q := hsba.B * (1 - f*hsba.S)
+	t := hsba.B * (1 - (1-f)*hsba.S)
 
-	switch math.Mod(i, 6) {
+	switch int(hsba.H*6) % 6 {
 	case 0:
-		c.Colors.R = hsba.B
-		c.Colors.G = t
-		c.Colors.B = p
-
+		c.Colors.R, c.Colors.G, c.Colors.B = hsba.B, t, p
 	case 1:
-		c.Colors.R = q
-		c.Colors.G = hsba.B
-		c.Colors.B = p
-
+		c.Colors.R, c.Colors.G, c.Colors.B = q, hsba.B, p
 	case 2:
-		c.Colors.R = p
-		c.Colors.G = hsba.B
-		c.Colors.B = t
-
+		c.Colors.R, c.Colors.G, c.Colors.B = p, hsba.B, t
 	case 3:
-		c.Colors.R = p
-		c.Colors.G = q
-		c.Colors.B = hsba.B
-
+		c.Colors.R, c.Colors.G, c.Colors.B = p, q, hsba.B
 	case 4:
-		c.Colors.R = t
-		c.Colors.G = p
-		c.Colors.B = hsba.B
-
+		c.Colors.R, c.Colors.G, c.Colors.B = t, p, hsba.B
 	case 5:
-		c.Colors.R = hsba.B
-		c.Colors.G = p
-		c.Colors.B = q
+		c.Colors.R, c.Colors.G, c.Colors.B = hsba.B, p, q
 	}
 	c.Colors.A = hsba.A
 	return
@@ -405,3 +393,57 @@ type DropShadow struct {
 }
 
 var DropShadowDefault = DropShadow{Delta: Size{3, 3}, Blur: 3, Color: ColorBlack}
+
+func KelvinToColor(kelvin float32) Color {
+	var r, g, b int
+	if kelvin == 6500 {
+		return ColorWhite
+	}
+	temperature := float64(kelvin) * 0.01
+	if kelvin < 6500 {
+		r = 255
+		// a + b x + c Log[x] /.
+		// {a -> -155.25485562709179`,
+		// b -> -0.44596950469579133`,
+		// c -> 104.49216199393888`,
+		// x -> (kelvin/100) - 2}
+		green := temperature - 2
+		g = floatToUint8(-155.25485562709179 - 0.44596950469579133*green + 104.49216199393888*math.Log(green))
+		if kelvin > 2000 {
+			// a + b x + c Log[x] /.
+			// {a -> -254.76935184120902`,
+			// b -> 0.8274096064007395`,
+			// c -> 115.67994401066147`,
+			// x -> kelvin/100 - 10}
+			blue := temperature - 10
+			b = floatToUint8(-254.76935184120902 + 0.8274096064007395*blue + 115.67994401066147*math.Log(blue))
+		}
+	} else {
+		b = 255
+		// a + b x + c Log[x] /.
+		// {a -> 351.97690566805693`,
+		// b -> 0.114206453784165`,
+		// c -> -40.25366309332127
+		//x -> (kelvin/100) - 55}
+		red := temperature - 55.
+		r = floatToUint8(351.97690566805693 + 0.114206453784165*red - 40.25366309332127*math.Log(red))
+		// a + b x + c Log[x] /.
+		// {a -> 325.4494125711974`,
+		// b -> 0.07943456536662342`,
+		// c -> -28.0852963507957`,
+		// x -> (kelvin/100) - 50}
+		green := temperature - 50.
+		g = floatToUint8(325.4494125711974 + 0.07943456536662342*green - 28.0852963507957*math.Log(green))
+	}
+	return ColorNew255(r, g, b, 255)
+}
+
+func floatToUint8(x float64) int {
+	if x >= 254.4 {
+		return 255
+	}
+	if x <= 0. {
+		return 0
+	}
+	return int(math.Ceil(x + 0.5))
+}
