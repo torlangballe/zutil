@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gomodule/redigo/redis"
+	// "github.com/gomodule/redigo/redis"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -34,9 +34,9 @@ const (
 )
 
 var (
-	NotAuthenticatedError     = errors.New("not authenticated")
-	database                  *sql.DB
-	redisPool                 *redis.Pool
+	NotAuthenticatedError = errors.New("not authenticated")
+	database              *sql.DB
+	// redisPool                 *redis.Pool
 	AuthenticationFailedError = errors.New("Authentication Failed")
 	EmailPasswordWrongError   = fmt.Errorf("Incorrect user/email: %w", AuthenticationFailedError)
 )
