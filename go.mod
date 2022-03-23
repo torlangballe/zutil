@@ -5,7 +5,6 @@ go 1.15
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
 	github.com/creack/pty v1.1.17
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gomodule/redigo v1.8.8
 	github.com/google/uuid v1.3.0
@@ -22,15 +21,13 @@ require (
 	github.com/sasha-s/go-deadlock v0.2.0
 	github.com/sendgrid/rest v2.6.8+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
-	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/tklauser/go-sysconf v0.3.9 // indirect
+	github.com/shirou/gopsutil/v3 v3.22.2
 	github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01
 	github.com/torlangballe/mdtopdf v0.0.0-20211112121132-cd8a6d6db73d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
-	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
-	golang.org/x/sys v0.0.0-20211112143042-c6105e7cf70d
+	golang.org/x/sys v0.0.0-20220111092808-5a964db01320
 	golang.org/x/text v0.3.5
-	nhooyr.io/websocket v1.8.7 // indirect
+	nhooyr.io/websocket v1.8.7
 )
