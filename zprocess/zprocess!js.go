@@ -4,7 +4,6 @@ package zprocess
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -13,8 +12,9 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-ps"
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/process"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
 	"golang.org/x/sys/unix"
@@ -120,7 +120,7 @@ func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 					zlog.Error(err, "get status")
 					continue
 				}
-				if status == "Z" {
+				if zstr.StringsContain(status, "Z") {
 					continue
 				}
 			}
@@ -222,7 +222,7 @@ func SetNumberOfOpenFiles(n int) {
 func RepeatLogProcessUse() {
 	ztimer.RepeatIn(60, func() bool {
 		procs, _ := ps.Processes()
-		fmt.Println("##ProcessCount:", len(procs))
+		zlog.Info("##ProcessCount:", len(procs))
 		return true
 	})
 }
