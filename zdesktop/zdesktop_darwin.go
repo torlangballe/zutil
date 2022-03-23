@@ -169,8 +169,8 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 
 func CloseWindowForTitle(title, app string) error {
 	//	title = getTitleWithApp(title, app)
-	pid, _ := GetCachedPIDForAppName(app)
-	if pid != 0 {
+	pids := zprocess.GetPIDsForAppName(app, false)
+	for _, pid := range pids {
 		r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
 		if r == 1 {
 			return nil
@@ -188,8 +188,11 @@ func CloseWindowForTitle(title, app string) error {
 
 func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 	//	title = getTitleWithApp(title, app)
-	pid, _ := GetCachedPIDForAppName(app)
-	if pid != 0 {
+	pids := zprocess.GetPIDsForAppName(app, false)
+	// pid, _ := GetCachedPIDForAppName(app)
+	// fmt.Println("SetWindowRectForTitle:", title, app, pids)
+	for _, pid := range pids {
+		// if pid != 0 {
 		// fmt.Println("SetWindowRectForTitle:", title, app, rect)
 		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
 		// fmt.Println("SetWindowRectForTitle:", title, app, r)
