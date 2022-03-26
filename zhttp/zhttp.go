@@ -236,7 +236,7 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 	// }()
 	request.Close = true
 	resp, err = client.Do(request)
-	// zlog.Info("GetResponseFromReqClient:", err, resp != nil, request.URL)
+	// zlog.Info("zhttp.GetResponse:", err,request.URL)
 	if err == nil && resp == nil {
 		return nil, errors.New("client.Do gave no response: " + request.URL.String())
 	}
