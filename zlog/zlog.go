@@ -468,3 +468,9 @@ func PrintMemoryStats() {
 
 	fmt.Printf("MemAlloc:%vKB TotalAlloc:%vKB Sys:%vKB NumGC:%d\n", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
 }
+
+func PrintAllGoroutines() {
+	buf := make([]byte, 1<<16)
+	runtime.Stack(buf, true)
+	fmt.Printf("%s", buf)
+}
