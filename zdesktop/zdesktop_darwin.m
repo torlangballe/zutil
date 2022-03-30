@@ -104,10 +104,10 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
         struct WinInfo w;
         w.title = [entry objectForKey:(id)kCGWindowName];
         w.title = removeNonASCIIAndTruncate(w.title);
-        if (debug) {
-            NSLog(@"Win: %@\n", w.title);
-        }
         w.pid = (long)[[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
+        if (debug) {
+            NSLog(@"Win: %@ %ld\n", w.title, w.pid);
+        }
         w.wid = (long)[[entry objectForKey:(id)kCGWindowNumber] integerValue];
 
         NSDictionary *dict = [entry objectForKey:(id)kCGWindowBounds];
@@ -116,13 +116,17 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
         w.rect.size.width = (CGFloat)[(NSNumber *)dict[@"Width"] floatValue];
         w.rect.size.height = (CGFloat)[(NSNumber *)dict[@"Height"] floatValue];
         // NSLog(@"Size: %@ %g %g %g %g", w.title, (float)w.rect.origin.x, (float)w.rect.origin.y, (float)w.rect.size.width, (float)w.rect.size.height);
-        if (gotWin(find, w)) {
+        if (gotWin != NULL && gotWin(find, w)) {
             CFRelease(windowList);
             return "";
         }
     }
     CFRelease(windowList);
     return "window not found";
+}
+
+void printWindowTitles() {
+    getWindowIDs(NULL, YES, NULL);
 }
 
 BOOL findTitle(struct WinInfo *find, struct WinInfo w) {
@@ -175,7 +179,7 @@ AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL de
     CFArrayRef windowArray = nil;
     AXError err = AXUIElementCopyAttributeValue(appElementRef, kAXWindowsAttribute, (CFTypeRef*)&windowArray);
     if (windowArray == nil) {
-        NSLog(@"getAXElementOfWindowForTitle is nil: %s pid=%ld err=%d\n", title, pid, err);
+        // NSLog(@"getAXElementOfWindowForTitle is nil: %s pid=%ld err=%d\n", title, pid, err);
         CFRelease(appElementRef);
         return nil;
     }
@@ -232,12 +236,12 @@ int ActivateWindowForTitle(const char *title, long pid) {
 
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, false);
     if (winRef == nil) {
-        NSLog(@"ActivateWindowForTitle: no window for %s %ld\n", title, pid);
+        // NSLog(@"ActivateWindowForTitle: no window for %s %ld\n", title, pid);
         return 0;
     }
     AXError err = AXUIElementPerformAction(winRef, kAXRaiseAction);
     if (err != 0) {
-        NSLog(@"ActivateWindowForTitle error: %s %d\n", title, err);
+        // NSLog(@"ActivateWindowForTitle error: %s %d\n", title, err);
         return 0;
     }
     CFRelease(winRef);
@@ -248,7 +252,7 @@ int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int 
     // NSLog(@"*******PlaceWindowForTitle %s %ld\n", title, pid);
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, NO);
     if (winRef == nil) {
-        NSLog(@"PlaceWindowForTitle no window for %s %ld\n", title, pid);
+        // NSLog(@"PlaceWindowForTitle no window for %s %ld\n", title, pid);
         return 0;
     }
     NSSize winSize;

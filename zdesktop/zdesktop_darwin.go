@@ -23,6 +23,7 @@ package zdesktop
 // int canControlComputer(int prompt);
 // int getWindowCountForPID(long pid);
 // int canRecordScreen();
+// void printWindowTitles();
 // typedef struct Image {
 //   int width;
 //   int height;
@@ -55,6 +56,11 @@ func ClearAppPIDCache() {
 	pidCacheLock.Lock()
 	pidCache = map[string]int64{}
 	pidCacheLock.Unlock()
+}
+
+func PrintWindowTitles() {
+	zlog.Info("PrintWindowTitles")
+	C.printWindowTitles()
 }
 
 func GetCachedPIDForAppName(app string) (int64, error) {
@@ -165,6 +171,14 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 		ActivateWindow(title, app)
 	}
 	return GetWindowImage(winID, crop)
+}
+
+func CloseWindowForTitleAndPID(title string, pid int64) error {
+	r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
+	if r == 1 {
+		return nil
+	}
+	return errors.New("not found")
 }
 
 func CloseWindowForTitle(title, app string) error {
