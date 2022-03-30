@@ -112,7 +112,6 @@ func CPUUsage(maxCores int) (out []float64) {
 		}
 		out = out[:half]
 	}
-	zlog.Info("CPUUsage:", out, maxCores)
 	return
 }
 
