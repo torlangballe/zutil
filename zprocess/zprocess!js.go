@@ -115,6 +115,10 @@ func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 		if p.Executable() == app {
 			if excludeZombies {
 				proc, err := process.NewProcess(int32(p.Pid())) // Specify process id of parent
+				if err != nil {
+					zlog.Error(err, "new proc")
+					continue
+				}
 				status, err := proc.Status()
 				if err != nil {
 					zlog.Error(err, "get status")
