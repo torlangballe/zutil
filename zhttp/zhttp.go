@@ -279,7 +279,7 @@ func Get(surl string, params Parameters, receive interface{}) (resp *http.Respon
 
 func processResponse(surl string, resp *http.Response, printBody bool, receive interface{}) (*http.Response, error) {
 	if printBody {
-		zlog.Info("dump:", resp.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(resp)+"\n")
+		fmt.Println("dump:", resp.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(resp)+"\n")
 	}
 	if receive != nil && reflect.ValueOf(receive).Kind() != reflect.Ptr {
 		zlog.Fatal(nil, "not pointer", surl)
