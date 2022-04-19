@@ -41,7 +41,15 @@ func (b BoolInd) Bool() bool {
 	return b == 1
 }
 
-func (b BoolInd) IsUndetermined() bool {
+func (b BoolInd) IsTrue() bool {
+	return b == True
+}
+
+func (b BoolInd) IsFalse() bool {
+	return b == False
+}
+
+func (b BoolInd) IsUnknown() bool {
 	return b == -1
 }
 
