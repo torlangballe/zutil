@@ -106,7 +106,7 @@ func (c *Client) CallRemote(name string, args interface{}, reply interface{}, ti
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		zlog.Error(err, zlog.StackAdjust(2), "call remote post:", name)
+		zlog.Error(err, zlog.StackAdjust(1), "call remote post:", name, surl)
 		return err
 	}
 

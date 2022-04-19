@@ -5,11 +5,10 @@ package zrpc
 
 import (
 	"encoding/json"
+	"github.com/torlangballe/zutil/zhttp"
 	"net/http"
 	"reflect"
 	"sync"
-
-	"github.com/torlangballe/zutil/zhttp"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc"
@@ -45,7 +44,7 @@ func InitServer(router *mux.Router, port int, certFilesSuffix string) (hserver *
 	server = rpc.NewServer()
 	registeredOwners = map[string]bool{}
 	hserver = znet.ServeHTTPInBackground(ServerPort, certFilesSuffix, router)
-	// fmt.Println("🟨Serve RPC On:", ServerPort)
+	zlog.Info("🟨Serve RPC On:", ServerPort, certFilesSuffix)
 	server.RegisterCodec(rpcjson.NewCodec(), "application/json")
 	zrest.AddHandler(router, "rpc", doServeHTTP).Methods("POST", "OPTIONS")
 	return hserver, nil
@@ -62,7 +61,7 @@ func getMethodFromRequest(req *http.Request) string {
 
 func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// TODO: See how little of this we can get away with
-	// fmt.Println("zrpc.DoServeHTTP:", req.Method, req.URL.Port(), "from:", req.Header.Get("Origin"), req.URL)
+	// zlog.Info("zrpc.DoServeHTTP:", req.Method, req.URL.Port(), "from:", req.Header.Get("Origin"), req.URL)
 
 	zrest.AddCORSHeaders(w, req)
 	// w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
