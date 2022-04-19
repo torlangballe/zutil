@@ -148,3 +148,7 @@ func CellularNetwork() CellularNetworkType {
 func HardwareTypeAndVersion() (string, float32) {
 	return getUserAgentInfo().Device, 1
 }
+
+func UUID() string {
+	return "ABC"
+}
