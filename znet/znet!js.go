@@ -5,6 +5,7 @@ package znet
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -124,7 +125,7 @@ func forOSX() (name string, err error) {
 // 	return
 // }
 
-func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
+func GetCurrentLocalIPAddressOld() (ip16, ip4 string, err error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return
@@ -293,6 +294,7 @@ func ServeHTTPInBackground(port int, certificatesPath string, handler http.Handl
 	address := fmt.Sprintf(":%d", port)
 	s.Server = &http.Server{Addr: address}
 	s.Server.Handler = handler
+	s.Server.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	s.doneChannel = make(chan bool, 100)
 	go func() {
 		var err error
