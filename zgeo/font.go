@@ -26,6 +26,10 @@ type Font struct {
 	Size  float64   `json:"size"`
 }
 
+type FontSetter interface {
+	SetFont(*Font)
+}
+
 // DefaultSize This is used
 var FontDefaultSize = 16.0
 var FontDefaultName = "Helvetica"
