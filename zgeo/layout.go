@@ -306,3 +306,8 @@ func LayoutGetCellsStackedSize(debugName string, vertical bool, spacing float64,
 	}
 	return s
 }
+
+// MaxCellsInSize returns how many cells with an cellSize, margin and spacing with fit in inSize
+func MaxCellsInSize(spacing, margin, cellSize, inSize float64) int {
+	return int((inSize - margin) / (spacing - 1 + cellSize))
+}
