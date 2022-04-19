@@ -38,6 +38,13 @@ func Min(a, b int) int {
 	return b
 }
 
+func MinMax(a, b int) (min, max int) {
+	if a < b {
+		return a, b
+	}
+	return b, a
+}
+
 func Maximize(a *int, b int) bool {
 	if *a > b {
 		return false
