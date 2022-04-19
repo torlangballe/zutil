@@ -137,14 +137,48 @@ func ColorNewHSBA(hsba HSBA) (c Color) {
 	return
 }
 
-func (c Color) HSBA() HSBA {
-	var h, s, b, a float32
-	var hsba HSBA
-	hsba.H = float32(h)
-	hsba.S = float32(s)
-	hsba.B = float32(b)
-	hsba.A = float32(a)
-	return hsba
+func (c Color) HSBA() (hsba HSBA) {
+	max := zfloat.Max32(zfloat.Max32(c.Colors.R, c.Colors.G), c.Colors.B)
+	min := zfloat.Min32(zfloat.Min32(c.Colors.R, c.Colors.G), c.Colors.B)
+
+	// Luminosity is the average of the max and min rgb color intensities.
+	hsba.B = (max + min) / 2
+	hsba.A = c.Colors.A
+	// saturation
+	delta := max - min
+	if delta == 0 {
+		// it's gray
+		return
+	}
+
+	// it's not gray
+	if hsba.B < 0.5 {
+		hsba.S = delta / (max + min)
+	} else {
+		hsba.S = delta / (2 - max - min)
+	}
+
+	// hue
+	r2 := (((max - c.Colors.R) / 6) + (delta / 2)) / delta
+	g2 := (((max - c.Colors.G) / 6) + (delta / 2)) / delta
+	b2 := (((max - c.Colors.B) / 6) + (delta / 2)) / delta
+	switch {
+	case c.Colors.R == max:
+		hsba.H = b2 - g2
+	case c.Colors.G == max:
+		hsba.H = (1.0 / 3.0) + r2 - b2
+	case c.Colors.B == max:
+		hsba.H = (2.0 / 3.0) + g2 - r2
+	}
+
+	// fix wraparounds
+	switch {
+	case hsba.H < 0:
+		hsba.H += 1
+	case hsba.H > 1:
+		hsba.H -= 1
+	}
+	return
 }
 
 func (c Color) RGBAValue() RGBA {
@@ -182,8 +216,13 @@ func (c Color) Mixed(withColor Color, amount float32) Color {
 }
 
 func (c Color) MultipliedBrightness(multiply float32) Color {
-	hsba := c.HSBA()
-	return ColorNewHSBA(hsba)
+	var col Color
+	col.Valid = true
+	col.Colors.A = c.Colors.A
+	col.Colors.R = zfloat.Clamped32(c.Colors.R*multiply, 0, 1)
+	col.Colors.G = zfloat.Clamped32(c.Colors.G*multiply, 0, 1)
+	col.Colors.B = zfloat.Clamped32(c.Colors.B*multiply, 0, 1)
+	return col
 }
 
 func (c Color) AlteredContrast(contrast float32) Color {
