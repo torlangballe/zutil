@@ -1,3 +1,4 @@
+//go:build !js
 // +build !js
 
 package zfilecache
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
@@ -47,7 +49,7 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	http.ServeFile(w, req, file)
 }
 
-func Init(workDir, urlPrefix, cacheName string) *Cache {
+func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	// if strings.HasPrefix(urlPrefix, "/") {
 	// 	zlog.Error(nil, "url should not start with /", urlPrefix)
 	// }
@@ -65,7 +67,8 @@ func Init(workDir, urlPrefix, cacheName string) *Cache {
 	if err != nil {
 		zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
 	}
-	zrest.Handle(path, c)
+	zrest.AddSubHandler(router, path, c)
+	// zrest.AddHandler(router, strings.TrimRight(path, "/"), c.ServeHTTP)
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
 		// start := time.Now()
 		dir := c.workDir + c.cacheName

@@ -203,12 +203,21 @@ func GetFloatVal(vals url.Values, name string, def float64) float64 {
 	return n
 }
 
+func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Route {
+	pattern = AppURLPrefix + pattern
+	zlog.Info("zrest.AddHandler:", pattern)
+	defer zlog.HandlePanic(false)
+	route := router.PathPrefix(pattern)
+	return route.Handler(h)
+}
+
 func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	pattern = AppURLPrefix + pattern
-	// zlog.Info("zrest.AddHandler:", pattern)
+	zlog.Info("zrest.AddHandler:", pattern)
 	defer zlog.HandlePanic(false)
-	http.Handle(pattern, router) // do we need this????
+	//!!! http.Handle(pattern, router) // do we need this????
 	return router.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
+		// zlog.Info("Handler:", pattern, req.URL)
 		// timer := ztimer.StartIn(10, func() {
 		// 	surl := req.URL.String()
 		// 	zlog.Info("Request timed out after 10 seconds:", surl)
@@ -225,6 +234,6 @@ func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, 
 func Handle(pattern string, handler http.Handler) {
 	spath := path.Join(AppURLPrefix, pattern)
 	spath += "/"
-	// zlog.Info("zrest.Handle:", spath, pattern)
+	 zlog.Info("zrest.Handle:", spath, pattern)
 	http.Handle(spath, handler)
 }
