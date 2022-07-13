@@ -146,14 +146,25 @@ func SplitStringTo64(str string, sep string) (ints []int64) {
 	if len(str) == 0 {
 		return
 	}
-	for _, s := range strings.Split(str, sep) {
+	return StringsTo64(strings.Split(str, sep))
+}
+
+func StringsTo64(snums []string) (ints []int64) {
+	for _, s := range snums {
 		s = strings.TrimSpace(s)
 		i, err := strconv.ParseInt(s, 10, 64)
 		if err == nil {
 			ints = append(ints, i)
 		}
 	}
-	return ints
+	return
+}
+
+func ToStrings64(ints []int64) (s []string) {
+	for _, n := range ints {
+		s = append(s, strconv.FormatInt(n, 10))
+	}
+	return
 }
 
 func FromBool(b bool) int {
