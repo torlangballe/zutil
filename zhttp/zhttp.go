@@ -706,3 +706,11 @@ func MakeDataURL(data []byte, mime string) string {
 func StringStartsWithHTTPX(str string) bool {
 	return strings.HasPrefix(str, "http:") || strings.HasPrefix(str, "https:")
 }
+
+func HasURLScheme(str string) bool {
+	u, err := url.Parse(str)
+	if err != nil {
+		return false
+	}
+	return (u.Scheme != "")
+}
