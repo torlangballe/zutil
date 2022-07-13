@@ -4,7 +4,6 @@
 package zfile
 
 import (
-	"bufio"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -100,23 +99,14 @@ func WriteStringToFile(str, sfile string) error {
 	return WriteBytesToFile([]byte(str), sfile)
 }
 
-func ForAllFileLines(path string, f func(str string) bool) error {
-	file, err := os.Open(path)
+func ForAllFileLines(path string, skipEmpty bool, f func(str string) bool) error {
+	str, err := ReadStringFromFile(path)
 	if err != nil {
 		return err
 	}
-	scanner := bufio.NewScanner(file)
-
-	skip := false
-	for scanner.Scan() {
-		if !skip {
-			ok := f(scanner.Text())
-			if !ok {
-				skip = true
-			}
-		}
-	}
-	return scanner.Err()
+	//TODO: Don't read file to memory
+	zstr.RangeStringLines(str, skipEmpty, f)
+	return nil
 }
 
 func Size(fpath string) int64 {
