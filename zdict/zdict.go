@@ -333,24 +333,3 @@ func DumpNamedValues(nv NamedValues) {
 		zlog.Info("Item:", id, name)
 	}
 }
-
-func GetAnyStringKeyFromMap(m interface{}) string {
-	mval := reflect.ValueOf(m)
-	keys := mval.MapKeys()
-	if len(keys) == 0 {
-		return ""
-	}
-	str, _ := keys[0].Interface().(string)
-	return str
-}
-
-func GetAnyValueFromMap(getPtr interface{}, m interface{}) error {
-	mval := reflect.ValueOf(m)
-	keys := mval.MapKeys()
-	if len(keys) == 0 {
-		return errors.New("no items")
-	}
-	v := mval.MapIndex(keys[0])
-	reflect.ValueOf(getPtr).Elem().Set(v)
-	return nil
-}
