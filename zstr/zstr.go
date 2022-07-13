@@ -36,6 +36,10 @@ const (
 
 const Digits = "0123456789"
 
+type StrIDer interface {
+	GetStrID() string
+}
+
 type StrInt struct {
 	String string
 	Int64  int64
