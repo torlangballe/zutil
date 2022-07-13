@@ -9,7 +9,7 @@ import (
 
 // https://github.com/golang/go/wiki/SliceTricks#delete
 
-func checkIsSlicePtr(s interface{}) error {
+func CheckIsSlicePtr(s interface{}) error {
 	if s == nil {
 		return errors.New("slice is nil")
 	}
@@ -30,7 +30,7 @@ func checkIsSlicePtr(s interface{}) error {
 }
 
 func RemoveAt(slice interface{}, index int) error {
-	err := checkIsSlicePtr(slice)
+	err := CheckIsSlicePtr(slice)
 	if err != nil {
 		return zlog.Fatal(err, zlog.StackAdjust(1), "not slice pointer", slice)
 	}
