@@ -1062,6 +1062,10 @@ func ReplaceAllCapturesFunc(regex *regexp.Regexp, str string, replace func(cap s
 		for i := 2; i < glen; i += 2 {
 			s := group[i]
 			e := group[i+1]
+			if s == -1 || e == -1 {
+				// we don't set last, so this whole part is copied in next loop or end
+				continue
+			}
 			out += str[last:s]
 			last = e
 			out += replace(str[s:e], i/2)
