@@ -1,7 +1,7 @@
 package zgeo
 
 import (
-	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zutil/zbits"
 )
 
 type Alignment int32
@@ -47,37 +47,37 @@ const (
 	Horizontal = HorPos | HorScale | HorOut
 )
 
-var alignmentList = []zbool.BitsetItem{
-	zbool.BSItem("none", int64(AlignmentNone)),
-	zbool.BSItem("left", int64(Left)),
-	zbool.BSItem("horcenter", int64(HorCenter)),
-	zbool.BSItem("right", int64(Right)),
-	zbool.BSItem("top", int64(Top)),
-	zbool.BSItem("vertcenter", int64(VertCenter)),
-	zbool.BSItem("bottom", int64(Bottom)),
-	zbool.BSItem("horexpand", int64(HorExpand)),
-	zbool.BSItem("vertexpand", int64(VertExpand)),
-	zbool.BSItem("horshrink", int64(HorShrink)),
-	zbool.BSItem("vertshrink", int64(VertShrink)),
-	zbool.BSItem("horout", int64(HorOut)),
-	zbool.BSItem("vertout", int64(VertOut)),
-	zbool.BSItem("proportional", int64(Proportional)),
-	zbool.BSItem("marginissoffset", int64(MarginIsOffset)),
-	zbool.BSItem("center", int64(Center)),
-	zbool.BSItem("expand", int64(Expand)),
-	zbool.BSItem("shrink", int64(Shrink)),
-	zbool.BSItem("scale", int64(Scale)),
+var alignmentList = []zbits.BitsetItem{
+	zbits.BSItem("none", int64(AlignmentNone)),
+	zbits.BSItem("left", int64(Left)),
+	zbits.BSItem("horcenter", int64(HorCenter)),
+	zbits.BSItem("right", int64(Right)),
+	zbits.BSItem("top", int64(Top)),
+	zbits.BSItem("vertcenter", int64(VertCenter)),
+	zbits.BSItem("bottom", int64(Bottom)),
+	zbits.BSItem("horexpand", int64(HorExpand)),
+	zbits.BSItem("vertexpand", int64(VertExpand)),
+	zbits.BSItem("horshrink", int64(HorShrink)),
+	zbits.BSItem("vertshrink", int64(VertShrink)),
+	zbits.BSItem("horout", int64(HorOut)),
+	zbits.BSItem("vertout", int64(VertOut)),
+	zbits.BSItem("proportional", int64(Proportional)),
+	zbits.BSItem("marginissoffset", int64(MarginIsOffset)),
+	zbits.BSItem("center", int64(Center)),
+	zbits.BSItem("expand", int64(Expand)),
+	zbits.BSItem("shrink", int64(Shrink)),
+	zbits.BSItem("scale", int64(Scale)),
 }
 
 func AlignmentFromString(str string) Alignment {
-	return Alignment(zbool.StrToInt64FromList(str, alignmentList))
+	return Alignment(zbits.StrToInt64FromList(str, alignmentList))
 }
 func (a *Alignment) FromStringToBits(str string) {
 	*a = AlignmentFromString(str)
 }
 
 func (a Alignment) String() string {
-	return zbool.Int64ToStringFromList(int64(a), alignmentList)
+	return zbits.Int64ToStringFromList(int64(a), alignmentList)
 }
 
 func (a *Alignment) UnmarshalJSON(b []byte) error {
