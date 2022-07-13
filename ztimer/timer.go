@@ -91,35 +91,3 @@ func (t *Timer) IsRunning() bool {
 	return t.timer != nil
 }
 
-// create a RateLimiter to only do a function every n seconds since last time it was done for a given id.
-// It bases this on the time since the previous function was **started**.
-type RateLimiter struct {
-	cache         map[int64]time.Time
-	lock          sync.Mutex
-	frequencySecs float64
-}
-
-func NewRateLimiter(secs float64) *RateLimiter {
-	r := &RateLimiter{}
-	r.cache = map[int64]time.Time{}
-	r.frequencySecs = secs
-	return r
-}
-
-// Do runs the *do* function if secs (or r.frequencySecs if secs == -1) has passed since last time it was done for that id
-func (r *RateLimiter) Do(id int64, secs float64, do func()) {
-	r.lock.Lock()
-	t := r.cache[id]
-	freq := r.frequencySecs
-	if secs != -1 {
-		freq = secs
-	}
-	ready := (t.IsZero() || ztime.Since(t) > freq)
-	if ready {
-		r.cache[id] = time.Now()
-	}
-	r.lock.Unlock()
-	if ready {
-		do()
-	}
-}
