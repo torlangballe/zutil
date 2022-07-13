@@ -244,6 +244,20 @@ func ItterateStruct(istruct interface{}, options Options) (item Item, err error)
 	return itterate(0, "", "", "", false, rval.Elem(), options)
 }
 
+func ForEachField(istruct interface{}, got func(index int, val reflect.Value, sf reflect.StructField)) error {
+	rval := reflect.ValueOf(istruct).Elem()
+	if !rval.IsValid() { //|| rval.IsZero() { //  && rval.Kind() != reflect.StructKind
+		return zlog.Error(nil, "ItterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
+	}
+	count := rval.NumField()
+	for i := 0; i < count; i++ {
+		fieldStruct := rval.Type().Field(i)
+		fval := rval.Field(i)
+		got(i, fval, fieldStruct)
+	}
+	return nil
+}
+
 // GetTagAsFields returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
 var tagRegEx, _ = regexp.Compile(`(\w+)\s*:"([^"]*)"\s*`) // http://regoio.herokuapp.com
 
