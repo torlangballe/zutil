@@ -25,13 +25,15 @@ import (
 )
 
 type Cache struct {
-	workDir         string
-	cacheName       string
-	getURL          string
-	ServeEmptyImage bool
-	DeleteAfter     time.Duration // Delete files when modified more than this long ago
-	UseToken        bool          // Not implemented
-	DeleteRatio     float32       // When deleting files, only do some of sub-folders (randomly) each time 0.1 is do 10% of them at random
+	workDir           string
+	cacheName         string
+	getURL            string
+	urlPrefix         string
+	ServeEmptyImage   bool
+	DeleteAfter       time.Duration // Delete files when modified more than this long ago
+	UseToken          bool          // Not implemented
+	DeleteRatio       float32       // When deleting files, only do some of sub-folders (randomly) each time 0.1 is do 10% of them at random
+	NestInHashFolders bool
 }
 
 func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -39,7 +41,11 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	zstr.HasPrefix(req.URL.Path, zrest.AppURLPrefix, &spath)
 	fpath := path.Join(c.workDir, spath)
 	dir, file := filepath.Split(fpath)
-	file = filepath.Join(dir, file[:3]+"/"+file[3:])
+	post := file
+	if c.NestInHashFolders {
+		post = file[:3] + "/" + file[3:]
+	}
+	file = filepath.Join(dir, post)
 	// zlog.Info("FileCache serve:", file, spath)
 	if c.ServeEmptyImage && !zfile.Exists(file) {
 		zlog.Info("Serve empty cached image:", file)
@@ -57,13 +63,15 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 		zlog.Fatal(nil, "url should end with /", urlPrefix)
 	}
 	c := &Cache{}
+	c.urlPrefix = urlPrefix
 	c.DeleteAfter = time.Hour * 24
 	c.workDir = workDir
 	c.cacheName = cacheName
 	c.DeleteRatio = 1
+	c.NestInHashFolders = true
 	path := zstr.Concat("/", urlPrefix, cacheName)
-	c.getURL = path //zstr.Concat("/", zrest.AppURLPrefix, path) // let's make image standalone and remove this dependency soon
-	err := os.MkdirAll(c.workDir+cacheName, 0775|os.ModeDir)
+	c.getURL = cacheName // path
+	err := os.MkdirAll(c.workDir+urlPrefix+cacheName, 0775|os.ModeDir)
 	if err != nil {
 		zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
 	}
@@ -95,28 +103,25 @@ func (c *Cache) IsTokenValid(t string) bool {
 
 // CacheFromReader reads bytes from reader with stype png or jpeg and caches is with CacheFromData
 // This name is used to get a path or a url for getting
-func (c *Cache) CacheFromReader(reader io.Reader, ext, id string) (string, error) {
+func (c *Cache) CacheFromReader(reader io.Reader, name string) (string, error) {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return "", zlog.Error(err, "read from reader")
 	}
-	return c.CacheFromData(data, ext, id)
+	return c.CacheFromData(data, name)
 }
 
-// CacheFromData reads in data, using id as filename, or hash of data, and extension
-// This string return is this id/hash, used to get a path or a url for fetching.
-func (c *Cache) CacheFromData(data []byte, ext, id string) (string, error) {
+// CacheFromData reads in data, using name as filename, or hash of data, and extension
+// This string return is this name/hash, used to get a path or a url for fetching.
+// This should really call CacheFromReader, not visa versa
+func (c *Cache) CacheFromData(data []byte, name string) (string, error) {
 	var err error
-	h := fnv.New64a()
-	h.Write(data)
-
-	name := id
-	if id == "" {
+	if name == "" || strings.HasPrefix(name, ".") {
+		h := fnv.New64a()
+		h.Write(data)
 		hash := h.Sum64()
-		name = fmt.Sprintf("%x", hash)
+		name = fmt.Sprintf("%x", hash) + name
 	}
-	name += ext
-
 	path, dir := c.GetPathForName(name)
 	err = zfile.MakeDirAllIfNotExists(dir)
 	if err != nil {
@@ -143,14 +148,29 @@ func (c *Cache) CacheFromData(data []byte, ext, id string) (string, error) {
 }
 
 func (c *Cache) GetPathForName(name string) (path, dir string) {
-	dir = c.workDir + c.cacheName + name[:3] + "/"
-	path = dir + name[3:]
+	lastDir := ""
+	end := name
+	if c.NestInHashFolders {
+		lastDir = "/" + name[:3]
+		end = "/" + name[3:]
+	}
+	dir = filepath.Join(c.workDir, c.urlPrefix, c.cacheName) + lastDir
+	path = dir + "/" + end
+	// zlog.Info("GetPathForName:", c.workDir, c.urlPrefix, c.cacheName, name, path)
 	return
 }
 
-func (c *Cache) GetUrlForName(name string) string {
+func (c *Cache) GetWorkDirectoryStart() string {
+	return filepath.Join(c.workDir, c.urlPrefix) + "/"
+}
+
+func (c *Cache) IsCached(name string) bool {
+	path, _ := c.GetPathForName(name)
+	return zfile.Exists(path)
+}
+
+func (c *Cache) GetURLForName(name string) string {
 	str := zstr.Concat("/", c.getURL, name) // zrest.AppURLPrefix,
-	// zlog.Info("CACHE:", str)
 	if c.UseToken {
 		str += "?token=" + c.getToken()
 	}
