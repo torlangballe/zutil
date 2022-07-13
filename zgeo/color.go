@@ -190,7 +190,8 @@ func (c Color) GrayScaleAndAlpha() (float32, float32) { // white, alpha
 }
 
 func (c Color) GrayScale() float32 {
-	return 0.2126*c.Colors.R + 0.7152*c.Colors.G + 0.722*c.Colors.B
+	return 0.3*c.Colors.R + 0.59*c.Colors.G + 0.11*c.Colors.B
+	//	return 0.2126*c.Colors.R + 0.7152*c.Colors.G + 0.722*c.Colors.B
 }
 func (c Color) Opacity() float32 {
 	return c.Colors.A
@@ -236,6 +237,7 @@ func (c Color) AlteredContrast(contrast float32) Color {
 
 func (c Color) ContrastingGray() Color {
 	g := c.GrayScale()
+	// zlog.Info("Contrasting:", g)
 	if g < 0.5 {
 		return ColorWhite
 	}
@@ -285,6 +287,8 @@ func ColorFromString(str string) Color {
 		return ColorGray
 	case "darkGray":
 		return ColorDarkGray
+	case "lightGray":
+		return ColorLightGray
 	case "clear":
 		return ColorClear
 	case "blue":
