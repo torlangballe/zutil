@@ -166,10 +166,13 @@ func HeadUntilLast(str, sep string) string {
 	return str[:i]
 }
 
-func HeadUntilIncluding(str, sep string) string {
+func HeadUntilIncluding(str, sep string, rest *string) string {
 	i := strings.Index(str, sep)
 	if i == -1 {
 		return str
+	}
+	if rest != nil {
+		*rest = str[i+len(sep):]
 	}
 	return str[:i] + sep
 }
@@ -369,17 +372,19 @@ func ExtractItemFromStrings(strs *[]string, item string) bool {
 	return true
 }
 
-func ExtractFlaggedArg(strs *[]string, flag string) string {
+// ExtractFlaggedArg extracts the value after a flag string, removing them from strs
+// i.e command -flag value : ExtractFlaggedArg(&args, "-flag", &value)
+func ExtractFlaggedArg(strs *[]string, flag string, value *string) bool {
 	i := IndexOf(flag, *strs)
 	if i == -1 {
-		return ""
+		return false
 	}
 	if len(*strs) < i+2 {
-		return ""
+		return false
 	}
-	val := (*strs)[i+1]
+	*value = (*strs)[i+1]
 	*strs = append((*strs)[:i], (*strs)[i+2:]...)
-	return val
+	return true
 }
 
 func ExtractFirstString(strs *[]string) string {
@@ -702,6 +707,14 @@ func ReplaceVariablesWithValues(text, prefix string, values map[string]string) (
 		iter++
 	}
 	return
+}
+
+func ReplaceWithFunc(str string, replace func(rune) string) string {
+	var out string
+	for _, r := range str {
+		out += replace(r)
+	}
+	return out
 }
 
 func Replace(str *string, find, with string) bool {
