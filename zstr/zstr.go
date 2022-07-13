@@ -898,6 +898,11 @@ func HashTo64Hex(str string) string {
 	return fmt.Sprintf("%x", h)
 }
 
+func HashAnyToInt64(a interface{}) int64 {
+	str := fmt.Sprintf("%v", a)
+	return zint.HashTo64(str)
+}
+
 func HashTo32Hex(str string) string {
 	h := zint.HashTo32(str)
 	return fmt.Sprintf("%x", h)
