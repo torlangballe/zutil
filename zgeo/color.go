@@ -379,6 +379,10 @@ func ColorFromString(str string) Color {
 	return Color{}
 }
 
+func (c *Color) SetFromString(str string) {
+	*c = ColorFromString(str)
+}
+
 func ColorFromGo(c color.Color) Color {
 	r, g, b, a := c.RGBA()
 	af := float32(a) / 0xFFFF
@@ -428,14 +432,6 @@ var ColorPurple = ColorNew(0.5, 0, 0.5, 1)
 var ColorPink = ColorNew(1, 0.8, 0.8, 1)
 
 var ColorDistinctList = []Color{ColorOrange, ColorCyan, ColorMagenta, ColorGray, ColorBlack, ColorRed, ColorMaroon, ColorYellow, ColorOlive, ColorLime, ColorGreen, ColorDarkGreen, ColorAqua, ColorTeal, ColorBlue, ColorNavy, ColorDarkGray, ColorFuchsia, ColorPurple, ColorLightGray}
-
-type DropShadow struct {
-	Delta Size
-	Blur  float32
-	Color Color
-}
-
-var DropShadowDefault = DropShadow{Delta: Size{3, 3}, Blur: 3, Color: ColorBlack}
 
 func KelvinToColor(kelvin float32) Color {
 	var r, g, b int
