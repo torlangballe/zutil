@@ -13,9 +13,10 @@ type FontStyle int
 var scale = 1.0
 
 const (
-	FontStyleNormal     FontStyle = 0
-	FontStyleBold       FontStyle = 1
-	FontStyleItalic     FontStyle = 2
+	FontStyleUndef      FontStyle = 0
+	FontStyleNormal     FontStyle = 1
+	FontStyleBold       FontStyle = 2
+	FontStyleItalic     FontStyle = 4
 	FontStyleBoldItalic FontStyle = FontStyleBold | FontStyleItalic
 )
 
@@ -48,9 +49,11 @@ func (s FontStyle) String() string {
 }
 
 func FontStyleFromStr(str string) FontStyle {
-	s := FontStyleNormal
+	s := FontStyleUndef
 	for _, p := range strings.Split(str, " ") {
 		switch p {
+		case "normal":
+			s = FontStyleNormal
 		case "bold":
 			s |= FontStyleBold
 		case "italic":
