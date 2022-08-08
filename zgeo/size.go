@@ -17,6 +17,8 @@ type Size struct {
 
 type Sizes []Size
 
+var SizeUndef = Size{W: math.MaxFloat32, H: math.MaxFloat32}
+
 // SizeF creates a Size from float64 w and h
 func SizeF(w, h float32) Size {
 	return Size{float64(w), float64(h)}
@@ -45,6 +47,10 @@ func (s Size) Pos() Pos {
 //IsNull returns true if S and W are zero
 func (s Size) IsNull() bool {
 	return s.W == 0 && s.H == 0
+}
+
+func (s Size) IsUndef() bool {
+	return s.W == math.MaxFloat32
 }
 
 func (s *Size) Set(w, h float64) {

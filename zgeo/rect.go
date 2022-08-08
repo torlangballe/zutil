@@ -10,6 +10,11 @@ type Rect struct {
 	Size Size `json:"size"`
 }
 
+var (
+	RectUndef = RectFromWH(math.MaxFloat32, math.MaxFloat32)
+	RectNull  Rect
+)
+
 func RectMake(x0, y0, x1, y1 float64) Rect {
 	r := Rect{}
 	r.Pos.X = x0
@@ -39,10 +44,12 @@ func RectFromWH(w, h float64) Rect {
 	return Rect{Size: Size{w, h}}
 }
 
-var RectNull Rect
-
 func (r Rect) IsNull() bool {
 	return r.Pos.X == 0 && r.Pos.Y == 0 && r.Size.W == 0 && r.Size.H == 0
+}
+
+func (r Rect) IsUndef() bool {
+	return r.Size.W == math.MaxFloat32
 }
 
 func (r Rect) GoRect() image.Rectangle {
