@@ -1,6 +1,8 @@
 package zreflect
 
 import (
+	"bytes"
+	"encoding/gob"
 	"errors"
 	"reflect"
 	"regexp"
@@ -244,18 +246,37 @@ func ItterateStruct(istruct interface{}, options Options) (item Item, err error)
 	return itterate(0, "", "", "", false, rval.Elem(), options)
 }
 
-func ForEachField(istruct interface{}, got func(index int, val reflect.Value, sf reflect.StructField)) error {
-	rval := reflect.ValueOf(istruct).Elem()
+func ForEachField(istruct interface{}, got func(index int, fieldRefVal reflect.Value, sf reflect.StructField)) {
+	rval := reflect.ValueOf(istruct)
+	if rval.Kind() == reflect.Pointer {
+		rval = rval.Elem()
+	}
 	if !rval.IsValid() { //|| rval.IsZero() { //  && rval.Kind() != reflect.StructKind
-		return zlog.Error(nil, "ItterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
+		zlog.Fatal(nil, "ItterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
 	}
-	count := rval.NumField()
-	for i := 0; i < count; i++ {
-		fieldStruct := rval.Type().Field(i)
-		fval := rval.Field(i)
-		got(i, fval, fieldStruct)
+	for i := 0; i < rval.NumField(); i++ {
+		got(i, rval.Field(i), rval.Type().Field(i))
 	}
-	return nil
+}
+
+func FieldForIndex(istruct interface{}, index int) (fieldRefVal reflect.Value, sf reflect.StructField) {
+	ForEachField(istruct, func(i int, rv reflect.Value, f reflect.StructField) {
+		if i == index {
+			fieldRefVal = rv
+			sf = f
+		}
+	})
+	return
+}
+
+func FieldForName(istruct interface{}, name string) (fieldRefVal reflect.Value, sf reflect.StructField) {
+	ForEachField(istruct, func(i int, rv reflect.Value, f reflect.StructField) {
+		if f.Name == name {
+			fieldRefVal = rv
+			sf = f
+		}
+	})
+	return
 }
 
 // GetTagAsFields returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
@@ -284,6 +305,7 @@ func GetTagAsMap(stag string) map[string][]string {
 	return nil
 }
 
+// TODO: Use FieldForName instead
 func FindFieldWithNameInStruct(name string, structure interface{}, anonymous bool) (reflect.Value, bool) {
 	val := reflect.ValueOf(structure)
 	if val.Kind() == reflect.Ptr {
@@ -306,4 +328,13 @@ func FindFieldWithNameInStruct(name string, structure interface{}, anonymous boo
 		}
 	}
 	return reflect.Value{}, false
+}
+
+func DeepCopy(destPtr, source any) error {
+	buf := bytes.Buffer{}
+	err := gob.NewEncoder(&buf).Encode(source)
+	if err != nil {
+		return err
+	}
+	return gob.NewDecoder(&buf).Decode(destPtr)
 }
