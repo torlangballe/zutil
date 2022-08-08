@@ -95,12 +95,12 @@ func getStackCells(debugName string, vertical bool, cells []LayoutCell) (scells 
 }
 
 // calcPreAddedTotalWidth gets the total width of objects, spacing and margin
-func calcPreAddedTotalWidth(scells []stackCell, spacing float64) (w, space, marg float64) {
+func calcPreAddedTotalWidth(debugName string, scells []stackCell, spacing float64) (w, space, marg float64) {
 	for i, sc := range scells {
 		w += sc.size.W
 		marg += sc.Margin.W
 		if sc.Alignment&HorCenter != 0 {
-			// marg += sc.Margin.W
+			marg += sc.Margin.W
 		}
 		if i != 0 {
 			space += spacing
@@ -142,7 +142,7 @@ func getPossibleAdjustments(diff float64, scells []stackCell) []float64 {
 // it does two passes; First ones with a MaxSize or non-expanding, then rest with what is left.
 // it returns *added*, which is sum of width of all added cells
 func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vertical bool, spacing float64) {
-	width, _, _ := calcPreAddedTotalWidth(scells, spacing) // space, marg
+	width, _, _ := calcPreAddedTotalWidth(debugName, scells, spacing) // space, marg
 	diff := r.Size.W - width
 	adjustableCount := 0.0
 	adj := getPossibleAdjustments(diff, scells)
@@ -244,7 +244,8 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 	for i, sc := range scells {
 		if (sc.Alignment&(Left|HorCenter|Right))&prevAlign == 0 { // if align is something new, ie. center/right
 			if sc.Alignment&HorCenter != 0 { // if we are starting on center cells, add half of space left, and halve it for before right cells
-				x = math.Max(sx, r.Min().X+r.Size.W/2-wcenter/2)
+				// x = math.Max(sx, r.Min().X+r.Size.W/2-wcenter/2)
+				zfloat.Maximize(&x, math.Max(sx, r.Min().X+r.Size.W/2-wcenter/2))
 			} else { // we are starting with right cells, add rest of extra space
 				x = math.Max(sx, r.Max().X-wright)
 			}
@@ -268,7 +269,10 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 			a |= VertShrink
 		}
 		vr := box.AlignPro(sc.OriginalSize, a, sc.Margin, sc.MaxSize, sc.MinSize)
-		// 	zlog.Info(i, sc.inputIndex, sc.MinSize, "  align:", sc.Name, r, i, "sc.size:", sc.size, len(scells), box, sc.OriginalSize, sc.Alignment, "=", vr)
+		// if debugName == "root" {
+		// 	zlog.Info("layoutRectsInBoxes:", sc.Name, vr, r.Size, a, sc.Margin)
+		// }
+		// zlog.Info(debugName, "r:", r, sc.Name, "sc.size:", sc.size, sc.MinSize, "  align:", sc.Alignment, "box:", box, sc.OriginalSize, "=", vr)
 		x = box.Max().X + spacing // was vr.Max!!!
 		if vertical {
 			vr = vr.Swapped()
@@ -295,7 +299,7 @@ func LayoutCellsInStack(debugName string, rect Rect, vertical bool, spacing floa
 
 func LayoutGetCellsStackedSize(debugName string, vertical bool, spacing float64, cells []LayoutCell) Size {
 	scells := getStackCells(debugName, vertical, cells)
-	w, _, _ := calcPreAddedTotalWidth(scells, spacing)
+	w, _, _ := calcPreAddedTotalWidth(debugName, scells, spacing)
 	h := 0.0
 	for _, sc := range scells {
 		zfloat.Maximize(&h, sc.size.H+sc.Margin.H*2)
