@@ -44,6 +44,16 @@ func RemoveAt(slice interface{}, index int) error {
 	return nil
 }
 
+func AddNewElementAtEnd(slicePtr any) int {
+	sliceVal := reflect.ValueOf(slicePtr)
+	sliceElement := sliceVal.Elem()
+	n := reflect.New(reflect.TypeOf(sliceElement.Interface()).Elem())
+	// zlog.Info("Add:", sliceElement.Kind(), sliceElement.Type())
+	sliceElement = reflect.Append(sliceElement, n.Elem())
+	sliceVal.Elem().Set(sliceElement)
+	return sliceElement.Len() - 1
+}
+
 func Behead(slice interface{}) {
 	RemoveAt(slice, 0)
 }
@@ -74,14 +84,6 @@ func CopyTo(to, slice interface{}) {
 	toVal.Elem().Set(destVal)
 }
 
-func Reverse(s interface{}) {
-	n := reflect.ValueOf(s).Len()
-	swap := reflect.Swapper(s)
-	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
-		swap(i, j)
-	}
-}
-
 func IndexOf(length int, is func(i int) bool) int {
 	for i := 0; i < length; i++ {
 		if is(i) {
@@ -89,4 +91,14 @@ func IndexOf(length int, is func(i int) bool) int {
 		}
 	}
 	return -1
+}
+
+func Reverse[T any](s []T) {
+	first := 0
+	last := len(s) - 1
+	for first < last {
+		s[first], s[last] = s[last], s[first]
+		first++
+		last--
+	}
 }
