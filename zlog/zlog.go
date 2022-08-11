@@ -268,7 +268,7 @@ func makePathRelativeTo(path, rel string) string {
 
 func GetCallingFunctionString(pos int) string {
 	function, _, _ := GetCallingFunctionInfo(pos)
-	return function
+	return zstr.TailUntil(function, "/")
 }
 
 func GetFileLineAndCallingFunctionString(pos int) string {
