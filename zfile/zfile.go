@@ -1,5 +1,4 @@
 //go:build !js
-// +build !js
 
 package zfile
 
@@ -513,3 +512,6 @@ func DeleteOldInSubFolders(dir string, sleep time.Duration, before time.Time, de
 	}
 	return nil
 }
+
+// merge fs.FS interface inspiration:
+// https://github.com/yalue/merged_fs/blob/master/merged_fs.go
