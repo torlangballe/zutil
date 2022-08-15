@@ -283,7 +283,7 @@ func TruncatedFromStart(str string, length int, endString string) string {
 
 // Concatinates parts, adding divider if prev or current added is not empty
 // Doesn't add divider if prev ends in divider og next part begins with it
-func Concat(divider string, parts ...any) string {
+func Concat(divider string, parts ...interface{}) string {
 	var str string
 	for _, p := range parts {
 		s := fmt.Sprintf("%v", p)
@@ -915,7 +915,7 @@ func HashTo64Hex(str string) string {
 	return fmt.Sprintf("%x", h)
 }
 
-func HashAnyToInt64(a any) int64 {
+func HashAnyToInt64(a interface{}) int64 {
 	str := fmt.Sprintf("%v", a)
 	// fmt.Println("HashAnyToInt64", str)
 	return zint.HashTo64(str)
@@ -1017,7 +1017,7 @@ func SplitIntoLengths(s string, length int) []string {
 	return subs
 }
 
-func SprintSpaced(items ...any) string {
+func SprintSpaced(items ...interface{}) string {
 	if len(items) == 0 {
 		return ""
 	}
@@ -1025,7 +1025,7 @@ func SprintSpaced(items ...any) string {
 	return TruncatedCharsAtEnd(str, 1)
 }
 
-func FromInterface(i any) string {
+func FromInterface(i interface{}) string {
 	s, _ := i.(string)
 	return s
 }
@@ -1141,7 +1141,7 @@ func IsValidEmail(email string) bool {
 	return emailRegex.MatchString(email)
 }
 
-func SortedMapKeys(m any) (keys []string) {
+func SortedMapKeys(m interface{}) (keys []string) {
 	val := reflect.ValueOf(m)
 	if val.Kind() != reflect.Map {
 		panic("not map")

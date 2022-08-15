@@ -44,7 +44,7 @@ func RemoveAt(slice interface{}, index int) error {
 	return nil
 }
 
-func AddNewElementAtEnd(slicePtr any) int {
+func AddNewElementAtEnd(slicePtr interface{}) int {
 	sliceVal := reflect.ValueOf(slicePtr)
 	sliceElement := sliceVal.Elem()
 	n := reflect.New(reflect.TypeOf(sliceElement.Interface()).Elem())
@@ -93,7 +93,7 @@ func IndexOf(length int, is func(i int) bool) int {
 	return -1
 }
 
-func Reverse[T any](s []T) {
+func Reverse[T interface{}](s []T) {
 	first := 0
 	last := len(s) - 1
 	for first < last {

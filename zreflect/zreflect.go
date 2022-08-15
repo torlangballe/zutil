@@ -330,7 +330,7 @@ func FindFieldWithNameInStruct(name string, structure interface{}, anonymous boo
 	return reflect.Value{}, false
 }
 
-func DeepCopy(destPtr, source any) error {
+func DeepCopy(destPtr, source interface{}) error {
 	buf := bytes.Buffer{}
 	err := gob.NewEncoder(&buf).Encode(source)
 	if err != nil {
