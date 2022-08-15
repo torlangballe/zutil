@@ -338,3 +338,14 @@ func DeepCopy(destPtr, source interface{}) error {
 	}
 	return gob.NewDecoder(&buf).Decode(destPtr)
 }
+
+// NewOfAny returns a new'ed item of that type.
+// If a is a pointer, it's element is used.
+func NewOfAny(a interface{}) interface{} {
+	val := reflect.ValueOf(a)
+	if val.Kind() == reflect.Pointer {
+		val = val.Elem()
+	}
+	return reflect.New(val.Type()).Interface()
+}
+
