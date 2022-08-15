@@ -235,28 +235,28 @@ func Abs(a int) int {
 	return a
 }
 
-func SetAny(any interface{}, i int64) error {
-	switch any.(type) {
+func SetAny(num interface{}, i int64) error {
+	switch num.(type) {
 	case *int:
-		*any.(*int) = int(i)
+		*num.(*int) = int(i)
 	case *int8:
-		*any.(*int8) = int8(i)
+		*num.(*int8) = int8(i)
 	case *int16:
-		*any.(*int16) = int16(i)
+		*num.(*int16) = int16(i)
 	case *int32:
-		*any.(*int32) = int32(i)
+		*num.(*int32) = int32(i)
 	case *int64:
-		*any.(*int64) = int64(i)
+		*num.(*int64) = int64(i)
 	case *uint8:
-		*any.(*uint8) = uint8(i)
+		*num.(*uint8) = uint8(i)
 	case *uint16:
-		*any.(*uint16) = uint16(i)
+		*num.(*uint16) = uint16(i)
 	case *uint32:
-		*any.(*uint32) = uint32(i)
+		*num.(*uint32) = uint32(i)
 	case *uint64:
-		*any.(*uint64) = uint64(i)
+		*num.(*uint64) = uint64(i)
 	default:
-		err := errors.New(fmt.Sprint("bad type:", reflect.TypeOf(any))) // don't use zlog, will be import cycle
+		err := errors.New(fmt.Sprint("bad type:", reflect.TypeOf(num))) // don't use zlog, will be import cycle
 		fmt.Println("zint.SetAny err:", err)
 		return err
 	}

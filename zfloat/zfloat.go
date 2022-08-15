@@ -83,38 +83,38 @@ func GetAny(i interface{}) (float64, error) {
 	}
 }
 
-func SetAny(any interface{}, f float64) error {
-	// zlog.Info("SetAnyF:", reflect.ValueOf(any).Type())
-	switch atype := any.(type) {
+func SetAny(num interface{}, f float64) error {
+	// zlog.Info("SetAnyF:", reflect.ValueOf(y).Type())
+	switch atype := num.(type) {
 	case *float32:
 		*atype = float32(f)
 	case *float64:
-		*any.(*float64) = f
+		*num.(*float64) = f
 	case bool:
-		*any.(*bool) = (f != 0)
+		*num.(*bool) = (f != 0)
 	case int:
-		*any.(*int) = int(f)
+		*num.(*int) = int(f)
 	case int8:
-		*any.(*int8) = int8(f)
+		*num.(*int8) = int8(f)
 	case int16:
-		*any.(*int16) = int16(f)
+		*num.(*int16) = int16(f)
 	case int32:
-		*any.(*int32) = int32(f)
+		*num.(*int32) = int32(f)
 	case int64:
-		*any.(*int64) = int64(f)
+		*num.(*int64) = int64(f)
 	case uint:
-		*any.(*uint) = uint(f)
+		*num.(*uint) = uint(f)
 	case uint8:
-		*any.(*uint8) = uint8(f)
+		*num.(*uint8) = uint8(f)
 	case uint16:
-		*any.(*uint16) = uint16(f)
+		*num.(*uint16) = uint16(f)
 	case uint32:
-		*any.(*uint32) = uint32(f)
+		*num.(*uint32) = uint32(f)
 	case uint64:
-		*any.(*uint64) = uint64(f)
+		*num.(*uint64) = uint64(f)
 
 	default:
-		return errors.New(fmt.Sprint("bad type:", reflect.TypeOf(any)))
+		return errors.New(fmt.Sprint("bad type:", reflect.TypeOf(num)))
 	}
 	return nil
 }
