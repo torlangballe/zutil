@@ -3,52 +3,30 @@
 package zwrpc
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
 	"net/http"
-	"path/filepath"
 
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/znet"
+	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztimer"
 	"nhooyr.io/websocket"
 )
 
 // https://golang.org/src/net/rpc/server.go?s=21953:21970#L708
 
-// type WRPCCalls struct{}
-
 var (
-	NewClientServerHandler func(id string)
+	NewClientHandler func(id string)
 	// Calls                  = &WRPCCalls{}
 )
 
-// func (c *WRPCCalls) CallClients(method string, wildcard string, args interface{}) {
-// 	for id, c := range clientRPCServers {
-
-// 	}
-// }
-
-var clientRPCServers = map[string]Client{}
+var clients = map[string]*Client{}
 
 func InitServer(certificatePath string, port int) {
 	http.HandleFunc("/ws", acceptWS)
 	go func() {
 		znet.ServeHTTPInBackground(port, certificatePath, nil)
 	}()
-}
-
-func repeatHandleAcceptFromClientServer(c *websocket.Conn, id string) error {
-	var wc Client
-	// wc.Token = id // id is not token?
-	wc.ws = c
-	clientRPCServers[id] = wc
-	if NewClientServerHandler != nil {
-		NewClientServerHandler(id)
-	}
-	zlog.Info("repeatHandleAcceptFromClientServer done")
-	return nil
 }
 
 func acceptWS(w http.ResponseWriter, req *http.Request) {
@@ -58,7 +36,6 @@ func acceptWS(w http.ResponseWriter, req *http.Request) {
 	vals := req.URL.Query()
 	id := vals.Get("id")
 
-	fromClientServer := (id != "")
 	// zlog.Info("serveWS:", id, fromClientServer)
 
 	wc, err := websocket.Accept(w, req, &opts)
@@ -67,56 +44,83 @@ func acceptWS(w http.ResponseWriter, req *http.Request) {
 		wc.Close(websocket.StatusInternalError, err.Error())
 		return
 	}
-	if fromClientServer {
-		go repeatHandleAcceptFromClientServer(wc, id)
-	} else {
-		if err != nil {
+	zlog.Info("Accept:", id, NewClientHandler != nil)
+	c := &Client{}
+	// wc.Token = id // id is not token?
+	c.id = id
+	c.ws = wc
+	clients[id] = c
 
+	c.pingRepeater = ztimer.RepeatIn(5, func() bool {
+		zlog.Info("Ping repeat")
+		// ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		// defer cancel()
+		// c.ws.Ping(ctx)
+		// zlog.Info("Ping")
+		return true
+	})
+	if NewClientHandler != nil {
+		NewClientHandler(id)
+	}
+
+	repeatHandleIncoming(c, id)
+}
+
+/*
+func repeatHandleAcceptFromClient(c *websocket.Conn, id string) error {
+	wc := &Client{}
+	// wc.Token = id // id is not token?
+	wc.ws = c
+	clients[id] = wc
+	if NewClientHandler != nil {
+		NewClientHandler(id)
+	}
+	zlog.Info("repeatHandleAcceptFromClient done", id)
+	return nil
+}
+*/
+
+func removeClient(client *Client) {
+	for id, c := range clients {
+		if c == client {
+			c.pingRepeater.Stop()
+			delete(clients, id)
+			break
 		}
-		go repeatHandleIncoming(wc)
 	}
 }
 
-func repeatHandleIncoming(c *websocket.Conn) {
+func repeatHandleIncoming(c *Client, id string) {
 	for {
-		cp, dbytes, err := readCallPayload(c)
+		cp, dbytes, err := readCallPayload(c.ws)
 		if err != nil {
-			if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
+			cs := websocket.CloseStatus(err)
+			switch cs {
+			case websocket.StatusNormalClosure, websocket.StatusGoingAway, websocket.StatusAbnormalClosure: //, websocket.StatusServiceRestart:
+				removeClient(c)
 				return
 			}
 			//			c.Close(websocket.StatusInternalError, err.Error())
-			zlog.Error(err, "readCallPlayload")
+			zlog.Error(err, "readCallPlayload", dbytes)
 			return
 		}
 		if cp.IDWildcard == "" {
 			handleIncomingCall(c, cp)
 		} else {
-			forwardToClientServers(c, dbytes, cp.IDWildcard)
+			zlog.Fatal(nil, "no forwarding")
+			// forwardToClientServers(c, dbytes, cp.IDWildcard)
 		}
 	}
 }
 
-func forwardToClientServers(c *websocket.Conn, bytes []byte, wildcard string) {
-	for id, client := range clientRPCServers {
+/*
+func forwardToClientServers(c *Client, bytes []byte, wildcard string) {
+	for id, client := range clients {
+		if client == c {
+			continue
+		}
 		matched, _ := filepath.Match(wildcard, id)
 		if matched {
-			ctx := context.Background()
-			var rp receivePayload
-			writer, err := client.ws.Writer(ctx, websocket.MessageText)
-			if err != nil {
-				zlog.Error(err, "Error getting writer:", id)
-				continue
-			}
-			n, err := writer.Write(bytes)
-			if err != nil {
-				zlog.Error(err, "Error copying to client server:", id, n)
-				continue
-			}
-			_, reader, err := c.Reader(ctx)
-			if err != nil {
-				zlog.Error(err, "get reader:", wildcard)
-				continue
-			}
 			d := json.NewDecoder(reader)
 			err = d.Decode(&rp)
 			if err != nil {
@@ -132,7 +136,23 @@ func forwardToClientServers(c *websocket.Conn, bytes []byte, wildcard string) {
 		}
 	}
 }
+*/
 
 func setNoVerifyClient(opts *websocket.DialOptions) {
 	opts.HTTPClient = zhttp.NoVerifyClient
+}
+
+func CallAllClientsFromServer(method string, args interface{}, idWildcard string) error {
+	var err error
+	for id, client := range clients {
+		if zstr.MatchWildcard(idWildcard, id) {
+			zlog.Info("CallAll1:", id, idWildcard)
+			e := client.Call(method, args, nil)
+			zlog.Info("CallAll2:", id, idWildcard, e)
+			if e != nil {
+				err = e
+			}
+		}
+	}
+	return err
 }

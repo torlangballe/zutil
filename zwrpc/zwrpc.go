@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"go/token"
+	"io"
 	"reflect"
 	"time"
 
@@ -15,14 +16,12 @@ import (
 )
 
 type callPayload struct {
-	Token      string
 	Method     string
 	Args       interface{}
 	IDWildcard string
 }
 
 type callPayloadReceive struct {
-	Token      string
 	Method     string
 	Args       json.RawMessage
 	IDWildcard string
@@ -41,7 +40,7 @@ type methodType struct {
 	ReplyType reflect.Type
 }
 
-type Any interface{} // Any is used in function definition args/result when argument is not used
+type Any struct{} // Any is used in function definition args/result when argument is not used
 
 var (
 	callMethods    = map[string]*methodType{}
@@ -83,10 +82,10 @@ func suitableMethods(c interface{}) map[string]*methodType {
 			zlog.Info("Register: argument type of method", mname, "is not exported:", argType)
 			continue
 		}
-		// Second arg must be a pointer.
+		// Second arg must be a pointer or interface.
 		replyType := mtype.In(2)
-		if replyType.Kind() != reflect.Ptr {
-			zlog.Info("Register: reply type of method", mname, "is not a pointer:", replyType)
+		if replyType.Kind() != reflect.Ptr && replyType.Kind() != reflect.Interface {
+			zlog.Info("Register: reply type of method", mname, "is not a pointer:", replyType, method.Func.CanAddr())
 			continue
 		}
 		// Reply type must be exported.
@@ -135,15 +134,22 @@ func callMethod(ctx context.Context, mtype *methodType, rawArg json.RawMessage) 
 	if argIsValue {
 		argv = argv.Elem()
 	}
-	replyv = reflect.New(mtype.ReplyType.Elem())
 
-	switch mtype.ReplyType.Elem().Kind() {
-	case reflect.Map:
-		replyv.Elem().Set(reflect.MakeMap(mtype.ReplyType.Elem()))
-	case reflect.Slice:
-		replyv.Elem().Set(reflect.MakeSlice(mtype.ReplyType.Elem(), 0, 0))
+	var a *Any
+	hasReply := mtype.ReplyType != reflect.TypeOf(a)
+	// zlog.Info("Type:", mtype.ReplyType, reflect.TypeOf(a), hasReply)
+	if hasReply {
+		replyv = reflect.New(mtype.ReplyType.Elem())
+
+		switch mtype.ReplyType.Elem().Kind() {
+		case reflect.Map:
+			replyv.Elem().Set(reflect.MakeMap(mtype.ReplyType.Elem()))
+		case reflect.Slice:
+			replyv.Elem().Set(reflect.MakeSlice(mtype.ReplyType.Elem(), 0, 0))
+		}
+	} else {
+		replyv = reflect.ValueOf(a)
 	}
-
 	function := mtype.Method.Func
 	returnValues := function.Call([]reflect.Value{mtype.Receiver, argv, replyv})
 	errInter := returnValues[0].Interface()
@@ -153,7 +159,9 @@ func callMethod(ctx context.Context, mtype *methodType, rawArg json.RawMessage) 
 		rp.Error = err.Error()
 		return rp, nil
 	}
-	rp.Result = replyv.Interface()
+	if hasReply {
+		rp.Result = replyv.Interface()
+	}
 	return rp, nil
 }
 
@@ -169,11 +177,14 @@ func callMethodName(ctx context.Context, name string, rawArg json.RawMessage) (r
 func readCallPayload(c *websocket.Conn) (cp *callPayloadReceive, dbytes []byte, err error) {
 	buffer := bytes.NewBuffer([]byte{})
 	ctx := context.Background()
-	_, r, err := c.Reader(ctx)
-
+	zlog.Info("readCallPayload")
+	mtype, r, err := c.Reader(ctx)
+	zlog.Info("readCallPayload done", err)
 	if err != nil {
-		return
+		zlog.Error(err, "make reader", mtype)
+		return nil, nil, err
 	}
+	zlog.Info("mtype:", mtype)
 	n, err := buffer.ReadFrom(r)
 	if err != nil {
 		return nil, nil, zlog.Error(err, "readfrom", n)
@@ -182,12 +193,12 @@ func readCallPayload(c *websocket.Conn) (cp *callPayloadReceive, dbytes []byte, 
 	dbytes = buffer.Bytes()
 	err = json.Unmarshal(dbytes, cp)
 	if err != nil {
-		return nil, nil, zlog.Error(err, "unmarshal", cp != nil, n, string(dbytes), zlog.GetCallingStackString())
+		return nil, nil, zlog.Error(err, "unmarshal", cp != nil, n, string(dbytes), zlog.CallingStackString())
 	}
 	return
 }
 
-func handleIncomingCall(c *websocket.Conn, cp *callPayloadReceive) {
+func handleIncomingCall(c *Client, cp *callPayloadReceive) {
 	ctx := context.Background()
 	zlog.Info("start incomingWS", c != nil, cp != nil)
 	wctx, wcancel := context.WithTimeout(ctx, time.Second*10)
@@ -196,5 +207,29 @@ func handleIncomingCall(c *websocket.Conn, cp *callPayloadReceive) {
 	if err != nil {
 		rp.TransportError = err.Error()
 	}
-	wsjson.Write(wctx, c, rp)
+	wsjson.Write(wctx, c.ws, rp)
+}
+
+func SendReceiveDataToWS(id string, ws *websocket.Conn, bytes []byte) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+	defer cancel()
+	writer, err := ws.Writer(ctx, websocket.MessageText)
+	if err != nil {
+		zlog.Error(err, "Error getting writer:", id)
+		return nil, err
+	}
+	n, err := writer.Write(bytes)
+	if err != nil {
+		zlog.Error(err, "Error copying to client server:", id, n)
+		return nil, err
+	}
+	zlog.Info("SendReceiveDataToWS")
+	ctx2, cancel2 := context.WithTimeout(context.Background(), time.Second*20)
+	defer cancel2()
+	_, reader, err := ws.Reader(ctx2)
+	if err != nil {
+		zlog.Error(err, "get reader:", id)
+		return nil, err
+	}
+	return io.ReadAll(reader)
 }
