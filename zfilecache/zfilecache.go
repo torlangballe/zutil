@@ -71,7 +71,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	c.NestInHashFolders = true
 	path := zstr.Concat("/", urlPrefix, cacheName)
 	c.getURL = cacheName // path
-	err := os.MkdirAll(c.workDir+urlPrefix+cacheName, 0775|os.ModeDir)
+	err := os.MkdirAll(c.workDir+cacheName, 0775|os.ModeDir)
 	if err != nil {
 		zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
 	}
