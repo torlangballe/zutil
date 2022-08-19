@@ -1,5 +1,4 @@
 //go:build server
-// +build server
 
 package zrpc
 
@@ -13,9 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc"
 	rpcjson "github.com/gorilla/rpc/json"
-
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zrest"
 )
 
@@ -25,7 +22,6 @@ type RPCCalls CallsBase
 
 //var ServerUsingAuthToken = false
 var (
-	ServerPort       int = 1200
 	server           *rpc.Server
 	registeredOwners = map[string]bool{}
 
@@ -35,19 +31,22 @@ var (
 	globalDict                   = sync.Map{}
 )
 
-func InitServer(router *mux.Router, port int, certFilesSuffix string) (hserver *znet.HTTPServer, err error) {
+func InitServer(router *mux.Router) error { // port int, certFilesSuffix string
 	//	go http.ListenAndServeTLS(fmt.Sprintf(":%d", ServerPort), "https/server.crt", "https/server.key", router)
-	if port == 0 {
-		port = 1200
-	}
-	ServerPort = port
+	// if port == 0 {
+	// 	port = 1200
+	// }
+	// ServerPort = port
 	server = rpc.NewServer()
 	registeredOwners = map[string]bool{}
-	hserver = znet.ServeHTTPInBackground(ServerPort, certFilesSuffix, router)
-	zlog.Info("🟨Serve RPC On:", ServerPort, certFilesSuffix)
+	// router2 := mux.NewRouter()
+	// hserver = znet.ServeHTTPInBackground(ServerPort, certFilesSuffix, router2)
+	zlog.Info("🟨Serve RPC On:", zrest.AppURLPrefix+"zrpc")
 	server.RegisterCodec(rpcjson.NewCodec(), "application/json")
-	zrest.AddHandler(router, "rpc", doServeHTTP).Methods("POST", "OPTIONS")
-	return hserver, nil
+	// zrest.AddHandler(router2, "rpc", doServeHTTP).Methods("POST", "OPTIONS")
+	zrest.AddHandler(router, "zrpc", doServeHTTP).Methods("POST", "OPTIONS")
+	Register(Calls)
+	return nil
 }
 
 func getMethodFromRequest(req *http.Request) string {
@@ -61,7 +60,7 @@ func getMethodFromRequest(req *http.Request) string {
 
 func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// TODO: See how little of this we can get away with
-	// zlog.Info("zrpc.DoServeHTTP:", req.Method, req.URL.Port(), "from:", req.Header.Get("Origin"), req.URL)
+	// zlog.Info("zrpc.DoServeHTTP:", req.Method, "from:", req.Header.Get("Origin"), req.URL)
 
 	zrest.AddCORSHeaders(w, req)
 	// w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
@@ -88,7 +87,6 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func Register(owners ...interface{}) {
-	owners = append(owners, Calls)
 	for _, o := range owners {
 		name := reflect.Indirect(reflect.ValueOf(o)).Type().Name()
 		if registeredOwners[name] {

@@ -22,7 +22,6 @@ type Any struct{}
 type Client struct {
 	ID string
 	//var UseHttp = false
-	Port      int
 	ToAddress string
 }
 
@@ -31,24 +30,17 @@ const ClientIDKey = "ZRPC-Client-Id"
 var ToServerClient *Client
 var ToNativeClient *Client
 
-func NewClient(useTokenAuth bool, port int) *Client {
+func NewClient(useTokenAuth bool) *Client {
 	c := &Client{}
 	if !useTokenAuth {
 		c.ID = zstr.GenerateRandomHexBytes(8)
 	}
-	if port == 0 {
-		port = 1200
-	}
-	c.Port = port
 	c.ToAddress = "http://127.0.0.1"
 	return c
 }
 
 func (c *Client) makeUrl() string {
-	if c.Port == 0 {
-		return c.ToAddress + zrest.AppURLPrefix + "rpc"
-	}
-	return fmt.Sprintf("%s:%d%srpc", c.ToAddress, c.Port, zrest.AppURLPrefix)
+	return fmt.Sprintf("%s%szrpc", c.ToAddress, zrest.AppURLPrefix)
 }
 
 func (c *Client) SetAddressFromHost(scheme, address string) {
