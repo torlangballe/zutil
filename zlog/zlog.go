@@ -175,9 +175,9 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	}
 	if priority != InfoLevel {
 		if priority == DebugLevel {
-			finfo += GetCallingFunctionString(pos)
+			finfo += CallingFunctionString(pos)
 		} else {
-			finfo += GetFileLineAndCallingFunctionString(pos)
+			finfo += FileLineAndCallingFunctionString(pos)
 		}
 		finfo += ": "
 	}
@@ -185,7 +185,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		parts = append([]interface{}{err}, parts...)
 	}
 	if priority == FatalLevel {
-		finfo += "\nFatal:" + GetCallingStackString() + "\n"
+		finfo += "\nFatal:" + CallingStackString() + "\n"
 	}
 	err = NewError(parts...)
 	fmt.Println(finfo + col + err.Error() + endCol)
@@ -207,7 +207,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 	return err
 }
 
-func GetCallingFunctionInfo(pos int) (function, file string, line int) {
+func CallingFunctionInfo(pos int) (function, file string, line int) {
 	pc, file, line, ok := runtime.Caller(pos)
 	if ok {
 		function = runtime.FuncForPC(pc).Name()
@@ -215,10 +215,10 @@ func GetCallingFunctionInfo(pos int) (function, file string, line int) {
 	return
 }
 
-func GetCallingStackString() string {
+func CallingStackString() string {
 	var parts []string
 	for i := 3; ; i++ {
-		s := GetFileLineAndCallingFunctionString(i)
+		s := FileLineAndCallingFunctionString(i)
 		if s == "" {
 			break
 		}
@@ -266,13 +266,13 @@ func makePathRelativeTo(path, rel string) string {
 	return str
 }
 
-func GetCallingFunctionString(pos int) string {
-	function, _, _ := GetCallingFunctionInfo(pos)
+func CallingFunctionString(pos int) string {
+	function, _, _ := CallingFunctionInfo(pos)
 	return zstr.TailUntil(function, "/")
 }
 
-func GetFileLineAndCallingFunctionString(pos int) string {
-	function, file, line := GetCallingFunctionInfo(pos)
+func FileLineAndCallingFunctionString(pos int) string {
+	function, file, line := CallingFunctionInfo(pos)
 	if function == "" {
 		return ""
 	}
@@ -376,7 +376,7 @@ func HandlePanic(exit bool) error {
 	r := recover()
 	if r != nil {
 		fmt.Println("**HandlePanic")
-		Error(nil, "\n🟥HandlePanic:", r, "\n", GetCallingStackString())
+		Error(nil, "\n🟥HandlePanic:", r, "\n", CallingStackString())
 		str := fmt.Sprint(r)
 		PanicHandler(str, exit)
 		e, _ := r.(error)

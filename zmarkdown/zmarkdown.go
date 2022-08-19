@@ -61,7 +61,7 @@ func ConvertToPDF(input, title, localFilePathPrefix string, variables zdict.Dict
 	zlog.Info("ConvertToPDF:", renderer.LocalImagePathAlternativePrefix)
 	err := renderer.Process([]byte(input), blackfriday.WithExtensions(extensions)) //blackfriday.HeadingIDs))
 	if err != nil {
-		return "", zlog.Error(err, "processing", zlog.GetCallingStackString())
+		return "", zlog.Error(err, "processing", zlog.CallingStackString())
 	}
 	spdf, err := zfile.ReadStringFromFile(tempFile)
 	os.Remove(tempFile)

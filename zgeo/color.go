@@ -375,7 +375,7 @@ func ColorFromString(str string) Color {
 			return ColorNew(r, g, b, a)
 		}
 	}
-	zlog.Error(nil, "bad color string", str, zlog.GetCallingStackString())
+	zlog.Error(nil, "bad color string", str, zlog.CallingStackString())
 	return Color{}
 }
 

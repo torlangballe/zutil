@@ -282,7 +282,7 @@ func ServeHTTPInBackground(port int, certificatesPath string, handler http.Handl
 		str += "S"
 	}
 	zlog.Info(str+":", port)
-	stack := zlog.GetCallingStackString()
+	stack := zlog.CallingStackString()
 	if port == 0 {
 		if certificatesPath != "" {
 			port = 443

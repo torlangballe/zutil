@@ -50,7 +50,7 @@ type TimedMutex struct {
 }
 
 func (t *TimedMutex) Lock() {
-	stack := zlog.GetCallingStackString()
+	stack := zlog.CallingStackString()
 	timer := ztimer.StartIn(5, func() {
 		zlog.Info("🟥TimeMutex slow lock > 5 sec:", stack)
 	})
