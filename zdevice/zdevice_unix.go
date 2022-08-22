@@ -4,12 +4,15 @@
 package zdevice
 
 import (
+	"os"
 	"strconv"
 	"strings"
 
+	"github.com/matishsiao/goInfo"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
+	"golang.org/x/sys/unix"
 )
 
 func HardwareTypeAndVersion() (string, float32) {
@@ -35,4 +38,19 @@ func Model() string {
 		return ""
 	}
 	return model
+}
+
+func OSVersion() string {
+	gi := goInfo.GetInfo()
+	return gi.Core
+}
+
+func FreeAndUsedDiskSpace() (free int64, used int64) {
+	var stat unix.Statfs_t
+	wd, _ := os.Getwd()
+	unix.Statfs(wd, &stat)
+	free = int64(stat.Bfree * uint64(stat.Bsize))
+	used = int64(stat.Blocks * uint64(stat.Bsize))
+	zlog.Assert(used != 0)
+	return
 }
