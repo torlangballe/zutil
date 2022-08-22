@@ -13,8 +13,8 @@ char *getString(NSString *nsStr, int max) {
 }
 
 
-char *GetOSVersion() {
-    NSProcessInfo *pInfo = [NSProcessInfo processInfo];
-    NSString *version = [pInfo operatingSystemVersionString];
-    return getString(version, 100);
-}
+// char *GetOSVersion() {
+//     NSProcessInfo *pInfo = [NSProcessInfo processInfo];
+//     NSString *version = [pInfo operatingSystemVersionString];
+//     return getString(version, 100);
+// }

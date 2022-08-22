@@ -41,7 +41,11 @@ func Model() string {
 }
 
 func OSVersion() string {
-	gi := goInfo.GetInfo()
+	gi, err := goInfo.GetInfo()
+	if err != nil {
+		zlog.Error(err, "get info")
+		return ""
+	}
 	return gi.Core
 }
 

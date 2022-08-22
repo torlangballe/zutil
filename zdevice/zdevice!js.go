@@ -1,14 +1,10 @@
 //go:build !js
-// +build !js
 
 package zdevice
 
 import (
-	"os"
-
 	"github.com/denisbrodbeck/machineid"
 	"github.com/torlangballe/zutil/zlog"
-	"golang.org/x/sys/unix"
 )
 
 func WasmBrowser() string {
@@ -31,4 +27,3 @@ func UUID() string {
 func OS() OSType {
 	return Platform()
 }
-
