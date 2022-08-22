@@ -10,7 +10,6 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
-	"golang.org/x/sys/unix"
 )
 
 func HardwareTypeAndVersion() (string, float32) {
@@ -30,6 +29,10 @@ func HardwareTypeAndVersion() (string, float32) {
 }
 
 func Model() string {
-	model, _ := unix.SysctlUint32("machdep.cpu.model")
-	return strconv.FormatUint(uint64(model), 10)
+	model, err := zprocess.RunCommand("sysctl", 0, "-n", "machdep.cpu.model")
+	if err != nil {
+		zlog.Fatal(err, "get model")
+		return ""
+	}
+	return model
 }
