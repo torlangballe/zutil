@@ -13,6 +13,7 @@ import (
 type Timer struct {
 	timer *time.Timer
 	mutex sync.Mutex
+	secs  float64
 }
 
 // type Stopper interface {
@@ -71,9 +72,24 @@ func (t *Timer) Stop() {
 }
 */
 
+var (
+	timersCount = map[float64]int{}
+	countMutex  sync.Mutex
+)
+
 func (t *Timer) StartIn(secs float64, perform func()) {
 	t.Stop()
+	countMutex.Lock()
+	timersCount[secs]++
+	t.secs = secs
+	if timersCount[secs]%1000 == 999 {
+		zlog.Error(nil, "1000x timers of same time started", zlog.CallingStackString())
+	}
+	countMutex.Unlock()
 	t.timer = time.AfterFunc(ztime.SecondsDur(secs), func() {
+		countMutex.Lock()
+		timersCount[secs]--
+		countMutex.Unlock()
 		t.timer = nil
 		defer zlog.HandlePanic(true)
 		perform()
@@ -82,6 +98,9 @@ func (t *Timer) StartIn(secs float64, perform func()) {
 
 func (t *Timer) Stop() {
 	if t.timer != nil {
+		countMutex.Lock()
+		timersCount[t.secs]--
+		countMutex.Unlock()
 		t.timer.Stop()
 		t.timer = nil
 	}
@@ -90,4 +109,3 @@ func (t *Timer) Stop() {
 func (t *Timer) IsRunning() bool {
 	return t.timer != nil
 }
-
