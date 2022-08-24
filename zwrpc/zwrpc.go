@@ -128,7 +128,7 @@ func callMethod(ctx context.Context, mtype *methodType, rawArg json.RawMessage) 
 	}
 	err = json.Unmarshal(rawArg, argv.Interface())
 	if err != nil {
-		zlog.Error(err, "UMARSH ERR:", argv.Kind())
+		zlog.Error(err, "Unmarshal:", argv.Kind())
 		return rp, err
 	}
 	if argIsValue {
