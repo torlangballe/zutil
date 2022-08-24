@@ -248,7 +248,7 @@ func ItterateStruct(istruct interface{}, options Options) (item Item, err error)
 
 func ForEachField(istruct interface{}, got func(index int, fieldRefVal reflect.Value, sf reflect.StructField)) {
 	rval := reflect.ValueOf(istruct)
-	if rval.Kind() == reflect.Pointer {
+	if rval.Kind() == reflect.Ptr { // use Ptr instead of Pointer for old go
 		rval = rval.Elem()
 	}
 	if !rval.IsValid() { //|| rval.IsZero() { //  && rval.Kind() != reflect.StructKind
@@ -348,4 +348,3 @@ func NewOfAny(a interface{}) interface{} {
 	}
 	return reflect.New(val.Type()).Interface()
 }
-
