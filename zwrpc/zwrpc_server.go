@@ -22,7 +22,7 @@ var (
 
 var clients = map[string]*Client{}
 
-func InitServer(certificatePath string, port int) {
+func InitWebsocketServer(certificatePath string, port int) {
 	http.HandleFunc("/ws", acceptWS)
 	go func() {
 		znet.ServeHTTPInBackground(port, certificatePath, nil)
