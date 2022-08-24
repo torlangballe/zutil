@@ -158,7 +158,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		}
 	}
 	finfo := ""
-	if runtime.GOOS != "js" {
+	if true { //runtime.GOOS != "js" {
 		timeLock.Lock()
 		linesPrintedSinceTimeStamp++
 		num := runtime.NumGoroutine()
@@ -168,7 +168,11 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 			lastGoRoutineOutputTime = time.Now()
 		}
 		if PrintDate {
-			finfo += zstr.EscCyan + time.Now().Local().Format("15:04:05/02 ") + zstr.EscNoColor
+			str := time.Now().Local().Format("15:04:05/02 ")
+			if UseColor {
+				str = zstr.EscCyan + str + zstr.EscNoColor
+			}
+			finfo += str
 		}
 		linesPrintedSinceTimeStamp = 0
 		timeLock.Unlock()
