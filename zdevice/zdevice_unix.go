@@ -5,6 +5,7 @@ package zdevice
 
 import (
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -32,7 +33,11 @@ func HardwareTypeAndVersion() (string, float32) {
 }
 
 func Model() string {
-	model, err := zprocess.RunCommand("sysctl", 0, "-n", "machdep.cpu.model")
+	name := "machdep.cpu.model"
+	if runtime.GOOS == "darwin" {
+		name = "machdep.cpu.brand_string"
+	}
+	model, err := zprocess.RunCommand("sysctl", 0, "-n", name)
 	if err != nil {
 		zlog.Fatal(err, "get model")
 		return ""

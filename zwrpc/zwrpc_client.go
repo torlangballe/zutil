@@ -116,7 +116,7 @@ func (c *Client) Call(method string, args interface{}, result interface{}) error
 
 func (c *Client) call(method, idWildcard string, args interface{}, result interface{}) error {
 	start := time.Now()
-	cp := callPayload{Method: method, Args: args, IDWildcard: idWildcard}
+	cp := callPayload{Method: method, Args: args, IDWildcard: idWildcard, ClientID: c.id}
 	data, err := json.Marshal(cp)
 	if err != nil {
 		return zlog.Error(err, "marshal")

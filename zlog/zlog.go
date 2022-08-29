@@ -413,3 +413,7 @@ func PrintAllGoroutines() {
 	runtime.Stack(buf, true)
 	fmt.Printf("%s", buf)
 }
+
+func Full(v interface{}) string {
+	return fmt.Sprintf("%+v", v)
+}

@@ -28,7 +28,7 @@ var (
 	// updatedResourcesSentToClient stores which clients have been sent info about resource being updated [res][client]bool
 	updatedResourcesSentToClient = map[string]map[string]bool{}
 	updatedResourcesMutex        sync.Mutex
-	globalDict                   = sync.Map{}
+	// globalDict                   = sync.Map{}
 )
 
 func InitServer(router *mux.Router) error { // port int, certFilesSuffix string

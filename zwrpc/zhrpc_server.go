@@ -4,15 +4,25 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 )
 
+type CallsBase int
+type RPCCalls CallsBase
+
+var (
+	Calls                        = new(RPCCalls)
+	updatedResourcesSentToClient = map[string]map[string]bool{}
+	updatedResourcesMutex        sync.Mutex
+)
+
 func InitHTTPServer(router *mux.Router) {
 	zrest.AddHandler(router, "xrpc", doServeHTTP).Methods("POST", "OPTIONS")
-	// Register(Calls)
+	Register(Calls)
 }
 
 func doServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -31,22 +41,44 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "OPTIONS" {
 		return
 	}
+	// body := zhttp.GetCopyOfRequestBodyAsString(req)
 	defer zlog.HandlePanic(false)
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&cp)
+	// zlog.Info("CP:", body, err)
 	if err != nil {
 		rp.TransportError = err.Error()
 	} else {
 		ctx := context.Background()
-		rp, err = callMethodName(ctx, cp.Method, cp.Args)
+		rp, err = callMethodName(ctx, cp.ClientID, cp.Method, cp.Args)
 		if err != nil {
+			zlog.Error(err, "call")
 			rp.Error = err.Error()
 		}
 	}
+	// b, _ := json.Marshal(rp)
+	// zlog.Info("Called2:", cp.Method, rp)
+
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(rp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	// zlog.Info("zrpc.Serve done:", body)
+	// zlog.Info("zrpc.Serve done", err, rp)
+}
+
+func (c *RPCCalls) GetUpdatedResourcesAndSetSent(clientID string, args *Unused, reply *[]string) error {
+	// fmt.Println("GetUpdatedResourcesAndSetSent", clientID)
+	// zlog.Info("GetUpdatedResourcesAndSetSent", clientID, updatedResourcesSentToClient)
+	*reply = []string{}
+	updatedResourcesMutex.Lock()
+	for res, m := range updatedResourcesSentToClient {
+		if m[clientID] == false {
+			*reply = append(*reply, res)
+			m[clientID] = true
+		}
+	}
+	updatedResourcesMutex.Unlock()
+	// zlog.Info("GetUpdatedResources Got", *reply)
+	return nil
 }
