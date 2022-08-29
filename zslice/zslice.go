@@ -93,12 +93,20 @@ func IndexOf(length int, is func(i int) bool) int {
 	return -1
 }
 
-func Reverse[T interface{}](s []T) {
-	first := 0
-	last := len(s) - 1
-	for first < last {
-		s[first], s[last] = s[last], s[first]
-		first++
-		last--
+// func Reverse[T interface{}](s []T) {
+// 	first := 0
+// 	last := len(s) - 1
+// 	for first < last {
+// 		s[first], s[last] = s[last], s[first]
+// 		first++
+// 		last--
+// 	}
+// }
+
+func Reverse(s interface{}) {
+	n := reflect.ValueOf(s).Len()
+	swap := reflect.Swapper(s)
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+		swap(i, j)
 	}
 }
