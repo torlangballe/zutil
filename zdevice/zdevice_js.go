@@ -150,5 +150,5 @@ func HardwareTypeAndVersion() (string, float32) {
 }
 
 func UUID() string {
-	return "ABC"
+	return "01234567-89AB-CDEF-0123-456789ABCDEF"
 }
