@@ -5,8 +5,8 @@ import (
 	"net"
 	"runtime"
 
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -50,6 +50,8 @@ func Platform() OSType {
 		return JSType
 	case "android":
 		return AndroidType
+	case "linux":
+		return LinuxType
 	}
 	zlog.Fatal(nil, "other type")
 	return OSType("")
