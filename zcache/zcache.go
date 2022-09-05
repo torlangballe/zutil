@@ -94,3 +94,13 @@ func (c *Cache) Remove(key string) {
 	delete(c.items, key)
 	c.lock.Unlock()
 }
+
+func (c *Cache) ForAll(f func(key string, value interface{}) bool) {
+	c.lock.Lock()
+	for k, v := range c.items {
+		if !f(k, v) {
+			break
+		}
+	}
+	c.lock.Unlock()
+}
