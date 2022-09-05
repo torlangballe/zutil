@@ -27,14 +27,23 @@ type Mail struct {
 	HTMLContent string
 }
 
+func (m *Mail) AddTo(name, email string) {
+	m.To = append(m.To, Address{Name: name, Email: email})
+}
+
+// https://zetcode.com/golang/email-smtp/
 // Test with: https://www.smtper.net
 
 func (m Mail) SendWithSMTP(a Authentication) (err error) {
 	zlog.Assert(len(m.To) != 0 && m.To[0].Email != "")
 	auth := smtp.PlainAuth("", a.UserID, a.Password, a.Server)
 	server := fmt.Sprintf("%s:%d", a.Server, a.Port)
-	// zlog.Info("zmail.SendSMTP:", a, "to:", m.To)
+	zlog.Info("zmail.SendSMTP:", auth, server)
 
+	if m.From.Email == "" {
+		m.From.Email = a.UserID
+	}
+	zlog.Info("zmail.SendWithSMTP from:", zlog.Full(m.From))
 	var emails []string
 	bulk := true
 	for _, t := range m.To {
@@ -47,7 +56,8 @@ func (m Mail) SendWithSMTP(a Authentication) (err error) {
 	if len(emails) < 2 {
 		bulk = false
 	}
-	header := "Subject: " + m.Subject + "\r\n\r\n"
+	header := "From: " + m.From.Email + " <" + m.From.Name + ">\r\n"
+	header += "Subject: " + m.Subject + "\r\n\r\n"
 	if bulk {
 		content := []byte(header + m.TextContent)
 		err = smtp.SendMail(server, auth, m.From.Email, emails, content)
@@ -64,9 +74,11 @@ func (m Mail) SendWithSMTP(a Authentication) (err error) {
 		}
 		toheader += "\r\n"
 		content := []byte(toheader + header + m.TextContent)
+		zlog.Info("SEND:::", m.From.Email, t.Email)
 		berr := smtp.SendMail(server, auth, m.From.Email, []string{t.Email}, content)
 		if berr != nil {
-			err = zlog.Error(berr, "send single", a)
+			err = berr
+			zlog.Error(err, "send single", a)
 		}
 	}
 	return err
