@@ -1141,6 +1141,16 @@ func IsValidEmail(email string) bool {
 	return emailRegex.MatchString(email)
 }
 
+func IsTypableASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c < ' ' || c > unicode.MaxASCII {
+			return false
+		}
+	}
+	return true
+}
+
 func SortedMapKeys(m interface{}) (keys []string) {
 	val := reflect.ValueOf(m)
 	if val.Kind() != reflect.Map {
