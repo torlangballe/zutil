@@ -1,7 +1,6 @@
 package zusers
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 
@@ -11,34 +10,38 @@ import (
 
 type User struct {
 	ID           int64
-	Email        string
+	UserName     string // this is email or username chosen by user
 	Salt         string
 	PasswordHash string
 	Permissions  []string
 }
 
 type Authentication struct {
-	Email      string
+	UserName   string
 	Password   string
 	IsRegister bool
 }
 
-type AuthenticationResult struct {
-	Token string
-	ID    int64
+type AuthResult struct {
+	Token  string
+	UserID int64
+}
+
+type ResetPassword struct {
+	ResetToken string
+	Password   string
 }
 
 const (
 	AdminPermission = "admin"
-	hashKey         = "gOBgx69Z3k4TtgTDK8VF"
 )
 
 var (
-	NotAuthenticatedError = errors.New("not authenticated")
-	database              *sql.DB
+	AllowRegistration     bool = true
+	NotAuthenticatedError      = errors.New("not authenticated")
 	// redisPool                 *redis.Pool
-	AuthenticationFailedError = errors.New("Authentication Failed")
-	EmailPasswordWrongError   = fmt.Errorf("Incorrect user/email: %w", AuthenticationFailedError)
+	AuthFailedError            = errors.New("Authentication Failed")
+	UserNamePasswordWrongError = fmt.Errorf("Incorrect username/email: %w", AuthFailedError)
 )
 
 func (u *User) IsAdmin() bool {
