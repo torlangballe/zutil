@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-ps"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/process"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
