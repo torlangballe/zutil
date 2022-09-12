@@ -87,13 +87,14 @@ func suitableMethods(c interface{}) map[string]*methodType {
 			continue
 		}
 		i := 1
-		if mtype.NumIn() == 4 {
-			hasClientInfo = true
-			clientType := mtype.In(1)
-			zlog.Assert(clientType == reflect.TypeOf(ClientInfo{}), mname, clientType, reflect.TypeOf(ClientInfo{}))
-			i++
-		} else if mtype.NumIn() != 3 {
-			zlog.Info("Register: method", mname, "has", mtype.NumIn(), "input parameters; needs exactly three")
+		if mtype.NumIn() > 2 {
+			hasClientInfo = reflect.TypeOf(ClientInfo{}) == mtype.In(i)
+			if hasClientInfo {
+				i++
+			}
+		}
+		if mtype.NumIn() < i+1 {
+			zlog.Info("Register: method", mname, "has", mtype.NumIn(), "input parameters; wrong amount:", mtype.NumIn()-1)
 			continue
 		}
 		// First arg need not be a pointer.
@@ -102,16 +103,20 @@ func suitableMethods(c interface{}) map[string]*methodType {
 			zlog.Info("Register: argument type of method", mname, "is not exported:", argType)
 			continue
 		}
-		// Second arg must be a pointer or interface.
-		replyType := mtype.In(i + 1)
-		if replyType.Kind() != reflect.Ptr && replyType.Kind() != reflect.Interface {
-			zlog.Info("Register: reply type of method", mname, "is not a pointer:", replyType, method.Func.CanAddr())
-			continue
-		}
-		// Reply type must be exported.
-		if !isExportedOrBuiltinType(replyType) {
-			zlog.Info("Register: reply type of method", mname, "is not exported:", replyType)
-			continue
+		i++
+		var replyType reflect.Type
+		if mtype.NumIn() > i {
+			// Second arg must be a pointer or interface.
+			replyType = mtype.In(i)
+			if replyType.Kind() != reflect.Ptr && replyType.Kind() != reflect.Interface {
+				zlog.Info("Register: reply type of method", mname, "is not a pointer:", replyType, method.Func.CanAddr())
+				continue
+			}
+			// Reply type must be exported.
+			if !isExportedOrBuiltinType(replyType) {
+				zlog.Info("Register: reply type of method", mname, "is not exported:", replyType)
+				continue
+			}
 		}
 		// Method needs one out.
 		if mtype.NumOut() != 1 {
@@ -168,8 +173,12 @@ func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg js
 	if argIsValue {
 		argv = argv.Elem()
 	}
-	var u *Unused
-	hasReply := mtype.ReplyType != reflect.TypeOf(u)
+	args := []reflect.Value{mtype.Receiver}
+	if mtype.hasClientInfo {
+		args = append(args, reflect.ValueOf(ci))
+	}
+	args = append(args, argv)
+	hasReply := mtype.ReplyType != nil
 	if hasReply {
 		switch mtype.ReplyType.Elem().Kind() {
 		case reflect.Map:
@@ -181,18 +190,11 @@ func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg js
 		default:
 			replyv = reflect.New(mtype.ReplyType.Elem())
 		}
-	} else {
-		replyv = reflect.ValueOf(u)
+		args = append(args, replyv)
 	}
 	// zlog.Info("Type:", mtype.ReplyType.Elem().Kind(), mtype.ReplyType, reflect.TypeOf(u), replyv)
-	function := mtype.Method.Func
-	args := []reflect.Value{mtype.Receiver}
-	if mtype.hasClientInfo {
-		args = append(args, reflect.ValueOf(ci))
-	}
-	args = append(args, argv, replyv)
-	// zlog.Info("callMethod:", mtype.ArgType, mtype.Method.Name, args, mtype.hasClientInfo)
-	returnValues := function.Call(args)
+	// zlog.Info("callMethod:", mtype.ReplyType != nil, mtype.ArgType, mtype.Method.Name, args, mtype.hasClientInfo)
+	returnValues := mtype.Method.Func.Call(args)
 	errInter := returnValues[0].Interface()
 	if errInter != nil {
 		err := errInter.(error)
