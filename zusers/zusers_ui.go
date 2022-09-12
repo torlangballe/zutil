@@ -23,15 +23,20 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc2"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztimer"
 	"github.com/torlangballe/zutil/zwords"
 )
 
-const usernameKey = "zusers.AuthUserName"
+const (
+	usernameKey = "zusers.AuthUserName"
+	tokenKey    = "zusers.AuthToken"
+)
 
 var (
 	UserNameIsEmail     bool = true
 	CanCancelAuthDialog bool = false
-	AuthenticatedFunc   func(auth AuthResult)
+	CurrentUser         ClientUserInfo
+	AuthenticatedFunc   func()
 	doingAuth           bool
 )
 
@@ -39,9 +44,17 @@ func Init() {
 	zrpc2.MainClient.HandleAuthenticanFailedFunc = func() {
 		checkAndDoAuth()
 	}
-	checkAndDoAuth()
+	ztimer.StartIn(0.2, checkAndDoAuth)
 }
-func OpenDialog(got func(auth AuthResult)) {
+
+func UserNameType() string {
+	if UserNameIsEmail {
+		return "Email"
+	}
+	return "User Name"
+}
+
+func OpenDialog(got func()) {
 	const column = 120.0
 	v1 := zcontainer.StackViewVert("auth")
 	v1.SetSpacing(10)
@@ -49,10 +62,8 @@ func OpenDialog(got func(auth AuthResult)) {
 	v1.SetBGColor(zgeo.ColorNewGray(0.9, 1))
 	username, _ := zkeyvalue.DefaultStore.GetString(usernameKey)
 	style := ztext.Style{KeyboardType: zkeyboard.TypeDefault}
-	userNameLabel := "User Name"
 	if UserNameIsEmail {
 		style.KeyboardType = zkeyboard.TypeEmailAddress
-		userNameLabel = "Email"
 	}
 	usernameField := ztext.NewView(username, style, 20, 1)
 	style = ztext.Style{KeyboardType: zkeyboard.TypePassword}
@@ -63,7 +74,7 @@ func OpenDialog(got func(auth AuthResult)) {
 	login.SetMinWidth(90)
 	login.MakeEnterDefault()
 
-	_, s1, _ := zlabel.Labelize(usernameField, userNameLabel, column, zgeo.CenterLeft)
+	_, s1, _ := zlabel.Labelize(usernameField, UserNameType(), column, zgeo.CenterLeft)
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
 
 	_, s2, _ := zlabel.Labelize(passwordField, "Password", column, zgeo.CenterLeft)
@@ -78,7 +89,7 @@ func OpenDialog(got func(auth AuthResult)) {
 		forgot.SetPressedHandler(func() {
 			zalert.PromptForText("Send reset email to address:", username, func(email string) {
 				err := zrpc2.MainClient.Call("UsersCalls.SendResetPasswordMail", email, nil)
-				zlog.Info("Calling:", err)
+				// zlog.Info("Calling:", err)
 				if err != nil {
 					zalert.ShowError(err)
 					return
@@ -124,8 +135,9 @@ func OpenDialog(got func(auth AuthResult)) {
 	zpresent.PresentView(v1, att, nil, nil)
 }
 
-func callAuthenticate(view zview.View, a Authentication, got func(auth AuthResult)) {
-	var aret AuthResult
+func callAuthenticate(view zview.View, a Authentication, got func()) {
+	zlog.Info("callAuthenticate1")
+	var aret ClientUserInfo
 	if UserNameIsEmail {
 		if !zstr.IsValidEmail(a.UserName) {
 			zalert.Show("Invalid email format:\n", a.UserName)
@@ -140,15 +152,19 @@ func callAuthenticate(view zview.View, a Authentication, got func(auth AuthResul
 	zkeyvalue.DefaultStore.SetString(a.UserName, usernameKey, true)
 
 	err := zrpc2.MainClient.Call("UsersCalls.Authenticate", a, &aret)
+	zlog.Info("callAuthenticate2", err)
 	if err != nil {
 		zalert.ShowError(err)
 		return
 	}
-	zlog.Info("callAuthenticate:", aret)
+	CurrentUser = aret
+	zrpc2.MainClient.AuthToken = CurrentUser.Token
+	zkeyvalue.DefaultStore.SetString(CurrentUser.Token, tokenKey, true)
+	zlog.Info("callAuthenticate:", CurrentUser.Token)
 	doingAuth = false
 	zpresent.Close(view, false, func(dismissed bool) {
 		if !dismissed {
-			got(aret)
+			got()
 		}
 	})
 }
@@ -158,34 +174,55 @@ func checkAndDoAuth() {
 		return
 	}
 	doingAuth = true
-	const tokenKey = "zusers.AuthToken"
 	var user User
 
 	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
-	// zlog.Info("checkAndDoAuth:", token)
+	zlog.Info("checkAndDoAuth:", token)
 	if token != "" {
 		zrpc2.MainClient.AuthToken = token
 		err := zrpc2.MainClient.Call("UsersCalls.GetUserFromToken", token, &user)
 		if err == nil {
-			var auth AuthResult
-			auth.UserID = user.ID
-			auth.Token = token
-			zrpc2.MainClient.AuthToken = auth.Token
+			CurrentUser.UserID = user.ID
+			CurrentUser.UserName = user.UserName
+			CurrentUser.Permissions = user.Permissions
 			if AuthenticatedFunc != nil {
-				AuthenticatedFunc(auth)
+				AuthenticatedFunc()
 			}
 			doingAuth = false
 			return
 		}
 		zalert.ShowError(err)
 	}
-	OpenDialog(func(auth AuthResult) {
-		zkeyvalue.DefaultStore.SetString(auth.Token, tokenKey, true)
-		zrpc2.MainClient.AuthToken = auth.Token
-		zrpc2.MainClient.AuthToken = auth.Token
+	OpenDialog(func() {
 		if AuthenticatedFunc != nil {
-			AuthenticatedFunc(auth)
+			AuthenticatedFunc()
 		}
+	})
+}
+
+func ShowDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title string, got func(newText string)) {
+	const column = 120.0
+	v1 := zcontainer.StackViewVert("dialog")
+	// v1.SetMarginS(zgeo.Size{10, 10})
+
+	style := ztext.Style{KeyboardType: zkeyboard.TypeDefault}
+	if isPassword {
+		style.KeyboardType = zkeyboard.TypePassword
+	} else if isEmail {
+		style.KeyboardType = zkeyboard.TypeEmailAddress
+	}
+	textField := ztext.NewView(oldValue, style, 20, 1)
+	_, s1, _ := zlabel.Labelize(textField, name, column, zgeo.CenterLeft)
+	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
+
+	att := zpresent.AttributesNew()
+	att.Modal = true
+
+	zalert.PresentOKCanceledView(v1, title, att, func(ok bool) bool {
+		if ok {
+			got(textField.Text())
+		}
+		return true
 	})
 }
 
@@ -222,14 +259,18 @@ func HandleResetPassword(args map[string]string) {
 }
 
 func callResetPassword(reset ResetPassword) {
-	err := zrpc2.MainClient.Call("UsersCalls.SetNewPasswordFromReset", reset, nil)
+	var token string
+	err := zrpc2.MainClient.Call("UsersCalls.SetNewPasswordFromReset", reset, &token)
 	if err != nil {
 		zalert.ShowError(err)
 		return
 	}
+	zkeyvalue.DefaultStore.SetString(token, tokenKey, true)
 	u, _ := url.Parse(zapp.URL())
-	u.Query().Del("reset")
-	u.Query().Del("email")
+	q := u.Query()
+	q.Del("reset")
+	q.Del("email")
+	u.RawQuery = q.Encode()
 	zlog.Info("GOTOURL:", u.String())
-	// zwindow.GetMain().SetLocation(u.String())
+	zwindow.GetMain().SetLocation(u.String())
 }

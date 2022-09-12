@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/torlangballe/zutil/zcache"
+	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmail"
 	"github.com/torlangballe/zutil/zrpc2"
 	"github.com/torlangballe/zutil/zstr"
-
-	"github.com/torlangballe/zutil/zcache"
-	"github.com/torlangballe/zutil/zhttp"
 )
 
 type UsersCalls zrpc2.CallsBase
@@ -22,7 +21,6 @@ type Session struct {
 	zrpc2.ClientInfo
 	UserID  int64
 	Created time.Time
-	Login   time.Time
 }
 
 type ResetData struct {
@@ -32,17 +30,9 @@ type ResetData struct {
 	From        zmail.Address
 }
 
-func InitServer(u UserServer) {
-	MainServer = u
-	zrpc2.Register(Calls)
-	zrpc2.SetMethodAuthNotNeeded("UsersCalls.Authenticate")
-	zrpc2.SetMethodAuthNotNeeded("UsersCalls.SendResetPasswordMail")
-	zrpc2.SetMethodAuthNotNeeded("UsersCalls.SetNewPasswordFromReset")
-}
-
 var (
 	Calls                    = new(UsersCalls)
-	MainServer               UserServer
+	MainServer               *SQLServer
 	resetCache               = zcache.New(time.Minute*10, false) // cache of reset-token:email
 	StoreAuthenticationError = fmt.Errorf("Store authentication failed: %w", AuthFailedError)
 	NoTokenError             = fmt.Errorf("no token for user: %w", AuthFailedError)
@@ -50,24 +40,17 @@ var (
 	Reset                    = ResetData{ProductName: "This service"}
 )
 
-type UserServer interface {
-	GetUserForID(id int64) (User, error)
-	GetUserForUserName(username string) (User, error)
-	DeleteUserForID(id int64) error
-	SetAdminForUser(id int64, isAdmin bool) error
-	ChangeUserNameForUser(id int64, username string) error
-	ChangePasswordForUser(ci zrpc2.ClientInfo, id int64, password string) error
-	GetAllUsers() ([]User, error)
-	AddNewSession(Session) error
-	AddNewUser(username, password, hash, salt string, perm []string) (id int64, err error)
-	GetUserIDFromToken(token string) (id int64, err error)
-	UnauthenticateUser(id int64) error
-	IsTokenValid(token string) bool
+func initialize(s *SQLServer) {
+	MainServer = s
+	zrpc2.Register(Calls)
+	zrpc2.SetMethodAuthNotNeeded("UsersCalls.Authenticate")
+	zrpc2.SetMethodAuthNotNeeded("UsersCalls.SendResetPasswordMail")
+	zrpc2.SetMethodAuthNotNeeded("UsersCalls.SetNewPasswordFromReset")
 }
 
 func makeHash(str, salt string) string {
 	hash := zstr.SHA256Hex([]byte(str + salt))
-	// zlog.Info("MakeHash:", hash, "from:", str, salt)
+	zlog.Info("MakeHash:", hash, "from:", str, salt)
 	return hash
 }
 
@@ -78,19 +61,7 @@ func makeSaltyHash(password string) (hash, salt, token string) {
 	return
 }
 
-func GetUserFromToken(s UserServer, token string) (user User, err error) {
-	id, err := s.GetUserIDFromToken(token)
-	if err != nil {
-		return
-	}
-	if id == 0 {
-		err = fmt.Errorf("no user for token: %w", AuthFailedError)
-		return
-	}
-	return s.GetUserForID(id)
-}
-
-func Login(s UserServer, ci zrpc2.ClientInfo, username, password string) (id int64, token string, err error) {
+func (s *SQLServer) Login(ci zrpc2.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
 	//	zlog.Info("Login:", username)
 	u, err := s.GetUserForUserName(username)
 	if err != nil {
@@ -102,9 +73,11 @@ func Login(s UserServer, ci zrpc2.ClientInfo, username, password string) (id int
 		err = UserNamePasswordWrongError
 		return
 	}
+
 	var session Session
 	session.ClientInfo = ci
 	session.Token = zstr.GenerateUUID()
+	zlog.Info("Login:", "hash:", hash, "salt:", u.Salt, "token:", session.Token)
 	session.UserID = u.ID
 	err = s.AddNewSession(session)
 	if err != nil {
@@ -112,12 +85,14 @@ func Login(s UserServer, ci zrpc2.ClientInfo, username, password string) (id int
 		err = AuthFailedError
 		return
 	}
-	id = u.ID
-	token = session.Token
+	ui.UserName = u.UserName
+	ui.Permissions = u.Permissions
+	ui.UserID = u.ID
+	ui.Token = session.Token
 	return
 }
 
-func Register(s UserServer, ci zrpc2.ClientInfo, username, password string, isAdmin, makeToken bool) (id int64, token string, err error) {
+func (s *SQLServer) Register(ci zrpc2.ClientInfo, username, password string, isAdmin, makeToken bool) (id int64, token string, err error) {
 	if !AllowRegistration {
 		return 0, "", zlog.NewError("Registration not allowed")
 	}
@@ -146,8 +121,8 @@ func Register(s UserServer, ci zrpc2.ClientInfo, username, password string, isAd
 	return
 }
 
-func (uc *UsersCalls) GetUserFromToken(token string, user *User) error {
-	u, err := GetUserFromToken(MainServer, token)
+func (*UsersCalls) GetUserFromToken(token string, user *User) error {
+	u, err := MainServer.GetUserFromToken(token)
 	if err != nil {
 		return err
 	}
@@ -155,12 +130,30 @@ func (uc *UsersCalls) GetUserFromToken(token string, user *User) error {
 	return nil
 }
 
-func (u *UsersCalls) Authenticate(ci zrpc2.ClientInfo, a Authentication, r *AuthResult) error {
+func (*UsersCalls) Logout(ci zrpc2.ClientInfo, username string, reply *zrpc2.Unused) error {
+	return MainServer.UnauthenticateToken(ci.Token)
+}
+
+func (s *SQLServer) GetUserFromToken(token string) (user User, err error) {
+	id, err := s.GetUserIDFromToken(token)
+	if err != nil {
+		return
+	}
+	if id == 0 {
+		err = fmt.Errorf("no user for token: %w", AuthFailedError)
+		return
+	}
+	return s.GetUserForID(id)
+}
+
+func (*UsersCalls) Authenticate(ci zrpc2.ClientInfo, a Authentication, ui *ClientUserInfo) error {
 	var err error
 	if a.IsRegister {
-		r.UserID, r.Token, err = Register(MainServer, ci, a.UserName, a.Password, false, true)
+		ui.UserID, ui.Token, err = MainServer.Register(ci, a.UserName, a.Password, false, true)
+		ui.UserName = a.UserName
+		ui.Permissions = []string{} // nothing yet, we just registered
 	} else {
-		r.UserID, r.Token, err = Login(MainServer, ci, a.UserName, a.Password)
+		*ui, err = MainServer.Login(ci, a.UserName, a.Password)
 		// zlog.Info("Login:", r.UserID, r.Token, err)
 	}
 	if err != nil {
@@ -170,7 +163,7 @@ func (u *UsersCalls) Authenticate(ci zrpc2.ClientInfo, a Authentication, r *Auth
 	return nil
 }
 
-func (uc *UsersCalls) SendResetPasswordMail(email string, r *zrpc2.Unused) error {
+func (*UsersCalls) SendResetPasswordMail(email string, r *zrpc2.Unused) error {
 	var m zmail.Mail
 	random := zstr.GenerateRandomHexBytes(20)
 	surl, _ := zhttp.MakeURLWithArgs(Reset.URL, map[string]string{
@@ -189,27 +182,32 @@ func (uc *UsersCalls) SendResetPasswordMail(email string, r *zrpc2.Unused) error
 	return err
 }
 
-func (uc *UsersCalls) SetNewPasswordFromReset(ci zrpc2.ClientInfo, reset ResetPassword, r *zrpc2.Unused) error {
+func (uc *UsersCalls) SetNewPasswordFromReset(ci zrpc2.ClientInfo, reset ResetPassword, token *string) error {
 	var email string
 	got := resetCache.Get(&email, reset.ResetToken)
 	if !got {
 		zlog.Error(nil, "no reset initiated:", reset.ResetToken)
-		// resetCache.ForAll(func(key string, value interface{}) bool {
-		// 	zlog.Info("RC:", key, value)
-		// 	return true
-		// })
 		return zlog.NewError("No reset initiated. Maybe you waited more than 10 minutes.")
 	}
 	u, err := MainServer.GetUserForUserName(email)
 	if err != nil {
-		zlog.Error(err, "find user to set password:", email)
-		return err
-	}
-	err = MainServer.ChangePasswordForUser(ci, u.ID, reset.Password)
-	if err != nil {
-		zlog.Error(err, "change password")
-		return err
+		zlog.Error(err, "no user")
+		return zlog.NewError("No user for that reset link")
 	}
 	resetCache.Remove(reset.ResetToken)
-	return nil
+	var change ChangeInfo
+	change.NewString = reset.Password
+	change.UserID = u.ID
+	err = uc.ChangePassword(ci, change, token)
+	return err
+}
+
+func (*UsersCalls) ChangePassword(ci zrpc2.ClientInfo, change ChangeInfo, token *string) error {
+	var err error
+	*token, err = MainServer.ChangePasswordForUser(ci, change.UserID, change.NewString)
+	return err
+}
+
+func (*UsersCalls) ChangeUserName(ci zrpc2.ClientInfo, change ChangeInfo) error {
+	return MainServer.ChangeUserNameForUser(change.UserID, change.NewString)
 }

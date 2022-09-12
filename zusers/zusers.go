@@ -3,6 +3,7 @@ package zusers
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	// "github.com/gomodule/redigo/redis"
 	"github.com/torlangballe/zutil/zstr"
@@ -14,6 +15,8 @@ type User struct {
 	Salt         string
 	PasswordHash string
 	Permissions  []string
+	Created      time.Time
+	Login        time.Time
 }
 
 type Authentication struct {
@@ -22,9 +25,16 @@ type Authentication struct {
 	IsRegister bool
 }
 
-type AuthResult struct {
-	Token  string
-	UserID int64
+type ClientUserInfo struct {
+	Token       string
+	UserName    string
+	Permissions []string
+	UserID      int64
+}
+
+type ChangeInfo struct {
+	UserID    int64
+	NewString string
 }
 
 type ResetPassword struct {
@@ -41,11 +51,15 @@ var (
 	NotAuthenticatedError      = errors.New("not authenticated")
 	// redisPool                 *redis.Pool
 	AuthFailedError            = errors.New("Authentication Failed")
-	UserNamePasswordWrongError = fmt.Errorf("Incorrect username/email: %w", AuthFailedError)
+	UserNamePasswordWrongError = fmt.Errorf("Incorrect username/email or password: %w", AuthFailedError)
 )
 
+func IsAdmin(s []string) bool {
+	return zstr.StringsContain(s, AdminPermission)
+}
+
 func (u *User) IsAdmin() bool {
-	return zstr.StringsContain(u.Permissions, AdminPermission)
+	return IsAdmin(u.Permissions)
 }
 
 func (u *User) IsSuper() bool {

@@ -4,30 +4,60 @@ package zusers
 
 import (
 	"database/sql"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc2"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztime"
+	"github.com/torlangballe/zutil/ztimer"
 )
 
 type SQLServer struct {
 	database *sql.DB
+	isSqlite bool
 }
 
-func NewSQLServer(db *sql.DB) (server *SQLServer, err error) {
+func NewSQLServer(db *sql.DB) (*SQLServer, error) {
+	s := &SQLServer{}
+	s.database = db
+	return s, s.setup()
+}
+
+func NewSQLiteServer(folderPath string) (*SQLServer, error) {
+	var err error
+	s := &SQLServer{}
+	s.isSqlite = true
+	file := folderPath + "zusers.sqlite"
+	s.database, err = sql.Open("sqlite3", file)
+	if err != nil {
+		zlog.Error(err, "open file", file)
+		return nil, err
+	}
+	return s, s.setup()
+}
+
+func (s *SQLServer) setup() error {
 	squery := `
 	CREATE TABLE IF NOT EXISTS users (
-		id SERIAL PRIMARY KEY,
+		id $PRIMARY-INT-INC,
 		username TEXT NOT NULL UNIQUE,
 		passwordhash TEXT NOT NULL,
 		salt TEXT NOT NULL,
-		permissions TEXT[] NOT NULL DEFAULT '{}'
+		permissions TEXT[] NOT NULL DEFAULT '{}',
+		created timestamp NOT NULL DEFAULT $NOW,
+		login timestamp NOT NULL DEFAULT $NOW
 	)`
-	_, err = db.Exec(squery)
+	s.customizeQuery(&squery)
+	_, err := s.database.Exec(squery)
 	if err != nil {
 		zlog.Error(err, "create users", squery)
-		return
+		return err
 	}
 
 	squery = `
@@ -37,66 +67,75 @@ func NewSQLServer(db *sql.DB) (server *SQLServer, err error) {
 		clientid TEXT,
 		useragent TEXT NOT NULL,
 		ipaddress TEXT NOT NULL,
-		login timestamp NOT NULL DEFAULT NOW(),
-		created timestamp NOT NULL DEFAULT NOW()
-	);`
-	_, err = db.Exec(squery)
+		created timestamp NOT NULL DEFAULT $NOW,
+		used timestamp NOT NULL DEFAULT $NOW
+	)`
+	s.customizeQuery(&squery)
+	_, err = s.database.Exec(squery)
 	if err != nil {
 		zlog.Error(err, "create tokens", squery)
-		return
+		return err
 	}
 	squery = `CREATE INDEX IF NOT EXISTS idx_tokens_ids ON user_sessions (token, userid)`
-	_, err = db.Exec(squery)
+	s.customizeQuery(&squery)
+	_, err = s.database.Exec(squery)
 	// zlog.Info("Createindex:", err)
 	if err != nil {
 		zlog.Error(err, "create token index", squery)
-		return
+		return err
 	}
-	/*
-	   	squery = `
-	   	CREATE FUNCTION expire_tokens_delete_old_rows() RETURNS trigger
-	       LANGUAGE plpgsql
-	       AS $$
-	   	BEGIN
-	     		DELETE FROM user_sessions WHERE time < NOW() - INTERVAL '30 days';
-	     		RETURN NEW;
-	   	END;
-	   	$$;`
-	   	_, err = database.Exec(squery)
-	   	zlog.Error(err, "add delete func for trigger")
-
-	   	squery = `CREATE TRIGGER expire_tokens_delete_old_rows_trigger
-	   		AFTER INSERT ON user_sessions
-	   		EXECUTE PROCEDURE expire_tokens_delete_old_rows();`
-	   	_, err = database.Exec(squery)
-	   	zlog.Error(err, "add trigger")
-	*/
-	server = &SQLServer{}
-	server.database = db
-	return
+	initialize(s)
+	ztimer.RepeatIn(ztime.DurSeconds(time.Hour), func() bool {
+		squery := `DELETE FROM user_sessions WHERE used < $NOW - INTERVAL '30 days'`
+		s.customizeQuery(&squery)
+		return true
+	})
+	return nil
 }
 
 func (s *SQLServer) IsTokenValid(token string) bool {
 	var exists bool
 	squery := "SELECT true FROM user_sessions WHERE token=$1"
+	s.customizeQuery(&squery)
 	row := s.database.QueryRow(squery, token)
 	row.Scan(&exists)
 	return exists
 }
 
 func (s *SQLServer) GetUserForID(id int64) (User, error) {
-	var u User
-	squery := "SELECT id, username, permissions FROM users WHERE id=$1 LIMIT 1"
+	var user User
+	squery := "SELECT " + allUserFields + " FROM users WHERE id=$1 LIMIT 1"
+	s.customizeQuery(&squery)
 	row := s.database.QueryRow(squery, id)
-	err := row.Scan(&u.ID, &u.UserName, pq.Array(&u.Permissions))
+	err := row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions), &user.Created, &user.Login)
 	if err != nil {
-		return u, NoUserError
+		return user, NoUserError
 	}
-	return u, nil
+	return user, nil
+}
+
+func (s *SQLServer) GetUserIDFromToken(token string) (id int64, err error) {
+	squery := "SELECT userid FROM user_sessions WHERE token=$1 LIMIT 1"
+	s.customizeQuery(&squery)
+	row := s.database.QueryRow(squery, token)
+	err = row.Scan(&id)
+	if err != nil {
+		zlog.Error(err, squery, token)
+		return 0, AuthFailedError
+	}
+	squery = "UPDATE user_sessions SET used=$NOW WHERE token=$1"
+	s.customizeQuery(&squery)
+	_, err = s.database.Exec(squery, token)
+	if err != nil {
+		zlog.Error(err, squery, token)
+		return 0, AuthFailedError
+	}
+	return
 }
 
 func (s *SQLServer) DeleteUserForID(id int64) error {
 	squery := "DELETE FROM users WHERE id=$1"
+	s.customizeQuery(&squery)
 	_, err := s.database.Exec(squery, id)
 	return err
 }
@@ -104,6 +143,7 @@ func (s *SQLServer) DeleteUserForID(id int64) error {
 func (s *SQLServer) SetAdminForUser(id int64, isAdmin bool) error {
 	var perm []string
 	squery := "SELECT permissions FROM users WHERE id=$1"
+	s.customizeQuery(&squery)
 	tx, err := s.database.Begin()
 	if err != nil {
 		return err
@@ -119,35 +159,46 @@ func (s *SQLServer) SetAdminForUser(id int64, isAdmin bool) error {
 		perm = append(perm, AdminPermission)
 	}
 	squery = "UPDATE users SET permissions=$1 WHERE id=$2"
-	_, err = tx.Exec(squery, perm, id)
+	s.customizeQuery(&squery)
+	_, err = tx.Exec(squery, pq.Array(perm), id)
 	return err
 }
 
 func (s *SQLServer) ChangeUserNameForUser(id int64, username string) error {
 	squery := "UPDATE users SET username=$1 WHERE id=$2"
+	s.customizeQuery(&squery)
 	_, err := s.database.Exec(squery, username, id)
 	return err
 }
 
-func (s *SQLServer) ChangePasswordForUser(ci zrpc2.ClientInfo, id int64, password string) error {
-	squery := "UPDATE users SET passwordhash=$1, salt=$2 WHERE id=$3"
-	salt, hash, token := makeSaltyHash(password)
-	_, err := s.database.Exec(squery, hash, salt, id)
+func (s *SQLServer) ChangePasswordForUser(ci zrpc2.ClientInfo, id int64, password string) (token string, err error) {
+	var salt, hash string
+
+	squery := "UPDATE users SET passwordhash=$1, salt=$2, login=$NOW WHERE id=$3"
+	s.customizeQuery(&squery)
+	hash, salt, token = makeSaltyHash(password)
+	_, err = s.database.Exec(squery, hash, salt, id)
 	if err == nil {
+		zlog.Info("ChangePASS:", hash)
+		err = s.UnauthenticateUser(id)
+		if err != nil {
+			zlog.Error(err, "unauhth user", id)
+		}
 		var session Session
 		session.ClientInfo = ci
 		session.UserID = id
 		session.Token = token
-		err := s.AddNewSession(session)
+		err = s.AddNewSession(session)
 		if err != nil {
-			return err
+			return
 		}
 	}
-	return err
+	return
 }
 
 func (s *SQLServer) GetAllUsers() (us []User, err error) {
 	squery := "SELECT id, username FROM users ORDER BY username ASC"
+	s.customizeQuery(&squery)
 	rows, err := s.database.Query(squery)
 	if err != nil {
 		return
@@ -163,10 +214,13 @@ func (s *SQLServer) GetAllUsers() (us []User, err error) {
 	return
 }
 
+const allUserFields = "id, username, passwordhash, salt, permissions, created, login"
+
 func (s *SQLServer) GetUserForUserName(username string) (user User, err error) {
-	squery := `SELECT id, username, passwordhash, salt, permissions FROM users WHERE username=$1 LIMIT 1`
+	squery := "SELECT " + allUserFields + " FROM users WHERE username=$1 LIMIT 1"
+	s.customizeQuery(&squery)
 	row := s.database.QueryRow(squery, username)
-	err = row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions))
+	err = row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions), &user.Created, &user.Login)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err = NoUserError
@@ -176,45 +230,74 @@ func (s *SQLServer) GetUserForUserName(username string) (user User, err error) {
 	return
 }
 
+func (s *SQLServer) UnauthenticateToken(token string) error {
+	squery := "DELETE FROM user_sessions WHERE token=$1"
+	s.customizeQuery(&squery)
+	_, err := s.database.Exec(squery, token)
+	return err
+}
+
 func (s *SQLServer) UnauthenticateUser(id int64) error {
 	squery := "DELETE FROM user_sessions WHERE userid=$1"
+	s.customizeQuery(&squery)
 	_, err := s.database.Exec(squery, id)
 	return err
 }
 
-func (s *SQLServer) GetUserIDFromToken(token string) (id int64, err error) {
-	squery := "SELECT userid FROM user_sessions WHERE token=$1 LIMIT 1"
-	row := s.database.QueryRow(squery, token)
-	err = row.Scan(&id)
-	if err != nil {
-		zlog.Error(err, squery, token)
-		return 0, AuthFailedError
-	}
-	return
-}
-
 func (s *SQLServer) AddNewSession(session Session) error {
-	squery :=
-		`INSERT INTO user_sessions (token, userid, clientid, useragent, ipaddress) 
-	VALUES ($1, $2, $3, $4, $5)`
+	squery := `INSERT INTO user_sessions (token, userid, clientid, useragent, ipaddress) VALUES ($1, $2, $3, $4, $5)`
+	s.customizeQuery(&squery)
 	// zlog.Info("SQL AddNewSession:", zlog.Full(session))
 	_, err := s.database.Exec(squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
 	if err != nil {
-		zlog.Error(err, "update", squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
+		zlog.Error(err, "insert", squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
+		return err
+	}
+	squery = "UPDATE users SET login=$NOW WHERE id=$1"
+	s.customizeQuery(&squery)
+	_, err = s.database.Exec(squery, session.UserID)
+	if err != nil {
+		zlog.Error(err, "update user", squery, session.UserID)
 		return err
 	}
 	return nil
 }
 
 func (s *SQLServer) AddNewUser(username, password, hash, salt string, perm []string) (id int64, err error) {
-	squery := `
-	INSERT INTO users (username, passwordhash, salt, permissions) VALUES
-	($1, $2, $3, $4) RETURNING id`
+	squery := `INSERT INTO users (username, passwordhash, salt, permissions) VALUES ($1, $2, $3, $4) RETURNING id`
+	s.customizeQuery(&squery)
 	row := s.database.QueryRow(squery, username, hash, salt, pq.Array(perm))
 	err = row.Scan(&id)
 	if err != nil {
 		zlog.Error(err, "insert error:")
 		return
 	}
+	err = s.SetAdminForUser(id, true)
+	if err != nil {
+		zlog.Error(err, "setadmin error:")
+		return
+	}
+
 	return
+}
+
+var replaceDollarRegex = regexp.MustCompile(`(\$[\d+])`)
+
+func (s *SQLServer) customizeQuery(query *string) {
+	if s.isSqlite {
+		*query = strings.Replace(*query, "$NOW", "CURRENT_TIMESTAMP", -1)
+		*query = strings.Replace(*query, "$PRIMARY-INT-INC", "INTEGER PRIMARY KEY AUTOINCREMENT", -1)
+		i := 1
+		*query = zstr.ReplaceAllCapturesFunc(replaceDollarRegex, *query, func(cap string, index int) string {
+			si, _ := strconv.Atoi(cap[1:])
+			if si != i {
+				zlog.Error(nil, "$x not right:", cap, i)
+			}
+			i++
+			return "?"
+		})
+	} else {
+		*query = strings.Replace(*query, "$NOW", "NOW()", -1)
+		*query = strings.Replace(*query, "$PRIMARY-INT-INC", "SERIAL PRIMARY KEY", -1)
+	}
 }
