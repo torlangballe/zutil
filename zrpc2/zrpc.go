@@ -143,7 +143,12 @@ func SetMethodAuthNotNeeded(name string) {
 }
 
 func methodNeedsAuth(name string) bool {
-	return !callMethods[name].AuthNotNeeded
+	m, got := callMethods[name]
+	if !got {
+		zlog.Error(nil, "methodNeedsAuth on unknown:", name)
+		return true
+	}
+	return !m.AuthNotNeeded
 }
 
 func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg json.RawMessage) (rp receivePayload, err error) {
