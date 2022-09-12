@@ -3,15 +3,22 @@ package ztimer
 //  Created by Tor Langballe on /18/11/15.
 
 import (
+	"sync"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
 )
 
+var (
+	repeaters      = map[string]int{}
+	repeatersMutex sync.Mutex
+)
+
 type Repeater struct {
 	ticker *time.Ticker
 	stop   chan bool
+	stack  string
 }
 
 func RepeaterNew() *Repeater {
@@ -30,11 +37,25 @@ func RepeatNow(secs float64, perform func() bool) *Repeater {
 	return r
 }
 
+// var count int
+// var stopped int
+// var going int
+// var all int
+
 func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	// zlog.Info("Repeat:", secs, zlog.GetCallingStackString())
-	r.Stop()
+	if r.ticker != nil {
+		r.Stop()
+	}
 	r.ticker = time.NewTicker(ztime.SecondsDur(secs))
-	r.stop = make(chan bool, 1)
+	// repeatersMutex.Lock()
+	// r.stack = zlog.FileLineAndCallingFunctionString(4)
+	// repeaters[r.stack]++
+	// repeatersMutex.Unlock()
+	// count++
+	// going++
+	// all++
+	r.stop = make(chan bool, 5)
 	go func() {
 		defer zlog.HandlePanic(true)
 		if now {
@@ -56,13 +77,19 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 				}
 				doing = true
 				if !perform() {
-					// zlog.Info("Stopping")
 					doing = false
 					r.stop <- true
-					return
+					// don't return here, must do case <-stop: below
 				}
 				doing = false
 			case <-r.stop:
+				// stopped++
+				// repeatersMutex.Lock()
+				// repeaters[r.stack]--
+				// repeatersMutex.Unlock()
+				// count--
+				r.ticker.Stop()
+				r.ticker = nil
 				return
 			}
 		}
@@ -71,12 +98,19 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 
 func (r *Repeater) Stop() {
 	if r.ticker != nil {
-		r.ticker.Stop()
 		r.stop <- true
-		r.ticker = nil
 	}
 }
 
 func (r *Repeater) IsStopped() bool {
 	return (r.ticker == nil)
+}
+
+func DumpRepeaters() {
+	// repeatersMutex.Lock()
+	// zlog.Info("All Repeaters: Count:", count, "all:", all, "going:", going, "stopped:", stopped, "len:", len(repeaters))
+	// for s, n := range repeaters {
+	// 	zlog.Info("Repeaters", n, ":", s)
+	// }
+	// repeatersMutex.Unlock()
 }
