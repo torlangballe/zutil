@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zfile"
-
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/ztime"

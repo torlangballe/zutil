@@ -74,7 +74,7 @@ func (m Mail) SendWithSMTP(a Authentication) (err error) {
 		}
 		toheader += "\r\n"
 		content := []byte(toheader + header + m.TextContent)
-		zlog.Info("SEND:::", m.From.Email, t.Email)
+		// zlog.Info("SEND:::", m.From.Email, t.Email)
 		berr := smtp.SendMail(server, auth, m.From.Email, []string{t.Email}, content)
 		if berr != nil {
 			err = berr

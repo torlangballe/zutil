@@ -206,7 +206,7 @@ func GetFloatVal(vals url.Values, name string, def float64) float64 {
 
 func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Route {
 	pattern = strings.TrimRight(AppURLPrefix+pattern, "/")
-	// zlog.Info("zrest.AddSubHandler:", pattern)
+	zlog.Info("zrest.AddSubHandler:", pattern)
 	defer zlog.HandlePanic(false)
 	if router == nil {
 		http.Handle(pattern, h)
