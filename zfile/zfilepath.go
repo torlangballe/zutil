@@ -26,7 +26,7 @@ func Split(spath string) (dir, name, stub, ext string) {
 
 func ChangedExtension(spath, ext string) string {
 	dir, _, sub, _ := Split(spath)
-	return path.Join(dir, sub, ext)
+	return path.Join(dir, sub+ext)
 }
 
 func SanitizeStringForFilePath(s string) string {
