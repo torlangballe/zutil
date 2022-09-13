@@ -44,7 +44,10 @@ func (k *Store) setItem(key string, v interface{}, sync bool) error {
 	go func() {
 		lock.Lock()
 		dict[key] = v
-		zjson.MarshalToFile(dict, k.filepath)
+		err := zjson.MarshalToFile(dict, k.filepath)
+		if err != nil {
+			zlog.Error(err, "marshal")
+		}
 		lock.Unlock()
 	}()
 	return nil
