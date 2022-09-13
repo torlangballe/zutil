@@ -12,15 +12,6 @@ import (
 	"github.com/torlangballe/zutil/ztime"
 )
 
-/*
-To set password-only vnc connect on mac:
-sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
--activate -configure -access -on \
--clientopts -setvnclegacy -vnclegacy yes \
--clientopts -setvncpw -vncpw <mypasswd> \
--restart -agent -privs -all
-*/
-
 type Client struct {
 	client *vnc.ClientConn
 }
