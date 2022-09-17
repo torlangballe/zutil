@@ -665,8 +665,8 @@ func CopyToEmpty(dest *string, str string) {
 	}
 }
 
-// SlicesEqual compares if slices have same contents in same order
-func SlicesEqual(a, b []string) bool {
+// SlicesIdentical compares if slices have same contents in same order
+func SlicesIdentical(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -676,6 +676,24 @@ func SlicesEqual(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// SlicesHaveSameValues compares if slices have same contents in any order
+func SlicesHaveSameValues(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	sa := CopySlice(a)
+	sort.Strings(sa)
+	sb := CopySlice(b)
+	sort.Strings(sb)
+	return SlicesIdentical(sa, sb)
+}
+
+func CopySlice(s []string) []string {
+	n := make([]string, len(s), len(s))
+	copy(n, s)
+	return n
 }
 
 func ReplaceVariablesWithValues(text, prefix string, values map[string]string) (content string) {
