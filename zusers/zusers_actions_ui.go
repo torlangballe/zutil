@@ -19,19 +19,33 @@ func NewActionsIcon() *zimageview.ImageView {
 	actions := zimageview.New(nil, "images/zcore/head-dark.png", zgeo.Size{18, 18})
 	actions.DownsampleImages = true
 	actionMenu := zmenu.NewMenuedOwner()
-	actionMenu.CreateItems = func() []zmenu.MenuedOItem {
+	actionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {
+		isAdmin := IsAdmin(CurrentUser.Permissions)
+		user := CurrentUser.UserName
+		if isAdmin {
+			user += " " + AdminStar
+		}
 		items := []zmenu.MenuedOItem{
-			zmenu.MenuedFuncAction("Logout", logoutUser),
+			zmenu.MenuedFuncAction(user, showProfile),
 			zmenu.MenuedOItemSeparator,
 			zmenu.MenuedFuncAction("Change Password…", changePassword),
 			zmenu.MenuedFuncAction("Change "+UserNameType()+"…", changeUserName),
 		}
-		if IsAdmin(CurrentUser.Permissions) {
+		if isAdmin {
 			items = append(items,
 				zmenu.MenuedOItemSeparator,
 				zmenu.MenuedFuncAction("Show User List", showUserList),
 			)
+			if !AllowRegistration {
+				items = append(items,
+					zmenu.MenuedFuncAction("Add User", addUser),
+				)
+			}
 		}
+		items = append(items,
+			zmenu.MenuedOItemSeparator,
+			zmenu.MenuedFuncAction("Logout", logoutUser),
+		)
 		return items
 	}
 	actionMenu.Build(actions, nil)
@@ -40,11 +54,11 @@ func NewActionsIcon() *zimageview.ImageView {
 
 func changePassword() {
 	title := "Enter a new password for user " + CurrentUser.UserName
-	ShowDialogForTextEdit(true, false, "Password", "", title, func(newPassword string) {
+	showDialogForTextEdit(true, false, "Password", "", title, func(newPassword string) {
 		var change ChangeInfo
 		change.NewString = newPassword
 		change.UserID = CurrentUser.UserID
-		err := zrpc2.MainClient.Call("UsersCalls.ChangePassword", change, &CurrentUser.Token)
+		err := zrpc2.MainClient.Call("UsersCalls.ChangePasswordForSelf", change, &CurrentUser.Token)
 		if err != nil {
 			zalert.ShowError(err)
 			return
@@ -64,13 +78,12 @@ func logoutUser() {
 }
 
 func changeUserName() {
-	zlog.Info("changeUsername")
 	title := "Enter a new " + UserNameType() + " to change from " + CurrentUser.UserName
-	ShowDialogForTextEdit(false, UserNameIsEmail, UserNameType(), "", title, func(newUserName string) {
+	showDialogForTextEdit(false, UserNameIsEmail, UserNameType(), "", title, func(newUserName string) {
 		var change ChangeInfo
 		change.NewString = newUserName
 		change.UserID = CurrentUser.UserID
-		err := zrpc2.MainClient.Call("UsersCalls.ChangeUserName", change, nil)
+		err := zrpc2.MainClient.Call("UsersCalls.ChangeUserNameForSelf", change, nil)
 		if err != nil {
 			zalert.ShowError(err)
 			return
@@ -80,5 +93,15 @@ func changeUserName() {
 }
 
 func showUserList() {
+	go getAndShowUserList()
+}
+
+func addUser() {
+	OpenDialog(true, false, true, func() {
+		zlog.Info("Regged new user")
+	})
+}
+
+func showProfile() {
 
 }

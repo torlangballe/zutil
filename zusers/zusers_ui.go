@@ -33,11 +33,13 @@ const (
 )
 
 var (
-	UserNameIsEmail     bool = true
-	CanCancelAuthDialog bool = false
-	CurrentUser         ClientUserInfo
-	AuthenticatedFunc   func()
-	doingAuth           bool
+	UserNameIsEmail        bool = true
+	CanCancelAuthDialog    bool = false
+	CurrentUser            ClientUserInfo
+	AuthenticatedFunc      func()
+	doingAuth              bool
+	MinimumPasswordLength  = 5
+	AppSpecificPermissions = []string{"root"}
 )
 
 func Init() {
@@ -45,6 +47,8 @@ func Init() {
 		checkAndDoAuth()
 	}
 	ztimer.StartIn(0.2, checkAndDoAuth)
+	perms := append([]string{AdminPermission}, AppSpecificPermissions...)
+	zfields.AddStringBasedEnum("Permissions", perms...)
 }
 
 func UserNameType() string {
@@ -54,25 +58,46 @@ func UserNameType() string {
 	return "User Name"
 }
 
-func OpenDialog(got func()) {
+func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	const column = 120.0
 	v1 := zcontainer.StackViewVert("auth")
 	v1.SetSpacing(10)
-	v1.SetMarginS(zgeo.Size{10, 10})
+	v1.SetMarginS(zgeo.Size{14, 14})
 	v1.SetBGColor(zgeo.ColorNewGray(0.9, 1))
+
 	username, _ := zkeyvalue.DefaultStore.GetString(usernameKey)
 	style := ztext.Style{KeyboardType: zkeyboard.TypeDefault}
 	if UserNameIsEmail {
 		style.KeyboardType = zkeyboard.TypeEmailAddress
 	}
-	usernameField := ztext.NewView(username, style, 20, 1)
+	usernameField := ztext.NewView(username, style, 30, 1)
+	str := "username must be a ascii characters"
+	if UserNameIsEmail {
+		str = "must be a valid email address"
+	}
+	usernameField.SetToolTip((str))
+	usernameField.UpdateSecs = 0
+
 	style = ztext.Style{KeyboardType: zkeyboard.TypePassword}
-	passwordField := ztext.NewView("", style, 20, 1)
+	passwordField := ztext.NewView("", style, 30, 1)
+	str = fmt.Sprintf("password must be minimum %d ascii characters", MinimumPasswordLength)
+	passwordField.SetToolTip((str))
+	passwordField.UpdateSecs = 0
+
 	register := zbutton.New(zwords.Register())
 	register.SetMinWidth(90)
+	register.SetUsable(false)
+
 	login := zbutton.New(zwords.Login())
 	login.SetMinWidth(90)
 	login.MakeEnterDefault()
+	login.SetUsable(false)
+
+	validate := func() {
+		validateFields(usernameField, passwordField, login, register)
+	}
+	usernameField.SetChangedHandler(validate)
+	passwordField.SetChangedHandler(validate)
 
 	_, s1, _ := zlabel.Labelize(usernameField, UserNameType(), column, zgeo.CenterLeft)
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
@@ -80,11 +105,11 @@ func OpenDialog(got func()) {
 	_, s2, _ := zlabel.Labelize(passwordField, "Password", column, zgeo.CenterLeft)
 	v1.Add(s2, zgeo.TopLeft|zgeo.HorExpand)
 
-	if UserNameIsEmail {
+	if UserNameIsEmail && doLogin {
 		forgot := zlabel.New("Forgot Password?")
-		forgot.SetFont(zgeo.FontDefault().NewWithSize(float64(zgeo.FontStyleBold)))
-		forgot.SetColor(zgeo.ColorBlue)
-		v1.Add(forgot, zgeo.TopLeft|zgeo.HorExpand)
+		forgot.SetFont(zgeo.FontNice(zgeo.FontDefaultSize-3, zgeo.FontStyleBold))
+		forgot.SetColor(zgeo.ColorNavy)
+		v1.Add(forgot, zgeo.TopRight)
 
 		forgot.SetPressedHandler(func() {
 			zalert.PromptForText("Send reset email to address:", username, func(email string) {
@@ -102,7 +127,7 @@ func OpenDialog(got func()) {
 	h1 := zcontainer.StackViewHor("buttons")
 	v1.Add(h1, zgeo.TopLeft|zgeo.HorExpand, zgeo.Size{0, 14})
 
-	if AllowRegistration {
+	if doReg {
 		h1.Add(register, zgeo.CenterRight)
 		register.SetPressedHandler(func() {
 			var a Authentication
@@ -113,8 +138,9 @@ func OpenDialog(got func()) {
 			go callAuthenticate(v1, a, got)
 		})
 	}
-	h1.Add(login, zgeo.CenterRight)
-
+	if doLogin {
+		h1.Add(login, zgeo.CenterRight)
+	}
 	login.SetPressedHandler(func() {
 		var a Authentication
 
@@ -123,7 +149,7 @@ func OpenDialog(got func()) {
 		a.Password = passwordField.Text()
 		go callAuthenticate(v1, a, got)
 	})
-	if CanCancelAuthDialog {
+	if canCancel {
 		cancel := zshape.ImageButtonViewNewSimple("Cancel", "")
 		h1.Add(cancel, zgeo.CenterLeft)
 		cancel.SetPressedHandler(func() {
@@ -135,35 +161,46 @@ func OpenDialog(got func()) {
 	zpresent.PresentView(v1, att, nil, nil)
 }
 
-func callAuthenticate(view zview.View, a Authentication, got func()) {
-	zlog.Info("callAuthenticate1")
-	var aret ClientUserInfo
+func validateFields(user, pass *ztext.TextView, login, register *zbutton.Button) {
+	usable := true
+	text := user.Text()
 	if UserNameIsEmail {
-		if !zstr.IsValidEmail(a.UserName) {
-			zalert.Show("Invalid email format:\n", a.UserName)
-			return
+		if !zstr.IsValidEmail(text) {
+			usable = false
 		}
 	} else {
-		if !zstr.IsTypableASCII(a.UserName) {
-			zalert.Show("Invalid username format:\n", a.UserName)
-			return
+		if !zstr.IsTypableASCII(text) {
+			usable = false
 		}
 	}
+	text = pass.Text()
+	if !zstr.IsTypableASCII(text) {
+		usable = false
+	}
+	if len(text) < MinimumPasswordLength {
+		usable = false
+	}
+	login.SetUsable(usable)
+	register.SetUsable(usable)
+}
+
+func callAuthenticate(view zview.View, a Authentication, got func()) {
+	var aret ClientUserInfo
 	zkeyvalue.DefaultStore.SetString(a.UserName, usernameKey, true)
 
 	err := zrpc2.MainClient.Call("UsersCalls.Authenticate", a, &aret)
-	zlog.Info("callAuthenticate2", err)
 	if err != nil {
 		zalert.ShowError(err)
 		return
 	}
-	CurrentUser = aret
-	zrpc2.MainClient.AuthToken = CurrentUser.Token
-	zkeyvalue.DefaultStore.SetString(CurrentUser.Token, tokenKey, true)
-	zlog.Info("callAuthenticate:", CurrentUser.Token)
+	if !(a.IsRegister && !AllowRegistration) {
+		CurrentUser = aret
+		zrpc2.MainClient.AuthToken = CurrentUser.Token
+		zkeyvalue.DefaultStore.SetString(CurrentUser.Token, tokenKey, true)
+	}
 	doingAuth = false
 	zpresent.Close(view, false, func(dismissed bool) {
-		if !dismissed {
+		if !dismissed && got != nil {
 			got()
 		}
 	})
@@ -177,10 +214,10 @@ func checkAndDoAuth() {
 	var user User
 
 	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
-	zlog.Info("checkAndDoAuth:", token)
+	// zlog.Info("checkAndDoAuth:", token)
 	if token != "" {
 		zrpc2.MainClient.AuthToken = token
-		err := zrpc2.MainClient.Call("UsersCalls.GetUserFromToken", token, &user)
+		err := zrpc2.MainClient.Call("UsersCalls.GetUserForToken", token, &user)
 		if err == nil {
 			CurrentUser.UserID = user.ID
 			CurrentUser.UserName = user.UserName
@@ -193,14 +230,14 @@ func checkAndDoAuth() {
 		}
 		zalert.ShowError(err)
 	}
-	OpenDialog(func() {
+	OpenDialog(AllowRegistration, true, CanCancelAuthDialog, func() {
 		if AuthenticatedFunc != nil {
 			AuthenticatedFunc()
 		}
 	})
 }
 
-func ShowDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title string, got func(newText string)) {
+func showDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title string, got func(newText string)) {
 	const column = 120.0
 	v1 := zcontainer.StackViewVert("dialog")
 	// v1.SetMarginS(zgeo.Size{10, 10})

@@ -3,7 +3,6 @@
 package zusers
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -50,7 +49,7 @@ func initialize(s *SQLServer) {
 
 func makeHash(str, salt string) string {
 	hash := zstr.SHA256Hex([]byte(str + salt))
-	zlog.Info("MakeHash:", hash, "from:", str, salt)
+	// zlog.Info("MakeHash:", hash, "from:", str, salt)
 	return hash
 }
 
@@ -61,68 +60,8 @@ func makeSaltyHash(password string) (hash, salt, token string) {
 	return
 }
 
-func (s *SQLServer) Login(ci zrpc2.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
-	//	zlog.Info("Login:", username)
-	u, err := s.GetUserForUserName(username)
-	if err != nil {
-		return
-	}
-	hash := makeHash(password, u.Salt)
-	if hash != u.PasswordHash {
-		// zlog.Info("calchash:", hash, password, "salt:", u.Salt, "storedhash:", u.PasswordHash)
-		err = UserNamePasswordWrongError
-		return
-	}
-
-	var session Session
-	session.ClientInfo = ci
-	session.Token = zstr.GenerateUUID()
-	zlog.Info("Login:", "hash:", hash, "salt:", u.Salt, "token:", session.Token)
-	session.UserID = u.ID
-	err = s.AddNewSession(session)
-	if err != nil {
-		zlog.Error(err, "login", err)
-		err = AuthFailedError
-		return
-	}
-	ui.UserName = u.UserName
-	ui.Permissions = u.Permissions
-	ui.UserID = u.ID
-	ui.Token = session.Token
-	return
-}
-
-func (s *SQLServer) Register(ci zrpc2.ClientInfo, username, password string, isAdmin, makeToken bool) (id int64, token string, err error) {
-	if !AllowRegistration {
-		return 0, "", zlog.NewError("Registration not allowed")
-	}
-	_, err = s.GetUserForUserName(username)
-	if err == nil {
-		err = errors.New("user already exists: " + username)
-		return
-	}
-	perm := []string{}
-	if isAdmin {
-		perm = append(perm, AdminPermission)
-	}
-	hash, salt, token := makeSaltyHash(password)
-	id, err = s.AddNewUser(username, password, hash, salt, perm)
-	if makeToken {
-		var session Session
-		session.ClientInfo = ci
-		session.Token = token
-		session.UserID = id
-		err = s.AddNewSession(session)
-		if err != nil {
-			zlog.Info("add new session error:", err)
-			return
-		}
-	}
-	return
-}
-
-func (*UsersCalls) GetUserFromToken(token string, user *User) error {
-	u, err := MainServer.GetUserFromToken(token)
+func (*UsersCalls) GetUserForToken(token string, user *User) error {
+	u, err := MainServer.GetUserForToken(token)
 	if err != nil {
 		return err
 	}
@@ -130,26 +69,26 @@ func (*UsersCalls) GetUserFromToken(token string, user *User) error {
 	return nil
 }
 
-func (*UsersCalls) Logout(ci zrpc2.ClientInfo, username string, reply *zrpc2.Unused) error {
+func (*UsersCalls) Logout(ci zrpc2.ClientInfo, username string) error { // reply *zrpc2.Unused
 	return MainServer.UnauthenticateToken(ci.Token)
-}
-
-func (s *SQLServer) GetUserFromToken(token string) (user User, err error) {
-	id, err := s.GetUserIDFromToken(token)
-	if err != nil {
-		return
-	}
-	if id == 0 {
-		err = fmt.Errorf("no user for token: %w", AuthFailedError)
-		return
-	}
-	return s.GetUserForID(id)
 }
 
 func (*UsersCalls) Authenticate(ci zrpc2.ClientInfo, a Authentication, ui *ClientUserInfo) error {
 	var err error
+	makeToken := true
 	if a.IsRegister {
-		ui.UserID, ui.Token, err = MainServer.Register(ci, a.UserName, a.Password, false, true)
+		if !AllowRegistration {
+			fail := true
+			if ci.Token != "" {
+				u, err := MainServer.GetUserForToken(ci.Token)
+				fail = !(err == nil && IsAdmin(u.Permissions))
+			}
+			if fail {
+				return zlog.NewError("registration not allowed")
+			}
+			makeToken = false
+		}
+		ui.UserID, ui.Token, err = MainServer.Register(ci, a.UserName, a.Password, makeToken)
 		ui.UserName = a.UserName
 		ui.Permissions = []string{} // nothing yet, we just registered
 	} else {
@@ -198,16 +137,67 @@ func (uc *UsersCalls) SetNewPasswordFromReset(ci zrpc2.ClientInfo, reset ResetPa
 	var change ChangeInfo
 	change.NewString = reset.Password
 	change.UserID = u.ID
-	err = uc.ChangePassword(ci, change, token)
+	err = uc.ChangePasswordForSelf(ci, change, token)
 	return err
 }
 
-func (*UsersCalls) ChangePassword(ci zrpc2.ClientInfo, change ChangeInfo, token *string) error {
+func (*UsersCalls) ChangePasswordForSelf(ci zrpc2.ClientInfo, change ChangeInfo, token *string) error {
 	var err error
 	*token, err = MainServer.ChangePasswordForUser(ci, change.UserID, change.NewString)
 	return err
 }
 
-func (*UsersCalls) ChangeUserName(ci zrpc2.ClientInfo, change ChangeInfo) error {
+func (*UsersCalls) ChangeUserNameForSelf(ci zrpc2.ClientInfo, change ChangeInfo) error {
 	return MainServer.ChangeUserNameForUser(change.UserID, change.NewString)
+}
+
+func (s *UsersCalls) GetAllUsers(in *zrpc2.Unused, us *[]AllUserInfo) error {
+	var err error
+	*us, err = MainServer.GetAllUsers()
+	return err
+}
+
+func (s *UsersCalls) DeleteUserForID(id int64) error {
+	return MainServer.DeleteUserForID(id)
+}
+
+func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci zrpc2.ClientInfo, change ClientUserInfo) error {
+	callingUser, err := MainServer.GetUserForToken(ci.Token)
+	if err != nil {
+		return zlog.Error(err, "getting admin user")
+	}
+	if !callingUser.IsAdmin() {
+		return zlog.Error(err, "change user name / permissions: must be done my admin user")
+	}
+	changeUser, err := MainServer.GetUserForID(change.UserID)
+	if err != nil {
+		return zlog.Error(err, "getting change user")
+	}
+	err = MainServer.ChangeUsersUserNameAndPermissions(ci, change)
+	if err != nil {
+		return err
+	}
+	if !zstr.SlicesHaveSameValues(change.Permissions, changeUser.Permissions) {
+		err = MainServer.UnauthenticateUser(change.UserID)
+		if err != nil {
+			zlog.Error(err, "UnauthenticateUser")
+		}
+	}
+	return nil
+}
+
+func (*UsersCalls) UnauthenticateUser(ci zrpc2.ClientInfo, userID int64) error {
+	zlog.Info("US.UnauthenticateUser")
+	callingUser, err := MainServer.GetUserForToken(ci.Token)
+	if err != nil {
+		return zlog.Error(err, "getting admin user")
+	}
+	if !callingUser.IsAdmin() {
+		return zlog.Error(err, "unauthenticating other user: must be done my admin user")
+	}
+	err = MainServer.UnauthenticateUser(userID)
+	if err != nil {
+		zlog.Error(err, "UnauthenticateUser")
+	}
+	return nil
 }

@@ -4,6 +4,8 @@ package zusers
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -93,6 +95,18 @@ func (s *SQLServer) setup() error {
 	return nil
 }
 
+func (s *SQLServer) GetUserForToken(token string) (user User, err error) {
+	id, err := s.GetUserIDFromToken(token)
+	if err != nil {
+		return
+	}
+	if id == 0 {
+		err = fmt.Errorf("no user for token: %w", AuthFailedError)
+		return
+	}
+	return s.GetUserForID(id)
+}
+
 func (s *SQLServer) IsTokenValid(token string) bool {
 	var exists bool
 	squery := "SELECT true FROM user_sessions WHERE token=$1"
@@ -137,6 +151,9 @@ func (s *SQLServer) DeleteUserForID(id int64) error {
 	squery := "DELETE FROM users WHERE id=$1"
 	s.customizeQuery(&squery)
 	_, err := s.database.Exec(squery, id)
+	if err == nil {
+		err = s.UnauthenticateUser(id)
+	}
 	return err
 }
 
@@ -196,16 +213,17 @@ func (s *SQLServer) ChangePasswordForUser(ci zrpc2.ClientInfo, id int64, passwor
 	return
 }
 
-func (s *SQLServer) GetAllUsers() (us []User, err error) {
-	squery := "SELECT id, username FROM users ORDER BY username ASC"
+func (s *SQLServer) GetAllUsers() (us []AllUserInfo, err error) {
+	// squery := "SELECT id, username, permissions, created, login FROM users ORDER BY username ASC"
+	squery := "SELECT id, username, permissions, created, login, (SELECT COUNT(*) FROM user_sessions us WHERE us.userid=u.id) FROM users u ORDER BY username ASC"
 	s.customizeQuery(&squery)
 	rows, err := s.database.Query(squery)
 	if err != nil {
 		return
 	}
 	for rows.Next() {
-		var u User
-		err = rows.Scan(&u.ID, &u.UserName, pq.Array(&u.Permissions))
+		var u AllUserInfo
+		err = rows.Scan(&u.ID, &u.UserName, pq.Array(&u.Permissions), &u.Created, &u.Login, &u.Sessions)
 		if err != nil {
 			return
 		}
@@ -231,6 +249,7 @@ func (s *SQLServer) GetUserForUserName(username string) (user User, err error) {
 }
 
 func (s *SQLServer) UnauthenticateToken(token string) error {
+	// zlog.Info("Unauth token", token, zlog.CallingStackString())
 	squery := "DELETE FROM user_sessions WHERE token=$1"
 	s.customizeQuery(&squery)
 	_, err := s.database.Exec(squery, token)
@@ -238,6 +257,7 @@ func (s *SQLServer) UnauthenticateToken(token string) error {
 }
 
 func (s *SQLServer) UnauthenticateUser(id int64) error {
+	// zlog.Info("Unauth user", id, zlog.CallingStackString())
 	squery := "DELETE FROM user_sessions WHERE userid=$1"
 	s.customizeQuery(&squery)
 	_, err := s.database.Exec(squery, id)
@@ -272,12 +292,6 @@ func (s *SQLServer) AddNewUser(username, password, hash, salt string, perm []str
 		zlog.Error(err, "insert error:")
 		return
 	}
-	err = s.SetAdminForUser(id, true)
-	if err != nil {
-		zlog.Error(err, "setadmin error:")
-		return
-	}
-
 	return
 }
 
@@ -300,4 +314,68 @@ func (s *SQLServer) customizeQuery(query *string) {
 		*query = strings.Replace(*query, "$NOW", "NOW()", -1)
 		*query = strings.Replace(*query, "$PRIMARY-INT-INC", "SERIAL PRIMARY KEY", -1)
 	}
+}
+
+func (s *SQLServer) Login(ci zrpc2.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
+	//	zlog.Info("Login:", username)
+	u, err := s.GetUserForUserName(username)
+	if err != nil {
+		return
+	}
+	hash := makeHash(password, u.Salt)
+	if hash != u.PasswordHash {
+		// zlog.Info("calchash:", hash, password, "salt:", u.Salt, "storedhash:", u.PasswordHash)
+		err = UserNamePasswordWrongError
+		return
+	}
+
+	var session Session
+	session.ClientInfo = ci
+	session.Token = zstr.GenerateUUID()
+	// zlog.Info("Login:", "hash:", hash, "salt:", u.Salt, "token:", session.Token)
+	session.UserID = u.ID
+	err = s.AddNewSession(session)
+	if err != nil {
+		zlog.Error(err, "login", err)
+		err = AuthFailedError
+		return
+	}
+	ui.UserName = u.UserName
+	ui.Permissions = u.Permissions
+	ui.UserID = u.ID
+	ui.Token = session.Token
+	return
+}
+
+func (s *SQLServer) Register(ci zrpc2.ClientInfo, username, password string, makeToken bool) (id int64, token string, err error) {
+	_, err = s.GetUserForUserName(username)
+	if err == nil {
+		err = errors.New("user already exists: " + username)
+		return
+	}
+	perm := []string{}
+	hash, salt, token := makeSaltyHash(password)
+	id, err = s.AddNewUser(username, password, hash, salt, perm)
+	if makeToken {
+		var session Session
+		session.ClientInfo = ci
+		session.Token = token
+		session.UserID = id
+		err = s.AddNewSession(session)
+		if err != nil {
+			zlog.Info("add new session error:", err)
+			return
+		}
+	}
+	return
+}
+
+func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci zrpc2.ClientInfo, change ClientUserInfo) error {
+	squery := "UPDATE users SET username=$1, permissions=$2 WHERE id=$3"
+	s.customizeQuery(&squery)
+	_, err := s.database.Exec(squery, change.UserName, pq.Array(change.Permissions), change.UserID)
+	if err != nil {
+		return err
+	}
+	return nil
 }

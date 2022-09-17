@@ -3,20 +3,20 @@ package zusers
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
-	// "github.com/gomodule/redigo/redis"
 	"github.com/torlangballe/zutil/zstr"
 )
 
 type User struct {
-	ID           int64
-	UserName     string // this is email or username chosen by user
-	Salt         string
-	PasswordHash string
-	Permissions  []string
-	Created      time.Time
-	Login        time.Time
+	ID           int64     `zui:"static"`
+	UserName     string    `zui:"minwidth:200,noautofill"` // this is email or username chosen by user
+	Salt         string    `zui:"-"`
+	PasswordHash string    `zui:"-"`
+	Permissions  []string  `zui:"minwidth:140,enum:Permissions,format:%n|permission"`
+	Created      time.Time `zui:"static"`
+	Login        time.Time `zui:"static"`
 }
 
 type Authentication struct {
@@ -42,8 +42,15 @@ type ResetPassword struct {
 	Password   string
 }
 
+type AllUserInfo struct {
+	AdminStar string `zui:"notitle,width:16,justify:center,tip:star for admin user"`
+	User
+	Sessions int `zui:"static,width:70"`
+}
+
 const (
 	AdminPermission = "admin"
+	AdminStar       = "★"
 )
 
 var (
@@ -53,6 +60,14 @@ var (
 	AuthFailedError            = errors.New("Authentication Failed")
 	UserNamePasswordWrongError = fmt.Errorf("Incorrect username/email or password: %w", AuthFailedError)
 )
+
+func (u User) GetStrID() string {
+	return strconv.FormatInt(u.ID, 10)
+}
+
+func (u AllUserInfo) GetStrID() string {
+	return strconv.FormatInt(u.ID, 10)
+}
 
 func IsAdmin(s []string) bool {
 	return zstr.StringsContain(s, AdminPermission)
