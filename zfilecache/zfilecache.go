@@ -76,7 +76,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	if err != nil {
 		zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
 	}
-	zlog.Info("zfilecache Init:", c.workDir+cacheName, c.getURL, path)
+	// zlog.Info("zfilecache Init:", c.workDir+cacheName, c.getURL, path)
 	zrest.AddSubHandler(router, path, c)
 	// zrest.AddHandler(router, strings.TrimRight(path, "/"), c.ServeHTTP)
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {

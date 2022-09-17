@@ -157,6 +157,7 @@ func methodNeedsAuth(name string) bool {
 }
 
 func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg json.RawMessage) (rp receivePayload, err error) {
+	// zlog.Info("callMethod:", mtype.Method.Name)
 	var argv, replyv reflect.Value
 	argIsValue := false // if true, need to indirect before calling.
 	if mtype.ArgType.Kind() == reflect.Ptr {
@@ -192,7 +193,7 @@ func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg js
 		}
 		args = append(args, replyv)
 	}
-	// zlog.Info("Type:", mtype.ReplyType.Elem().Kind(), mtype.ReplyType, reflect.TypeOf(u), replyv)
+	// zlog.Info("Type:", mtype.ReplyType.Elem().Kind(), mtype.ReplyType, replyv)
 	// zlog.Info("callMethod:", mtype.ReplyType != nil, mtype.ArgType, mtype.Method.Name, args, mtype.hasClientInfo)
 	returnValues := mtype.Method.Func.Call(args)
 	errInter := returnValues[0].Interface()
@@ -213,33 +214,8 @@ func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg js
 func callMethodName(ctx context.Context, ci ClientInfo, name string, rawArg json.RawMessage) (rp receivePayload, err error) {
 	for n, m := range callMethods {
 		if n == name {
-			// zlog.Info("METH:", zlog.Full(m))
 			return callMethod(ctx, ci, m, rawArg)
 		}
 	}
 	return rp, zlog.NewError("no method registered:", name)
 }
-
-// func readCallPayload(c *websocket.Conn) (cp *callPayloadReceive, dbytes []byte, err error) {
-// 	buffer := bytes.NewBuffer([]byte{})
-// 	ctx := context.Background()
-// 	// zlog.Info("readCallPayload")
-// 	mtype, r, err := c.Reader(ctx)
-// 	// zlog.Info("readCallPayload done", err)
-// 	if err != nil {
-// 		zlog.Error(err, "make reader", mtype)
-// 		return nil, nil, err
-// 	}
-// 	// zlog.Info("mtype:", mtype)
-// 	n, err := buffer.ReadFrom(r)
-// 	if err != nil {
-// 		return nil, nil, zlog.Error(err, "readfrom", n)
-// 	}
-// 	cp = &callPayloadReceive{}
-// 	dbytes = buffer.Bytes()
-// 	err = json.Unmarshal(dbytes, cp)
-// 	if err != nil {
-// 		return nil, nil, zlog.Error(err, "unmarshal", cp != nil, n, string(dbytes), zlog.CallingStackString())
-// 	}
-// 	return
-// }

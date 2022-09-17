@@ -74,7 +74,7 @@ func (c *Client) Call(method string, args, result any) error {
 	if !rp.AuthenticationInvalid && result != nil {
 		err = json.Unmarshal(rp.Result, result)
 		if err != nil {
-			zlog.Error(err, "unmarshal")
+			zlog.Error(err, c.AuthToken, "unmarshal", string(rp.Result))
 			return &TransportError{Text: err.Error()}
 		}
 	}
