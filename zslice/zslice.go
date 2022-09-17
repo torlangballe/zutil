@@ -44,14 +44,39 @@ func RemoveAt(slice interface{}, index int) error {
 	return nil
 }
 
+func Empty(slicePtr interface{}) {
+	rval := reflect.ValueOf(slicePtr).Elem()
+	for {
+		length := rval.Len()
+		if length == 0 {
+			break
+		}
+		RemoveAt(slicePtr, length-1)
+	}
+}
+
+// func AddNewElementAtEnd(slicePtr interface{}) int {
+// 	sliceVal := reflect.ValueOf(slicePtr)
+// 	sliceElement := sliceVal.Elem()
+// 	n := reflect.New(reflect.TypeOf(sliceElement.Interface()).Elem())
+// 	// zlog.Info("Add:", sliceElement.Kind(), sliceElement.Type())
+// 	sliceElement = reflect.Append(sliceElement, n.Elem())
+// 	sliceVal.Elem().Set(sliceElement)
+// 	return sliceElement.Len() - 1
+// }
+
 func AddNewElementAtEnd(slicePtr interface{}) int {
-	sliceVal := reflect.ValueOf(slicePtr)
-	sliceElement := sliceVal.Elem()
-	n := reflect.New(reflect.TypeOf(sliceElement.Interface()).Elem())
-	// zlog.Info("Add:", sliceElement.Kind(), sliceElement.Type())
-	sliceElement = reflect.Append(sliceElement, n.Elem())
-	sliceVal.Elem().Set(sliceElement)
-	return sliceElement.Len() - 1
+	rval := reflect.ValueOf(slicePtr).Elem()
+	n := reflect.New(reflect.TypeOf(rval.Interface()).Elem())
+	return AddAtEnd(slicePtr, n.Interface())
+}
+
+func AddAtEnd(slicePtr interface{}, add interface{}) int {
+	rptr := reflect.ValueOf(slicePtr)
+	rval := rptr.Elem()
+	rval = reflect.Append(rval, reflect.ValueOf(add))
+	rptr.Elem().Set(rval)
+	return rval.Len() - 1
 }
 
 func Behead(slice interface{}) {
