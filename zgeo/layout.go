@@ -14,7 +14,6 @@ type LayoutCell struct {
 	MinSize           Size      // MinSize is minimum size of object before margin. Can be only W or H
 	Collapsed         bool      // Collapsed is a cell that currently is not shown or takes up space.
 	Free              bool      // Free Cells are placed using simple aligning to parent rect, not stacked etc
-	ExpandFromMinSize bool      // Makes cell expand into extra space in addition to minsize, not current size, will probabbly be remoed when newstack exclusive
 	OriginalSize      Size      // Original size of object before layout
 	Divider           float64   // This cell is a divider, wants its value subtracted from item before it, added to item after
 	Name              string    // A name just for debugging
