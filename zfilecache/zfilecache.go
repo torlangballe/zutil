@@ -72,11 +72,11 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	path := zstr.Concat("/", urlPrefix, cacheName)
 	//	c.getURL = zstr.Concat("/", zrest.AppURLPrefix, path)
 	c.getURL = path
-	err := os.MkdirAll(c.workDir+cacheName, 0775|os.ModeDir)
-	if err != nil {
-		zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
-	}
-	// zlog.Info("zfilecache Init:", c.workDir+cacheName, c.getURL, path)
+	// err := os.MkdirAll(c.workDir+cacheName, 0775|os.ModeDir)
+	// if err != nil {
+	// 	zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
+	// }
+	zlog.Info("zfilecache Init:", c.workDir+cacheName, c.getURL, path)
 	zrest.AddSubHandler(router, path, c)
 	// zrest.AddHandler(router, strings.TrimRight(path, "/"), c.ServeHTTP)
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
@@ -150,13 +150,14 @@ func (c *Cache) CacheFromData(data []byte, name string) (string, error) {
 }
 
 func (c *Cache) GetPathForName(name string) (path, dir string) {
+	dir, name = filepath.Split(name)
 	lastDir := ""
 	end := name
 	if c.NestInHashFolders {
 		lastDir = "/" + name[:3]
 		end = "/" + name[3:]
 	}
-	dir = filepath.Join(c.workDir, c.urlPrefix, c.cacheName) + lastDir
+	dir = filepath.Join(c.workDir, c.urlPrefix, c.cacheName, dir) + lastDir
 	path = dir + "/" + end
 	// zlog.Info("GetPathForName:", c.workDir, c.urlPrefix, c.cacheName, name, path)
 	return
