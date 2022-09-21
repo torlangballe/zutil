@@ -43,12 +43,20 @@ var (
 )
 
 func Init() {
+	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
+	// zlog.Info("checkAndDoAuth:", token)
+	if token != "" {
+		zrpc2.MainClient.AuthToken = token
+	}
+	perms := append([]string{AdminPermission}, AppSpecificPermissions...)
+	zfields.AddStringBasedEnum("Permissions", perms...)
+}
+
+func StartAuth() {
 	zrpc2.MainClient.HandleAuthenticanFailedFunc = func() {
 		checkAndDoAuth()
 	}
 	ztimer.StartIn(0.2, checkAndDoAuth)
-	perms := append([]string{AdminPermission}, AppSpecificPermissions...)
-	zfields.AddStringBasedEnum("Permissions", perms...)
 }
 
 func UserNameType() string {
