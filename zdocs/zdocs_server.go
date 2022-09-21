@@ -1,3 +1,4 @@
+//go:build server
 // +build server
 
 package zdocs
@@ -5,7 +6,7 @@ package zdocs
 import (
 	"net/http"
 
-	"github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/zrpc2"
 )
 
 type DocBase struct {
@@ -28,7 +29,7 @@ type PutDoc struct {
 	Text string
 }
 
-type DocCalls zrpc.CallsBase
+type DocCalls zrpc2.CallsBase
 
 var Calls = new(DocCalls)
 
@@ -36,7 +37,7 @@ func (c *DocCalls) GetDocument(req *http.Request, get *GetDoc, got *GetDocGot) e
 	return nil
 }
 
-func (c *DocCalls) PutDocument(req *http.Request, put *PutDoc, result *zrpc.Any) error {
+func (c *DocCalls) PutDocument(req *http.Request, put *PutDoc, result *zrpc2.Unused) error {
 	return nil
 }
 
