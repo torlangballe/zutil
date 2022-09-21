@@ -20,17 +20,19 @@ func NewActionsIcon() *zimageview.ImageView {
 	actions.DownsampleImages = true
 	actionMenu := zmenu.NewMenuedOwner()
 	actionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {
+		var items []zmenu.MenuedOItem
 		isAdmin := IsAdmin(CurrentUser.Permissions)
-		user := CurrentUser.UserName
-		if isAdmin {
-			user += " " + AdminStar
+		if CurrentUser.UserID != 0 {
+			user := CurrentUser.UserName
+			if isAdmin {
+				user += " " + AdminStar
+			}
+			items = append(items, zmenu.MenuedFuncAction(user, showProfile), zmenu.MenuedOItemSeparator)
 		}
-		items := []zmenu.MenuedOItem{
-			zmenu.MenuedFuncAction(user, showProfile),
-			zmenu.MenuedOItemSeparator,
+		items = append(items,
 			zmenu.MenuedFuncAction("Change Password…", changePassword),
 			zmenu.MenuedFuncAction("Change "+UserNameType()+"…", changeUserName),
-		}
+		)
 		if isAdmin {
 			items = append(items,
 				zmenu.MenuedOItemSeparator,
