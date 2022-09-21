@@ -107,3 +107,38 @@ func (c *RPCCalls) GetUpdatedResourcesAndSetSent(ci ClientInfo, args *Unused, re
 	// zlog.Info("GetUpdatedResources Got", *reply)
 	return nil
 }
+
+func SetResourceUpdated(resID, byClientID string) {
+	m := map[string]bool{}
+	if byClientID != "" {
+		m[byClientID] = true
+	}
+	updatedResourcesMutex.Lock()
+	// fmt.Println("SetResourceUpdated:", resID, byClientID) //, "\n", zlog.GetCallingStackString())
+	updatedResourcesSentToClient[resID] = m
+	updatedResourcesMutex.Unlock()
+}
+
+func ClearResourceID(resID string) {
+	updatedResourcesMutex.Lock()
+	// fmt.Println("ClearResourceID:", resID)
+	updatedResourcesSentToClient[resID] = map[string]bool{}
+	// fmt.Printf("ClearResourceID DONE: %s %+v\n", resID, updatedResourcesSentToClient)
+	updatedResourcesMutex.Unlock()
+}
+
+func SetClientKnowsResourceUpdated(resID, clientID string) {
+	// zlog.Info("SetClientKnowsResourceUpdated:", resID, clientID) //, "\n", zlog.GetCallingStackString())
+	updatedResourcesMutex.Lock()
+	if updatedResourcesSentToClient[resID] == nil {
+		updatedResourcesSentToClient[resID] = map[string]bool{}
+	}
+	updatedResourcesSentToClient[resID][clientID] = true
+	updatedResourcesMutex.Unlock()
+}
+
+func (c *RPCCalls) SetResourceUpdatedFromClient(ci ClientInfo, resID *string) error {
+	// fmt.Println("SetResourceUpdatedFromClient:", *resID)
+	SetResourceUpdated(*resID, ci.ClientID)
+	return nil
+}
