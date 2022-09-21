@@ -39,7 +39,7 @@ var (
 	Reset                    = ResetData{ProductName: "This service"}
 )
 
-func initialize(s *SQLServer) {
+func InitServer(s *SQLServer) {
 	MainServer = s
 	zrpc2.Register(Calls)
 	zrpc2.SetMethodAuthNotNeeded("UsersCalls.Authenticate")

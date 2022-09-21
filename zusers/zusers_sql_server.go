@@ -86,7 +86,6 @@ func (s *SQLServer) setup() error {
 		zlog.Error(err, "create token index", squery)
 		return err
 	}
-	initialize(s)
 	ztimer.RepeatIn(ztime.DurSeconds(time.Hour), func() bool {
 		squery := `DELETE FROM user_sessions WHERE used < $NOW - INTERVAL '30 days'`
 		s.customizeQuery(&squery)
