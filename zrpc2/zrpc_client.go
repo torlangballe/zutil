@@ -3,6 +3,7 @@ package zrpc2
 import (
 	"encoding/json"
 	"errors"
+	"path"
 
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
@@ -50,7 +51,8 @@ func (c *Client) Call(method string, args, result any) error {
 	urlArgs := map[string]string{
 		"method": method,
 	}
-	surl, _ := zhttp.MakeURLWithArgs(c.prefixURL+"/xrpc", urlArgs)
+	spath := path.Join(c.prefixURL, "/xrpc")
+	surl, _ := zhttp.MakeURLWithArgs(spath, urlArgs)
 	_, err := zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
 		zlog.Error(err, "post")
