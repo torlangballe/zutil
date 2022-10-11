@@ -6,15 +6,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"regexp"
-	"strconv"
-	"strings"
+	"path"
 	"time"
 
 	"github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc2"
+	"github.com/torlangballe/zutil/zsql"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
@@ -25,23 +25,32 @@ type SQLServer struct {
 	isSqlite bool
 }
 
-func NewSQLServer(db *sql.DB) (*SQLServer, error) {
+func NewSQLServer(db *sql.DB, isSqlite bool) (*SQLServer, error) {
 	s := &SQLServer{}
 	s.database = db
-	return s, s.setup()
+	s.isSqlite = isSqlite
+	err := s.setup()
+	setupWithSQLServer(s)
+	return s, err
 }
 
-func NewSQLiteServer(folderPath string) (*SQLServer, error) {
-	var err error
-	s := &SQLServer{}
-	s.isSqlite = true
-	file := folderPath + "zusers.sqlite"
-	s.database, err = sql.Open("sqlite3", file)
+func NewSQLiteServer(filePath string) (*SQLServer, *sql.DB, error) {
+	dir, _, sub, _ := zfile.Split(filePath)
+	zfile.MakeDirAllIfNotExists(dir)
+	file := path.Join(dir, sub+".sqlite")
+
+	zlog.Info("SQL:", file)
+	db, err := sql.Open("sqlite3", file)
 	if err != nil {
 		zlog.Error(err, "open file", file)
-		return nil, err
+		return nil, db, err
 	}
-	return s, s.setup()
+	s, err := NewSQLServer(db, true)
+	return s, db, err
+}
+
+func (s *SQLServer) customizeQuery(query *string) {
+	zsql.CustomizeQuery(query, s.isSqlite)
 }
 
 func (s *SQLServer) setup() error {
@@ -108,6 +117,7 @@ func (s *SQLServer) GetUserForToken(token string) (user User, err error) {
 
 func (s *SQLServer) IsTokenValid(token string) bool {
 	var exists bool
+	// zlog.Info("IsTokenValid s:", s != nil)
 	squery := "SELECT true FROM user_sessions WHERE token=$1"
 	s.customizeQuery(&squery)
 	row := s.database.QueryRow(squery, token)
