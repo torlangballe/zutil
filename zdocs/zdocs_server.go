@@ -4,8 +4,6 @@
 package zdocs
 
 import (
-	"net/http"
-
 	"github.com/torlangballe/zutil/zrpc2"
 )
 
@@ -33,14 +31,14 @@ type DocCalls zrpc2.CallsBase
 
 var Calls = new(DocCalls)
 
-func (c *DocCalls) GetDocument(req *http.Request, get *GetDoc, got *GetDocGot) error {
+func (c *DocCalls) GetDocument(get *GetDoc, got *GetDocGot) error {
 	return nil
 }
 
-func (c *DocCalls) PutDocument(req *http.Request, put *PutDoc, result *zrpc2.Unused) error {
+func (c *DocCalls) PutDocument(put *PutDoc, result *zrpc2.Unused) error {
 	return nil
 }
 
-func (c *DocCalls) Flush(req *http.Request, info *DocBase, recept *string) error {
+func (c *DocCalls) Flush(info *DocBase, recept *string) error {
 	return nil
 }
