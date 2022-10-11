@@ -15,6 +15,7 @@ import (
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zsql"
@@ -121,6 +122,7 @@ func (db *Database) repeatPurge(deleteDays, deleteFreqSecs float64, tableName st
 }
 
 func (db *Database) Add(istruct interface{}, flush bool) {
+	// zlog.Info("eventdb.Add")
 	storeLock.Lock()
 	itemsToStore = append(itemsToStore, istruct)
 	storeLock.Unlock()
@@ -143,6 +145,7 @@ func (db *Database) writeItems() {
 	if len(itemsToStore) == 0 {
 		return
 	}
+	pageSize := zint.Min(len(itemsToStore), 100)
 	skip := []string{db.PrimaryField}
 	params := "(" + strings.Repeat("?,", len(db.FieldInfos)-2) + "?)"
 
@@ -157,8 +160,11 @@ func (db *Database) writeItems() {
 		}
 		query += params
 		vals = append(vals, zsql.FieldValuesFromStruct(item, skip)...)
+		if i == pageSize {
+			break
+		}
 	}
-	itemsToStore = itemsToStore[:0]
+	itemsToStore = itemsToStore[pageSize:]
 	storeLock.Unlock()
 
 	//	for c := 0; c < 10; c++ {
@@ -325,9 +331,9 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	if count != 0 {
 		query += fmt.Sprint(" LIMIT ", count)
 	}
-	now := time.Now()
+	// now := time.Now()
 	db.Lock.Lock()
-	zlog.Info("🟩eventsdb.Get:", zsql.ReplaceQuestionMarkArguments(query, values...))
+	// zlog.Info("🟩eventsdb.Get:", zsql.ReplaceQuestionMarkArguments(query, values...))
 	defer db.Lock.Unlock()
 	rows, err := db.DB.Query(query, values...)
 	if err != nil {
@@ -338,14 +344,14 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	slicePtrVal := reflect.ValueOf(resultsSlicePtr)
 	sliceVal := reflect.Indirect(slicePtrVal)
 
-	qtime := time.Since(now)
+	// qtime := time.Since(now)
 	resultPointers := zsql.FieldPointersFromStruct(resultStructVal.Interface(), nil)
 	for rows.Next() {
 		err = rows.Scan(resultPointers...)
 		zlog.AssertNotError(err)
 		sliceVal = reflect.Append(sliceVal, reflect.Indirect(resultStructVal))
 	}
-	zlog.Info("🟩eventsdb.Got:", qtime, time.Since(now), sliceVal.Len())
+	// zlog.Info("🟩eventsdb.Got:", qtime, time.Since(now), sliceVal.Len())
 	reflect.Indirect(slicePtrVal).Set(sliceVal)
 
 	return nil
