@@ -106,7 +106,7 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
         w.title = removeNonASCIIAndTruncate(w.title);
         w.pid = (long)[[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
         if (debug) {
-            NSLog(@"Win: %@ %ld\n", w.title, w.pid);
+            // NSLog(@"Win: %@ %ld\n", w.title, w.pid);
         }
         w.wid = (long)[[entry objectForKey:(id)kCGWindowNumber] integerValue];
 

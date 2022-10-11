@@ -1,3 +1,4 @@
+//go:build server
 // +build server
 
 package zsql

@@ -110,7 +110,7 @@ func Put(surl string, params Parameters, send, receive interface{}) (resp *http.
 // SendBody uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
 // receive can be []byte, string or a struct to unmarashal to
 func SendBody(surl string, params Parameters, send, receive interface{}) (resp *http.Response, err error) {
-	start := time.Now()
+	// start := time.Now()
 	bout, got := send.([]byte)
 	if got {
 		if params.ContentType == "" {
@@ -143,7 +143,7 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (resp *
 		if resp != nil {
 			resp.Body.Close()
 		}
-		zlog.Error(err, params.Method, "send bytes", time.Since(start), params.TimeoutSecs, surl)
+		//		zlog.Error(err, params.Method, "send bytes", time.Since(start), params.TimeoutSecs, surl)
 		err = MakeHTTPError(err, code, "")
 		return
 	}

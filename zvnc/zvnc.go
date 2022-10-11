@@ -25,13 +25,13 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 	if err != nil || nc == nil {
 		return nil, zlog.Error(err, "dial")
 	}
-	zlog.Info("starting up the vnc client, connecting to:", address)
 	// Negotiate connection with the server.
 	cchServer := make(chan vnc.ServerMessage)
 	cchClient := make(chan vnc.ClientMessage)
 	errorCh := make(chan error)
 	quitCh := make(chan struct{})
 
+	zlog.Info("starting up the vnc client, connecting to:", address, "pass:", password)
 	ccfg := &vnc.ClientConfig{
 		SecurityHandlers: []vnc.SecurityHandler{
 			// &vnc.ClientAuthATEN{Username: []byte(os.Args[2]), Password: []byte(os.Args[3])},

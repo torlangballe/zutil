@@ -46,7 +46,7 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		post = file[:3] + "/" + file[3:]
 	}
 	file = filepath.Join(dir, post)
-	zlog.Info("FileCache serve:", file, spath, zfile.Exists(file))
+	// zlog.Info("FileCache serve:", file, spath, zfile.Exists(file))
 	if c.ServeEmptyImage && !zfile.Exists(file) {
 		zlog.Info("Serve empty cached image:", file)
 		file = "www/images/empty.png"
@@ -76,7 +76,6 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	// if err != nil {
 	// 	zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
 	// }
-	zlog.Info("zfilecache Init:", c.workDir+cacheName, c.getURL, path)
 	zrest.AddSubHandler(router, path, c)
 	// zrest.AddHandler(router, strings.TrimRight(path, "/"), c.ServeHTTP)
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
@@ -92,6 +91,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 		// zlog.Info("Deleted cache:", c.workDir+c.cacheName, time.Since(start))
 		return true
 	})
+	zlog.Info("zfilecache Init:", c.workDir+cacheName, c.getURL, path)
 	return c
 }
 

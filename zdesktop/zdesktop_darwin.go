@@ -59,7 +59,7 @@ func ClearAppPIDCache() {
 }
 
 func PrintWindowTitles() {
-	zlog.Info("PrintWindowTitles")
+	// zlog.Info("PrintWindowTitles")
 	C.printWindowTitles()
 }
 
