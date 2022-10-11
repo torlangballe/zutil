@@ -21,6 +21,7 @@ var (
 	Calls                        = new(RPCCalls)
 	updatedResourcesSentToClient = map[string]map[string]bool{}
 	updatedResourcesMutex        sync.Mutex
+	IPAddressWhitelist           = map[string]bool{}
 	authenticator                TokenAuthenticator
 )
 
@@ -64,6 +65,15 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 				zlog.Error(nil, "token not valid:", token)
 				rp.TransportError = "authentication error"
 				rp.AuthenticationInvalid = true
+				call = false
+			}
+		}
+		if call && len(IPAddressWhitelist) > 0 {
+			if !IPAddressWhitelist[req.RemoteAddr] {
+				err := zlog.NewError("zrpc2.Call", cp.Method, "calling ip not in whitelist", req.RemoteAddr, IPAddressWhitelist)
+				rp.TransportError = err.Error()
+				rp.AuthenticationInvalid = true
+				zlog.Error(err)
 				call = false
 			}
 		}
