@@ -59,7 +59,7 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		call = false
 	} else {
 		token = req.Header.Get("X-Token")
-		if methodNeedsAuth(cp.Method) && authenticator != nil {
+		if authenticator != nil && methodNeedsAuth(cp.Method) {
 			if !authenticator.IsTokenValid(token) {
 				zlog.Error(nil, "token not valid:", token)
 				rp.TransportError = "authentication error"
