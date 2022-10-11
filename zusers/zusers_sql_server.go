@@ -304,27 +304,6 @@ func (s *SQLServer) AddNewUser(username, password, hash, salt string, perm []str
 	return
 }
 
-var replaceDollarRegex = regexp.MustCompile(`(\$[\d+])`)
-
-func (s *SQLServer) customizeQuery(query *string) {
-	if s.isSqlite {
-		*query = strings.Replace(*query, "$NOW", "CURRENT_TIMESTAMP", -1)
-		*query = strings.Replace(*query, "$PRIMARY-INT-INC", "INTEGER PRIMARY KEY AUTOINCREMENT", -1)
-		i := 1
-		*query = zstr.ReplaceAllCapturesFunc(replaceDollarRegex, *query, func(cap string, index int) string {
-			si, _ := strconv.Atoi(cap[1:])
-			if si != i {
-				zlog.Error(nil, "$x not right:", cap, i)
-			}
-			i++
-			return "?"
-		})
-	} else {
-		*query = strings.Replace(*query, "$NOW", "NOW()", -1)
-		*query = strings.Replace(*query, "$PRIMARY-INT-INC", "SERIAL PRIMARY KEY", -1)
-	}
-}
-
 func (s *SQLServer) Login(ci zrpc2.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
 	//	zlog.Info("Login:", username)
 	u, err := s.GetUserForUserName(username)
