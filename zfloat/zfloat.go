@@ -3,6 +3,7 @@ package zfloat
 import (
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 )
@@ -266,4 +267,15 @@ func MixedValueAtIndex(slice []float64, index float64) float64 {
 		return slice[len(slice)-1]
 	}
 	return 0
+}
+
+func MaxKeyOfMap(m map[string]float64) (key string, value float64) {
+	value = -math.MaxFloat64
+	for k, v := range m {
+		if v > value {
+			value = v
+			key = k
+		}
+	}
+	return
 }

@@ -115,6 +115,16 @@ func RemoveFromSet64(n int64, set *[]int64) bool {
 	return false
 }
 
+func SubtractedSets64(set []int64, subtract []int64) []int64 {
+	var ns []int64
+	for _, n := range set {
+		if !IsInSlice64(n, subtract) {
+			ns = append(ns, n)
+		}
+	}
+	return ns
+}
+
 func IsInSlice32(n int32, slice []int32) bool {
 	for _, s := range slice {
 		if s == n {
