@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -192,6 +193,13 @@ func GetTimeVal(vals url.Values, name string) time.Time {
 	return t
 }
 
+// The FuncHandler type is a special request handler function that is a http.Handler by having a ServeHTTP method that calls itself
+type FuncHandler func(http.ResponseWriter, *http.Request)
+
+func (f FuncHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	f(w, req)
+}
+
 func GetFloatVal(vals url.Values, name string, def float64) float64 {
 	s := vals.Get(name)
 	if s == "" {
@@ -214,6 +222,21 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 	}
 	route := router.PathPrefix(pattern)
 	return route.Handler(h)
+}
+
+// AddFileHandler adds a file serving handler, which removes the pattern path prefix before creating the filepath.
+// It uses a FuncHandler function that is it's own http.Handler
+func AddFileHandler(router *mux.Router, pattern, dir string) *mux.Route {
+	return AddSubHandler(router, pattern, FuncHandler(func(w http.ResponseWriter, req *http.Request) {
+		var path string
+		if zstr.HasPrefix(req.URL.Path, AppURLPrefix+pattern, &path) {
+			filepath := filepath.Join(dir, path)
+			// zlog.Info("MANFHANDLE:", req.URL, filepath)
+			http.ServeFile(w, req, filepath)
+			return
+		}
+		zlog.Error(nil, "no correct dir for serving:", req.URL.Path, dir, pattern)
+	}))
 }
 
 func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
