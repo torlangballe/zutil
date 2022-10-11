@@ -3,10 +3,11 @@ package zrpc2
 import (
 	"encoding/json"
 	"errors"
-	"path"
 
+	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -29,7 +30,12 @@ var MainClient *Client
 
 func NewClient(prefixURL string, id string) *Client {
 	c := &Client{}
-	c.prefixURL = prefixURL
+	htype, _ := zdevice.HardwareTypeAndVersion()
+	if htype == "MacBookPro" {
+		prefixURL += ":1200"
+	}
+	c.prefixURL = zstr.Concat("/", prefixURL, zrest.AppURLPrefix)
+	// zlog.Info("NewClient:", c.prefixURL, htype)
 	if id == "" {
 		id = zstr.GenerateRandomHexBytes(10)
 	}
@@ -51,11 +57,12 @@ func (c *Client) Call(method string, args, result any) error {
 	urlArgs := map[string]string{
 		"method": method,
 	}
-	spath := path.Join(c.prefixURL, "/xrpc")
+	spath := zstr.Concat("/", c.prefixURL, "xrpc")
 	surl, _ := zhttp.MakeURLWithArgs(spath, urlArgs)
+	// zlog.Info("Call:", surl, c.prefixURL)
 	_, err := zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
-		zlog.Error(err, "post")
+		// zlog.Error(err, "post")
 		return err
 	}
 	// zlog.Info("Called:", zlog.Full(rp))
