@@ -44,6 +44,27 @@ type HTTPError struct {
 	StatusCode int
 }
 
+type Parameters struct {
+	Headers               map[string]string
+	SkipVerifyCertificate bool
+	PrintBody             bool
+	Args                  map[string]string
+	TimeoutSecs           float64
+	UseHTTPS              bool
+	Method                string
+	ContentType           string
+	Body                  []byte
+	Reader                io.Reader
+	GetErrorFromBody      bool
+}
+
+func MakeParameters() Parameters {
+	return Parameters{
+		Headers:     map[string]string{},
+		TimeoutSecs: 25,
+	}
+}
+
 func (e *HTTPError) Error() string {
 	return e.Err.Error()
 }
@@ -75,26 +96,6 @@ func MakeHTTPError(err error, code int, message string) error {
 	return e
 }
 
-type Parameters struct {
-	Headers               map[string]string
-	SkipVerifyCertificate bool
-	PrintBody             bool
-	Args                  map[string]string
-	TimeoutSecs           float64
-	UseHTTPS              bool
-	Method                string
-	ContentType           string
-	Body                  []byte
-	GetErrorFromBody      bool
-}
-
-func MakeParameters() Parameters {
-	return Parameters{
-		Headers:     map[string]string{},
-		TimeoutSecs: 25,
-	}
-}
-
 // Post calls SendBody with method == Post
 func Post(surl string, params Parameters, send, receive interface{}) (resp *http.Response, err error) {
 	params.Method = http.MethodPost
@@ -124,10 +125,15 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (resp *
 				params.ContentType = "application/x-www-form-urlencoded"
 			}
 		} else {
-			bout, err = json.Marshal(send)
-			if err != nil {
-				err = zlog.Error(err, "marshal")
-				return
+			reader, got := send.(io.Reader)
+			if got {
+				params.Reader = reader
+			} else {
+				bout, err = json.Marshal(send)
+				if err != nil {
+					err = zlog.Error(err, "marshal")
+					return
+				}
 			}
 			if params.ContentType == "" {
 				params.ContentType = "application/json"
@@ -204,7 +210,7 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 		client.Timeout = ztime.SecondsDur(params.TimeoutSecs)
 	}
 	// zlog.Info("MakeRequest:", client.Timeout, surl)
-	var reader io.Reader
+	reader := params.Reader
 	if params.Body != nil {
 		reader = bytes.NewReader(params.Body)
 	}
@@ -359,7 +365,7 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 }
 
 func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Response, code int, err error) {
-	zlog.Assert(len(params.Body) != 0, surl)
+	zlog.Assert(len(params.Body) != 0 || params.Reader != nil, surl)
 	zlog.Assert(params.ContentType != "")
 	zlog.Assert(params.Method != "")
 	// params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
