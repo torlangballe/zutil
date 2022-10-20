@@ -120,6 +120,9 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 		v1.Add(forgot, zgeo.TopRight)
 
 		forgot.SetPressedHandler(func() {
+			if username == "" {
+				username = usernameField.Text()
+			}
 			zalert.PromptForText("Send reset email to address:", username, func(email string) {
 				err := zrpc2.MainClient.Call("UsersCalls.SendResetPasswordMail", email, nil)
 				// zlog.Info("Calling:", err)
