@@ -1,12 +1,25 @@
+//go:build zui
 
 package zguiutil
 
-func NewBar(title string) (banner *zimageview.ImageView) {
-	bar = zcontainer.StackViewHor("bar")
+import (
+	"github.com/torlangballe/zui/zcanvas"
+	"github.com/torlangballe/zui/zcontainer"
+	"github.com/torlangballe/zui/zlabel"
+	"github.com/torlangballe/zui/zstyle"
+	"github.com/torlangballe/zui/zview"
+	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/ztimer"
+)
+
+func NewBar(title string) *zcontainer.StackView {
+	bar := zcontainer.StackViewHor("bar")
 	bar.SetMargin(zgeo.RectFromXY2(6, 0, -6, -3))
 
 	if title != "" {
-		label = zlabel.New(title)
+		label := zlabel.New(title)
+		label.SetObjectName("title")
 		label.SetFont(zgeo.FontNew("Arial", 18, zgeo.FontStyleNormal))
 		label.SetColor(zstyle.DefaultFGColor())
 		label.SetMaxWidth(500)
@@ -17,9 +30,8 @@ func NewBar(title string) (banner *zimageview.ImageView) {
 		})
 		bar.Add(label, zgeo.Left|zgeo.VertCenter|zgeo.HorExpand, zgeo.Size{0, 0})
 	}
-		label.SetText(title)
-	}
 	bar.SetDrawHandler(func(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View) {
+		zlog.Info("bar draw")
 		y := rect.Max().Y - 3
 		r := rect
 		r.SetMaxY(y)
@@ -30,4 +42,5 @@ func NewBar(title string) (banner *zimageview.ImageView) {
 		path := zgeo.PathNewRect(r, zgeo.Size{})
 		canvas.DrawGradient(path, colors, r.Min(), r.BottomLeft(), nil)
 	})
+	return bar
 }
