@@ -12,6 +12,8 @@ import (
 	"github.com/torlangballe/zutil/ztime"
 )
 
+// https://www.techrepublic.com/article/how-to-enable-screen-sharing-on-macs-via-terminal/
+
 type Client struct {
 	client *vnc.ClientConn
 }
@@ -31,7 +33,7 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 	errorCh := make(chan error)
 	quitCh := make(chan struct{})
 
-	zlog.Info("starting up the vnc client, connecting to:", address, "pass:", password)
+	// zlog.Info("starting up the vnc client, connecting to:", address, "pass:", password)
 	ccfg := &vnc.ClientConfig{
 		SecurityHandlers: []vnc.SecurityHandler{
 			// &vnc.ClientAuthATEN{Username: []byte(os.Args[2]), Password: []byte(os.Args[3])},

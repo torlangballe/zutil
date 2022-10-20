@@ -199,7 +199,7 @@ func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg js
 	errInter := returnValues[0].Interface()
 	if errInter != nil {
 		err := errInter.(error)
-		zlog.Error(err, "Call Error")
+		zlog.Error(err, "Call Error", mtype.Method)
 		rp.Error = err.Error()
 		return rp, nil
 	}

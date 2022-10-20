@@ -107,7 +107,7 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 func (db *Database) repeatPurge(deleteDays, deleteFreqSecs float64, tableName string) {
 	ztimer.RepeatNow(deleteFreqSecs, func() bool {
 		start := time.Now()
-		zlog.Info("🟩EventDB purged start")
+		// zlog.Info("🟩EventDB purged start")
 		at := start.Add(-time.Duration(float64(ztime.Day) * deleteDays))
 		query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", tableName)
 		db.Lock.Lock()
@@ -116,7 +116,7 @@ func (db *Database) repeatPurge(deleteDays, deleteFreqSecs float64, tableName st
 		if err != nil {
 			zlog.Error(err, "query", query, at)
 		}
-		zlog.Info("🟩EventDB purged:", time.Since(start))
+		// zlog.Info("🟩EventDB purged:", time.Since(start))
 		return true
 	})
 }
