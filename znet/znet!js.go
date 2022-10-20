@@ -232,18 +232,14 @@ func ForwardPortToRemote(port int, remoteAddress string) error {
 		if err != nil {
 			return zlog.Error(err, "accept")
 		}
-		forwardPortHandleRequest(conn, remoteAddress)
+		proxy, err := net.Dial("tcp", remoteAddress)
+		if err != nil {
+			zlog.Error(err, "dial target")
+			continue
+		}
+		go copyIO(conn, proxy)
+		go copyIO(proxy, conn)
 	}
-}
-
-func forwardPortHandleRequest(conn net.Conn, remoteAddress string) {
-	proxy, err := net.Dial("tcp", remoteAddress)
-	if err != nil {
-		zlog.Error(err, "dial target")
-		return
-	}
-	go copyIO(conn, proxy)
-	go copyIO(proxy, conn)
 }
 
 func copyIO(src, dest net.Conn) {
