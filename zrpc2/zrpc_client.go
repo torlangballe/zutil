@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
@@ -17,6 +16,7 @@ type Client struct {
 	UseAuth                     bool
 	AuthToken                   string
 	HandleAuthenticanFailedFunc func()
+	TimeoutSecs                 float64
 }
 
 type clientReceivePayload struct {
@@ -30,16 +30,13 @@ var MainClient *Client
 
 func NewClient(prefixURL string, id string) *Client {
 	c := &Client{}
-	htype, _ := zdevice.HardwareTypeAndVersion()
-	if htype == "MacBookPro" {
-		prefixURL += ":1200"
-	}
 	c.prefixURL = zstr.Concat("/", prefixURL, zrest.AppURLPrefix)
 	// zlog.Info("NewClient:", c.prefixURL, htype)
 	if id == "" {
 		id = zstr.GenerateRandomHexBytes(10)
 	}
 	c.id = id
+	c.TimeoutSecs = 20
 	// zlog.Info("NewClient:", prefixURL, id)
 	return c
 }
@@ -50,6 +47,7 @@ func (c *Client) Call(method string, args, result any) error {
 	cp := callPayload{Method: method, Args: args}
 	cp.ClientID = c.id
 	params := zhttp.MakeParameters()
+	params.TimeoutSecs = c.TimeoutSecs
 	// params.PrintBody = true
 	if c.AuthToken != "" {
 		params.Headers["X-Token"] = c.AuthToken
