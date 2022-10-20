@@ -22,18 +22,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	EscBlack   = "\x1B[30m"
-	EscRed     = "\x1B[31m"
-	EscGreen   = "\x1B[32m"
-	EscYellow  = "\x1B[33m"
-	EscBlue    = "\x1B[34m"
-	EscMagenta = "\x1B[35m"
-	EscCyan    = "\x1B[36m"
-	EscWhite   = "\x1B[37m"
-	EscNoColor = "\x1b[0m"
-)
-
 const Digits = "0123456789"
 
 type StrIDer interface {
@@ -1182,53 +1170,6 @@ func SortedMapKeys(m interface{}) (keys []string) {
 	return
 }
 
-var EscapeQuoteReplacer = strings.NewReplacer(
-	"\r\n", "\\n",
-	"\n", "\\n",
-	"\t", "\\t",
-	"\r", "\\n",
-	"\"", "\\\"")
-
-var UnEscapeQuoteReplacer = strings.NewReplacer(
-	"\\n", "\n",
-	"\\t", "\t",
-	"\\\"", "\"")
-
-var FileEscapeReplacer = strings.NewReplacer(
-	`\`, "%5c",
-	"/", "%2f",
-	":", "%3a",
-)
-
-var ColorRemover = strings.NewReplacer(
-	EscBlack, "",
-	EscRed, "",
-	EscGreen, "",
-	EscYellow, "",
-	EscBlue, "",
-	EscMagenta, "",
-	EscCyan, "",
-	EscWhite, "",
-	EscNoColor, "",
-)
-
-var ColorSetter = strings.NewReplacer(
-	"🟥", EscRed,
-	"🟩", EscGreen,
-	"🟨", EscYellow,
-	"🟦", EscBlue,
-	"🟪", EscMagenta,
-)
-
-// termColor converts a 24-bit RGB color into a term256 compatible approximation.
-func termColor(r, g, b uint16) uint16 {
-	rterm := (((r * 5) + 127) / 255) * 36
-	gterm := (((g * 5) + 127) / 255) * 6
-	bterm := (((b * 5) + 127) / 255)
-
-	return rterm + gterm + bterm + 16 + 1 // termbox default color offset
-}
-
 func MatchWildcard(wild, str string) bool {
 	if wild == "" {
 		return str == wild
@@ -1263,3 +1204,21 @@ func deepMatchRune(str, wild []rune, simple bool) bool {
 
 	return len(str) == 0 && len(wild) == 0
 }
+
+var EscapeQuoteReplacer = strings.NewReplacer(
+	"\r\n", "\\n",
+	"\n", "\\n",
+	"\t", "\\t",
+	"\r", "\\n",
+	"\"", "\\\"")
+
+var UnEscapeQuoteReplacer = strings.NewReplacer(
+	"\\n", "\n",
+	"\\t", "\t",
+	"\\\"", "\"")
+
+var FileEscapeReplacer = strings.NewReplacer(
+	"\\", "%5c", // `\` messes up this file's code formating
+	"/", "%2f",
+	":", "%3a",
+)
