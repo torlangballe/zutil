@@ -1,7 +1,3 @@
-//  Font.go
-//
-//  Created by Tor Langballe on /22/10/15.
-
 package zgeo
 
 import (
