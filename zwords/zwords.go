@@ -19,10 +19,14 @@ const (
 
 // DefaultLanguage can be set with language gotten os/browser, if you use functions with langCode == "", this is used
 var DefaultLanguage = "en"
+
+// TS is a function to translate a string to current language
+// Not implemented yet
 var TS = func(str string) string {
 	return str
 }
 
+// TSL uses TL but with a specific language to translate to
 var TSL = func(str, langCode string) string {
 	return str
 }
@@ -54,6 +58,7 @@ func GetMemoryString(b int64, langCode string, maxSignificant int) string {
 	return getSizeString(b, 1024, "Byte", langCode, maxSignificant)
 }
 
+// NiceFloat converts a float to string, with only significant amount of post-comma digits
 func NiceFloat(f float64, significant int) string {
 	format := fmt.Sprintf("%%.%df", significant)
 	s := fmt.Sprintf(format, f)
@@ -69,6 +74,9 @@ func NiceFloat(f float64, significant int) string {
 	return s
 }
 
+// PluralizeWord returns word if count == 1 or plural if != "".
+// Otherwise it uses langauge-specific rules to pluralize.
+// langCode == "" uses DefaultLanguage
 func PluralizeWord(word string, count float64, langCode, plural string) string {
 	if langCode == "" {
 		langCode = DefaultLanguage
@@ -96,25 +104,27 @@ func PluralizeWord(word string, count float64, langCode, plural string) string {
 	return str
 }
 
-func PluralizeWordAndCountWords(word string, count float64, langCode, plural string, countWords map[int]string) string {
-	var cw string
-	for n, w := range countWords {
-		if int(count) == n {
-			cw = w
-		}
-	}
+// PluralizeWordWithTable uses PluralizeWord and a table of specific names for integers
+func PluralizeWordWithTable(word string, count float64, langCode, plural string, table map[int]string) string {
+	cw := table[int(count)]
 	if cw == "" {
 		cw = strconv.Itoa(int(count))
 	}
 	return cw + " " + PluralizeWord(word, count, langCode, plural)
 }
 
+// PluralWordWithCount uses PluralizeWordWithTable to create a nice count + pluralized word
 func PluralWordWithCount(word string, count float64, langCode, plural string, significant int) string { // maybe just make the plural mandetory
 	if langCode == "" {
 		langCode = DefaultLanguage
 	}
 	scount := NiceFloat(count, significant) + " "
-	return PluralizeWordAndCountWords(word, count, langCode, plural, map[int]string{0: scount})
+	return PluralizeWordWithTable(word, count, langCode, plural, map[int]string{0: scount})
+}
+
+// Pluralize is a convenience function to pluralize words with int, default langage and only rule-based pluralization
+func Pluralize(word string, count int) string {
+	return PluralWordWithCount(word, float64(count), "", "", 0)
 }
 
 func Login() string {
@@ -151,30 +161,6 @@ func Yesterday() string {
 func Tomorrow() string {
 	return TS("Tomorrow") // generic name for tomorrow
 }
-
-/*
-// these three functions insert day/month/year symbol after date in picker, only needed for ja so far.
-func DateInsertDaySymbol(langCode string) string {
-	if LocaleGetDeviceLanguageCode() == "ja" {
-		return "日"
-	}
-	return ""
-}
-
-func DateInsertMonthSymbol() string {
-	if LocaleGetDeviceLanguageCode() == "ja" {
-		return "月"
-	}
-	return ""
-}
-
-func DateInsertYearSymbol() string {
-	if LocaleGetDeviceLanguageCode() == "ja" {
-		return "年"
-	}
-	return ""
-}
-*/
 
 func Minute(count float32) string {
 	if count != 1 {
@@ -240,10 +226,9 @@ func RetryQuestion() string { return TS("Retry?") }     // generic name for Retr
 func Fahrenheit() string    { return TS("Fahrenheit") } // generic name for fahrenheit, used in buttons etc.
 func Celsius() string       { return TS("Celsius") }    // generic name for celsius, used in buttons etc.
 func Settings() string      { return TS("Settings") }   // generic name for settings, used in buttons / title etc
-
-func DayOfMonth() string { return TS("Day") }   // generic name for the day of a month i.e 23rd of July
-func Month() string      { return TS("Month") } // generic name for month.
-func Year() string       { return TS("Year") }  // generic name for year.
+func DayOfMonth() string    { return TS("Day") }        // generic name for the day of a month i.e 23rd of July
+func Month() string         { return TS("Month") }      // generic name for month.
+func Year() string          { return TS("Year") }       // generic name for year.
 
 func SetOrClear(set bool) string {
 	if set {
@@ -441,6 +426,7 @@ func Distance(meters float64, metric bool, langCode string, round bool) string {
 	return distance + " " + word
 }
 
+/*
 func WordsMemorySizeAsstring(b int64, langCode string, maxSignificant int, isBits bool) string {
 	kiloByte := 1024.0
 	megaByte := kiloByte * 1024
@@ -470,6 +456,7 @@ func WordsMemorySizeAsstring(b int64, langCode string, maxSignificant int, isBit
 	str := NiceFloat(n, maxSignificant) + " " + word
 	return str
 }
+*/
 
 func GetHemisphereDirectionsFromGeoAlignment(alignment zgeo.Alignment, separator, langCode string) string {
 	var str = ""
