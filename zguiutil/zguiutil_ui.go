@@ -37,7 +37,7 @@ func NewBar(title string) *zcontainer.StackView {
 			zstyle.Col(zgeo.ColorNew(0.69, 0.72, 0.76, 1), zgeo.ColorNew(0.29, 0.32, 0.36, 1)),
 		}
 		path := zgeo.PathNewRect(rect, zgeo.Size{})
-		canvas.DrawGradient(path, colors, r.Min(), r.BottomLeft(), nil)
+		canvas.DrawGradient(path, colors, rect.Min(), rect.BottomLeft(), nil)
 	})
 	return bar
 }
