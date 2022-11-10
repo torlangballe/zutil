@@ -6,12 +6,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"path"
 	"time"
 
 	"github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc2"
 	"github.com/torlangballe/zutil/zsql"
@@ -34,23 +32,8 @@ func NewSQLServer(db *sql.DB, isSqlite bool) (*SQLServer, error) {
 	return s, err
 }
 
-func NewSQLiteServer(filePath string) (*SQLServer, *sql.DB, error) {
-	dir, _, sub, _ := zfile.Split(filePath)
-	zfile.MakeDirAllIfNotExists(dir)
-	file := path.Join(dir, sub+".sqlite")
-
-	zlog.Info("SQL:", file)
-	db, err := sql.Open("sqlite3", file)
-	if err != nil {
-		zlog.Error(err, "open file", file)
-		return nil, db, err
-	}
-	s, err := NewSQLServer(db, true)
-	return s, db, err
-}
-
-func (s *SQLServer) customizeQuery(query *string) {
-	zsql.CustomizeQuery(query, s.isSqlite)
+func (s *SQLServer) customizeQuery(query string) string {
+	return zsql.CustomizeQuery(query, s.isSqlite)
 }
 
 func (s *SQLServer) setup() error {
