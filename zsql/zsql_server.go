@@ -1,5 +1,4 @@
 //go:build server
-// +build server
 
 package zsql
 
@@ -7,14 +6,53 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"path"
 	"reflect"
 	"strings"
 
 	"github.com/lib/pq"
+	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
+	"github.com/torlangballe/zutil/zrpc2"
 	"github.com/torlangballe/zutil/zstr"
 )
+
+type SQLCalls zrpc2.CallsBase
+
+type UpdateInfoReceive struct {
+	Rows         []zdict.Dict
+	TableName    string
+	SetColumns   map[string]string
+	EqualColumns map[string]string
+}
+
+var (
+	Calls        = new(SQLCalls)
+	MainDatabase *sql.DB
+	MainIsSqlite bool
+)
+
+func InitMainSQLite(filePath string) error {
+	var err error
+	MainDatabase, err = NewSQLite(filePath)
+	MainIsSqlite = true
+	return err
+}
+
+func NewSQLite(filePath string) (*sql.DB, error) {
+	var err error
+	dir, _, sub, _ := zfile.Split(filePath)
+	zfile.MakeDirAllIfNotExists(dir)
+	file := path.Join(dir, sub+".sqlite")
+
+	db, err := sql.Open("sqlite3", file)
+	if err != nil {
+		return nil, zlog.Error(err, "open file", file)
+	}
+	return db, nil
+}
 
 // interesting: https://github.com/jmoiron/sqlx
 type Executer interface {
@@ -47,62 +85,6 @@ var LineOutputReplacer = strings.NewReplacer(
 	"\n", "\\n",
 	"\t", "\\t",
 	"\r", "\\n")
-
-func QuoteString(str string) string {
-	return "'" + SanitizeString(str) + "'"
-}
-
-func SanitizeString(str string) string {
-	return strings.Replace(str, "'", "''", -1)
-}
-
-func ConvertFieldName(i zreflect.Item) string {
-	return strings.ToLower(i.FieldName)
-}
-
-func getItems(istruct interface{}, skip []string) (items []zreflect.Item) {
-	options := zreflect.Options{UnnestAnonymous: true}
-	all, _ := zreflect.ItterateStruct(istruct, options)
-outer:
-	for _, i := range all.Children {
-		vars := zreflect.GetTagAsMap(i.Tag)["db"]
-		if len(vars) != 0 && vars[0] == "-" {
-			continue outer
-		}
-		if zstr.IndexOf(ConvertFieldName(i), skip) == -1 {
-			//			zlog.Info("usql getItem:", i.FieldName)
-			items = append(items, i)
-		}
-	}
-	return
-}
-
-func FieldNamesFromStruct(istruct interface{}, skip []string, prefix string) (fields string) {
-	for i, item := range getItems(istruct, skip) {
-		if i != 0 {
-			fields += ", "
-		}
-		fields += prefix + ConvertFieldName(item)
-	}
-	return
-}
-
-func FieldValuesFromStruct(istruct interface{}, skip []string) (values []interface{}) {
-	for _, item := range getItems(istruct, skip) {
-		v := item.Interface
-		if item.Kind == zreflect.KindStruct && item.IsPointer {
-			v = item.Address
-		}
-		if item.IsSlice {
-			_, got := item.Interface.([]byte)
-			if !got {
-				v = pq.Array(v)
-			}
-		}
-		values = append(values, v)
-	}
-	return
-}
 
 func FieldPointersFromStruct(istruct interface{}, skip []string) (pointers []interface{}) {
 	for _, item := range getItems(istruct, skip) {
@@ -182,6 +164,23 @@ type FieldInfo struct {
 	SQLName     string
 	JSONName    string
 	SubTagParts []string
+}
+
+func FieldValuesFromStruct(istruct interface{}, skip []string) (values []interface{}) {
+	for _, item := range getItems(istruct, skip) {
+		v := item.Interface
+		if item.Kind == zreflect.KindStruct && item.IsPointer {
+			v = item.Address
+		}
+		if item.IsSlice {
+			_, got := item.Interface.([]byte)
+			if !got {
+				v = pq.Array(v)
+			}
+		}
+		values = append(values, v)
+	}
+	return
 }
 
 func FieldInfosFromStruct(istruct interface{}, skip []string, isSQLite bool) (infos []FieldInfo) {
@@ -266,7 +265,7 @@ func InsertIDStruct(rq RowQuerier, s interface{}, table string) (id int64, err e
 	query := insertQueries[key]
 	if query == "" {
 		params := FieldParametersFromStruct(s, skip, 1)
-		query = "INSERT INTO " + table + " (" + FieldNamesFromStruct(s, skip, "") + ") VALUES (" + params + ") RETURNING id"
+		query = "INSERT INTO " + table + " (" + FieldNamesStringFromStruct(s, skip, "") + ") VALUES (" + params + ") RETURNING id"
 		insertQueries[key] = query
 	}
 	vals := FieldValuesFromStruct(s, skip)
@@ -274,4 +273,60 @@ func InsertIDStruct(rq RowQuerier, s interface{}, table string) (id int64, err e
 	err = row.Scan(&id)
 	zlog.AssertNotError(err, insertQueries, vals)
 	return
+}
+
+func addTo(i *int, params *[]any, set *[]string, fieldName string, value any, fieldToColumn map[string]string) bool {
+	column, got := fieldToColumn[fieldName]
+	if !got {
+		return false
+	}
+	s := fmt.Sprint(column, "=$", *i)
+	(*i)++
+	*set = append(*set, s)
+	if reflect.ValueOf(value).Kind() == reflect.Slice {
+		value = pq.Array(value)
+	}
+	*params = append(*params, value)
+	return true
+}
+
+func (sc *SQLCalls) UpdateStructs(info UpdateInfoReceive) error {
+	var params []any
+	var sets, wheres []string
+
+	for _, row := range info.Rows {
+		i := 1
+		for fieldName, value := range row {
+			addTo(&i, &params, &sets, fieldName, value, info.SetColumns)
+		}
+		for fieldName, value := range row {
+			addTo(&i, &params, &wheres, fieldName, value, info.EqualColumns)
+		}
+		query := "UPDATE " + info.TableName + " SET " + strings.Join(sets, ",")
+		query += " WHERE " + strings.Join(wheres, ",")
+		_, err := MainDatabase.Exec(query, params...)
+		zlog.Info("SQLCalls.UpdateStructs:", query, params, err)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func SelectAnySlice[S any](db *sql.DB, resultSlice *[]S, query string, skipFields []string) error {
+	var s S
+	rows, err := db.Query(query)
+	if err != nil {
+		return zlog.Error(err, "select", query)
+	}
+	defer rows.Close()
+	pointers := FieldPointersFromStruct(&s, skipFields)
+	for rows.Next() {
+		err = rows.Scan(pointers...)
+		if err != nil {
+			return zlog.Error(err, "select", query)
+		}
+		*resultSlice = append(*resultSlice, s)
+	}
+	return nil
 }
