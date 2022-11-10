@@ -60,8 +60,7 @@ func (c *Client) Call(method string, args, result any) error {
 	// zlog.Info("Call:", surl, c.prefixURL)
 	_, err := zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
-		// zlog.Error(err, "post")
-		return err
+		return zlog.Error(err, "post")
 	}
 	// zlog.Info("Called:", zlog.Full(rp))
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also
