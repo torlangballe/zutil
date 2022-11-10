@@ -56,6 +56,10 @@ func Error(err error, parts ...interface{}) error {
 	return baseLog(err, ErrorLevel, 4, parts...)
 }
 
+func Warning(err error, parts ...interface{}) error {
+	return baseLog(err, WarningLevel, 4, parts...)
+}
+
 // Fatal performs Log with Fatal priority
 func Fatal(err error, parts ...interface{}) error {
 	return baseLog(err, FatalLevel, 4, parts...)
