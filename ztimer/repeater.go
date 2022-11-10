@@ -88,8 +88,10 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 				// repeaters[r.stack]--
 				// repeatersMutex.Unlock()
 				// count--
-				r.ticker.Stop()
-				r.ticker = nil
+				if r.ticker != nil {
+					r.ticker.Stop()
+					r.ticker = nil
+				}
 				return
 			}
 		}
