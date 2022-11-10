@@ -32,6 +32,7 @@ type JSONTime time.Time
 type SQLTime struct {
 	time.Time
 }
+type Differ time.Time
 
 // Distant is a very far-future time when you want to do things forever etc
 var Distant = time.Unix(1<<62, 0)
@@ -39,6 +40,14 @@ var BigTime = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can
 var TestTime = MustParse("2020-05-17T10:30:45.0+02:00")     // Random time we can use in tests when it has to look normal and be a fixed time
 
 // https://github.com/jinzhu/now -- interesting library for getting start of this minute etc
+
+func Now() Differ {
+	return Differ(time.Now())
+}
+
+func (d Differ) String() string {
+	return time.Since(time.Time(d)).String()
+}
 
 func (jt *JSONTime) UnmarshalJSON(raw []byte) error {
 	s := strings.Trim(string(raw), "\"")
