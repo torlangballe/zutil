@@ -150,7 +150,7 @@ func (db *Database) writeItems() {
 	params := "(" + strings.Repeat("?,", len(db.FieldInfos)-2) + "?)"
 
 	storeLock.Lock()
-	query := "INSERT INTO " + db.TableName + " (" + zsql.FieldNamesFromStruct(itemsToStore[0], skip, "") +
+	query := "INSERT INTO " + db.TableName + " (" + zsql.FieldNamesStringFromStruct(itemsToStore[0], skip, "") +
 		") VALUES "
 
 	var vals []interface{}
@@ -206,7 +206,7 @@ func (db *Database) writeItem(istruct interface{}) {
 		params += "?"
 	}
 
-	query := "INSERT INTO " + db.TableName + " (" + zsql.FieldNamesFromStruct(istruct, skip, "") +
+	query := "INSERT INTO " + db.TableName + " (" + zsql.FieldNamesStringFromStruct(istruct, skip, "") +
 		") VALUES (" + params + ")"
 	vals := zsql.FieldValuesFromStruct(istruct, skip)
 
@@ -322,7 +322,7 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 		wheres = append(wheres, w)
 	}
 	where := strings.Join(wheres, " AND ")
-	query := "SELECT " + zsql.FieldNamesFromStruct(resultStructVal.Interface(), nil, "") + " FROM " + db.TableName
+	query := "SELECT " + zsql.FieldNamesStringFromStruct(resultStructVal.Interface(), nil, "") + " FROM " + db.TableName
 	if keepID != 0 {
 		where = "(" + where + fmt.Sprint(") OR id=", keepID)
 	}
