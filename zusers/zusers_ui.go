@@ -218,17 +218,16 @@ func callAuthenticate(view zview.View, a Authentication, got func()) {
 }
 
 func checkAndDoAuth() {
+	// zlog.Info("checkAndDoAuth:", doingAuth)
 	if doingAuth {
 		return
 	}
 	doingAuth = true
 	var user User
 
-	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
 	// zlog.Info("checkAndDoAuth:", token)
-	if token != "" {
-		zrpc2.MainClient.AuthToken = token
-		err := zrpc2.MainClient.Call("UsersCalls.GetUserForToken", token, &user)
+	if zrpc2.MainClient.AuthToken != "" {
+		err := zrpc2.MainClient.Call("UsersCalls.GetUserForToken", zrpc2.MainClient.AuthToken, &user)
 		if err == nil {
 			CurrentUser.UserID = user.ID
 			CurrentUser.UserName = user.UserName
