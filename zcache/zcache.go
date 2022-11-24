@@ -5,10 +5,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
 )
 
-// TODO: Allow a redis hookup
+// TODO: rename fixedExpiry to NonExcedableExpiry?
+// TODO: Allow a redis hookup?
 
 type item struct {
 	value   interface{}
@@ -16,42 +19,52 @@ type item struct {
 	expiry  time.Duration
 }
 
-// Cache is a simple in-memory cached map;
+// Cache is a simple in-memory cached map
 type Cache struct {
-	accurateExpiry bool // If accurateExpiry set, items are not touched on get, and Get returns false if expired, even if not flushed out yet. Good for tokens etc that actually have an expiry time
-	defaultExpiry  time.Duration
-	items          map[string]*item
-	lock           sync.Mutex
+	fixedExpiry   bool // If fixedExpiry set, items are not touched on get, and Get returns false if expired, even if not flushed out yet. Good for tokens etc that actually have an expiry time
+	defaultExpiry time.Duration
+	hasExpiries   bool
+	items         map[string]*item
+	lock          sync.Mutex
 }
 
-func New(expiry time.Duration, accurateExpiry bool) *Cache {
+// New creates a new a cache with no expiry
+func New() *Cache {
+	return NewWithExpiry(0, false)
+}
+
+func NewWithExpiry(expirySecs float64, fixed bool) *Cache {
 	c := &Cache{}
 	c.items = map[string]*item{}
-	c.accurateExpiry = accurateExpiry
-	c.defaultExpiry = expiry
-	if expiry != 0 {
-		ztimer.RepeatIn(60*10, func() bool {
-			c.lock.Lock()
-			for key, i := range c.items {
-				if time.Since(i.touched) > expiry {
-					delete(c.items, key)
-				}
-			}
-			c.lock.Unlock()
+	c.defaultExpiry = ztime.SecondsDur(expirySecs)
+	c.fixedExpiry = fixed
+	ztimer.RepeatIn(60*10, func() bool {
+		if !c.hasExpiries {
 			return true
-		})
-	}
+		}
+		c.lock.Lock()
+		for key, i := range c.items {
+			if time.Since(i.touched) > i.expiry {
+				delete(c.items, key)
+			}
+		}
+		c.lock.Unlock()
+		return true
+	})
 	return c
 }
 
 func (c *Cache) Put(key string, val interface{}) bool {
-	e := c.defaultExpiry
-	return c.PutWithExpiry(key, val, e)
+	return c.PutWithExpiry(key, val, c.defaultExpiry)
 }
 
 func (c *Cache) PutWithExpiry(key string, val interface{}, expiry time.Duration) bool {
+	zlog.Assert(expiry != 0 || !c.fixedExpiry)
+	if expiry != 0 {
+		c.hasExpiries = true
+	}
 	c.lock.Lock()
-	i, _ := c.items[key]
+	i := c.items[key]
 	if i == nil {
 		i = &item{}
 		c.items[key] = i
@@ -66,17 +79,16 @@ func (c *Cache) PutWithExpiry(key string, val interface{}, expiry time.Duration)
 func (c *Cache) Get(toPtr interface{}, key string) (got bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	i, _ := c.items[key]
+	i := c.items[key]
 	if i == nil {
 		return false
 	}
-	if c.accurateExpiry && i.expiry != 0 {
+	if c.fixedExpiry {
 		if time.Since(i.touched) >= i.expiry {
 			delete(c.items, key)
 			return false
 		}
-	}
-	if !c.accurateExpiry {
+	} else {
 		i.touched = time.Now()
 	}
 	a := reflect.ValueOf(toPtr).Elem()
