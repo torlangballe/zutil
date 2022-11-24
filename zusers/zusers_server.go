@@ -32,7 +32,7 @@ type ResetData struct {
 var (
 	Calls                    = new(UsersCalls)
 	MainServer               *SQLServer
-	resetCache               = zcache.New(time.Minute*10, false) // cache of reset-token:email
+	resetCache               = zcache.NewWithExpiry(60*10, false) // cache of reset-token:email
 	StoreAuthenticationError = fmt.Errorf("Store authentication failed: %w", AuthFailedError)
 	NoTokenError             = fmt.Errorf("no token for user: %w", AuthFailedError)
 	NoUserError              = fmt.Errorf("no user: %w", AuthFailedError)
