@@ -19,21 +19,20 @@ import (
 )
 
 type SQLServer struct {
-	database *sql.DB
-	isSqlite bool
+	zsql.Base
 }
 
-func NewSQLServer(db *sql.DB, isSqlite bool) (*SQLServer, error) {
+func NewSQLServer(db *sql.DB, btype zsql.BaseType) (*SQLServer, error) {
 	s := &SQLServer{}
-	s.database = db
-	s.isSqlite = isSqlite
+	s.DB = db
+	s.Type = btype
 	err := s.setup()
 	setupWithSQLServer(s)
 	return s, err
 }
 
 func (s *SQLServer) customizeQuery(query string) string {
-	return zsql.CustomizeQuery(query, s.isSqlite)
+	return zsql.CustomizeQuery(query, s.Type)
 }
 
 func (s *SQLServer) setup() error {
@@ -48,7 +47,7 @@ func (s *SQLServer) setup() error {
 		login timestamp NOT NULL DEFAULT $NOW
 	)`
 	squery = s.customizeQuery(squery)
-	_, err := s.database.Exec(squery)
+	_, err := s.DB.Exec(squery)
 	if err != nil {
 		zlog.Error(err, "create users", squery)
 		return err
@@ -65,14 +64,14 @@ func (s *SQLServer) setup() error {
 		used timestamp NOT NULL DEFAULT $NOW
 	)`
 	squery = s.customizeQuery(squery)
-	_, err = s.database.Exec(squery)
+	_, err = s.DB.Exec(squery)
 	if err != nil {
 		zlog.Error(err, "create tokens", squery)
 		return err
 	}
 	squery = `CREATE INDEX IF NOT EXISTS idx_tokens_ids ON user_sessions (token, userid)`
 	squery = s.customizeQuery(squery)
-	_, err = s.database.Exec(squery)
+	_, err = s.DB.Exec(squery)
 	// zlog.Info("Createindex:", err)
 	if err != nil {
 		zlog.Error(err, "create token index", squery)
@@ -103,7 +102,7 @@ func (s *SQLServer) IsTokenValid(token string) bool {
 	// zlog.Info("IsTokenValid s:", s != nil)
 	squery := "SELECT true FROM user_sessions WHERE token=$1"
 	squery = s.customizeQuery(squery)
-	row := s.database.QueryRow(squery, token)
+	row := s.DB.QueryRow(squery, token)
 	row.Scan(&exists)
 	return exists
 }
@@ -112,7 +111,7 @@ func (s *SQLServer) GetUserForID(id int64) (User, error) {
 	var user User
 	squery := "SELECT " + allUserFields + " FROM users WHERE id=$1 LIMIT 1"
 	squery = s.customizeQuery(squery)
-	row := s.database.QueryRow(squery, id)
+	row := s.DB.QueryRow(squery, id)
 	err := row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions), &user.Created, &user.Login)
 	if err != nil {
 		return user, NoUserError
@@ -123,7 +122,7 @@ func (s *SQLServer) GetUserForID(id int64) (User, error) {
 func (s *SQLServer) GetUserIDFromToken(token string) (id int64, err error) {
 	squery := "SELECT userid FROM user_sessions WHERE token=$1 LIMIT 1"
 	squery = s.customizeQuery(squery)
-	row := s.database.QueryRow(squery, token)
+	row := s.DB.QueryRow(squery, token)
 	err = row.Scan(&id)
 	if err != nil {
 		zlog.Error(err, squery, token)
@@ -131,7 +130,7 @@ func (s *SQLServer) GetUserIDFromToken(token string) (id int64, err error) {
 	}
 	squery = "UPDATE user_sessions SET used=$NOW WHERE token=$1"
 	squery = s.customizeQuery(squery)
-	_, err = s.database.Exec(squery, token)
+	_, err = s.DB.Exec(squery, token)
 	if err != nil {
 		zlog.Error(err, squery, token)
 		return 0, AuthFailedError
@@ -142,7 +141,7 @@ func (s *SQLServer) GetUserIDFromToken(token string) (id int64, err error) {
 func (s *SQLServer) DeleteUserForID(id int64) error {
 	squery := "DELETE FROM users WHERE id=$1"
 	squery = s.customizeQuery(squery)
-	_, err := s.database.Exec(squery, id)
+	_, err := s.DB.Exec(squery, id)
 	if err == nil {
 		err = s.UnauthenticateUser(id)
 	}
@@ -153,7 +152,7 @@ func (s *SQLServer) SetAdminForUser(id int64, isAdmin bool) error {
 	var perm []string
 	squery := "SELECT permissions FROM users WHERE id=$1"
 	squery = s.customizeQuery(squery)
-	tx, err := s.database.Begin()
+	tx, err := s.DB.Begin()
 	if err != nil {
 		return err
 	}
@@ -176,7 +175,7 @@ func (s *SQLServer) SetAdminForUser(id int64, isAdmin bool) error {
 func (s *SQLServer) ChangeUserNameForUser(id int64, username string) error {
 	squery := "UPDATE users SET username=$1 WHERE id=$2"
 	squery = s.customizeQuery(squery)
-	_, err := s.database.Exec(squery, username, id)
+	_, err := s.DB.Exec(squery, username, id)
 	return err
 }
 
@@ -186,7 +185,7 @@ func (s *SQLServer) ChangePasswordForUser(ci zrpc2.ClientInfo, id int64, passwor
 	squery := "UPDATE users SET passwordhash=$1, salt=$2, login=$NOW WHERE id=$3"
 	squery = s.customizeQuery(squery)
 	hash, salt, token = makeSaltyHash(password)
-	_, err = s.database.Exec(squery, hash, salt, id)
+	_, err = s.DB.Exec(squery, hash, salt, id)
 	if err == nil {
 		zlog.Info("ChangePASS:", hash)
 		err = s.UnauthenticateUser(id)
@@ -209,7 +208,7 @@ func (s *SQLServer) GetAllUsers() (us []AllUserInfo, err error) {
 	// squery := "SELECT id, username, permissions, created, login FROM users ORDER BY username ASC"
 	squery := "SELECT id, username, permissions, created, login, (SELECT COUNT(*) FROM user_sessions us WHERE us.userid=u.id) FROM users u ORDER BY username ASC"
 	squery = s.customizeQuery(squery)
-	rows, err := s.database.Query(squery)
+	rows, err := s.DB.Query(squery)
 	if err != nil {
 		return
 	}
@@ -229,7 +228,7 @@ const allUserFields = "id, username, passwordhash, salt, permissions, created, l
 func (s *SQLServer) GetUserForUserName(username string) (user User, err error) {
 	squery := "SELECT " + allUserFields + " FROM users WHERE username=$1 LIMIT 1"
 	squery = s.customizeQuery(squery)
-	row := s.database.QueryRow(squery, username)
+	row := s.DB.QueryRow(squery, username)
 	err = row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions), &user.Created, &user.Login)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -244,7 +243,7 @@ func (s *SQLServer) UnauthenticateToken(token string) error {
 	// zlog.Info("Unauth token", token, zlog.CallingStackString())
 	squery := "DELETE FROM user_sessions WHERE token=$1"
 	squery = s.customizeQuery(squery)
-	_, err := s.database.Exec(squery, token)
+	_, err := s.DB.Exec(squery, token)
 	return err
 }
 
@@ -252,7 +251,7 @@ func (s *SQLServer) UnauthenticateUser(id int64) error {
 	// zlog.Info("Unauth user", id, zlog.CallingStackString())
 	squery := "DELETE FROM user_sessions WHERE userid=$1"
 	squery = s.customizeQuery(squery)
-	_, err := s.database.Exec(squery, id)
+	_, err := s.DB.Exec(squery, id)
 	return err
 }
 
@@ -260,14 +259,14 @@ func (s *SQLServer) AddNewSession(session Session) error {
 	squery := `INSERT INTO user_sessions (token, userid, clientid, useragent, ipaddress) VALUES ($1, $2, $3, $4, $5)`
 	squery = s.customizeQuery(squery)
 	// zlog.Info("SQL AddNewSession:", zlog.Full(session))
-	_, err := s.database.Exec(squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
+	_, err := s.DB.Exec(squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
 	if err != nil {
 		zlog.Error(err, "insert", squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
 		return err
 	}
 	squery = "UPDATE users SET login=$NOW WHERE id=$1"
 	squery = s.customizeQuery(squery)
-	_, err = s.database.Exec(squery, session.UserID)
+	_, err = s.DB.Exec(squery, session.UserID)
 	if err != nil {
 		zlog.Error(err, "update user", squery, session.UserID)
 		return err
@@ -278,7 +277,7 @@ func (s *SQLServer) AddNewSession(session Session) error {
 func (s *SQLServer) AddNewUser(username, password, hash, salt string, perm []string) (id int64, err error) {
 	squery := `INSERT INTO users (username, passwordhash, salt, permissions) VALUES ($1, $2, $3, $4) RETURNING id`
 	squery = s.customizeQuery(squery)
-	row := s.database.QueryRow(squery, username, hash, salt, pq.Array(perm))
+	row := s.DB.QueryRow(squery, username, hash, salt, pq.Array(perm))
 	err = row.Scan(&id)
 	if err != nil {
 		zlog.Error(err, "insert error:")
@@ -344,7 +343,7 @@ func (s *SQLServer) Register(ci zrpc2.ClientInfo, username, password string, mak
 func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci zrpc2.ClientInfo, change ClientUserInfo) error {
 	squery := "UPDATE users SET username=$1, permissions=$2 WHERE id=$3"
 	squery = s.customizeQuery(squery)
-	_, err := s.database.Exec(squery, change.UserName, pq.Array(change.Permissions), change.UserID)
+	_, err := s.DB.Exec(squery, change.UserName, pq.Array(change.Permissions), change.UserID)
 	if err != nil {
 		return err
 	}

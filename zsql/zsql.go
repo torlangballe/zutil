@@ -18,11 +18,17 @@ type (
 	JSONStringArray    []string
 )
 
-type UpdateInfoSend struct {
-	Rows         any
+type UpsertInfo struct {
+	Rows         SQLDictSlice
 	TableName    string
 	SetColumns   map[string]string
 	EqualColumns map[string]string
+	OffsetQuery  string
+}
+
+type UpsertResult struct {
+	LastInsertID int64
+	Offset       int64
 }
 
 type SelectInfo struct {
@@ -31,12 +37,22 @@ type SelectInfo struct {
 	Trailer    string
 }
 
+type BaseType int
+
+const (
+	SQLite BaseType = iota + 1
+	Postgres
+	MySQL
+)
+
 var replaceDollarRegex = regexp.MustCompile(`(\$[\d+])`) // Used by CustomizeQuery to find/replace $x
 
-// CustomizeQuery can make a sqlite or psql query, replacing $x with > for sqlite.
-// It also replaces $NOW and $PRIMARY-INT-INC with what is needed for each DB type.
-func CustomizeQuery(query string, isSqlite bool) string {
-	if isSqlite {
+// CustomizeQuery can make a sqlite or psql (or other in future) query, replacing $x with > for sqlite.
+// It also replaces $NOW, $SERIAL and $PRIMARY-INT-INC with what is needed for each DB type.
+func CustomizeQuery(query string, btype BaseType) string {
+	switch btype {
+	case SQLite:
+		query = strings.Replace(query, "$SERIAL", "BIGINT", -1)
 		query = strings.Replace(query, "$NOW", "CURRENT_TIMESTAMP", -1)
 		query = strings.Replace(query, "$PRIMARY-INT-INC", "INTEGER PRIMARY KEY AUTOINCREMENT", -1)
 		i := 1
@@ -48,9 +64,13 @@ func CustomizeQuery(query string, isSqlite bool) string {
 			i++
 			return "?"
 		})
-	} else {
+	case Postgres:
+		query = strings.Replace(query, "$SERIAL", "SERIAL", -1)
 		query = strings.Replace(query, "$NOW", "NOW()", -1)
 		query = strings.Replace(query, "$PRIMARY-INT-INC", "SERIAL PRIMARY KEY", -1)
+
+	default:
+		panic("bad base")
 	}
 	return query
 }

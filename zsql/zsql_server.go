@@ -14,30 +14,29 @@ import (
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zrpc2"
 	"github.com/torlangballe/zutil/zstr"
 )
 
-type SQLCalls zrpc2.CallsBase
-
-type UpdateInfoReceive struct {
-	Rows         []zdict.Dict
-	TableName    string
-	SetColumns   map[string]string
-	EqualColumns map[string]string
+type Base struct {
+	DB   *sql.DB
+	Type BaseType
 }
 
+type SQLCalls zrpc2.CallsBase
+type SQLDictSlice []zdict.Dict
+
 var (
-	Calls        = new(SQLCalls)
-	MainDatabase *sql.DB
-	MainIsSqlite bool
+	Calls = new(SQLCalls)
+	Main  Base
 )
 
 func InitMainSQLite(filePath string) error {
 	var err error
-	MainDatabase, err = NewSQLite(filePath)
-	MainIsSqlite = true
+	Main.DB, err = NewSQLite(filePath)
+	Main.Type = SQLite
 	return err
 }
 
@@ -125,13 +124,13 @@ func FieldParametersFromStruct(istruct interface{}, skip []string, start int) (p
 	return
 }
 
-func GetSQLTypeForReflectKind(item zreflect.Item, isSQLite bool) string {
+func GetSQLTypeForReflectKind(item zreflect.Item, btype BaseType) string {
 	var stype string
 	switch item.Kind {
 	case zreflect.KindBool:
 		stype = "SMALLINT"
 	case zreflect.KindInt:
-		if isSQLite {
+		if btype == SQLite {
 			stype = "INTEGER"
 			break
 		}
@@ -183,7 +182,7 @@ func FieldValuesFromStruct(istruct interface{}, skip []string) (values []interfa
 	return
 }
 
-func FieldInfosFromStruct(istruct interface{}, skip []string, isSQLite bool) (infos []FieldInfo) {
+func FieldInfosFromStruct(istruct interface{}, skip []string, btype BaseType) (infos []FieldInfo) {
 	items, err := zreflect.ItterateStruct(istruct, zreflect.Options{UnnestAnonymous: true})
 	if err != nil {
 		zlog.Fatal(err, "get items")
@@ -210,7 +209,7 @@ func FieldInfosFromStruct(istruct interface{}, skip []string, isSQLite bool) (in
 		f.IsPrimary = (zstr.IndexOf("primary", parts) != -1)
 		f.Index = i
 		f.SQLName = name
-		f.SQLType = GetSQLTypeForReflectKind(item, isSQLite)
+		f.SQLType = GetSQLTypeForReflectKind(item, btype)
 		f.Kind = item.Kind
 		f.FieldName = item.FieldName
 		f.JSONName = zstr.FirstToLower(item.FieldName)
@@ -220,8 +219,7 @@ func FieldInfosFromStruct(istruct interface{}, skip []string, isSQLite bool) (in
 }
 
 func CreateSQLite3TableCreateStatementFromStruct(istruct interface{}, table string) (query string, infos []FieldInfo) {
-	isSQLite := true
-	infos = FieldInfosFromStruct(istruct, nil, isSQLite)
+	infos = FieldInfosFromStruct(istruct, nil, SQLite) // hardcode SQLite for now
 	// zlog.Info("CreateSQLite3TableCreateStatementFromStruct", reflect.ValueOf(istruct).IsZero())
 	for _, f := range infos {
 		if query == "" {
@@ -269,6 +267,7 @@ func InsertIDStruct(rq RowQuerier, s interface{}, table string) (id int64, err e
 		insertQueries[key] = query
 	}
 	vals := FieldValuesFromStruct(s, skip)
+	query = CustomizeQuery(query, Main.Type)
 	row := rq.QueryRow(query, vals...)
 	err = row.Scan(&id)
 	zlog.AssertNotError(err, insertQueries, vals)
@@ -290,7 +289,7 @@ func addTo(i *int, params *[]any, set *[]string, fieldName string, value any, fi
 	return true
 }
 
-func (sc *SQLCalls) UpdateStructs(info UpdateInfoReceive) error {
+func (sc *SQLCalls) UpdateRows(info UpsertInfo) error {
 	var params []any
 	var sets, wheres []string
 
@@ -304,8 +303,9 @@ func (sc *SQLCalls) UpdateStructs(info UpdateInfoReceive) error {
 		}
 		query := "UPDATE " + info.TableName + " SET " + strings.Join(sets, ",")
 		query += " WHERE " + strings.Join(wheres, ",")
-		_, err := MainDatabase.Exec(query, params...)
-		zlog.Info("SQLCalls.UpdateStructs:", query, params, err)
+		query = CustomizeQuery(query, Main.Type)
+		_, err := Main.DB.Exec(query, params...)
+		zlog.Info("SQLCalls.UpdateRows:", query, params, err)
 		if err != nil {
 			return err
 		}
@@ -313,9 +313,67 @@ func (sc *SQLCalls) UpdateStructs(info UpdateInfoReceive) error {
 	return nil
 }
 
-func SelectAnySlice[S any](db *sql.DB, resultSlice *[]S, query string, skipFields []string) error {
+// InsertRows creates an insert query for all info.Rows
+func (sc *SQLCalls) InsertRows(info UpsertInfo, result *UpsertResult) error {
+	var params []any
+	var columns []string
+	fields := zmap.GetKeysAsStrings(info.Rows[0])
+	for _, f := range fields {
+		columns = append(columns, info.SetColumns[f])
+	}
+	query := "INSERT INTO " + info.TableName + "(" + strings.Join(columns, ",") + ") VALUES "
+	i := 1
+	for _, row := range info.Rows {
+		var vals string
+		for j, f := range fields {
+			if j != 0 {
+				vals += ","
+			}
+			vals += fmt.Sprint("$", i)
+			i++
+			params = append(params, row[f])
+		}
+		query += "(" + vals + ")"
+	}
+	hasLastID := (len(info.Rows) == 1 && len(info.EqualColumns) == 1)
+	if hasLastID {
+		query += " RETURNING " + zmap.GetAnyKeyAsString(info.EqualColumns)
+	}
+	query = CustomizeQuery(query, Main.Type)
+	r, err := Main.DB.Exec(query, params...)
+	zlog.Info("SQLCalls.InsertRows:", query, params) //, err)
+	if err != nil {
+		return err
+	}
+	if hasLastID {
+		result.LastInsertID, _ = r.LastInsertId()
+	}
+	if info.OffsetQuery != "" {
+		row := Main.DB.QueryRow(info.OffsetQuery)
+		err := row.Scan(&result.Offset)
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
+
+func (sc *SQLCalls) ExecuteQuery(query string, rowsAffected *int64) error {
+	query = CustomizeQuery(query, Main.Type)
+	result, err := Main.DB.Exec(query)
+	zlog.Info("Exec:", query, err)
+	if err != nil {
+		return err
+	}
+	*rowsAffected, _ = result.RowsAffected()
+	return nil
+}
+
+func SelectAnySlice[S any](base *Base, resultSlice *[]S, query string, skipFields []string) error {
 	var s S
-	rows, err := db.Query(query)
+	query = CustomizeQuery(query, base.Type)
+	rows, err := base.DB.Query(query)
 	if err != nil {
 		return zlog.Error(err, "select", query)
 	}
