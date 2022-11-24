@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -110,8 +111,9 @@ func Put(surl string, params Parameters, send, receive interface{}) (resp *http.
 
 // SendBody uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
 // receive can be []byte, string or a struct to unmarashal to
-func SendBody(surl string, params Parameters, send, receive interface{}) (resp *http.Response, err error) {
+func SendBody(surl string, params Parameters, send, receive interface{}) (*http.Response, error) {
 	// start := time.Now()
+	var err error
 	bout, got := send.([]byte)
 	if got {
 		if params.ContentType == "" {
@@ -131,8 +133,7 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (resp *
 			} else {
 				bout, err = json.Marshal(send)
 				if err != nil {
-					err = zlog.Error(err, "marshal")
-					return
+					return nil, zlog.Error(err, "marshal")
 				}
 			}
 			if params.ContentType == "" {
@@ -141,19 +142,8 @@ func SendBody(surl string, params Parameters, send, receive interface{}) (resp *
 		}
 	}
 	params.Body = bout
-	resp, code, err := SendBytesSetContentLength(surl, params)
-	if err != nil || code >= 300 {
-		if params.PrintBody && resp != nil {
-			zlog.Info("Body:\n", GetCopyOfResponseBodyAsString(resp))
-		}
-		if resp != nil {
-			resp.Body.Close()
-		}
-		//		zlog.Error(err, params.Method, "send bytes", time.Since(start), params.TimeoutSecs, surl)
-		err = MakeHTTPError(err, code, "")
-		return
-	}
-	return processResponse(surl, resp, params.PrintBody, receive)
+	resp, _, err := SendBytesSetContentLength(surl, params)
+	return processResponse(surl, resp, params.PrintBody, receive, err)
 }
 
 // var normalClient = &http.Client{
@@ -274,16 +264,14 @@ func GetResponse(surl string, params Parameters) (resp *http.Response, err error
 func Get(surl string, params Parameters, receive interface{}) (resp *http.Response, err error) {
 	params.Method = http.MethodGet
 	resp, err = GetResponse(surl, params)
-	if err != nil || resp == nil {
-		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
-		}
-		return
-	}
-	return processResponse(surl, resp, params.PrintBody, receive)
+	return processResponse(surl, resp, params.PrintBody, receive, err)
 }
 
-func processResponse(surl string, resp *http.Response, printBody bool, receive interface{}) (*http.Response, error) {
+func processResponse(surl string, resp *http.Response, printBody bool, receive interface{}, err error) (*http.Response, error) {
+	if resp == nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 	if printBody {
 		fmt.Println("dump:", resp.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(resp)+"\n")
 	}
@@ -292,6 +280,16 @@ func processResponse(surl string, resp *http.Response, printBody bool, receive i
 	}
 	if resp.Body != nil {
 		defer resp.Body.Close()
+	}
+	if err != nil {
+		var m zdict.Dict
+		if json.Unmarshal([]byte(GetCopyOfResponseBodyAsString(resp)), &m) == nil {
+			str, _ := m["error"].(string)
+			if str != "" {
+				err = errors.New(str)
+			}
+		}
+		return resp, err
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -365,14 +363,14 @@ func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorizat
 }
 
 func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Response, code int, err error) {
-	zlog.Assert(len(params.Body) != 0 || params.Reader != nil, surl)
+	// zlog.Assert(len(params.Body) != 0 || params.Reader != nil, surl)
 	zlog.Assert(params.ContentType != "")
 	zlog.Assert(params.Method != "")
 	// params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
 	params.Headers["Content-Type"] = params.ContentType
 	// zlog.Info("SendBytesSetContentLength:", params.Method, surl)
 	if params.PrintBody {
-		zlog.Info("zhttp.SendBytesSetContentLength:", surl, "\n", string(params.Body))
+		// zlog.Info("zhttp.SendBytesSetContentLength:", surl, "\n", string(params.Body))
 		for h, s := range params.Headers {
 			zlog.Info(h+":", s)
 		}
