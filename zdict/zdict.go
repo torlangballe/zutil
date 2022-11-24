@@ -8,7 +8,9 @@ import (
 	"net/url"
 	"reflect"
 	"sort"
+	"strings"
 
+	"github.com/torlangballe/zutil/zbits"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
@@ -28,6 +30,10 @@ type Items []Item
 
 type ItemsGetter interface {
 	GetItems() Items
+}
+
+func BitsetToItem(bi zbits.BitsetItem) Item {
+	return Item{Name: bi.TitleOrName(), Value: bi.Mask}
 }
 
 func (items Items) Equal(to Items) bool {
@@ -102,6 +108,25 @@ func (d Dict) RemoveAll() {
 
 func (d Dict) AsURLParameters() string {
 	return d.ToURLValues().Encode()
+}
+
+func (d Dict) AsString(assigner, separator string) string {
+	var all []string
+	for k, v := range d {
+		all = append(all, fmt.Sprint(k, assigner, v))
+	}
+	return strings.Join(all, separator)
+}
+
+func FromString(str, assigner, separator string) Dict {
+	d := Dict{}
+	for _, part := range strings.Split(str, separator) {
+		var key, val string
+		if zstr.SplitN(part, assigner, &key, &val) {
+			d[key] = val
+		}
+	}
+	return d
 }
 
 func FromStruct(structure interface{}, lowerFirst bool) Dict {
