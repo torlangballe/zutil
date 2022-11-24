@@ -99,7 +99,7 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 }
 
 func (r *Repeater) Stop() {
-	if r.ticker != nil {
+	if r != nil && r.ticker != nil {
 		r.stop <- true
 	}
 }
