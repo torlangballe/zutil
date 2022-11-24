@@ -41,7 +41,7 @@ var TestTime = MustParse("2020-05-17T10:30:45.0+02:00")     // Random time we ca
 
 // https://github.com/jinzhu/now -- interesting library for getting start of this minute etc
 
-func Now() Differ {
+func NewDiffer() Differ {
 	return Differ(time.Now())
 }
 
