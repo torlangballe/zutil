@@ -23,6 +23,13 @@ func BSItemTitled(name string, mask int64, title string) BitsetItem {
 	return BitsetItem{Name: name, Mask: mask, Title: title}
 }
 
+func (bi BitsetItem) TitleOrName() string {
+	if bi.Title != "" {
+		return bi.Title
+	}
+	return bi.Name
+}
+
 func BitSetOwnerToString(b interface{}) string {
 	bso := b.(BitsetItemsOwner)
 	bitset := bso.GetBitsetItems()
@@ -88,4 +95,13 @@ func Int64ToStringFromList(n int64, list []BitsetItem) string {
 		}
 	}
 	return str
+}
+
+func FindSingleMaskInList(n int64, list []BitsetItem) (*BitsetItem, int) {
+	for i, l := range list {
+		if l.Mask&n != 0 {
+			return &list[i], i
+		}
+	}
+	return nil, -1
 }
