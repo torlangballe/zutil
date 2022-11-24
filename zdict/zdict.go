@@ -147,49 +147,61 @@ func FromStruct(structure interface{}, lowerFirst bool) Dict {
 }
 
 func (d Dict) ToStruct(structPtr interface{}) {
-	options := zreflect.Options{UnnestAnonymous: true, Recursive: true}
-	rootItems, err := zreflect.ItterateStruct(structPtr, options)
-	if err != nil {
-		panic(err)
-	}
-	for _, item := range rootItems.Children {
-		var val interface{}
-		name := item.FieldName
-		vals := zreflect.GetTagAsMap(item.Tag)["zdict"]
-		hasTag := (len(vals) != 0)
+	zreflect.ForEachField(structPtr, func(index int, fval reflect.Value, sf reflect.StructField) {
+		// zlog.Info("Dict2Struct1:", sf.Name, sf.Anonymous)
+		if sf.Anonymous {
+			if fval.CanAddr() {
+				d.ToStruct(fval.Addr().Interface())
+			} else {
+				zlog.Info("2struct: !addr", sf.Name)
+			}
+			return
+		}
+		dtags := zreflect.GetTagAsMap(string(sf.Tag))["zdict"]
+		name := sf.Name
+		hasTag := (len(dtags) != 0)
 		if hasTag {
-			name = vals[0]
+			name = dtags[0]
 		}
 		val, got := d[name]
 		if !got && !hasTag {
-			val, got = d[zstr.FirstToTitleCase(name)]
+			name = zstr.FirstToTitleCase(name)
+			val, got = d[name]
 		}
-		if got {
-			switch item.Kind {
-			case zreflect.KindString:
-				str, got := val.(string)
-				zlog.Assert(got)
-				item.Value.Addr().Elem().SetString(str)
-			case zreflect.KindFloat:
-				f, err := zfloat.GetAny(val)
-				zlog.AssertNotError(err, item.FieldName, reflect.ValueOf(val).Kind())
-				item.Value.Addr().Elem().SetFloat(f)
-			case zreflect.KindInt:
-				n, err := zint.GetAny(val)
-				zlog.AssertNotError(err)
-				item.Value.Addr().Elem().SetInt(n)
-			case zreflect.KindBool:
-				b, isBool := val.(bool)
-				if !isBool {
-					str, _ := val.(string)
-					if str != "" {
-						b = zbool.FromString(str, false)
-					}
+		// zlog.Info("Dict2Struct1:", name, fval.Kind())
+		switch fval.Kind() {
+		case reflect.String:
+			str, got := val.(string)
+			zlog.Assert(got)
+			fval.Addr().Elem().SetString(str)
+		case reflect.Float32, reflect.Float64:
+			f, err := zfloat.GetAny(val)
+			zlog.AssertNotError(err, name, fval.Kind())
+			fval.Addr().Elem().SetFloat(f)
+		case reflect.Int:
+			n, err := zint.GetAny(val)
+			zlog.AssertNotError(err)
+			fval.Addr().Elem().SetInt(n)
+		case reflect.Bool:
+			b, isBool := val.(bool)
+			if !isBool {
+				str, _ := val.(string)
+				if str != "" {
+					b = zbool.FromString(str, false)
 				}
-				item.Value.Addr().Elem().SetBool(b)
+			}
+			fval.Addr().Elem().SetBool(b)
+		case reflect.Map:
+			_, got1 := fval.Interface().(map[string]string)
+			_, got2 := val.(map[string]string)
+			// zlog.Info("Got1&2", sdict, ddict, got1, got2)
+			if got1 && got2 {
+				fval.Set(reflect.ValueOf(val))
 			}
 		}
-	}
+		// zlog.Info("Dict2Struct:", name, val, fval.Interface())
+	})
+
 }
 
 func FromURLValues(values url.Values) Dict {
@@ -204,6 +216,10 @@ func (d Dict) ToURLValues() url.Values {
 	vals := url.Values{}
 	for k, v := range d {
 		str := fmt.Sprint(v)
+		m, _ := v.(map[string]string)
+		if m != nil {
+			str = zstr.ArgsToString(m, ",", "=", "")
+		}
 		vals.Add(k, str)
 	}
 	return vals
