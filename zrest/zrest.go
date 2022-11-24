@@ -1,57 +1,34 @@
 package zrest
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zstr"
 
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
 )
 
-var RunningOnServer bool
-var AppURLPrefix = "/"
-
-// Formats a JSON string (linebreaks + identation).
-func formatJSON(input []byte) (out string, err error) {
-	buf := bytes.NewBuffer([]byte{})
-	err = json.Indent(buf, input, "", "\t")
-	if err != nil {
-		return
-	}
-	out = buf.String()
-	return
-}
-
-// Adds JSONP call back to JSON string if callback is valid. Callback
-// can only consist of :alpha: from len() = [1,35]
-
-func addJSONPCallback(json string, callback string) string {
-	regex := regexp.MustCompile("^[a-zA-Z]{1,35}$") // move this outside as "global"
-	if regex.MatchString(callback) {
-		zlog.Fatal(nil, "What is this?")
-		return fmt.Sprintf("%s(%s);", callback, json)
-	}
-	return json
-}
-
-var LegalCORSOrigins = map[string]bool{}
+var (
+	RunningOnServer  bool
+	AppURLPrefix     = "/"
+	LegalCORSOrigins = map[string]bool{}
+)
 
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	o := req.Header.Get("Origin")
-	obase := zstr.HeadUntilLast(o, ":")
+	obase := zstr.HeadUntilLast(o, ":", nil)
 	// zlog.Info("AddCorsHeaders:", o, obase, "allowed:", LegalCORSOrigins)
 	if LegalCORSOrigins[o] || LegalCORSOrigins[obase] {
 		// zlog.Info("AddCorsHeaders2:", o, "allowed:", LegalCORSOrigins)
@@ -62,42 +39,6 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Access-Control-Allow-Headers", "Origin, ZRPC-Client-Id, X-TimeZone-Offset-Hours, X-Requested-With, Content-Type, Accept, Access-Token")
 		return
 	}
-	// if o != "" {
-	// 	var sport string
-	// 	u, err := url.Parse(o)
-	// 	if err == nil && port != 0 {
-	// 		port, _ := strconv.Atoi(sport)
-	// 		if o != "" && sport != "" && (port < 5000) || port > 60000 {
-	// 			zlog.Info("🟥AddCorsHeaders Fail2:", sport, port, req.RemoteAddr, req.URL, o, ":", LegalCORSOrigins) // req.Header,
-	// 		}
-	// 	} else {
-	// 		zlog.Info("🟥AddCorsHeaders Fail: bad origin:", o)
-	// 	}
-	// }
-}
-
-// Returns JSON representation of given object. JSONP if callback parameter is specified.
-func ReturnResult(w http.ResponseWriter, req *http.Request, obj interface{}) {
-	ReturnResultWithHeaders(w, req, nil, obj)
-}
-
-// Returns JSON representation of given object. JSONP if callback parameter is specified.
-// Adds given headers to the response.
-func ReturnResultWithHeaders(w http.ResponseWriter, req *http.Request, headers map[string]string, obj interface{}) {
-	tmp, _ := json.Marshal(obj)
-
-	jsonRep, _ := formatJSON(tmp)
-	jsonRep = addJSONPCallback(jsonRep, req.FormValue("callback"))
-
-	//	zlog.Info("ReturnResultWithHeaders:", string(jsonRep))
-	for hName, hValue := range headers {
-		w.Header().Set(hName, hValue)
-	}
-	// w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	// w.Header().Set("Date", time.Now().In(time.UTC).Format(time.RFC3339))
-	// AddCORSHeaders(w, req)
-
-	fmt.Fprint(w, jsonRep)
 }
 
 // Returns HTTP error code and error messages in JSON representation, with string made of args and, printed
@@ -109,34 +50,21 @@ func ReturnAndPrintError(w http.ResponseWriter, req *http.Request, errorCode int
 
 // Returns HTTP error code and error messages in JSON representation.
 func ReturnError(w http.ResponseWriter, req *http.Request, message string, errorCode int) {
-	resMap := make(map[string][]string)
-	resMap["messages"] = []string{message}
-	tmp, _ := json.Marshal(resMap)
-	jsonRep, _ := formatJSON(tmp)
-
-	jsonRep = addJSONPCallback(jsonRep, req.FormValue("callback"))
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Date", time.Now().In(time.UTC).Format(time.RFC3339))
-
-	AddCORSHeaders(w, req)
-	//	zlog.Info("ReturnError:", errorCode, messages)
-	if errorCode == 0 {
-		errorCode = http.StatusInternalServerError
-	}
 	w.WriteHeader(errorCode)
-	fmt.Fprint(w, jsonRep)
+	ReturnDict(w, req, zdict.Dict{"error": message})
 }
 
 // Returns {"somekey":<some interface{}>}.
 func ReturnSingle(w http.ResponseWriter, req *http.Request, key string, val interface{}) {
-	resp := map[string]interface{}{key: val}
-	tmp, _ := json.Marshal(resp)
-	jsonRep := string(tmp)
-	jsonRep = addJSONPCallback(jsonRep, req.FormValue("callback"))
+	ReturnDict(w, req, zdict.Dict{key: val})
+}
+
+func ReturnDict(w http.ResponseWriter, req *http.Request, dict zdict.Dict) {
+	data, _ := json.Marshal(dict)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Date", time.Now().In(time.UTC).Format(time.RFC3339))
 	AddCORSHeaders(w, req)
-	fmt.Fprint(w, jsonRep)
+	w.Write(data)
 }
 
 func GetTimeZoneFromRequest(req *http.Request) *time.Location {
@@ -231,7 +159,13 @@ func AddFileHandler(router *mux.Router, pattern, dir string) *mux.Route {
 		var path string
 		if zstr.HasPrefix(req.URL.Path, AppURLPrefix+pattern, &path) {
 			filepath := filepath.Join(dir, path)
-			// zlog.Info("MANFHANDLE:", req.URL, filepath)
+			// if time.Since(start) < time.Second*10 {
+			// 	zlog.Info("MANFHANDLE:", req.URL, filepath)
+			// 	if strings.HasSuffix(filepath, "image.m3u8") {
+			// 		str, _ := zfile.ReadStringFromFile(filepath)
+			// 		zlog.Info("Serve Manifest:", req.URL.Path, str)
+			// 	}
+			// }
 			http.ServeFile(w, req, filepath)
 			return
 		}
@@ -243,7 +177,6 @@ func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, 
 	pattern = AppURLPrefix + pattern
 	// zlog.Info("zrest.AddHandler:", pattern)
 	defer zlog.HandlePanic(false)
-	//!!! http.Handle(pattern, router) // do we need this????
 	if router == nil {
 		http.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
 			f(w, req)
