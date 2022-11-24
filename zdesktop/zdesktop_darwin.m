@@ -90,6 +90,44 @@ NSScreen *getBestScreenForBounds(CGRect bounds) {
     return bestScreen;
 }
 
+void CloseWindowForWindowRef(AXUIElementRef winRef) {
+    AXUIElementRef buttonRef = nil;
+    AXError err = AXUIElementCopyAttributeValue(winRef, kAXCloseButtonAttribute, (CFTypeRef*)&buttonRef);
+    if (buttonRef == nil) { // it might be sheet in chrome window 
+        return;
+    }
+    AXError err2 = AXUIElementPerformAction(buttonRef, kAXPressAction);
+    if (buttonRef != nil) {
+        CFRelease(buttonRef);
+    }
+}
+
+void CloseWindowsForPIDIfNotInTitles(int pid, char *stitles) {
+    // NSLog(@"CloseWindowsForPIDIfNotInTitles %d %s\n", pid, "xxx");
+    NSString *nsTitles = [NSString stringWithUTF8String: stitles];
+    NSArray *titles = [nsTitles componentsSeparatedByString:@"\t"];
+    AXUIElementRef app = AXUIElementCreateApplication(pid);
+    CFArrayRef windows = nil;
+    AXUIElementCopyAttributeValue(app, kAXWindowsAttribute, (CFTypeRef*)&windows); // get windows of the "Pages" application
+    CFRelease(app);
+    if (windows == nil) {
+        // NSLog(@"no windows");
+        return;
+    }
+    CFIndex wins = CFArrayGetCount(windows);
+    // NSLog(@"getAXElementOfWindowForTitle: %s %p %d\n", title, windowArray, (int)nItems);
+    for (int i = 0; i < wins; i++) {
+        NSString *title = nil;
+        AXUIElementRef w = (AXUIElementRef) CFArrayGetValueAtIndex(windows, i);
+        AXUIElementCopyAttributeValue(w, kAXTitleAttribute, (CFTypeRef *)&title);
+        title = removeNonASCIIAndTruncate(title);
+        if (![titles containsObject:title]) {
+            // NSLog(@"############## Close window without playback: %@\n", title);
+            CloseWindowForWindowRef(w);
+        }
+    }
+}
+
 const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct WinInfo *find, struct WinInfo w)) {
     if (forceScreenRecording) {
         if (!canRecordScreen()) {
@@ -222,11 +260,7 @@ int CloseWindowForTitle(const char *title, long pid) {
     if (winRef == nil) {
         return 0;
     }
-    AXUIElementRef buttonRef = nil;
-    AXUIElementCopyAttributeValue(winRef, kAXCloseButtonAttribute, (CFTypeRef*)&buttonRef);
-    AXUIElementPerformAction(buttonRef, kAXPressAction);
-    CFRelease(winRef);
-    CFRelease(buttonRef);
+    CloseWindowForWindowRef(winRef);
     return 1;
 }
 
@@ -287,7 +321,7 @@ void ConvertARGBToRGBAOpaque(int w, int h, int stride, unsigned char *img) {
             p[0] = p[1];
             p[1] = p[2];
             p[2] = p[3];
-            p[3] = 255; 
+            p[3] = 255;
             p += 4;
 		}
 	}

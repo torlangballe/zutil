@@ -20,6 +20,7 @@ package zdesktop
 // int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h);
 // int ActivateWindowForTitle(const char *title, long pid);
 // void ConvertARGBToRGBAOpaque(int w, int h, int stride, unsigned char *img);
+// void CloseWindowsForPIDIfNotInTitles(int pid, char *stitles);
 // int canControlComputer(int prompt);
 // int getWindowCountForPID(long pid);
 // int canRecordScreen();
@@ -39,6 +40,7 @@ import (
 	_ "image/jpeg"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -179,6 +181,14 @@ func CloseWindowForTitleAndPID(title string, pid int64) error {
 		return nil
 	}
 	return errors.New("not found")
+}
+
+func CloseWindowsForAppIfNotInTitles(app string, titles []string) error {
+	stitles := strings.Join(titles, "\t")
+	for _, pid := range zprocess.GetPIDsForAppName(app, false) {
+		C.CloseWindowsForPIDIfNotInTitles(C.int(pid), C.CString(stitles))
+	}
+	return nil
 }
 
 func CloseWindowForTitle(title, app string) error {
