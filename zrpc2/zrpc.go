@@ -137,6 +137,7 @@ func suitableMethods(c interface{}) map[string]*methodType {
 func Register(callers ...interface{}) {
 	for _, c := range callers {
 		methods := suitableMethods(c)
+		// zlog.Info("Reg:", callers, len(methods))
 		for n, m := range methods {
 			callMethods[n] = m
 		}
