@@ -327,30 +327,34 @@ func AppendToFile(fpath, str string) error {
 	return err
 }
 
+func handleErr(err error, why, path string, file *os.File) error {
+	ferr := file.Close()
+	rerr := os.Remove(path)
+	fmt.Println(err, "{nolog}WriteToFileAtomically call write func", ferr, rerr)
+	return err
+}
+
 // WriteToFileAtomically  opens a temporary file in same directory as fpath, calls write with it's file,
 // closes it, and renames it to fpath
 func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error {
 	tempPath := fpath + fmt.Sprintf("_%x_ztemp", rand.Int31())
 	file, err := os.Create(tempPath)
 	if err != nil {
-		//		fmt.Println("WriteToFileAtomically create:", err)
+		fmt.Println("WriteToFileAtomically create:", err)
 		return err
 	}
 	err = write(file)
 	if err != nil {
-		file.Close()
-		os.Remove(tempPath)
-		fmt.Println(err, "{nolog}WriteToFileAtomically call write func")
-		return err
+		return handleErr(err, "write", tempPath, file)
+	}
+	err = file.Close()
+	if err != nil {
+		return handleErr(err, "close", tempPath, file)
 	}
 	err = os.Rename(tempPath, fpath)
 	if err != nil {
-		file.Close()
-		os.Remove(tempPath)
-		fmt.Println("{nolog}WriteToFileAtomically rename", err, tempPath, fpath)
-		return err
+		return handleErr(err, "rename", tempPath, file)
 	}
-	file.Close()
 	return nil
 }
 
@@ -488,7 +492,8 @@ func DeleteOldInSubFolders(dir string, sleep time.Duration, before time.Time, de
 				continue
 			}
 		}
-		filepath.Walk(dir+name, func(fpath string, info os.FileInfo, err error) error {
+		fold := zstr.Concat("/", dir, name)
+		err = filepath.Walk(fold, func(fpath string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
 				return nil
 			}
@@ -499,6 +504,9 @@ func DeleteOldInSubFolders(dir string, sleep time.Duration, before time.Time, de
 			total++
 			return nil
 		})
+		if err != nil {
+			zlog.Error(err, "walking subdir", fold)
+		}
 		if progress != nil && time.Since(t) > time.Second*10 {
 			t = time.Now()
 			progress(float32(i)/nlen, count, total)
