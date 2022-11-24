@@ -150,10 +150,13 @@ func HeadUntil(str, sep string) string {
 	return str[:i]
 }
 
-func HeadUntilLast(str, sep string) string {
+func HeadUntilLast(str, sep string, rest *string) string {
 	i := strings.LastIndex(str, sep)
 	if i == -1 {
 		return str
+	}
+	if rest != nil {
+		*rest = str[i+1:]
 	}
 	return str[:i]
 }
@@ -872,7 +875,7 @@ func IndexFrom(str, sep string, start *int) bool { // start with -1
 	return false
 }
 
-func LastLetter(str string) string {
+func LastByteAsString(str string) string {
 	if len(str) == 0 {
 		return ""
 	}
@@ -921,8 +924,8 @@ func HashTo64Hex(str string) string {
 	return fmt.Sprintf("%x", h)
 }
 
-func HashAnyToInt64(a interface{}) int64 {
-	str := fmt.Sprintf("%v", a)
+func HashAnyToInt64(a interface{}, add string) int64 {
+	str := fmt.Sprintf("%v", a) + add
 	// fmt.Println("HashAnyToInt64", str)
 	return zint.HashTo64(str)
 }
@@ -1037,6 +1040,7 @@ func FromInterface(i interface{}) string {
 }
 
 func SplitInTwo(str string, sep string) (string, string) {
+	// TODO: Use strings.Cut
 	parts := strings.SplitN(str, sep, 2)
 	if len(parts) == 2 {
 		return parts[0], parts[1]
@@ -1045,39 +1049,6 @@ func SplitInTwo(str string, sep string) (string, string) {
 		return parts[0], ""
 	}
 	return "", ""
-}
-
-func BreakIntoRuneLines(str, breakChars string, columns int) (lines [][]rune) {
-	if breakChars == "" {
-		breakChars = "\n\r –-\t"
-	}
-	runes := []rune(str)
-	lastBreak := -1
-	for {
-		added := false
-		for i, r := range runes {
-			if strings.IndexRune(breakChars, r) != -1 {
-				lastBreak = i
-			}
-			if i >= columns {
-				if lastBreak == -1 || i-lastBreak > columns/3 {
-					lastBreak = i
-				}
-				line := runes[:lastBreak]
-				runes = runes[lastBreak:]
-				lines = append(lines, line)
-				added = true
-				break
-			}
-		}
-		if !added {
-			break
-		}
-	}
-	if len(runes) > 0 {
-		lines = append(lines, runes)
-	}
-	return
 }
 
 // ReplaceAllCapturesFunc calls replace with contents of the first capture group and index 1, then next and index 2 etc.
@@ -1222,3 +1193,11 @@ var FileEscapeReplacer = strings.NewReplacer(
 	"/", "%2f",
 	":", "%3a",
 )
+
+func ReplaceLinefeeds(str, with string) string {
+	rep := strings.NewReplacer(
+		"\r\n", with,
+		"\n", with,
+		"\r", with)
+	return rep.Replace(str)
+}
