@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"syscall/js"
 
+	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
 )
@@ -37,6 +38,13 @@ func (k Store) getItem(key string, v interface{}) bool {
 		if sp != nil {
 			*sp = o.String()
 			// zlog.Info("get kv item string:", o.String())
+		}
+		ib, _ := v.(*bool)
+		if ib != nil {
+			*ib, err = zbool.FromStringWithError(o.String())
+			if zlog.OnError(err, "parse bool") {
+				return false
+			}
 		}
 		ip, _ := v.(*int64)
 		if ip != nil {
