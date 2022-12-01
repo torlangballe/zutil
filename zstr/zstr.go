@@ -292,6 +292,10 @@ func Concat(divider string, parts ...interface{}) string {
 	return str
 }
 
+func Spaced(parts ...interface{}) string {
+	return Concat(" ", parts...)
+}
+
 func IndexOf(str string, strs []string) int {
 	for i, s := range strs {
 		//		fmt.Print("IndexOf: '", str, "' : '", s, "'\n")
