@@ -35,9 +35,13 @@ type SQLTime struct {
 type Differ time.Time
 
 // Distant is a very far-future time when you want to do things forever etc
-var Distant = time.Unix(1<<62, 0)
-var BigTime = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000
-var TestTime = MustParse("2020-05-17T10:30:45.0+02:00")     // Random time we can use in tests when it has to look normal and be a fixed time
+var (
+	Distant                  = time.Unix(1<<62, 0)
+	BigTime                  = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000
+	TestTime                 = MustParse("2020-05-17T10:30:45.0+02:00")      // Random time we can use in tests when it has to look normal and be a fixed time
+	DefaultDisplayServerTime bool
+	ServerTimezoneOffsetSecs int
+)
 
 // https://github.com/jinzhu/now -- interesting library for getting start of this minute etc
 
@@ -135,6 +139,18 @@ func IsBigTime(t time.Time) bool {
 	return t.UTC() == BigTime
 }
 
+func GetTimeWithServerLocation(t time.Time) time.Time {
+	if !DefaultDisplayServerTime {
+		//		zlog.Info("GetTimeWithServerLocation", t, ServerTimezoneOffsetSecs, t.Location())
+		t = t.Local()
+		return t
+	}
+	// zlog.Info("GetTimeWithServerLocation", t, ServerTimezoneOffsetSecs)
+	name := fmt.Sprintf("UTC%+f", float64(ServerTimezoneOffsetSecs)/3600)
+	loc := time.FixedZone(name, ServerTimezoneOffsetSecs)
+	return t.In(loc)
+}
+
 func GetNice(t time.Time, secs bool) string {
 	var str string
 	if t.IsZero() {
@@ -148,6 +164,10 @@ func GetNice(t time.Time, secs bool) string {
 	if secs {
 		f += ":05"
 	}
+	if DefaultDisplayServerTime {
+		f += "-07"
+	}
+	t = GetTimeWithServerLocation(t)
 	if IsToday(t) {
 		str = t.Format(f) + " today"
 	} else {
