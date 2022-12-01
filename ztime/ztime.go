@@ -168,7 +168,7 @@ func GetNice(t time.Time, secs bool) string {
 		f += "-07"
 	}
 	t = GetTimeWithServerLocation(t)
-	if IsToday(t) {
+	if IsToday(t) && !DefaultDisplayServerTime {
 		str = t.Format(f) + " today"
 	} else {
 		f += " 02-Jan"
