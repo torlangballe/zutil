@@ -58,6 +58,7 @@ type Options struct {
 func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, val reflect.Value, options Options) (item Item, err error) {
 	// zlog.Info("itterate:", level, fieldName, typeName, tagName)
 	item.FieldName = fieldName
+	// zlog.Assert(!val.IsZero(), val)
 	vtype := val.Type()
 	if typeName == "" {
 		typeName = vtype.Name()
