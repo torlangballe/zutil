@@ -1,5 +1,7 @@
 package zbool
 
+import "github.com/torlangballe/zutil/zlog"
+
 // BoolInd is a bool which also has an indeterminate, or unknown  state
 type BoolInd int
 
@@ -45,6 +47,21 @@ func FromString(str string, def bool) bool {
 		return def
 	}
 	return bind.Bool()
+}
+
+func FromStringWithError(str string) (bool, error) {
+	bind := FromStringWithInd(str, Unknown)
+	if bind == Unknown {
+		return false, zlog.NewError("bad tyoe:", str)
+	}
+	return bind.Bool(), nil
+}
+
+func FromBool(b bool) BoolInd {
+	if b {
+		return True
+	}
+	return False
 }
 
 func FromStringWithInd(str string, def BoolInd) BoolInd {
