@@ -309,9 +309,11 @@ func GetTagAsMap(stag string) map[string][]string {
 // TODO: Use FieldForName instead
 func FindFieldWithNameInStruct(name string, structure interface{}, anonymous bool) (reflect.Value, bool) {
 	val := reflect.ValueOf(structure)
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
+		// zlog.Info("FindFieldWithNameInStruct 2emel")
 		val = val.Elem()
 	}
+	// zlog.Info("FindFieldWithNameInStruct:", val.Kind(), val.Kind() == reflect.Pointer, val.Type())
 	vtype := val.Type()
 	n := vtype.NumField()
 	for i := 0; i < n; i++ {
