@@ -1,12 +1,10 @@
+//go:build server
 // +build server
 
 package zsql
 
 import (
 	"database/sql"
-	"database/sql/driver"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -48,7 +46,7 @@ func ReplaceDollarArguments(squery string, args ...interface{}) string {
 // 	}
 // 	return
 // }
-
+/*
 func (s *JSONStringArrayPtr) Value() (driver.Value, error) {
 	if s == nil {
 		return nil, nil
@@ -159,6 +157,7 @@ func (s *JSONStringMap) Scan(val interface{}) error {
 	}
 	return json.Unmarshal(data, s)
 }
+*/
 
 /* see zgeo.Pos, zgeo.
 

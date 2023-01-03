@@ -3,7 +3,6 @@ package zdict
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -245,15 +244,21 @@ func (d Dict) Value() (driver.Value, error) {
 }
 
 func (d *Dict) Scan(val interface{}) error {
-	//	zlog.Info("JSONStringInterfaceMap scan")
+	// zlog.Info("JSONStringInterfaceMap scan", val)
 	if val == nil {
 		*d = Dict{}
 		return nil
 	}
 	data, ok := val.([]byte)
 	if !ok {
-		return errors.New("zdict.Dict Scan unsupported data type")
+		str, ok := val.(string)
+		if ok {
+			data = []byte(str)
+		} else {
+			return zlog.NewError("zdict.Dict Scan unsupported data type", reflect.TypeOf(val), reflect.ValueOf(val).Kind())
+		}
 	}
+	// zlog.Info("JSONStringInterfaceMap scan2", string(data))
 	return json.Unmarshal(data, d)
 }
 

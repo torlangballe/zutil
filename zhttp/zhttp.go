@@ -370,10 +370,11 @@ func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Respo
 	params.Headers["Content-Type"] = params.ContentType
 	// zlog.Info("SendBytesSetContentLength:", params.Method, surl)
 	if params.PrintBody {
-		// zlog.Info("zhttp.SendBytesSetContentLength:", surl, "\n", string(params.Body))
+		zlog.Info("dum output:", surl, "\n", string(params.Body))
 		for h, s := range params.Headers {
 			zlog.Info(h+":", s)
 		}
+
 	}
 	req, client, err := MakeRequest(surl, params)
 	if err != nil {
