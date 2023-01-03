@@ -296,6 +296,20 @@ func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) 
 	})
 }
 
+func RemoveAllQuicklyWithRename(dir string) error {
+	dir = ExpandTildeInFilepath(dir)
+	newName := dir + "-temp" + zstr.GenerateRandomHexBytes(12)
+	err := os.Rename(dir, newName)
+	if err != nil {
+		return zlog.NewError(err, dir, newName)
+	}
+	go func() {
+		RemoveContents(newName)
+		os.Remove(newName)
+	}()
+	return nil
+}
+
 func RemoveContents(dir string) error {
 	dir = ExpandTildeInFilepath(dir)
 	d, err := os.Open(dir)
