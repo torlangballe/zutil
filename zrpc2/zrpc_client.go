@@ -87,3 +87,10 @@ func (c *Client) Call(method string, args, result any) error {
 	// zlog.Info("Called:", method, time.Since(start), result)
 	return nil
 }
+
+func (c *Client) CallWithTimeout(timeoutSecs float64, method string, args, result any) error {
+	n := *c
+	n.TimeoutSecs = timeoutSecs
+	return n.Call(method, args, result)
+}
+
