@@ -25,6 +25,7 @@ package zdesktop
 // int getWindowCountForPID(long pid);
 // int canRecordScreen();
 // void printWindowTitles();
+// const char *getAllWindowTitlesTabSeparated(long forPid);
 // typedef struct Image {
 //   int width;
 //   int height;
@@ -73,7 +74,7 @@ func GetCachedPIDForAppName(app string) (int64, error) {
 	// if !got { // We force new get until we have something for that app...
 	pids := zprocess.GetPIDsForAppName(app, false)
 	if len(pids) == 0 {
-		return 0, zlog.Error(nil, "no pid for", app)
+		return 0, zlog.NewError(nil, "no pid for", app)
 	}
 	pidCacheLock.Lock()
 	pid = pids[0]
@@ -137,22 +138,23 @@ func WindowWithTitleExists(title, app string) bool {
 	return false
 }
 
-func GetIDScaleAndRectForWindowTitle(title, app string) (id string, scale int, rect zgeo.Rect, err error) {
+func GetIDScaleAndRectForWindowTitle(title, app string) (id string, scale int, rect zgeo.Rect, pID int64, err error) {
 	// fmt.Println("GetIDAndScaleForWindowTitle title, app:", title, app)
-	pid, _ := GetCachedPIDForAppName(app)
-	if pid != 0 {
+	pids := zprocess.GetPIDsForAppName(app, false)
+	// pid, _ := GetCachedPIDForAppName(app)
+	// fmt.Println("SetWindowRectForTitle:", title, app, pids)
+	for _, pid := range pids {
 		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
 		w := C.WindowGetIDScaleAndRectForTitle(C.CString(title), C.long(pid))
 		serr := C.GoString(w.err)
 		// fmt.Println("GetIDAndScaleForWindowTitle2 go:", serr, w.winID)
 		if serr != "" {
 			err = errors.New(serr)
+			continue
 		}
 		if int64(w.winID) != 0 {
 			r := zgeo.RectFromXYWH(float64(w.x), float64(w.y), float64(w.w), float64(w.h))
-			return strconv.FormatInt(int64(w.winID), 10), int(w.scale), r, err
-		} else {
-			err = errors.New("bad window id: " + title)
+			return strconv.FormatInt(int64(w.winID), 10), int(w.scale), r, pid, err
 		}
 	}
 	return
@@ -164,8 +166,8 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 	// crop.Pos = zgeo.Pos{0, 100}
 	// screenLock.Lock() -- for windows
 	// defer screenLock.Unlock()
-	winID, _, _, err := GetIDScaleAndRectForWindowTitle(title, app)
-	// fmt.Println("GetImageForWindowTitle:", winID, err, title, app)
+	winID, _, _, pid, err := GetIDScaleAndRectForWindowTitle(title, app)
+	fmt.Println("GetImageForWindowTitle:", winID, err, "pid:", pid, title, app)
 	if err != nil {
 		return nil, zlog.Error(err, "get id scale")
 	}
@@ -194,6 +196,7 @@ func CloseWindowsForAppIfNotInTitles(app string, titles []string) error {
 func CloseWindowForTitle(title, app string) error {
 	//	title = getTitleWithApp(title, app)
 	pids := zprocess.GetPIDsForAppName(app, false)
+	// zlog.Info("CloseWindowForTitle:", app, title, pids)
 	for _, pid := range pids {
 		r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
 		if r == 1 {
@@ -308,7 +311,7 @@ func GetWindowImage(winID string, crop zgeo.Rect) (image.Image, error) {
 	start := time.Now()
 	cgimage := C.GetWindowImage(C.long(wid))
 	if cgimage == C.CGImageRef(0) {
-		return nil, zlog.Error(nil, "get window image returned nil", time.Since(start), wid)
+		return nil, zlog.Error(nil, "get window image returned nil", time.Since(start), "wid:", wid)
 	}
 	// zlog.Info("GetWindowImage:", time.Since(start))
 	img, err := CGImageToGoImage(cgimage, crop)
@@ -339,4 +342,17 @@ func GetWindowCountForPid(pid int64) int {
 
 func CanRecordScreen() bool {
 	return C.canRecordScreen() == 1
+}
+
+func GetAllWindowTitlesForApp(app string) []string {
+	pid, _ := GetCachedPIDForAppName(app)
+	if pid == 0 {
+		return nil
+	}
+	str := C.GoString(C.getAllWindowTitlesTabSeparated(C.long(pid)))
+	if len(str) == 0 {
+		return nil
+	}
+	// zlog.Info("GetAllWindowTitlesForApp", app, str)
+	return strings.Split(str, "\t")
 }
