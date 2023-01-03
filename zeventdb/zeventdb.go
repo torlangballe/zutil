@@ -12,6 +12,7 @@ import (
 	"time"
 
 	sqlite "github.com/mattn/go-sqlite3" // Import go-sqlite3 library
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
@@ -32,7 +33,12 @@ type Database struct {
 	FieldInfos   []zsql.FieldInfo
 	StructType   reflect.Type
 	istruct      interface{}
-	Lock         sync.Mutex // sync.RWMutex might cause corruptions, trying regular
+	Lock         deadlock.Mutex // sync.RWMutex might cause corruptions, trying regular
+}
+
+type CompareItem struct {
+	Name   string
+	Values []interface{}
 }
 
 const TimeStampFormat = "2006-01-02 15:04:05.999999999"
@@ -168,6 +174,7 @@ func (db *Database) writeItems() {
 	storeLock.Unlock()
 
 	//	for c := 0; c < 10; c++ {
+	// zlog.Info("zedb:Write:", query, vals)
 	db.Lock.Lock()
 	_, err := db.DB.Exec(query, vals...)
 	db.Lock.Unlock()
@@ -228,11 +235,6 @@ func (db *Database) writeItem(istruct interface{}) {
 }
 */
 
-type CompareItem struct {
-	Name   string
-	Values []interface{}
-}
-
 func getTimeCompare(db *Database, t time.Time, start bool) string {
 	// zlog.Info("zeventsdb get time compare:", t, start)
 	op := ">"
@@ -243,34 +245,53 @@ func getTimeCompare(db *Database, t time.Time, start bool) string {
 	return w
 }
 
-func addComps(wheres *[]string, values *[]interface{}, comps []CompareItem, isEqual bool) {
+func addComps(wheres *[]string, values *[]interface{}, comps []CompareItem) {
 	for _, c := range comps {
 		var w string
+		var like bool
+		likes := make([]bool, len(c.Values))
 		for j, v := range c.Values {
-			name := c.Name
-			neq := !zstr.HasPrefix(name, "!", &name)
-			if neq != isEqual {
-				continue
-			}
-			if j != 0 {
-				if isEqual {
-					w += " OR "
-				} else {
-					w += " AND "
-				}
-			}
 			sval, _ := v.(string)
 			if sval != "" && strings.Contains(sval, "*") {
-				sval = strings.Replace(sval, "*", "%", -1)
-				w += name + " LIKE ?"
-				*values = append(*values, sval)
-				continue
+				likes[j] = true
+				like = true
 			}
-			*values = append(*values, v)
-			if isEqual {
-				w += name + "=?"
-			} else {
-				w += name + "<>?"
+		}
+		name := c.Name
+		neq := zstr.HasPrefix(name, "!", &name)
+		// zlog.Info("addComps", like, comps, isEqual)
+		if !like {
+			if neq {
+				w += " NOT"
+			}
+			w = c.Name
+			w += " IN ("
+			w += strings.Repeat("?,", len(c.Values)-1)
+			w += "?)"
+			*values = append(*values, c.Values...)
+		} else {
+			for i, n := range strings.Split(name, "|") {
+				if i != 0 {
+					w += " OR "
+				}
+				for j, v := range c.Values {
+					if j != 0 {
+						w += " AND "
+					}
+					w += n
+					if likes[j] {
+						w += " LIKE ?"
+						str := strings.Replace(fmt.Sprint(v), "*", "%", -1)
+						*values = append(*values, str)
+						continue
+					}
+					*values = append(*values, v)
+					if neq {
+						w += n + "<>?"
+					} else {
+						w += n + "=?"
+					}
+				}
 			}
 		}
 		if w != "" {
@@ -297,8 +318,7 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 	}
 	var values []interface{}
 	var wheres []string
-	addComps(&wheres, &values, comps, true)
-	addComps(&wheres, &values, comps, false)
+	addComps(&wheres, &values, comps)
 	resultStructVal := reflect.New(db.StructType)
 
 	dir := "ASC"
@@ -327,13 +347,14 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 		where = "(" + where + fmt.Sprint(") OR id=", keepID)
 	}
 	query += " WHERE " + where
-	query += " ORDER BY " + db.TimeField + " " + dir
+	//	query += " ORDER BY " + db.TimeField + " " + dir
+	query += " ORDER BY id " + dir
 	if count != 0 {
 		query += fmt.Sprint(" LIMIT ", count)
 	}
 	// now := time.Now()
 	db.Lock.Lock()
-	// zlog.Info("🟩eventsdb.Get:", zsql.ReplaceQuestionMarkArguments(query, values...))
+	zlog.Info("🟩eventsdb.Get:", zsql.ReplaceQuestionMarkArguments(query, values...))
 	defer db.Lock.Unlock()
 	rows, err := db.DB.Query(query, values...)
 	if err != nil {
