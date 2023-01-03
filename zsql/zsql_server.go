@@ -85,6 +85,10 @@ var LineOutputReplacer = strings.NewReplacer(
 	"\t", "\\t",
 	"\r", "\\n")
 
+func (base *Base) CustomizeQuery(query string) string {
+	return CustomizeQuery(query, base.Type)
+}
+
 func FieldPointersFromStruct(istruct interface{}, skip []string) (pointers []interface{}) {
 	for _, item := range getItems(istruct, skip) {
 		a := item.Address
@@ -104,14 +108,18 @@ func FieldPointersFromStruct(istruct interface{}, skip []string) (pointers []int
 	return
 }
 
-func FieldSettingToParametersFromStruct(istruct interface{}, skip []string, prefix string, start int) (set string) {
-	for i, item := range getItems(istruct, skip) {
+func FieldSettingToParametersFromStruct(istruct interface{}, skip []string, prefix string, start int) string {
+	var set string
+	items := getItems(istruct, skip)
+	for i, item := range items {
+		// zlog.Info("FieldSettingToParametersFromStruct", i)
 		if i != 0 {
 			set += ", "
 		}
 		set += fmt.Sprintf("%s=$%d", prefix+ConvertFieldName(item), start+i)
 	}
-	return
+	// zlog.Info("FieldSettingToParametersFromStruct2", set, len(items))
+	return set
 }
 
 func FieldParametersFromStruct(istruct interface{}, skip []string, start int) (parameters string) {
@@ -257,21 +265,65 @@ func (j *JSONer) Scan(val interface{}) error {
 
 var insertQueries = map[string]string{}
 
-func InsertIDStruct(rq RowQuerier, s interface{}, table string) (id int64, err error) {
+func InsertIDStruct(rq RowQuerier, btype BaseType, ptr interface{}, table string) error {
+	rval := reflect.ValueOf(ptr)
+	zlog.Assert(rval.Kind() == reflect.Ptr)
+	// s := rval.Elem().Interface()
 	key := table + "_insertStruct"
 	skip := []string{"id"}
 	query := insertQueries[key]
 	if query == "" {
-		params := FieldParametersFromStruct(s, skip, 1)
-		query = "INSERT INTO " + table + " (" + FieldNamesStringFromStruct(s, skip, "") + ") VALUES (" + params + ") RETURNING id"
+		params := FieldParametersFromStruct(ptr, skip, 1)
+		query = "INSERT INTO " + table + " (" + FieldNamesStringFromStruct(ptr, skip, "") + ") VALUES (" + params + ") RETURNING id"
 		insertQueries[key] = query
 	}
-	vals := FieldValuesFromStruct(s, skip)
-	query = CustomizeQuery(query, Main.Type)
+	var id int64
+	vals := FieldValuesFromStruct(ptr, skip)
+	query = CustomizeQuery(query, btype)
 	row := rq.QueryRow(query, vals...)
-	err = row.Scan(&id)
-	zlog.AssertNotError(err, insertQueries, vals)
-	return
+	err := row.Scan(&id)
+	if err != nil {
+		return err
+	}
+	f, found := zreflect.FindFieldWithNameInStruct("ID", ptr, true)
+	if !found {
+		return zlog.NewError("ID not found")
+	}
+	f.SetInt(id)
+	return nil
+}
+
+func UpdateIDStruct(ex Executer, btype BaseType, ptr interface{}, table string) error {
+	rval, got := zreflect.FindFieldWithNameInStruct("ID", ptr, true)
+	zlog.Assert(got)
+	skip := []string{"id"}
+	set := FieldSettingToParametersFromStruct(ptr, skip, "", 1)
+	vals := FieldValuesFromStruct(ptr, skip)
+	vals = append(vals, rval.Interface())
+	query := "UPDATE " + table + " SET " + set + fmt.Sprintf(" WHERE id=$%d", len(vals))
+	// zlog.Info("Update:", query, len(vals))
+	query = CustomizeQuery(query, btype)
+	_, err := ex.Exec(query, vals...)
+	if err != nil {
+		return zlog.Error(err, "exec", query, vals)
+	}
+	return nil
+}
+
+func SelectIDStruct[S any](base *Base, s *S, id int64, table string) error {
+	var slice []S
+	var q QueryBase
+	q.Constraints = fmt.Sprint("WHERE id=", id)
+	q.Table = table
+	err := SelectSlicesOfAny(base, &slice, q)
+	if err != nil {
+		return err
+	}
+	if len(slice) == 0 {
+		return zlog.NewError("no slice", id)
+	}
+	*s = slice[0]
+	return nil
 }
 
 func addTo(i *int, params *[]any, set *[]string, fieldName string, value any, fieldToColumn map[string]string) bool {
@@ -370,15 +422,21 @@ func (sc *SQLCalls) ExecuteQuery(query string, rowsAffected *int64) error {
 	return nil
 }
 
-func SelectAnySlice[S any](base *Base, resultSlice *[]S, query string, skipFields []string) error {
+func SelectSlicesOfAny[S any](base *Base, resultSlice *[]S, q QueryBase) error {
 	var s S
+	fields := FieldNamesStringFromStruct(&s, q.SkipFields, "")
+	// zlog.Info("SelectSlicesOfAny", q)
+	query := zstr.Spaced("SELECT", fields, "FROM", q.Table)
+	if q.Constraints != "" {
+		query += " " + q.Constraints
+	}
 	query = CustomizeQuery(query, base.Type)
 	rows, err := base.DB.Query(query)
 	if err != nil {
 		return zlog.Error(err, "select", query)
 	}
 	defer rows.Close()
-	pointers := FieldPointersFromStruct(&s, skipFields)
+	pointers := FieldPointersFromStruct(&s, q.SkipFields)
 	for rows.Next() {
 		err = rows.Scan(pointers...)
 		if err != nil {
@@ -387,4 +445,26 @@ func SelectAnySlice[S any](base *Base, resultSlice *[]S, query string, skipField
 		*resultSlice = append(*resultSlice, s)
 	}
 	return nil
+}
+
+func SelectColumnAsSliceOfAny[A any](base *Base, query string, result *[]A) error {
+	query = CustomizeQuery(query, base.Type)
+	rows, err := base.DB.Query(query)
+	if err != nil {
+		return zlog.Error(err, "select", query)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var a A
+		err = rows.Scan(&a)
+		if err != nil {
+			return err
+		}
+		*result = append(*result, a)
+	}
+	return nil
+}
+
+func (sc *SQLCalls) SelectInt64s(query string, result *[]int64) error {
+	return SelectColumnAsSliceOfAny(&Main, query, result)
 }

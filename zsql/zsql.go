@@ -2,12 +2,11 @@ package zsql
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -37,6 +36,12 @@ type SelectInfo struct {
 	Trailer    string
 }
 
+type QueryBase struct {
+	Constraints string
+	Table       string
+	SkipFields  []string
+}
+
 type BaseType int
 
 const (
@@ -55,15 +60,16 @@ func CustomizeQuery(query string, btype BaseType) string {
 		query = strings.Replace(query, "$SERIAL", "BIGINT", -1)
 		query = strings.Replace(query, "$NOW", "CURRENT_TIMESTAMP", -1)
 		query = strings.Replace(query, "$PRIMARY-INT-INC", "INTEGER PRIMARY KEY AUTOINCREMENT", -1)
-		i := 1
-		query = zstr.ReplaceAllCapturesFunc(replaceDollarRegex, query, func(cap string, index int) string {
-			si, _ := strconv.Atoi(cap[1:])
-			if si != i {
-				zlog.Error(nil, "$x not right:", cap, i)
-			}
-			i++
-			return "?"
-		})
+		query = strings.Replace(query, "$", "?", -1)
+		// i := 1
+		// query = zstr.ReplaceAllCapturesFunc(replaceDollarRegex, query, func(cap string, index int) string {
+		// 	si, _ := strconv.Atoi(cap[1:])
+		// 	if si != i {
+		// 		zlog.Error(nil, "$x not right:", cap, i, query)
+		// 	}
+		// 	i++
+		// 	return "?"
+		// })
 	case Postgres:
 		query = strings.Replace(query, "$SERIAL", "SERIAL", -1)
 		query = strings.Replace(query, "$NOW", "NOW()", -1)
@@ -109,14 +115,23 @@ func ConvertFieldName(i zreflect.Item) string {
 func getItems(istruct interface{}, skip []string) (items []zreflect.Item) {
 	options := zreflect.Options{UnnestAnonymous: true}
 	all, _ := zreflect.ItterateStruct(istruct, options)
+	// zlog.Info("GetItems1", len(all.Children))
 outer:
 	for _, i := range all.Children {
+		var column string
 		vars := zreflect.GetTagAsMap(i.Tag)["db"]
-		if len(vars) != 0 && vars[0] == "-" {
-			continue outer
+		if len(vars) != 0 {
+			column = vars[0]
+			if column == "-" {
+				continue outer
+			}
 		}
-		if zstr.IndexOf(ConvertFieldName(i), skip) == -1 {
-			//			zlog.Info("usql getItem:", i.FieldName)
+		if column == "" {
+			column = ConvertFieldName(i)
+		}
+		// zlog.Info("GetItems:", i.FieldName, i.Tag, column)
+		if zstr.IndexOf(column, skip) == -1 {
+			// zlog.Info("usql getItem:", i.FieldName)
 			items = append(items, i)
 		}
 	}
@@ -125,12 +140,32 @@ outer:
 
 func FieldNamesStringFromStruct(istruct interface{}, skip []string, prefix string) (fields string) {
 	fs := FieldNamesFromStruct(istruct, skip, prefix)
-	return strings.Join(fs, ", ")
+	return strings.Join(fs, ",")
 }
 
-func FieldNamesFromStruct(istruct interface{}, skip []string, prefix string) (fields []string) {
-	for _, item := range getItems(istruct, skip) {
-		fields = append(fields, prefix+ConvertFieldName(item))
-	}
+func FieldNamesFromStruct(s interface{}, skip []string, prefix string) (fields []string) {
+	ForEachColumn(s, skip, func(v reflect.Value, column string, primary bool) {
+		fields = append(fields, prefix+column)
+	})
 	return
+}
+
+func ForEachColumn(s interface{}, skip []string, got func(v reflect.Value, column string, primary bool)) {
+	zreflect.ForEachField(s, func(index int, val reflect.Value, sf reflect.StructField) {
+		var column string
+		dbTags := zreflect.GetTagAsMap(string(sf.Tag))["db"]
+		if len(dbTags) == 0 || dbTags[0] == "" {
+			column = strings.ToLower(sf.Name)
+		} else {
+			column = dbTags[0]
+			if column == "-" {
+				return
+			}
+		}
+		if zstr.StringsContain(skip, column) {
+			return
+		}
+		primary := zstr.IndexOf("primary", dbTags) > 0
+		got(val, column, primary)
+	})
 }
