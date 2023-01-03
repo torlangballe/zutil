@@ -81,14 +81,17 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
 		start := time.Now()
 		dir := filepath.Join(c.workDir, c.urlPrefix, c.cacheName)
+		if zfile.NotExist(dir) {
+			return true
+		}
 		cutoff := time.Now().Add(-c.DeleteAfter)
 		err := zfile.DeleteOldInSubFolders(dir, time.Millisecond*1, cutoff, c.DeleteRatio, func(p float32, count, total int) {
 			// zlog.Info("DeleteCache:", dir, int(p*100), count, "/", total)
 		})
 		if err != nil {
-			zlog.Error(err, "delete cache", c.cacheName)
+			zlog.Error(err, "delete old in cache", c.cacheName)
 		}
-		zlog.Info("Deleted cache:", dir, time.Since(start))
+		zlog.Info("Deleted in cache:", dir, time.Since(start))
 		return true
 	})
 	// zlog.Info("zfilecache Init:", c.workDir+cacheName, c.getURL, path)
