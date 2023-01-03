@@ -154,18 +154,18 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 
 // AddFileHandler adds a file serving handler, which removes the pattern path prefix before creating the filepath.
 // It uses a FuncHandler function that is it's own http.Handler
-func AddFileHandler(router *mux.Router, pattern, dir string) *mux.Route {
+func AddFileHandler(router *mux.Router, pattern, dir string, peek func(filepath, urlpath string, req *http.Request)) *mux.Route {
 	return AddSubHandler(router, pattern, FuncHandler(func(w http.ResponseWriter, req *http.Request) {
 		var path string
 		if zstr.HasPrefix(req.URL.Path, AppURLPrefix+pattern, &path) {
 			filepath := filepath.Join(dir, path)
-			// if time.Since(start) < time.Second*10 {
-			// 	zlog.Info("MANFHANDLE:", req.URL, filepath)
-			// 	if strings.HasSuffix(filepath, "image.m3u8") {
-			// 		str, _ := zfile.ReadStringFromFile(filepath)
-			// 		zlog.Info("Serve Manifest:", req.URL.Path, str)
-			// 	}
-			// }
+			// str, err := zfile.ReadStringFromFile(filepath)
+			// zlog.OnError(err, path, filepath)
+			// str = strings.Replace(str, "\n", "•", -1)
+			// zlog.Info("Serve Manifest:", err, path, str)
+			if peek != nil {
+				peek(filepath, path, req)
+			}
 			http.ServeFile(w, req, filepath)
 			return
 		}
