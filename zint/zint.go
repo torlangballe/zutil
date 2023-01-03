@@ -12,6 +12,11 @@ import (
 
 type Slice []int
 
+type Range struct {
+	Min int
+	Max int
+}
+
 var dummy int
 
 // SizeOfInt is the size of an int type
