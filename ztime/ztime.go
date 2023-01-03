@@ -16,13 +16,14 @@ import (
 )
 
 const (
-	Iso8601Format     = "2006-01-02T15:04:05-0700"
-	Iso8601DateFormat = "2006-01-02"
-	ShortFormat       = "2006-01-02 15:04"
-	JavascriptFormat  = "2006-01-02T15:04:05-07:00"
-	JavascriptISO     = "2006-01-02T15:04:05.999Z"
-	FullCompact       = "06-Jan-02T15:04:05.9"
-	NiceFormat        = "15:04:05 02-Jan-2006" // MaxSize of GetNice()
+	ISO8601Format       = "2006-01-02T15:04:05-0700"
+	ISO8601NoZoneFormat = "2006-01-02T15:04:05"
+	ISO8601DateFormat   = "2006-01-02"
+	ShortFormat         = "2006-01-02 15:04"
+	JavascriptFormat    = "2006-01-02T15:04:05-07:00"
+	JavascriptISO       = "2006-01-02T15:04:05.999Z"
+	FullCompact         = "06-Jan-02T15:04:05.9"
+	NiceFormat          = "15:04:05 02-Jan-2006" // MaxSize of GetNice()
 
 	Day  = time.Hour * time.Duration(24)
 	Week = Day * time.Duration(7)
@@ -60,7 +61,7 @@ func (jt *JSONTime) UnmarshalJSON(raw []byte) error {
 		*jt = JSONTime(t)
 		return nil
 	}
-	t, err = ParseIso8601(s)
+	t, err = ParseISO8601(s)
 	if err == nil {
 		*jt = JSONTime(t)
 		return nil
@@ -91,11 +92,11 @@ func Make(t time.Time) SQLTime {
 	return st
 }
 
-func ParseIso8601(str string) (t time.Time, e error) {
+func ParseISO8601(str string) (t time.Time, e error) {
 	if str != "" {
-		t, e = time.Parse(Iso8601Format, str)
+		t, e = time.Parse(ISO8601Format, str)
 		if e != nil {
-			t, e = time.Parse(Iso8601DateFormat, str)
+			t, e = time.Parse(ISO8601DateFormat, str)
 		}
 	}
 	return
@@ -574,7 +575,7 @@ type DurationStruct struct {
 	Seconds float32
 }
 
-var isoDurRegEx = regexp.MustCompile(`P((?P<year>\d+)Y)?((?P<month>\d+)M)?((?P<day>\d+)D)?(T((?P<hour>\d+)H)?((?P<minute>\d+)M)?((?P<second>[\d\.]+)S)?)?`)
+var ISODurRegEx = regexp.MustCompile(`P((?P<year>\d+)Y)?((?P<month>\d+)M)?((?P<day>\d+)D)?(T((?P<hour>\d+)H)?((?P<minute>\d+)M)?((?P<second>[\d\.]+)S)?)?`)
 
 // DurationStructFromISO reads an ISO 8601 dduration string.
 func DurationStructFromISO(dur string) (DurationStruct, error) {
@@ -583,13 +584,13 @@ func DurationStructFromISO(dur string) (DurationStruct, error) {
 
 	d := DurationStruct{}
 
-	if isoDurRegEx.MatchString(dur) {
-		match = isoDurRegEx.FindStringSubmatch(dur)
+	if ISODurRegEx.MatchString(dur) {
+		match = ISODurRegEx.FindStringSubmatch(dur)
 	} else {
 		return d, errors.New("bad format")
 	}
 
-	for i, name := range isoDurRegEx.SubexpNames() {
+	for i, name := range ISODurRegEx.SubexpNames() {
 		part := match[i]
 		if i == 0 || name == "" || part == "" {
 			continue
