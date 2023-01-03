@@ -421,3 +421,7 @@ func PrintAllGoroutines() {
 func Full(v interface{}) string {
 	return fmt.Sprintf("%+v", v)
 }
+
+func Pointer(v interface{}) string {
+	return fmt.Sprintf("%p", v)
+}
