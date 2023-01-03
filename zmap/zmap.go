@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 )
 
 func GetAnyKeyAsString(m interface{}) string {
@@ -36,3 +37,30 @@ func GetKeysAsStrings(m interface{}) (keys []string) {
 	}
 	return
 }
+
+type LockMap[K comparable, V any] struct {
+	sync.Map
+}
+
+func (l *LockMap[K, V]) Set(k K, v V) {
+	l.Store(k, v)
+}
+
+func (l *LockMap[K, V]) Get(k K) (v V, ok bool) {
+	a, ok := l.Load(k)
+	if ok {
+		return a.(V), true
+	}
+	return
+}
+
+func (l *LockMap[K, V]) ForEach(f func(key K, value V) bool) {
+	l.Range(func(k, v any) bool {
+		return f(k.(K), v.(V))
+	})
+}
+
+func (l *LockMap[K, V]) Remove(k K) {
+	l.Delete(k)
+}
+
