@@ -1205,3 +1205,13 @@ func ReplaceLinefeeds(str, with string) string {
 		"\r", with)
 	return rep.Replace(str)
 }
+
+func Filter(slice []string, keep func(s string) bool) []string {
+	n := make([]string, 0, len(slice))
+	for _, s := range slice {
+		if keep(s) {
+			n = append(n, s)
+		}
+	}
+	return n
+}
