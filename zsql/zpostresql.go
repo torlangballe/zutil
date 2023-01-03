@@ -371,7 +371,7 @@ func PeriodicDump() {
 		file := folder + "latest.db"
 		if zfile.Exists(file) && time.Since(zfile.Modified(file)) > ztime.Day {
 			zfile.MakeDirAllIfNotExists(folder)
-			timeFile := time.Now().Format(ztime.Iso8601DateFormat) + ".db"
+			timeFile := time.Now().Format(ztime.ISO8601DateFormat) + ".db"
 			os.Rename(file, timeFile)
 			zlog.Info("Dump DB")
 			zprocess.RunBashCommand("pg_dump etheros > "+file, 0)
