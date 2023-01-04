@@ -12,7 +12,6 @@ import (
 	"time"
 
 	sqlite "github.com/mattn/go-sqlite3" // Import go-sqlite3 library
-	"github.com/sasha-s/go-deadlock"
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
@@ -33,7 +32,7 @@ type Database struct {
 	FieldInfos   []zsql.FieldInfo
 	StructType   reflect.Type
 	istruct      interface{}
-	Lock         deadlock.Mutex // sync.RWMutex might cause corruptions, trying regular
+	Lock         sync.Mutex
 }
 
 type CompareItem struct {
@@ -122,7 +121,7 @@ func (db *Database) repeatPurge(deleteDays, deleteFreqSecs float64, tableName st
 		if err != nil {
 			zlog.Error(err, "query", query, at)
 		}
-		// zlog.Info("🟩EventDB purged:", time.Since(start))
+		zlog.Info("🟩EventDB purged:", time.Since(start))
 		return true
 	})
 }
