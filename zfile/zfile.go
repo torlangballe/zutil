@@ -298,6 +298,7 @@ func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) 
 
 func RemoveAllQuicklyWithRename(dir string) error {
 	dir = ExpandTildeInFilepath(dir)
+	dir = strings.TrimRight(dir, "/")
 	newName := dir + "-temp" + zstr.GenerateRandomHexBytes(12)
 	err := os.Rename(dir, newName)
 	if err != nil {
