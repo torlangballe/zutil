@@ -68,8 +68,8 @@ func FontDefault() *Font {
 }
 
 func FontNice(size float64, style FontStyle) *Font {
-	if size == 0 {
-		size = FontDefaultSize
+	if size <= 0 {
+		size = FontDefaultSize + size
 	}
 	return FontNew(FontDefaultName, size, style)
 }
