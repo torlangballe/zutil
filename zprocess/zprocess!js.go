@@ -226,7 +226,7 @@ func SetNumberOfOpenFiles(n int) {
 func RepeatLogProcessUse() {
 	ztimer.RepeatNow(60, func() bool {
 		procs, _ := ps.Processes()
-		zlog.Info("##ProcessCount:", len(procs))
+		zlog.Info("##ProcessCount:", len(procs), "goroutines:", runtime.NumGoroutine())
 		return true
 	})
 }
