@@ -251,3 +251,37 @@ func LengthIntoDividePoints(len int) (points []int) {
 func RoundToMod(n, mod int64) int64 {
 	return n - n%mod
 }
+
+// GetNextOfSliceCombinations takes n slices of values, and the current value of each one.
+// It increments to the next value of first set, or 0th and next of second set etc.
+// Returning all possible combinations of the slices, wrapping to start over again.
+// The slices need to always be given with the same order.
+func GetNextOfSliceCombinations[S comparable](sets [][]S, current ...*S) {
+	indexes := make([]int, len(sets))
+	for i, eachSet := range sets {
+		for j, s := range eachSet {
+			if s == *current[i] {
+				indexes[i] = j
+			}
+		}
+	}
+	// zlog.Info("indexes:", indexes)
+	for i := range indexes {
+		top := i == len(sets)-1
+		inc := indexes[i] < len(sets[i])-1
+		if inc || top {
+			indexes[i]++
+			if top && !inc {
+				// zlog.Info("top!", i, len(sets))
+				indexes[i] = 0
+			}
+			for j := 0; j < i; j++ {
+				indexes[j] = 0
+			}
+			break
+		}
+	}
+	for i, index := range indexes {
+		*current[i] = sets[i][index]
+	}
+}
