@@ -167,7 +167,7 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bo
 	// screenLock.Lock() -- for windows
 	// defer screenLock.Unlock()
 	winID, _, _, pid, err := GetIDScaleAndRectForWindowTitle(title, app)
-	fmt.Println("GetImageForWindowTitle:", winID, err, "pid:", pid, title, app)
+	fmt.Println("GetImageForWindowTitle:", winID, err, "pid:", pid, title, app, zprocess.GetPIDsForAppName(app, false))
 	if err != nil {
 		return nil, zlog.Error(err, "get id scale")
 	}
