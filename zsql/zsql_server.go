@@ -90,45 +90,46 @@ func (base *Base) CustomizeQuery(query string) string {
 }
 
 func FieldPointersFromStruct(istruct interface{}, skip []string) (pointers []interface{}) {
-	for _, item := range getItems(istruct, skip) {
-		a := item.Address
-		// zlog.Info("FieldPointersFromStruct:", item.FieldName, item.IsSlice)
-		if item.IsSlice {
-			_, got := item.Interface.([]byte)
+	ForEachColumn(istruct, skip, "", func(val reflect.Value, column string, primary bool) {
+		// zlog.Info("FieldPointersFromStruct", column, val.CanAddr())
+		a := val.Addr()
+		v := a.Interface()
+		if a.Kind() == reflect.Slice {
+			_, got := a.Interface().([]byte)
 			if !got {
-				_, is := item.Interface.(JSONer)
+				_, is := v.(JSONer)
 				if !is {
-					a = pq.Array(a)
+					v = pq.Array(v)
 				}
 			}
 		}
-		// zlog.Info("FieldPointersFromStruct:", item.TypeName, item.Kind, item.FieldName, reflect.ValueOf(a).Type())
-		pointers = append(pointers, a)
-	}
+		pointers = append(pointers, v)
+	})
 	return
 }
 
 func FieldSettingToParametersFromStruct(istruct interface{}, skip []string, prefix string, start int) string {
 	var set string
-	items := getItems(istruct, skip)
-	for i, item := range items {
-		// zlog.Info("FieldSettingToParametersFromStruct", i)
+	var i int
+	ForEachColumn(istruct, skip, "", func(val reflect.Value, column string, primary bool) {
 		if i != 0 {
-			set += ", "
+			set += ","
 		}
-		set += fmt.Sprintf("%s=$%d", prefix+ConvertFieldName(item), start+i)
-	}
-	// zlog.Info("FieldSettingToParametersFromStruct2", set, len(items))
+		set += fmt.Sprintf("%s=$%d", prefix+column, start+i)
+		i++
+	})
 	return set
 }
 
 func FieldParametersFromStruct(istruct interface{}, skip []string, start int) (parameters string) {
-	for i := range getItems(istruct, skip) {
+	var i int
+	ForEachColumn(istruct, skip, "", func(val reflect.Value, column string, primary bool) {
 		if i != 0 {
-			parameters += ", "
+			parameters += ","
 		}
 		parameters += fmt.Sprintf("$%d", start+i)
-	}
+		i++
+	})
 	return
 }
 
@@ -174,19 +175,19 @@ type FieldInfo struct {
 }
 
 func FieldValuesFromStruct(istruct interface{}, skip []string) (values []interface{}) {
-	for _, item := range getItems(istruct, skip) {
-		v := item.Interface
-		if item.Kind == zreflect.KindStruct && item.IsPointer {
-			v = item.Address
+	ForEachColumn(istruct, skip, "", func(val reflect.Value, column string, primary bool) {
+		v := val.Interface()
+		if val.Kind() == reflect.Ptr {
+			v = val.Addr()
 		}
-		if item.IsSlice {
-			_, got := item.Interface.([]byte)
+		if val.Kind() == reflect.Slice {
+			_, got := v.([]byte)
 			if !got {
 				v = pq.Array(v)
 			}
 		}
 		values = append(values, v)
-	}
+	})
 	return
 }
 
@@ -425,7 +426,7 @@ func (sc *SQLCalls) ExecuteQuery(query string, rowsAffected *int64) error {
 func SelectSlicesOfAny[S any](base *Base, resultSlice *[]S, q QueryBase) error {
 	var s S
 	fields := FieldNamesStringFromStruct(&s, q.SkipFields, "")
-	// zlog.Info("SelectSlicesOfAny", q)
+	// zlog.Info("SelectSlicesOfAny", fields)
 	query := zstr.Spaced("SELECT", fields, "FROM", q.Table)
 	if q.Constraints != "" {
 		query += " " + q.Constraints
