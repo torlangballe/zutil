@@ -74,3 +74,8 @@ func (k *Store) setItem(key string, v interface{}, sync bool) error {
 	local.Set(key, v)
 	return nil
 }
+
+func (s Store) RemoveForKey(key string, sync bool) {
+	s.prefixKey(&key)
+	getLocalStorage().Call("removeItem", key)
+}

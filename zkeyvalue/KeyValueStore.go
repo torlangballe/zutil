@@ -97,10 +97,6 @@ func (s Store) IncrementInt(key string, sync bool, inc int) int {
 	return 0
 }
 
-func (s Store) RemoveForKey(key string, sync bool) {
-
-}
-
 func (s Store) SetObject(object interface{}, key string, sync bool) {
 	data, err := json.Marshal(object)
 	if zlog.OnError(err, "marshal") {

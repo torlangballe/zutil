@@ -12,6 +12,8 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
+// This is a hack that only has one global store!
+
 var lock sync.Mutex
 var dict = zdict.Dict{}
 
@@ -23,6 +25,7 @@ func StoreFileNew(path string) *Store {
 		zlog.Error(err, "unmarshal")
 		return nil
 	}
+	zlog.Info("KV: StoreFileNew", path, dict)
 	return k
 }
 
@@ -40,15 +43,31 @@ func (k Store) getItem(key string, pointer interface{}) bool {
 	return false
 }
 
-func (k *Store) setItem(key string, v interface{}, sync bool) error {
-	go func() {
-		lock.Lock()
-		dict[key] = v
-		err := zjson.MarshalToFile(dict, k.filepath)
-		if err != nil {
-			zlog.Error(err, "marshal")
-		}
-		lock.Unlock()
-	}()
+func (s *Store) setItem(key string, v interface{}, sync bool) error {
+	s.prefixKey(&key)
+	lock.Lock()
+	dict[key] = v
+	lock.Unlock()
+	if sync {
+		s.save()
+	}
 	return nil
+}
+
+func (s *Store) save() error {
+	lock.Lock()
+	err := zjson.MarshalToFile(dict, s.filepath)
+	zlog.OnError(err, "save", s.filepath)
+	lock.Unlock()
+	return err
+}
+
+func (s *Store) RemoveForKey(key string, sync bool) {
+	s.prefixKey(&key)
+	lock.Lock()
+	delete(dict, key)
+	lock.Unlock()
+	if sync {
+		s.save()
+	}
 }
