@@ -101,7 +101,7 @@ void CloseWindowForWindowRef(AXUIElementRef winRef) {
         CFRelease(buttonRef);
     }
 }
-
+/*
 void CloseWindowsForPIDIfNotInTitles(int pid, char *stitles) {
     // NSLog(@"CloseWindowsForPIDIfNotInTitles %d %s\n", pid, "xxx");
     NSString *nsTitles = [NSString stringWithUTF8String: stitles];
