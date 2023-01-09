@@ -127,7 +127,6 @@ func (db *Database) repeatPurge(deleteDays, deleteFreqSecs float64, tableName st
 }
 
 func (db *Database) Add(istruct interface{}, flush bool) {
-	// zlog.Info("eventdb.Add")
 	storeLock.Lock()
 	itemsToStore = append(itemsToStore, istruct)
 	storeLock.Unlock()
@@ -138,19 +137,18 @@ func (db *Database) Add(istruct interface{}, flush bool) {
 
 func (db *Database) repeatWriteItems() {
 	for {
-		if len(itemsToStore) > 0 {
-			db.writeItems()
-			time.Sleep(time.Second)
+		if !db.writeItems() {
+			time.Sleep(time.Millisecond * 250)
 		}
-		time.Sleep(time.Millisecond * 100)
 	}
 }
 
-func (db *Database) writeItems() {
-	if len(itemsToStore) == 0 {
-		return
+func (db *Database) writeItems() bool {
+	all := len(itemsToStore)
+	if all == 0 {
+		return false
 	}
-	pageSize := zint.Min(len(itemsToStore), 100)
+	pageSize := zint.Min(all, 100)
 	skip := []string{db.PrimaryField}
 	params := "(" + strings.Repeat("?,", len(db.FieldInfos)-2) + "?)"
 
@@ -158,6 +156,7 @@ func (db *Database) writeItems() {
 	query := "INSERT INTO " + db.TableName + " (" + zsql.FieldNamesStringFromStruct(itemsToStore[0], skip, "") +
 		") VALUES "
 
+	var count int
 	var vals []interface{}
 	for i, item := range itemsToStore {
 		if i != 0 {
@@ -165,6 +164,7 @@ func (db *Database) writeItems() {
 		}
 		query += params
 		vals = append(vals, zsql.FieldValuesFromStruct(item, skip)...)
+		count++
 		if i == pageSize {
 			break
 		}
@@ -173,13 +173,15 @@ func (db *Database) writeItems() {
 	storeLock.Unlock()
 
 	//	for c := 0; c < 10; c++ {
-	// zlog.Info("zedb:Write:", query, vals)
+	// t := ztime.NewDiffer()
 	db.Lock.Lock()
 	_, err := db.DB.Exec(query, vals...)
+	// zlog.Info("zedb:WriteEvents:", count, "/", all, err, t)
 	db.Lock.Unlock()
 	if err != nil {
 		zlog.Error(err, "query", query, vals)
 	}
+	return len(itemsToStore) > 0
 	//	}
 }
 
