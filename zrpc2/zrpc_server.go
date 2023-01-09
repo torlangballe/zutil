@@ -80,6 +80,7 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if call {
 			ctx := context.Background()
 			var ci ClientInfo
+			ci.Type = "rpc"
 			ci.ClientID = cp.ClientID
 			ci.Token = token
 			ci.UserAgent = req.UserAgent()

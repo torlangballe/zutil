@@ -41,6 +41,7 @@ type methodType struct {
 }
 
 type ClientInfo struct {
+	Type      string
 	ClientID  string
 	Token     string
 	UserAgent string

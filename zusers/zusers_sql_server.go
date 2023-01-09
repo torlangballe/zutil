@@ -195,7 +195,7 @@ func (s *SQLServer) ChangePasswordForUser(ci zrpc2.ClientInfo, id int64, passwor
 		var session Session
 		session.ClientInfo = ci
 		session.UserID = id
-		session.Token = token
+		session.Token = zstr.Concat(".", ci.Type, token)
 		err = s.AddNewSession(session)
 		if err != nil {
 			return
@@ -257,7 +257,7 @@ func (s *SQLServer) UnauthenticateUser(id int64) error {
 func (s *SQLServer) AddNewSession(session Session) error {
 	squery := `INSERT INTO zuser_sessions (token, userid, clientid, useragent, ipaddress) VALUES ($1, $2, $3, $4, $5)`
 	squery = s.customizeQuery(squery)
-	// zlog.Info("SQL AddNewSession:", zlog.Full(session))
+	zlog.Info("SQL AddNewSession:", zlog.Full(session))
 	_, err := s.DB.Exec(squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
 	if err != nil {
 		zlog.Error(err, "insert", squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
@@ -300,7 +300,9 @@ func (s *SQLServer) Login(ci zrpc2.ClientInfo, username, password string) (ui Cl
 
 	var session Session
 	session.ClientInfo = ci
-	session.Token = zstr.GenerateUUID()
+	if session.Token == "" {
+		session.Token = zstr.Concat(".", ci.Type, zstr.GenerateUUID())
+	}
 	// zlog.Info("Login:", "hash:", hash, "salt:", u.Salt, "token:", session.Token)
 	session.UserID = u.ID
 	err = s.AddNewSession(session)
@@ -328,7 +330,7 @@ func (s *SQLServer) Register(ci zrpc2.ClientInfo, username, password string, mak
 	if makeToken {
 		var session Session
 		session.ClientInfo = ci
-		session.Token = token
+		session.Token = zstr.Concat(".", ci.Type, token)
 		session.UserID = id
 		err = s.AddNewSession(session)
 		if err != nil {

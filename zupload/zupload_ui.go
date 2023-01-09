@@ -271,7 +271,7 @@ func CallHTTUpload(up UploadPayload, data []byte) {
 		"type": up.Type,
 	}
 	params.Headers["X-Password"] = up.Password
-	params.PrintBody = true
+	// params.PrintBody = true
 	surl := zapp.DownloadPathPrefix + "zupload"
 	surl, _ = zhttp.MakeURLWithArgs(surl, args)
 	_, err := zhttp.Post(surl, params, data, &result)
