@@ -138,9 +138,12 @@ func WindowWithTitleExists(title, app string) bool {
 	return false
 }
 
-func GetIDScaleAndRectForWindowTitle(title, app string) (id string, scale int, rect zgeo.Rect, pID int64, err error) {
+func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, scale int, rect zgeo.Rect, pidOut int64, err error) {
 	// fmt.Println("GetIDAndScaleForWindowTitle title, app:", title, app)
-	pids := zprocess.GetPIDsForAppName(app, false)
+	pids := []int64{pid}
+	if pid == 0 {
+		pids = zprocess.GetPIDsForAppName(app, false)
+	}
 	// pid, _ := GetCachedPIDForAppName(app)
 	// fmt.Println("SetWindowRectForTitle:", title, app, pids)
 	for _, pid := range pids {
@@ -162,36 +165,33 @@ func GetIDScaleAndRectForWindowTitle(title, app string) (id string, scale int, r
 
 // var screenLock sync.Mutex
 
-func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bool) (image.Image, error) {
-	// crop.Pos = zgeo.Pos{0, 100}
-	// screenLock.Lock() -- for windows
-	// defer screenLock.Unlock()
-	winID, _, _, pid, err := GetIDScaleAndRectForWindowTitle(title, app)
-	fmt.Println("GetImageForWindowTitle:", winID, err, "pid:", pid, title, app, zprocess.GetPIDsForAppName(app, false))
+func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (img image.Image, oldPID int64, err error) {
+	var winID string
+	pid := oldPID
+	winID, _, _, pid, err = GetIDScaleAndRectForWindowTitle(title, app, pid)
+	fmt.Println("GetImageForWindowTitle:", winID, err, "pid:", pid, "oldpid:", oldPID, title, app, zprocess.GetPIDsForAppName(app, false))
 	if err != nil {
-		return nil, zlog.Error(err, "get id scale")
+		return nil, 0, zlog.Error(err, "get id scale")
 	}
-	if activateWindow {
-		ActivateWindow(title, app)
-	}
-	return GetWindowImage(winID, crop)
+	img, err = GetWindowImage(winID, crop)
+	return img, pid, err
 }
 
-func CloseWindowForTitleAndPID(title string, pid int64) error {
-	r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
-	if r == 1 {
-		return nil
-	}
-	return errors.New("not found")
-}
+// func CloseWindowForTitleAndPID(title string, pid int64) error {
+// 	r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
+// 	if r == 1 {
+// 		return nil
+// 	}
+// 	return errors.New("not found")
+// }
 
-func CloseWindowsForAppIfNotInTitles(app string, titles []string) error {
-	stitles := strings.Join(titles, "\t")
-	for _, pid := range zprocess.GetPIDsForAppName(app, false) {
-		C.CloseWindowsForPIDIfNotInTitles(C.int(pid), C.CString(stitles))
-	}
-	return nil
-}
+// func CloseWindowsForAppIfNotInTitles(app string, titles []string) error {
+// 	stitles := strings.Join(titles, "\t")
+// 	for _, pid := range zprocess.GetPIDsForAppName(app, false) {
+// 		C.CloseWindowsForPIDIfNotInTitles(C.int(pid), C.CString(stitles))
+// 	}
+// 	return nil
+// }
 
 func CloseWindowForTitle(title, app string) error {
 	//	title = getTitleWithApp(title, app)

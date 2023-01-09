@@ -104,11 +104,8 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 
 var screenLock sync.Mutex
 
-func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bool) (image.Image, error) {
+func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, error) {
 	screenLock.Lock()
-	if activateWindow {
-		ActivateWindow(title, app)
-	}
 	bounds := image.Rect(int(crop.Min().X), int(crop.Min().Y), int(crop.Max().X), int(crop.Max().Y))
 	// nimage, err := screenshot.CaptureRect(bounds)
 	// screenLock.Unlock()

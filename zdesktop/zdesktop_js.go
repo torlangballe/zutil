@@ -18,7 +18,7 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 	return nil
 }
 
-func GetImageForWindowTitle(title, app string, crop zgeo.Rect, activateWindow bool) (image.Image, error) {
+func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, error) {
 	/*
 
 		    <canvas id="canvas" width="64" height="48"> </canvas>
