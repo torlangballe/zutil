@@ -60,8 +60,8 @@ func (ts *Session) Writer() io.Writer {
 	return ts.session
 }
 
-func (ts *Session) WriteLine(str string) {
-	ts.session.Write([]byte(str + "\n"))
+func (ts *Session) Writeln(parts ...any) {
+	fmt.Fprintln(ts.Writer(), parts...)
 }
 
 func New(startText string) *Terminal {
@@ -72,19 +72,24 @@ func New(startText string) *Terminal {
 	return t
 }
 
+func (s *Session) ReadLine() string {
+	line, _ := s.goterm.ReadLine()
+	return line
+}
+
 func (t *Terminal) ListenForever(port int) {
 	ssh.Handle(func(s ssh.Session) {
 		// zlog.Info("HANDLE!")
 		ts := &Session{}
 		ts.session = s
 		ts.values = map[string]interface{}{}
-		ts.goterm = terminal.NewTerminal(s, ts.session.User()+" > ")
+		ts.goterm = terminal.NewTerminal(s, ts.session.User()+" /> ")
 		ts.term = t
 		if t.startText != "" {
 			fmt.Fprintln(ts.session, t.startText)
 		}
 		for {
-			line, _ := ts.goterm.ReadLine()
+			line := ts.ReadLine()
 			if !t.HandleLine(line, ts) {
 				return
 			}
@@ -108,10 +113,12 @@ func (t *Terminal) ListenForever(port int) {
 		opts = append(opts, publicKeyOpt)
 	}
 	loginOpt := ssh.PasswordAuth(func(ctx ssh.Context, pass string) bool {
-		// zlog.Info("SSH login?", pass)
+		zlog.Info("SSH login?", pass)
 		var ci zrpc2.ClientInfo
+		ci.Type = "ssh"
 		ci.IPAddress = ctx.RemoteAddr().String()
 		ci.UserAgent = ctx.ClientVersion()
+		ci.Token = t.sessionPublicKeys[ctx.SessionID()]
 		userName := ctx.User()
 		cui, err := zusers.MainServer.Login(ci, userName, pass)
 		if err != nil {
@@ -119,15 +126,6 @@ func (t *Terminal) ListenForever(port int) {
 			return false
 		}
 		t.userIDs[userName] = cui.UserID
-		skey := t.sessionPublicKeys[ctx.SessionID()]
-		if skey != "" {
-			var session zusers.Session
-			session.ClientInfo = ci
-			session.UserID = cui.UserID
-			session.Token = skey
-			err = zusers.MainServer.AddNewSession(session)
-			zlog.OnError(err, "AddNewSession")
-		}
 		delete(t.sessionPublicKeys, ctx.SessionID())
 		return true
 	})
