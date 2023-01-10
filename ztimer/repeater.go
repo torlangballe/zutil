@@ -31,6 +31,24 @@ func RepeatIn(secs float64, perform func() bool) *Repeater {
 	return r
 }
 
+func RepeatForever(secs float64, perform func()) *Repeater {
+	r := RepeaterNew()
+	r.Set(secs, false, func() bool {
+		perform()
+		return true
+	})
+	return r
+}
+
+func RepeatForeverNow(secs float64, perform func()) *Repeater {
+	r := RepeaterNew()
+	r.Set(secs, true, func() bool {
+		perform()
+		return true
+	})
+	return r
+}
+
 func RepeatNow(secs float64, perform func() bool) *Repeater {
 	r := RepeaterNew()
 	r.Set(secs, true, perform)
