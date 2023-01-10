@@ -224,8 +224,12 @@ func CallingFunctionInfo(pos int) (function, file string, line int) {
 }
 
 func CallingStackString() string {
+	return CallingStackStringAt(0)
+}
+
+func CallingStackStringAt(index int) string {
 	var parts []string
-	for i := 3; ; i++ {
+	for i := 3 + index; ; i++ {
 		s := FileLineAndCallingFunctionString(i)
 		if s == "" {
 			break
