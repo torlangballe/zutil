@@ -11,18 +11,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zdict"
-	"github.com/torlangballe/zutil/zstr"
-
-	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zprocess"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 var (
-	RunningOnServer  bool
-	AppURLPrefix     = "/"
-	LegalCORSOrigins = map[string]bool{}
+	RunningOnServer   bool
+	AppURLPrefix      = "/"
+	LegalCORSOrigins  = map[string]bool{}
+	CurrentInRequests int
 )
 
 // Adds CORS headers to response if appropriate.
@@ -125,7 +126,9 @@ func GetTimeVal(vals url.Values, name string) time.Time {
 type FuncHandler func(http.ResponseWriter, *http.Request)
 
 func (f FuncHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	CurrentInRequests++
 	f(w, req)
+	CurrentInRequests--
 }
 
 func GetFloatVal(vals url.Values, name string, def float64) float64 {
@@ -144,12 +147,19 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 	pattern = strings.TrimRight(AppURLPrefix+pattern, "/")
 	// zlog.Info("zrest.AddSubHandler:", pattern)
 	defer zlog.HandlePanic(false)
+	p := zprocess.PushProcess(30, "AddSubHandler:"+pattern)
+	CurrentInRequests++
 	if router == nil {
 		http.Handle(pattern, h)
+		CurrentInRequests--
+		zprocess.PopProcess(p)
 		return nil
 	}
 	route := router.PathPrefix(pattern)
-	return route.Handler(h)
+	r := route.Handler(h)
+	zprocess.PopProcess(p)
+	CurrentInRequests--
+	return r
 }
 
 // AddFileHandler adds a file serving handler, which removes the pattern path prefix before creating the filepath.
@@ -158,6 +168,8 @@ func AddFileHandler(router *mux.Router, pattern, dir string, peek func(filepath,
 	return AddSubHandler(router, pattern, FuncHandler(func(w http.ResponseWriter, req *http.Request) {
 		var path string
 		if zstr.HasPrefix(req.URL.Path, AppURLPrefix+pattern, &path) {
+			p := zprocess.PushProcess(30, "AddFileHandler:"+path)
+			CurrentInRequests++
 			filepath := filepath.Join(dir, path)
 			// str, err := zfile.ReadStringFromFile(filepath)
 			// zlog.OnError(err, path, filepath)
@@ -167,6 +179,8 @@ func AddFileHandler(router *mux.Router, pattern, dir string, peek func(filepath,
 				peek(filepath, path, req)
 			}
 			http.ServeFile(w, req, filepath)
+			zprocess.PopProcess(p)
+			CurrentInRequests--
 			return
 		}
 		zlog.Error(nil, "no correct dir for serving:", req.URL.Path, dir, pattern)
@@ -179,7 +193,11 @@ func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, 
 	defer zlog.HandlePanic(false)
 	if router == nil {
 		http.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
+			p := zprocess.PushProcess(30, "AddHandler:"+req.URL.String())
+			CurrentInRequests++
 			f(w, req)
+			zprocess.PopProcess(p)
+			CurrentInRequests--
 		})
 		return nil
 	}
@@ -193,7 +211,11 @@ func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, 
 		// 	}
 		// 	ReturnError(w, req, "timeout out handling", http.StatusGatewayTimeout)
 		// })
+		p := zprocess.PushProcess(30, "AddFileHandler2:"+req.URL.String())
+		CurrentInRequests++
 		f(w, req)
+		CurrentInRequests--
+		zprocess.PopProcess(p)
 		// timer.Stop()
 	})
 }
@@ -202,5 +224,9 @@ func Handle(pattern string, handler http.Handler) {
 	spath := path.Join(AppURLPrefix, pattern)
 	spath += "/"
 	// zlog.Info("zrest.Handle:", spath, pattern)
+	p := zprocess.PushProcess(30, "Handle:"+pattern)
+	CurrentInRequests++
 	http.Handle(spath, handler)
+	zprocess.PopProcess(p)
+	CurrentInRequests--
 }

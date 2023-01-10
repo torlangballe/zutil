@@ -23,6 +23,7 @@ import (
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -231,7 +232,9 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 	// 	}
 	// }()
 	request.Close = true
+	p := zprocess.PushProcess(30, "GetResponseFromReqClient:"+request.URL.String())
 	resp, err = client.Do(request)
+	zprocess.PopProcess(p)
 	// zlog.Info("zhttp.GetResponse:", err,request.URL)
 	if err == nil && resp == nil {
 		return nil, errors.New("client.Do gave no response: " + request.URL.String())
@@ -314,54 +317,56 @@ func processResponse(surl string, resp *http.Response, printBody bool, receive i
 	return resp, nil
 }
 
+/*
 // TODO: Remove, old:
-func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorization, authKey string) (resp *http.Response, err error) {
-	client := http.DefaultClient
-	req, err := http.NewRequest("GET", surl, nil)
-	if err != nil {
-		return
-	}
-	if authKey == "" {
-		authKey = "Authorization"
-	}
-	if authorization != "" {
-		//		zlog.Info("UnmarshalFromJSONFromUrlWithBody: auth:", authKey, authorization)
-		req.Header.Set(authKey, authorization)
-	}
-	resp, err = client.Do(req)
-	if err != nil {
-		if resp != nil {
-			err = MakeHTTPError(err, resp.StatusCode, "get")
+
+	func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorization, authKey string) (resp *http.Response, err error) {
+		client := http.DefaultClient
+		req, err := http.NewRequest("GET", surl, nil)
+		if err != nil {
+			return
+		}
+		if authKey == "" {
+			authKey = "Authorization"
+		}
+		if authorization != "" {
+			//		zlog.Info("UnmarshalFromJSONFromUrlWithBody: auth:", authKey, authorization)
+			req.Header.Set(authKey, authorization)
+		}
+		resp, err = client.Do(req)
+		if err != nil {
+			if resp != nil {
+				err = MakeHTTPError(err, resp.StatusCode, "get")
+			}
+			return
+		}
+		if print {
+			sbody := GetCopyOfResponseBodyAsString(resp)
+			zlog.Info("UnmarshalFromJSONFromUrlWithBody:\n", sbody)
+		}
+		defer resp.Body.Close()
+		defer io.Copy(ioutil.Discard, resp.Body)
+		ecode := resp.StatusCode
+		if ecode >= 300 {
+			err = MakeHTTPError(nil, ecode, "get")
+			return
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return
+		}
+		if print {
+			zlog.Info("UnmarshalFromJSONFromURL:", surl, ":\n", string(body))
+		}
+		err = json.Unmarshal(body, v)
+
+		if err != nil {
+			zlog.Info("UnmarshalFromJSONFromURL unmarshal Error:\n", err, surl, zstr.Head(string(body), 2000))
+			return
 		}
 		return
 	}
-	if print {
-		sbody := GetCopyOfResponseBodyAsString(resp)
-		zlog.Info("UnmarshalFromJSONFromUrlWithBody:\n", sbody)
-	}
-	defer resp.Body.Close()
-	defer io.Copy(ioutil.Discard, resp.Body)
-	ecode := resp.StatusCode
-	if ecode >= 300 {
-		err = MakeHTTPError(nil, ecode, "get")
-		return
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
-	if print {
-		zlog.Info("UnmarshalFromJSONFromURL:", surl, ":\n", string(body))
-	}
-	err = json.Unmarshal(body, v)
-
-	if err != nil {
-		zlog.Info("UnmarshalFromJSONFromURL unmarshal Error:\n", err, surl, zstr.Head(string(body), 2000))
-		return
-	}
-	return
-}
-
+*/
 func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Response, code int, err error) {
 	// zlog.Assert(len(params.Body) != 0 || params.Reader != nil, surl)
 	zlog.Assert(params.ContentType != "")
@@ -387,6 +392,7 @@ func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Respo
 	return resp, resp.StatusCode, nil
 }
 
+/*
 func PostValuesAsForm(surl string, params Parameters, values url.Values) (data *[]byte, reAuth bool, err error) {
 	var resp *http.Response
 	params.Body = []byte(values.Encode())
@@ -406,6 +412,7 @@ func PostValuesAsForm(surl string, params Parameters, values url.Values) (data *
 	data = &body
 	return
 }
+*/
 
 func MakeURLWithArgs(surl string, args map[string]string) (string, error) {
 	u, err := url.Parse(surl)
@@ -443,14 +450,6 @@ func ReplaceURLsInText(text string, f func(surl string) string) string {
 	regEx := regexp.MustCompile(`(http|ftp|https):\/\/([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?`)
 	out := regEx.ReplaceAllStringFunc(text, f)
 	return out
-}
-
-func GetDomainFromUrl(surl string) string {
-	u, err := url.Parse(surl)
-	if err != nil {
-		return surl
-	}
-	return u.Host
 }
 
 func GetIPAddressAndPortFromRequest(req *http.Request) (ip, port string, err error) {
