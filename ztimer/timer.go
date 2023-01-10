@@ -83,7 +83,7 @@ func (t *Timer) StartIn(secs float64, perform func()) {
 	timersCount[secs]++
 	t.secs = secs
 	if timersCount[secs]%1000 == 999 {
-		zlog.Error(nil, "1000x timers of same time started", zlog.CallingStackString())
+		zlog.Error(nil, timersCount[secs], "timers of", secs, "seconds started", zlog.CallingStackString())
 	}
 	countMutex.Unlock()
 	t.timer = time.AfterFunc(ztime.SecondsDur(secs), func() {
