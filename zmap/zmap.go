@@ -42,6 +42,17 @@ type LockMap[K comparable, V any] struct {
 	sync.Map
 }
 
+// Count() returns the nuber of items in the LockMap.
+// Note: It has to use Range() to go through all and count.
+func (l *LockMap[K, V]) Count() int {
+	var count int
+	l.Range(func(k, v any) bool {
+		count++
+		return true
+	})
+	return count
+}
+
 func (l *LockMap[K, V]) Set(k K, v V) {
 	l.Store(k, v)
 }
@@ -63,4 +74,3 @@ func (l *LockMap[K, V]) ForEach(f func(key K, value V) bool) {
 func (l *LockMap[K, V]) Remove(k K) {
 	l.Delete(k)
 }
-
