@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sasha-s/go-deadlock"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
-	"github.com/torlangballe/zutil/ztimer"
-
 	"github.com/torlangballe/zutil/ztime"
+	"github.com/torlangballe/zutil/ztimer"
 )
 
 func RunFuncUntilTimeoutSecs(secs float64, do func()) (completed bool) {
@@ -47,20 +47,55 @@ func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 }
 
 type TimedMutex struct {
+	deadlock.Mutex
+}
+
+/*
+var currentMutexes zmap.LockMap[int64, *TimedMutex]
+
+type TimedMutex struct {
 	mutex    sync.Mutex
+	start    time.Time
+	started  time.Time
+	stack    string
+	id       int64
 	repeater *ztimer.Repeater
 }
 
-func (t *TimedMutex) Lock() {
-	stack := zlog.CallingStackString()
-	timer := ztimer.StartIn(5, func() {
-		zlog.Info("🟥TimeMutex slow lock > 5 sec:", stack)
+const warnSecs = 10
+
+func reportExisting(skipID int64) {
+	currentMutexes.ForEach(func(id int64, t *TimedMutex) bool {
+		if id == skipID {
+			return true
+		}
+		zlog.Info("existing lock", time.Since(t.start), time.Since(t.started), t.stack)
+		return true
 	})
-	start := time.Now()
+	zlog.Info("")
+}
+
+func (t *TimedMutex) Lock() {
+	if t.id == 0 {
+		t.id = rand.Int63()
+	}
+	stack := zlog.CallingStackStringAt(1)
+	now := time.Now()
+	currentMutexes.Set(t.id, t)
+
+	t.start = now
+	timer := ztimer.StartIn(warnSecs, func() {
+		zlog.Info("🟥TimeMutex slow to lock:", time.Since(now), "secs:", stack, "original lock:", t.stack)
+		reportExisting(t.id)
+	})
+	t.stack = stack
 	t.mutex.Lock()
+	t.started = time.Now()
+	currentMutexes.Remove(t.id)
 	timer.Stop()
-	t.repeater = ztimer.RepeatIn(5, func() bool {
-		zlog.Info("🟥TimeMutex still locked for:", time.Since(start), stack)
+	t.repeater = ztimer.RepeatIn(warnSecs, func() bool {
+		zlog.Info("🟥TimeMutex still locked for:", time.Since(t.start), stack)
+		reportExisting(t.id)
 		return true
 	})
 }
@@ -68,7 +103,12 @@ func (t *TimedMutex) Lock() {
 func (t *TimedMutex) Unlock() {
 	t.repeater.Stop()
 	t.mutex.Unlock()
+	since := ztime.Since(t.started)
+	if since > warnSecs {
+		zlog.Info("🟥TimeMutex was locked for", since, "seconds", t.stack)
+	}
 }
+*/
 
 var (
 	procs         zmap.LockMap[int64, *proc]
@@ -118,5 +158,5 @@ func PushProcess(timeoutSecs float64, info string) *proc {
 
 func PopProcess(p *proc) {
 	p.timer.Stop()
-	procs.Delete(p.id)
+	procs.Remove(p.id)
 }
