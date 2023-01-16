@@ -39,14 +39,14 @@ func GetKeysAsStrings(m interface{}) (keys []string) {
 }
 
 type LockMap[K comparable, V any] struct {
-	sync.Map
+	Map sync.Map
 }
 
 // Count() returns the nuber of items in the LockMap.
 // Note: It has to use Range() to go through all and count.
 func (l *LockMap[K, V]) Count() int {
 	var count int
-	l.Range(func(k, v any) bool {
+	l.Map.Range(func(k, v any) bool {
 		count++
 		return true
 	})
@@ -54,11 +54,11 @@ func (l *LockMap[K, V]) Count() int {
 }
 
 func (l *LockMap[K, V]) Set(k K, v V) {
-	l.Store(k, v)
+	l.Map.Store(k, v)
 }
 
 func (l *LockMap[K, V]) Get(k K) (v V, ok bool) {
-	a, ok := l.Load(k)
+	a, ok := l.Map.Load(k)
 	if ok {
 		return a.(V), true
 	}
@@ -66,11 +66,11 @@ func (l *LockMap[K, V]) Get(k K) (v V, ok bool) {
 }
 
 func (l *LockMap[K, V]) ForEach(f func(key K, value V) bool) {
-	l.Range(func(k, v any) bool {
+	l.Map.Range(func(k, v any) bool {
 		return f(k.(K), v.(V))
 	})
 }
 
 func (l *LockMap[K, V]) Remove(k K) {
-	l.Delete(k)
+	l.Map.Delete(k)
 }
