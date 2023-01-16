@@ -13,25 +13,25 @@ import (
 	"github.com/torlangballe/zutil/zrpc2"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zusers"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 // https://xtermjs.org for web client?
 // https://pkg.go.dev/github.com/gliderlabs/ssh = docs
 
 type Terminal struct {
-	port              int
-	startText         string
-	userIDs           map[string]int64
-	sessionPublicKeys map[string]string // maps sessionID to public key, as it is lost
-
+	port               int
+	startText          string
+	userIDs            map[string]int64
+	sessionPublicKeys  map[string]string // maps sessionID to public key, as it is lost
 	PublicKeyStorePath string
 	HandleLine         func(line string, ts *Session) bool
+	HandleNewSession   func(ts *Session) func(line string, pos int, key rune) (newLine string, newPos int, ok bool)
 }
 
 type Session struct {
 	session ssh.Session
-	goterm  *terminal.Terminal
+	goterm  *term.Terminal
 	term    *Terminal
 	values  map[string]interface{}
 }
@@ -79,12 +79,13 @@ func (s *Session) ReadLine() string {
 
 func (t *Terminal) ListenForever(port int) {
 	ssh.Handle(func(s ssh.Session) {
-		// zlog.Info("HANDLE!")
 		ts := &Session{}
 		ts.session = s
 		ts.values = map[string]interface{}{}
-		ts.goterm = terminal.NewTerminal(s, ts.session.User()+" /> ")
 		ts.term = t
+		ts.goterm = term.NewTerminal(s, ts.session.User()+" /> ")
+		autoComplete := t.HandleNewSession(ts)
+		ts.goterm.AutoCompleteCallback = autoComplete
 		if t.startText != "" {
 			fmt.Fprintln(ts.session, t.startText)
 		}
