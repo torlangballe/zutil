@@ -60,10 +60,12 @@ type Parameters struct {
 	GetErrorFromBody      bool
 }
 
+const DefaultTimeoutSeconds = 15
+
 func MakeParameters() Parameters {
 	return Parameters{
 		Headers:     map[string]string{},
-		TimeoutSecs: 25,
+		TimeoutSecs: DefaultTimeoutSeconds,
 	}
 }
 
