@@ -29,7 +29,9 @@ const (
 	KindMap                = "map"
 	KindFunc               = "function"
 	KindSlice              = "slice"
+	KindArray              = "slice"
 	KindInterface          = "interface"
+	KindPointer            = "pointer"
 )
 
 type Item struct {
@@ -53,6 +55,34 @@ type Options struct {
 	UnnestAnonymous        bool
 	Recursive              bool
 	MakeSliceElementIfNone bool
+}
+
+func KindFromReflectKind(kind reflect.Kind) TypeKind {
+	switch kind {
+	case reflect.Interface:
+		return KindInterface
+	case reflect.Ptr:
+		return KindPointer
+	case reflect.Slice:
+		return KindSlice
+	case reflect.Array:
+		return KindArray
+	case reflect.Struct:
+		return KindStruct
+	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
+		return KindInt
+	case reflect.String:
+		return KindString
+	case reflect.Bool:
+		return KindBool
+	case reflect.Float32, reflect.Float64:
+		return KindFloat
+	case reflect.Map:
+		return KindMap
+	case reflect.Func:
+		return KindFunc
+	}
+	return KindUndef
 }
 
 func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, val reflect.Value, options Options) (item Item, err error) {
