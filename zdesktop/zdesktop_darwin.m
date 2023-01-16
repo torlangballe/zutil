@@ -173,6 +173,9 @@ const char *getAllWindowTitlesTabSeparated() {
     for (NSMutableDictionary* entry in (__bridge NSArray*)windowList)
     {
         NSString *title = [entry objectForKey:(id)kCGWindowName];
+        if (title == NULL) {
+            continue;
+        }
         if(str.length != 0) {
             [str appendString: @"\t"];
         }
@@ -243,7 +246,7 @@ AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL de
         NSString *winTitle = nil;
         AXUIElementCopyAttributeValue(winRef, kAXTitleAttribute, (CFTypeRef *)&winTitle);
         if (winTitle == nil) {
-            NSLog(@"Win: <nil-title> # %@\n", nsTitle);
+            //!!! NSLog(@"Win: <nil-title> # %@\n", nsTitle);
             continue;
         }
         winTitle = removeNonASCIIAndTruncate(winTitle);
@@ -272,13 +275,13 @@ int CloseWindowForTitle(const char *title, long pid) {
     // if (winRef == 0) {
     //     getAXElementOfWindowForTitle(title, pid, true);
     // }
-    NSLog(@"CloseWindowForTitle1 %ld %s %p\n", pid, title, winRef);
+    // NSLog(@"CloseWindowForTitle1 %ld %s %p\n", pid, title, winRef);
     if (winRef == nil) {
         return 0;
     }
-    NSLog(@"CloseWindowForTitle2\n");
+    // NSLog(@"CloseWindowForTitle2\n");
     CloseWindowForWindowRef(winRef);
-    NSLog(@"CloseWindowForTitle3\n");
+    // NSLog(@"CloseWindowForTitle3\n");
     return 1;
 }
 

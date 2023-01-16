@@ -165,10 +165,9 @@ func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, s
 
 // var screenLock sync.Mutex
 
-func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (img image.Image, oldPID int64, err error) {
+func GetImageForWindowTitle(title, app string, oldPID int64, crop zgeo.Rect) (img image.Image, pid int64, err error) {
 	var winID string
-	pid := oldPID
-	winID, _, _, pid, err = GetIDScaleAndRectForWindowTitle(title, app, pid)
+	winID, _, _, pid, err = GetIDScaleAndRectForWindowTitle(title, app, oldPID)
 	fmt.Println("GetImageForWindowTitle:", winID, err, "pid:", pid, "oldpid:", oldPID, title, app, zprocess.GetPIDsForAppName(app, false))
 	if err != nil {
 		return nil, 0, zlog.Error(err, "get id scale")
