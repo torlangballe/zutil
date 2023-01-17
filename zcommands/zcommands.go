@@ -1,11 +1,9 @@
 package zcommands
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zlog"
@@ -16,6 +14,7 @@ import (
 )
 
 type ArgType string
+type FileArg string
 
 const (
 	ArgOther  ArgType = ""
@@ -83,18 +82,6 @@ func (c *Commander) HandleLine(line string, ts *zterm.Session) {
 	command := parts[0]
 	args := parts[1:]
 	switch command {
-	case "cd":
-		dir := ""
-		if len(args) > 0 {
-			dir = args[0]
-		}
-		s.changeDirectory(dir)
-	case "help":
-		s.writeHelp(args)
-	case "ls":
-		s.listDir(args)
-	case "pwd":
-		s.TermSession.Writeln(s.path())
 	default:
 		s.structCommand(command, args)
 	}
@@ -103,17 +90,14 @@ func (c *Commander) HandleLine(line string, ts *zterm.Session) {
 func (s *Session) autoComplete(line string, pos int, key rune) (newLine string, newPos int, ok bool) {
 	line = strings.TrimLeft(line, " ")
 	if key == 9 {
-		var rest string
-		if line == "cd" {
-			return line + " ", pos + 1, true
-		}
-		if zstr.HasPrefix(line, "cd ", &rest) {
-			return s.expandChildren(rest, "cd ")
-		}
 		if strings.Contains(line, " ") {
+			var command, args string
+			if zstr.SplitN(line, " ", &command, &args) {
+				return s.expandArgs(command, args)
+			}
 			return
 		}
-		return s.expandCommands(line)
+		return s.expandChildren(line)
 	}
 	return
 }
@@ -165,29 +149,6 @@ func (s *Session) expandForList(stub string, list []string, prefix string) (newL
 
 func (s *Session) currentNode() any {
 	return s.nodeHistory[len(s.nodeHistory)-1].node
-}
-
-func (s *Session) listDir(args []string) {
-	nodes := s.getChildNodes()
-	for name := range nodes {
-		s.TermSession.Writeln(name)
-	}
-}
-
-func (s *Session) writeHelp(args []string) {
-	tabs := tabwriter.NewWriter(s.TermSession.Writer(), 5, 0, 3, ' ', 0)
-	for i, n := range s.methodNames(false) { // get ALL methods, so we get correct index to get args
-		// zlog.Info("writeHelp", n, s.TermSession != nil)
-		if n == "" {
-			continue
-		}
-		fmt.Fprint(tabs, zstr.EscYellow+n, "\t"+zstr.EscCyan)
-		help := s.getMethodsHelp(i)
-		help = strings.Replace(help, "\t", "\t"+zstr.EscNoColor, 1) + zstr.EscNoColor
-		fmt.Fprint(tabs, help)
-		fmt.Fprintln(tabs, "")
-	}
-	tabs.Flush()
 }
 
 func (s *Session) path() string {
@@ -389,3 +350,14 @@ func (s *Session) changeDirectory(path string) {
 // 		}
 // 	})
 // }
+
+func (s *Session) expandChildStubArg(line, command string) (newLine string, newPos int, ok bool) {
+	if line == command {
+		return line + " ", len(line) + 1, true
+	}
+	var rest string
+	if zstr.HasPrefix(line, command+" ", &rest) {
+		return s.expandChildren(rest, command+" ")
+	}
+	return
+}
