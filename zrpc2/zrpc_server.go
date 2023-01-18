@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
+	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 )
@@ -152,4 +153,11 @@ func (c *RPCCalls) SetResourceUpdatedFromClient(ci ClientInfo, resID *string) er
 	// fmt.Println("SetResourceUpdatedFromClient:", *resID)
 	SetResourceUpdated(*resID, ci.ClientID)
 	return nil
+}
+
+// GetURL is a convenience function to get the contents of a url via the server.
+func (c *RPCCalls) GetURL(surl *string, reply *[]byte) error {
+	params := zhttp.MakeParameters()
+	_, err := zhttp.Get(*surl, params, reply)
+	return err
 }
