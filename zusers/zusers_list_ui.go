@@ -6,9 +6,9 @@ import (
 	"strconv"
 
 	"github.com/torlangballe/zui/zalert"
-	"github.com/torlangballe/zui/zbutton"
 	"github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zui/zlabel"
+	"github.com/torlangballe/zui/zmenu"
 	"github.com/torlangballe/zui/zpresent"
 	"github.com/torlangballe/zui/zslicegrid"
 	"github.com/torlangballe/zui/zstyle"
@@ -36,7 +36,7 @@ func (t *userTable) findUser(id string) (*AllUserInfo, int) {
 func makeTableOwner(users []AllUserInfo) *userTable {
 	ut := &userTable{}
 	ut.users = users
-	ut.grid = zslicegrid.TableViewNew(&ut.users, "users-table", zslicegrid.AddEditDelete|zslicegrid.AddHeader|zslicegrid.AddBar)
+	ut.grid = zslicegrid.TableViewNew(&ut.users, "users-table", zslicegrid.AddMenu|zslicegrid.AllowEditAndDelete|zslicegrid.AddHeader|zslicegrid.AddBar)
 	ut.grid.EditParameters.SkipFieldNames = []string{"AdminStar"}
 	ut.grid.FieldParameters.AllStatic = true
 	ut.grid.FieldParameters.HideStatic = false
@@ -60,16 +60,16 @@ func makeTableOwner(users []AllUserInfo) *userTable {
 		}
 		old(ids)
 	}
+	ut.grid.ActionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {
+		def := ut.grid.CreateDefaultMenuItems()
+		return append(def,
+			zmenu.MenuedSCFuncAction("Unauthorize selected users", 'U', 0, func() {
+				ut.unauthorizeUsers(ut.grid.Grid.SelectedIDs())
+			}),
+		)
+	}
 	ut.grid.StoreChangedItemFunc = storeUser
 	ut.grid.DeleteItemFunc = deleteUser
-	unauthButton := zbutton.New("")
-	unauthButton.SetObjectName("unauthorize")
-	unauthButton.SetMinWidth(170)
-	ut.grid.Bar.Add(unauthButton, zgeo.CenterLeft)
-	ut.grid.UpdateWidgets()
-	unauthButton.SetPressedHandler(func() {
-		go ut.unauthorizeUsers(ut.grid.Grid.SelectedIDs())
-	})
 	return ut
 }
 
