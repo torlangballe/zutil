@@ -40,10 +40,6 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// zlog.Info("zrpc.DoServeHTTP:", req.Method, "from:", req.Header.Get("Origin"), req.URL)
 
 	zrest.AddCORSHeaders(w, req)
-	// w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
-	// w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
-	// w.Header().Set("Access-Control-Allow-Credentials", "true")
-	// w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Token, X-ZUI-Client-Id, X-ZUI-Auth-Token")
 
 	defer req.Body.Close()
 	if req.Method == "OPTIONS" {
