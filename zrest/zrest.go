@@ -29,16 +29,26 @@ var (
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	o := req.Header.Get("Origin")
-	obase := zstr.HeadUntilLast(o, ":", nil)
-	// zlog.Info("AddCorsHeaders:", o, obase, "allowed:", LegalCORSOrigins)
-	if LegalCORSOrigins[o] || LegalCORSOrigins[obase] {
+	if o == "" {
+		return
+	}
+	u, err := url.Parse(o)
+	find := o
+	if err != nil {
+		u.Host = u.Hostname()
+		find = u.String()
+	}
+	// zlog.Info("AddCorsHeaders:", o, find, req.URL.String(), "allowed:", LegalCORSOrigins[find])
+	if LegalCORSOrigins[find] {
 		// zlog.Info("AddCorsHeaders2:", o, "allowed:", LegalCORSOrigins)
 		w.Header().Set("Access-Control-Allow-Origin", o)
 		// w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Origin, ZRPC-Client-Id, X-TimeZone-Offset-Hours, X-Requested-With, Content-Type, Accept, Access-Token")
+		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Access-Token")
 		return
+	} else {
+		zlog.Info("AddCorsHeaders NOT allowed!:", o, find, LegalCORSOrigins)
 	}
 }
 
@@ -66,24 +76,6 @@ func ReturnDict(w http.ResponseWriter, req *http.Request, dict zdict.Dict) {
 	w.Header().Set("Date", time.Now().In(time.UTC).Format(time.RFC3339))
 	AddCORSHeaders(w, req)
 	w.Write(data)
-}
-
-func GetTimeZoneFromRequest(req *http.Request) *time.Location {
-	soff := req.Header.Get("X-TimeZone-Offset-Hours")
-	if soff == "" {
-		soff = req.URL.Query().Get("zoffset")
-	}
-	if soff != "" {
-		offset, err := strconv.ParseInt(soff, 10, 32)
-		if err != nil {
-			zlog.Info("zrest.GetTimeZoneFromRequest bad offset:", soff, err)
-			return nil
-		}
-		name := fmt.Sprintf("UTC%+d", offset)
-		loc := time.FixedZone(name, int(offset)*3600)
-		return loc
-	}
-	return nil
 }
 
 func GetBoolVal(vals url.Values, name string) bool {
