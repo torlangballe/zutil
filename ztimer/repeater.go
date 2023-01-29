@@ -134,3 +134,18 @@ func DumpRepeaters() {
 	// }
 	// repeatersMutex.Unlock()
 }
+
+func RepeatAtMostEvery(secs float64, do func() bool) {
+	go func() {
+		for {
+			start := time.Now()
+			if !do() {
+				return
+			}
+			left := secs - ztime.Since(start)
+			if left > 0 {
+				time.Sleep(ztime.SecondsDur(left))
+			}
+		}
+	}()
+}
