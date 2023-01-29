@@ -1,6 +1,7 @@
 package zgeo
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -44,7 +45,7 @@ func (s Size) Pos() Pos {
 	return Pos{s.W, s.H}
 }
 
-//IsNull returns true if S and W are zero
+// IsNull returns true if S and W are zero
 func (s Size) IsNull() bool {
 	return s.W == 0 && s.H == 0
 }
@@ -225,18 +226,19 @@ func (s Size) String() string { // we don't use String() since we're doing that 
 
 func (s *Size) FromString(str string) error { // we don't use String() since that's special in Go
 	var sw, sh string
-	if zstr.SplitN(str, "x", &sw, &sh) {
-		w, err := strconv.ParseFloat(sw, 64)
-		if err != nil {
-			return zlog.Error(err, zlog.StackAdjust(1), "parse w", sw)
-		}
-		h, err := strconv.ParseFloat(sh, 64)
-		if err != nil {
-			return zlog.Error(err, zlog.StackAdjust(1), "parse h", sh)
-		}
-		s.W = w
-		s.H = h
+	if !zstr.SplitN(str, "x", &sw, &sh) {
+		return errors.New("no x: " + str)
 	}
+	w, err := strconv.ParseFloat(sw, 64)
+	if err != nil {
+		return zlog.Error(err, zlog.StackAdjust(1), "parse w", sw)
+	}
+	h, err := strconv.ParseFloat(sh, 64)
+	if err != nil {
+		return zlog.Error(err, zlog.StackAdjust(1), "parse h", sh)
+	}
+	s.W = w
+	s.H = h
 	return nil
 }
 
