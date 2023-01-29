@@ -56,7 +56,7 @@ func StartAuth() {
 	zrpc2.MainClient.HandleAuthenticanFailedFunc = func() {
 		checkAndDoAuth()
 	}
-	ztimer.StartIn(0.2, checkAndDoAuth)
+	ztimer.StartIn(0.1, checkAndDoAuth)
 }
 
 func UserNameType() string {
@@ -240,10 +240,16 @@ func checkAndDoAuth() {
 		}
 		zalert.ShowError(err)
 	}
-	OpenDialog(AllowRegistration, true, CanCancelAuthDialog, func() {
-		if AuthenticatedFunc != nil {
-			AuthenticatedFunc()
+	ztimer.RepeatNow(0.1, func() bool {
+		if !zpresent.FirstPresented {
+			return true
 		}
+		OpenDialog(AllowRegistration, true, CanCancelAuthDialog, func() {
+			if AuthenticatedFunc != nil {
+				AuthenticatedFunc()
+			}
+		})
+		return false
 	})
 }
 
