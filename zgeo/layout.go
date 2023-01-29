@@ -8,15 +8,15 @@ import (
 )
 
 type LayoutCell struct {
-	Alignment         Alignment // Alignment is how cell is placed within parent rect and siblings. If AlignmentNone, it is not placed at all
-	Margin            Size      // Margin is the size around object in cell
-	MaxSize           Size      // MaxSize is maximum size of object before margin. Can be only W or H
-	MinSize           Size      // MinSize is minimum size of object before margin. Can be only W or H
-	Collapsed         bool      // Collapsed is a cell that currently is not shown or takes up space.
-	Free              bool      // Free Cells are placed using simple aligning to parent rect, not stacked etc
-	OriginalSize      Size      // Original size of object before layout
-	Divider           float64   // This cell is a divider, wants its value subtracted from item before it, added to item after
-	Name              string    // A name just for debugging
+	Alignment    Alignment // Alignment is how cell is placed within parent rect and siblings. If AlignmentNone, it is not placed at all
+	Margin       Size      // Margin is the size around object in cell
+	MaxSize      Size      // MaxSize is maximum size of object before margin. Can be only W or H
+	MinSize      Size      // MinSize is minimum size of object before margin. Can be only W or H
+	Collapsed    bool      // Collapsed is a cell that currently is not shown or takes up space.
+	Free         bool      // Free Cells are placed using simple aligning to parent rect, not stacked etc
+	OriginalSize Size      // Original size of object before layout
+	Divider      float64   // This cell is a divider, wants its value subtracted from item before it, added to item after
+	Name         string    // A name just for debugging
 }
 
 // stackCell is used to  calculate a box of *size* for each cell to layout in a stack.
@@ -268,9 +268,7 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 			a |= VertShrink
 		}
 		vr := box.AlignPro(sc.OriginalSize, a, sc.Margin, sc.MaxSize, sc.MinSize)
-		// if debugName == "root" {
 		// 	zlog.Info("layoutRectsInBoxes:", sc.Name, vr, r.Size, a, sc.Margin)
-		// }
 		// zlog.Info(debugName, "r:", r, sc.Name, "sc.size:", sc.size, sc.MinSize, "  align:", sc.Alignment, "box:", box, sc.OriginalSize, "=", vr)
 		x = box.Max().X + spacing // was vr.Max!!!
 		if vertical {
