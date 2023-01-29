@@ -96,17 +96,6 @@ var fmap = map[string]interface{}{
 	"either":   Either,
 }
 
-// func (h *Handler) GetTemplate(path string) (t *template.Template, err error) {
-// 	name := path[1:] + ".gohtml"
-// 	path = h.baseDirectory + "www/templates/" + name
-// 	t, err = template.New(name).Funcs(fmap).ParseFiles(path)
-// 	if err != nil {
-// 		zlog.Info("getTemplate err:", err)
-// 		return
-// 	}
-// 	return
-// }
-
 func (h *Handler) LoadTemplates() (err error) { // https://stackoverflow.com/questions/38686583/golang-parse-all-templates-in-directory-and-subdirectories
 	spath := h.baseDirectory + "templates/"
 	root := template.New("base")

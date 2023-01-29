@@ -49,7 +49,7 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// zlog.Info("FileCache serve:", file, spath, zfile.Exists(file))
 	if c.ServeEmptyImage && !zfile.Exists(file) {
 		zlog.Info("Serve empty cached image:", file)
-		file = "www/images/empty.png"
+		file = zrest.StaticFolder + "/images/empty.png"
 	}
 	// zlog.Info("Serve cached image:", req.URL.Path, file)
 	http.ServeFile(w, req, file)

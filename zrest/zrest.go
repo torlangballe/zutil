@@ -19,12 +19,15 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
+const StaticFolder = "www"
+
 var (
 	RunningOnServer   bool
 	AppURLPrefix      = "/"
 	LegalCORSOrigins  = map[string]bool{}
 	CurrentInRequests int
 )
+
 
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
@@ -47,8 +50,8 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Access-Token")
 		return
-	} else {
-		zlog.Info("AddCorsHeaders NOT allowed!:", o, find, LegalCORSOrigins)
+		// } else {
+		// 	zlog.Info("AddCorsHeaders NOT allowed!:", o, find, LegalCORSOrigins)
 	}
 }
 
