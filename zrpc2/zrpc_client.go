@@ -11,12 +11,13 @@ import (
 )
 
 type Client struct {
-	prefixURL                   string
-	id                          string
-	UseAuth                     bool
-	AuthToken                   string
-	HandleAuthenticanFailedFunc func()
-	TimeoutSecs                 float64
+	prefixURL                        string
+	id                               string
+	UseAuth                          bool
+	AuthToken                        string
+	HandleAuthenticanFailedFunc      func()
+	TimeoutSecs                      float64
+	KeepTokenOnAuthenticationInvalid bool
 }
 
 type clientReceivePayload struct {
@@ -64,7 +65,9 @@ func (c *Client) Call(method string, args, result any) error {
 	}
 	// zlog.Info("Called:", zlog.Full(rp))
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also
-		c.AuthToken = ""
+		if !c.KeepTokenOnAuthenticationInvalid {
+			c.AuthToken = ""
+		}
 		rp.TransportError = "authentication invalid"
 		if c.HandleAuthenticanFailedFunc != nil {
 			c.HandleAuthenticanFailedFunc()
@@ -93,4 +96,3 @@ func (c *Client) CallWithTimeout(timeoutSecs float64, method string, args, resul
 	n.TimeoutSecs = timeoutSecs
 	return n.Call(method, args, result)
 }
-
