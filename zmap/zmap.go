@@ -7,37 +7,6 @@ import (
 	"sync"
 )
 
-func GetAnyKeyAsString(m interface{}) string {
-	mval := reflect.ValueOf(m)
-	keys := mval.MapKeys()
-	if len(keys) == 0 {
-		return ""
-	}
-	str, _ := keys[0].Interface().(string)
-	return str
-}
-
-func GetAnyValue(getPtr interface{}, m interface{}) error {
-	mval := reflect.ValueOf(m)
-	keys := mval.MapKeys()
-	if len(keys) == 0 {
-		return errors.New("no items")
-	}
-	v := mval.MapIndex(keys[0])
-	reflect.ValueOf(getPtr).Elem().Set(v)
-	return nil
-}
-
-func GetKeysAsStrings(m interface{}) (keys []string) {
-	mval := reflect.ValueOf(m)
-	mkeys := mval.MapKeys()
-	for i := 0; i < len(mkeys); i++ {
-		k := fmt.Sprint(mkeys[i].Interface())
-		keys = append(keys, k)
-	}
-	return
-}
-
 type LockMap[K comparable, V any] struct {
 	Map sync.Map
 }
@@ -73,4 +42,35 @@ func (l *LockMap[K, V]) ForEach(f func(key K, value V) bool) {
 
 func (l *LockMap[K, V]) Remove(k K) {
 	l.Map.Delete(k)
+}
+
+func GetAnyKeyAsString(m interface{}) string {
+	mval := reflect.ValueOf(m)
+	keys := mval.MapKeys()
+	if len(keys) == 0 {
+		return ""
+	}
+	str, _ := keys[0].Interface().(string)
+	return str
+}
+
+func GetAnyValue(getPtr interface{}, m interface{}) error {
+	mval := reflect.ValueOf(m)
+	keys := mval.MapKeys()
+	if len(keys) == 0 {
+		return errors.New("no items")
+	}
+	v := mval.MapIndex(keys[0])
+	reflect.ValueOf(getPtr).Elem().Set(v)
+	return nil
+}
+
+func GetKeysAsStrings(m interface{}) (keys []string) {
+	mval := reflect.ValueOf(m)
+	mkeys := mval.MapKeys()
+	for i := 0; i < len(mkeys); i++ {
+		k := fmt.Sprint(mkeys[i].Interface())
+		keys = append(keys, k)
+	}
+	return
 }
