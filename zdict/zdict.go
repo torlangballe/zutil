@@ -145,17 +145,8 @@ func FromStruct(structure interface{}, lowerFirst bool) Dict {
 	return d
 }
 
-func (d Dict) ToStruct(structPtr interface{}) {
-	zreflect.ForEachField(structPtr, func(index int, fval reflect.Value, sf reflect.StructField) {
-		// zlog.Info("Dict2Struct1:", sf.Name, sf.Anonymous)
-		if sf.Anonymous {
-			if fval.CanAddr() {
-				d.ToStruct(fval.Addr().Interface())
-			} else {
-				zlog.Info("2struct: !addr", sf.Name)
-			}
-			return
-		}
+func (d Dict) ToStruct(structPtr any) {
+	zreflect.ForEachField(structPtr, true, func(index int, fval reflect.Value, sf reflect.StructField) bool {
 		dtags := zreflect.GetTagAsMap(string(sf.Tag))["zdict"]
 		name := sf.Name
 		hasTag := (len(dtags) != 0)
@@ -198,6 +189,7 @@ func (d Dict) ToStruct(structPtr interface{}) {
 				fval.Set(reflect.ValueOf(val))
 			}
 		}
+		return true
 		// zlog.Info("Dict2Struct:", name, val, fval.Interface())
 	})
 
@@ -311,71 +303,4 @@ func (d Items) GetItem(i int) (id, name string, value interface{}) {
 
 func (d Items) Count() int {
 	return len(d)
-}
-
-type NamedValues interface {
-	GetItem(i int) (id, name string, value interface{})
-	Count() int
-}
-
-// NVStringer implements a method to create an id for using a type as an item in NamedValues
-type NVStringer interface {
-	ZNVID() string
-}
-
-// MenuItemsIndexOfID loops through items and returns index of one with id. -1 if none
-func NamedValuesIndexOfID(m NamedValues, findID string) int {
-	for i := 0; i < m.Count(); i++ {
-		id, _, _ := m.GetItem(i)
-		if findID == id {
-			return i
-		}
-	}
-	return -1
-}
-
-func NamedValuesIDForValue(m NamedValues, val interface{}) string {
-	for i := 0; i < m.Count(); i++ {
-		id, _, v := m.GetItem(i)
-		if reflect.DeepEqual(val, v) {
-			return id
-		}
-	}
-	return ""
-}
-
-func NamedValuesAreEqual(a, b NamedValues) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	ac := a.Count()
-	bc := b.Count()
-	if ac != bc {
-		return false
-	}
-	for i := 0; i < ac; i++ {
-		ai, an, av := a.GetItem(i)
-		bi, bn, bv := b.GetItem(i)
-		if ai != bi {
-			return false
-		}
-		if an != bn {
-			return false
-		}
-		if !reflect.DeepEqual(av, bv) {
-			return false
-		}
-	}
-	return true
-}
-
-func DumpNamedValues(nv NamedValues) {
-	c := nv.Count()
-	for i := 0; i < c; i++ {
-		id, name, _ := nv.GetItem(i)
-		zlog.Info("Item:", id, name)
-	}
 }
