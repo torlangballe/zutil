@@ -141,7 +141,7 @@ func FieldNamesFromStruct(s interface{}, skip []string, prefix string) (fields [
 }
 
 func ForEachColumn(s interface{}, skip []string, prefix string, got func(v reflect.Value, column string, primary bool)) {
-	zreflect.ForEachField(s, func(index int, val reflect.Value, sf reflect.StructField) {
+	zreflect.ForEachField(s, true, func(index int, val reflect.Value, sf reflect.StructField) bool {
 		var column string
 		dbTags := zreflect.GetTagAsMap(string(sf.Tag))["db"]
 		if len(dbTags) == 0 || dbTags[0] == "" {
@@ -149,18 +149,19 @@ func ForEachColumn(s interface{}, skip []string, prefix string, got func(v refle
 		} else {
 			column = dbTags[0]
 			if column == "-" {
-				return
+				return true
 			}
 		}
 		if zstr.StringsContain(skip, column) {
-			return
+			return true
 		}
 		if val.Kind() == reflect.Struct && val.Type() != timeType {
 			// zlog.Info("FEach:", column, val.Kind(), val.Type())
 			ForEachColumn(val.Addr().Interface(), skip, prefix+column, got)
-			return
+			return true
 		}
 		primary := zstr.IndexOf("primary", dbTags) > 0
 		got(val, prefix+column, primary)
+		return true
 	})
 }
