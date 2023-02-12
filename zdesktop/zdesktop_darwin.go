@@ -176,7 +176,6 @@ func GetImageForWindowTitle(title, app string, oldPID int64, crop zgeo.Rect) (im
 	return img, pid, err
 }
 
-
 func CloseWindowForTitle(title, app string) error {
 	//	title = getTitleWithApp(title, app)
 	pids := zprocess.GetPIDsForAppName(app, false)
@@ -187,7 +186,7 @@ func CloseWindowForTitle(title, app string) error {
 			return nil
 		}
 	}
-	return errors.New("window not found")
+	return errors.New("window not found for closing")
 }
 
 // func getTitleWithApp(title, app string) string {
