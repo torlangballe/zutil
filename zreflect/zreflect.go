@@ -43,11 +43,11 @@ type Item struct {
 	IsAnonymous     bool
 	IsSlice         bool
 	IsPointer       bool
-	Address         interface{}
+	Address         any
 	Package         string
 	Value           reflect.Value
-	Interface       interface{}
-	SimpleInterface interface{}
+	Interface       any
+	SimpleInterface any
 	Children        []Item
 }
 
@@ -57,7 +57,7 @@ type Options struct {
 	MakeSliceElementIfNone bool
 }
 
-func KindFromReflectKind(kind reflect.Kind) TypeKind {
+func KindFromReflectKindAndType(kind reflect.Kind, rtype reflect.Type) TypeKind {
 	switch kind {
 	case reflect.Interface:
 		return KindInterface
@@ -68,6 +68,9 @@ func KindFromReflectKind(kind reflect.Kind) TypeKind {
 	case reflect.Array:
 		return KindArray
 	case reflect.Struct:
+		if rtype == timeType {
+			return KindTime
+		}
 		return KindStruct
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
 		return KindInt
@@ -95,6 +98,10 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 	}
 	item.TypeName = typeName
 	item.Package = vtype.PkgPath()
+	if !val.CanInterface() {
+		zlog.Info("zreflect.itterate: can't interface to:", fieldName)
+		return
+	}
 	if !val.IsValid() {
 		err = errors.New("marshalValue: val.IsValid() failed")
 		return
@@ -175,6 +182,9 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 			for i := 0; i < n; i++ {
 				f := vtype.Field(i)
 				fval := val.Field(i)
+				if !fval.CanInterface() {
+					continue
+				}
 				tag := string(f.Tag) // http://golang.org/pkg/reflect/#StructTag
 				tname := fval.Type().Name()
 				fname := f.Name
@@ -267,7 +277,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 	return
 }
 
-func ItterateStruct(istruct interface{}, options Options) (item Item, err error) {
+func ItterateStruct(istruct any, options Options) (item Item, err error) {
 	rval := reflect.ValueOf(istruct)
 	if !rval.IsValid() { //|| rval.IsZero() { //  && rval.Kind() != reflect.StructKind
 		zlog.Info("ItterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
@@ -277,35 +287,66 @@ func ItterateStruct(istruct interface{}, options Options) (item Item, err error)
 	return itterate(0, "", "", "", false, rval.Elem(), options)
 }
 
-func ForEachField(istruct interface{}, got func(index int, fieldRefVal reflect.Value, sf reflect.StructField)) {
-	rval := reflect.ValueOf(istruct)
+func ForEachField(istruct any, flatten bool, got func(index int, rval reflect.Value, sf reflect.StructField) bool) {
+	forEachField(reflect.ValueOf(istruct), flatten, 0, got)
+}
+
+func forEachField(rval reflect.Value, flatten bool, istart int, got func(index int, fieldRefVal reflect.Value, sf reflect.StructField) bool) (index int, quit bool) {
 	if rval.Kind() == reflect.Ptr { // use Ptr instead of Pointer for old go
 		rval = rval.Elem()
 	}
-	if !rval.IsValid() { //|| rval.IsZero() { //  && rval.Kind() != reflect.StructKind
-		zlog.Fatal(nil, "ItterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
+	if !rval.IsValid() {
+		zlog.Error(nil, "forEachField: rval not valid")
+		return
 	}
+	if rval.Kind() == reflect.Slice {
+		return
+	}
+	j := istart
+	// zlog.Info("ForEach:", rval.Type(), rval.Kind(), rval.NumField())
 	for i := 0; i < rval.NumField(); i++ {
-		got(i, rval.Field(i), rval.Type().Field(i))
+		fv := rval.Field(i)
+		f := rval.Type().Field(i)
+		if !fv.CanInterface() {
+			continue
+		}
+		if flatten && f.Anonymous {
+			var quit bool
+			j, quit = forEachField(fv, true, j, got)
+			if quit {
+				return j, true
+			}
+			continue
+		}
+		if !got(j, fv, f) {
+			return j, true
+		}
+		j++
 	}
+	return j, false
 }
 
-func FieldForIndex(istruct interface{}, index int) (fieldRefVal reflect.Value, sf reflect.StructField) {
-	ForEachField(istruct, func(i int, rv reflect.Value, f reflect.StructField) {
+func FieldForIndex(istruct any, flatten bool, index int) (fieldRefVal reflect.Value, sf reflect.StructField) {
+	ForEachField(istruct, flatten, func(i int, rv reflect.Value, f reflect.StructField) bool {
 		if i == index {
 			fieldRefVal = rv
 			sf = f
+			return false
 		}
+		return true
 	})
 	return
 }
 
-func FieldForName(istruct interface{}, name string) (fieldRefVal reflect.Value, sf reflect.StructField) {
-	ForEachField(istruct, func(i int, rv reflect.Value, f reflect.StructField) {
+func FieldForName(istruct any, flatten bool, name string) (fieldRefVal reflect.Value, sf reflect.StructField, found bool) {
+	ForEachField(istruct, flatten, func(i int, rv reflect.Value, f reflect.StructField) bool {
 		if f.Name == name {
 			fieldRefVal = rv
 			sf = f
+			found = true
+			return false
 		}
+		return true
 	})
 	return
 }
@@ -337,7 +378,7 @@ func GetTagAsMap(stag string) map[string][]string {
 }
 
 // TODO: Use FieldForName instead
-func FindFieldWithNameInStruct(name string, structure interface{}, anonymous bool) (reflect.Value, bool) {
+func FindFieldWithNameInStruct(name string, structure any, anonymous bool) (reflect.Value, bool) {
 	val := reflect.ValueOf(structure)
 	if val.Kind() == reflect.Pointer {
 		// zlog.Info("FindFieldWithNameInStruct 2emel")
@@ -363,7 +404,7 @@ func FindFieldWithNameInStruct(name string, structure interface{}, anonymous boo
 	return reflect.Value{}, false
 }
 
-func DeepCopy(destPtr, source interface{}) error {
+func DeepCopy(destPtr, source any) error {
 	buf := bytes.Buffer{}
 	err := gob.NewEncoder(&buf).Encode(source)
 	if err != nil {
@@ -374,10 +415,19 @@ func DeepCopy(destPtr, source interface{}) error {
 
 // NewOfAny returns a new'ed item of that type.
 // If a is a pointer, it's element is used.
-func NewOfAny(a interface{}) interface{} {
+func NewOfAny(a any) any {
 	val := reflect.ValueOf(a)
 	if val.Kind() == reflect.Pointer {
 		val = val.Elem()
 	}
 	return reflect.New(val.Type()).Interface()
+}
+
+func IsRealSlice(val reflect.Value) bool {
+	var f []float32
+	if val.Type() == reflect.TypeOf(f) {
+		return true
+	}
+	var d []float64
+	return val.Type() == reflect.TypeOf(d)
 }
