@@ -8,12 +8,12 @@ import (
 	"log"
 
 	"github.com/gliderlabs/ssh"
+	"github.com/torlangballe/term"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc2"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zusers"
-	"golang.org/x/term"
 )
 
 // https://xtermjs.org for web client?
@@ -34,6 +34,7 @@ type Session struct {
 	goterm  *term.Terminal
 	term    *Terminal
 	values  map[string]interface{}
+	// prompt  string
 }
 
 func (ts *Session) UserID() int64 {
@@ -41,7 +42,9 @@ func (ts *Session) UserID() int64 {
 }
 
 func (ts *Session) SetPrompt(str string) {
-	ts.goterm.SetPrompt(ts.session.User() + " " + str)
+	// ts.prompt = ts.session.User() + " " + str
+	prompt := ts.session.User() + " " + str
+	ts.goterm.SetPrompt(prompt)
 }
 
 func (ts *Session) GetValue(key string) interface{} {
@@ -64,6 +67,15 @@ func (ts *Session) Writeln(parts ...any) {
 	fmt.Fprintln(ts.Writer(), parts...)
 }
 
+func (ts *Session) Write(parts ...any) {
+	fmt.Fprint(ts.Writer(), parts...)
+}
+
+func (ts *Session) Writef(format string, parts ...any) {
+	str := fmt.Sprintf(format, parts...)
+	fmt.Fprint(ts.Writer(), str)
+}
+
 func New(startText string) *Terminal {
 	t := &Terminal{}
 	t.startText = startText
@@ -72,9 +84,8 @@ func New(startText string) *Terminal {
 	return t
 }
 
-func (s *Session) ReadLine() string {
-	line, _ := s.goterm.ReadLine()
-	return line
+func (s *Session) ReadValueLine() (string, error) {
+	return s.goterm.ReadValueLine()
 }
 
 func (t *Terminal) ListenForever(port int) {
@@ -90,7 +101,7 @@ func (t *Terminal) ListenForever(port int) {
 			fmt.Fprintln(ts.session, t.startText)
 		}
 		for {
-			line := ts.ReadLine()
+			line, _ := ts.goterm.ReadLine()
 			if !t.HandleLine(line, ts) {
 				return
 			}
