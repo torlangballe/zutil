@@ -21,7 +21,7 @@ func NewRateLimiter(secs float64) *RateLimiter {
 	return r
 }
 
-// Do runs the *do* function if secs -1) has passed since last time it was done for that id,
+// Do runs the *do* function if secs -1) has passed since last time it was done,
 // and it is not still execting previois do()
 func (r *RateLimiter) Do(do func()) {
 	if r.executing {
