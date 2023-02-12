@@ -56,9 +56,16 @@ func Empty(slicePtr interface{}) {
 }
 
 func AddEmptyElementAtEnd(slicePtr interface{}) int {
-	rval := reflect.ValueOf(slicePtr).Elem()
-	n := reflect.New(reflect.TypeOf(rval.Interface()).Elem())
-	return AddAtEnd(slicePtr, n.Elem().Interface())
+	e := MakeAnElementOfSliceType(slicePtr)
+	return AddAtEnd(slicePtr, e)
+}
+
+func MakeAnElementOfSliceType(slice any) any {
+	rval := reflect.ValueOf(slice)
+	if rval.Kind() == reflect.Pointer {
+		rval = rval.Elem()
+	}
+	return reflect.New(rval.Type().Elem()).Elem().Interface()
 }
 
 func AddAtEnd(slicePtr interface{}, add interface{}) int {
