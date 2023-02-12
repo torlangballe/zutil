@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/torlangballe/zutil/zbool"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zterm"
@@ -15,6 +14,7 @@ import (
 
 type ArgType string
 type FileArg string
+type CommandType string
 
 const (
 	ArgOther  ArgType = ""
@@ -22,6 +22,15 @@ const (
 	ArgInt    ArgType = "int"
 	ArgFloat  ArgType = "float"
 	ArgBool   ArgType = "bool"
+
+	CommandExecute CommandType = "execute"
+	CommandHelp    CommandType = "help"
+	CommandExpand  CommandType = "expand"
+
+	TopHelp = `This command-line interface is a tree of nodes based on important
+parts of an app; tables, main structures or functionality.
+Use the "cd" command to move into a node, where "help" will show commands 
+specific to that node. Type ls to show child nodes.`
 )
 
 type Arg struct {
@@ -40,19 +49,34 @@ type Session struct {
 	id          string
 	TermSession *zterm.Session
 	nodeHistory []namedNode
+	commander   *Commander
 }
 
 type Commander struct {
-	sessions map[string]*Session
-	rootNode any
+	sessions    map[string]*Session
+	rootNode    any
+	GlobalNodes []any
 }
+
+type CommandInfo struct {
+	Session *Session
+	Type    CommandType
+}
+
+type methodNode struct {
+	Name string
+}
+
+var commandInfoType = reflect.TypeOf(&CommandInfo{})
 
 func NewCommander(rootNode any, term *zterm.Terminal) *Commander {
 	c := new(Commander)
 	c.rootNode = rootNode
 	c.sessions = map[string]*Session{}
+	c.GlobalNodes = []any{&defaultCommands{}}
 	term.HandleNewSession = func(ts *zterm.Session) func(line string, pos int, key rune) (newLine string, newPos int, ok bool) {
 		s := new(Session)
+		s.commander = c
 		s.id = ts.ContextSessionID()
 		nn := namedNode{"/", c.rootNode}
 		s.nodeHistory = []namedNode{nn}
@@ -75,31 +99,51 @@ func (c *Commander) HandleTerminalLine(line string, ts *zterm.Session) bool {
 func (c *Commander) HandleLine(line string, ts *zterm.Session) {
 	sessionID := ts.ContextSessionID()
 	s := c.sessions[sessionID]
+	s.doCommand(line, CommandExecute)
+}
+
+func (s *Session) doCommand(line string, ctype CommandType) string {
 	parts := zstr.GetQuotedArgs(line)
 	if len(parts) == 0 {
-		return
+		return ""
 	}
 	command := parts[0]
 	args := parts[1:]
-	switch command {
-	default:
-		s.structCommand(command, args)
+	// zlog.Info("doCommand", command, args)
+	str, got := s.structCommand(s.currentNode(), command, args, ctype)
+	if got {
+		return str
 	}
+	for i := len(s.commander.GlobalNodes) - 1; i >= 0; i-- { // we do it backward, so app-specific appended global node handles before default, so we can override
+		n := s.commander.GlobalNodes[i]
+		str, got = s.structCommand(n, command, args, ctype)
+		if got {
+			return str
+		}
+	}
+	s.TermSession.Writeln("command not found:", command)
+	return ""
 }
 
 func (s *Session) autoComplete(line string, pos int, key rune) (newLine string, newPos int, ok bool) {
 	line = strings.TrimLeft(line, " ")
 	if key == 9 {
 		if strings.Contains(line, " ") {
-			var command, args string
-			if zstr.SplitN(line, " ", &command, &args) {
-				return s.expandArgs(command, args)
+			str := s.doCommand(line, CommandExpand)
+			if str == "" {
+				return
 			}
-			return
+			ret := line + str
+			return ret, len(ret), true
 		}
-		return s.expandChildren(line)
+		return s.expandChildren(line, "")
 	}
 	return
+}
+
+func (s *Session) ExpandChildren(fileStub, prefix string) (addStub string) {
+	n, _, _ := s.expandChildren(fileStub, prefix)
+	return n
 }
 
 func (s *Session) expandChildren(fileStub, prefix string) (newLine string, newPos int, ok bool) {
@@ -110,16 +154,6 @@ func (s *Session) expandChildren(fileStub, prefix string) (newLine string, newPo
 	return s.expandForList(fileStub, names, prefix)
 }
 
-func (s *Session) allCommands() []string {
-	meths := s.methodNames(true)
-	meths = append(meths, "cd", "pwd", "ls", "help")
-	return meths
-}
-
-func (s *Session) expandCommands(stub string) (newLine string, newPos int, ok bool) {
-	return s.expandForList(stub, s.allCommands(), "")
-}
-
 func (s *Session) expandForList(stub string, list []string, prefix string) (newLine string, newPos int, ok bool) {
 	var commands []string
 	for _, c := range list {
@@ -127,23 +161,21 @@ func (s *Session) expandForList(stub string, list []string, prefix string) (newL
 			commands = append(commands, c)
 		}
 	}
-	zlog.Info("ExpChiexpandForListldren:", stub, list)
-
 	if len(commands) == 0 {
 		return
 	}
 	if len(commands) == 1 {
-		m := prefix + commands[0]
+		var c string
+		zstr.HasPrefix(commands[0], stub, &c)
+		m := prefix + c
 		return m, len(m), true
 	}
 	s.TermSession.Writeln("\n" + strings.Join(commands, " "))
 	stub = zstr.SliceCommonExtremity(commands, true)
 	if stub != "" {
 		stub = prefix + stub
-		zlog.Info("EXList: '"+stub+"'", commands)
 		return stub, len(stub), true
 	}
-	zlog.Info("EXList2: '"+stub+"'", commands)
 	return
 }
 
@@ -151,7 +183,7 @@ func (s *Session) currentNode() any {
 	return s.nodeHistory[len(s.nodeHistory)-1].node
 }
 
-func (s *Session) path() string {
+func (s *Session) Path() string {
 	var str string
 	for _, n := range s.nodeHistory {
 		if str != "" && str != "/" {
@@ -163,25 +195,37 @@ func (s *Session) path() string {
 }
 
 func (s *Session) updatePrompt() {
-	s.TermSession.SetPrompt(s.path() + "> ")
+	s.TermSession.SetPrompt(s.Path() + "> ")
 }
 
-func (s *Session) structCommand(command string, args []string) string {
-	meths := s.methodNames(true)
-	i := zstr.IndexOf(command, meths)
-	if i == -1 {
-		s.TermSession.Writeln("command not found:", command)
-		return ""
+func (s *Session) structCommand(structure any, command string, args []string, ctype CommandType) (result string, got bool) {
+	// zlog.Info("structCommand", command, args, ctype)
+	for _, st := range anonStructsAndSelf(structure) {
+		rval := reflect.ValueOf(st)
+		t := rval.Type()
+		for m := 0; m < t.NumMethod(); m++ {
+			method := t.Method(m)
+			mtype := method.Type
+			// zlog.Info("MethNames:", method.Name, mtype.NumIn())
+			if mtype.NumIn() == 1 || mtype.In(1) != commandInfoType {
+				continue
+			}
+			if strings.ToLower(method.Name) == command {
+				return s.structCommandWithMethod(method, rval, args, ctype)
+			}
+		}
 	}
-	rval := reflect.ValueOf(s.currentNode())
-	t := rval.Type()
-	method := t.Method(i)
+	return
+}
+
+func (s *Session) structCommandWithMethod(method reflect.Method, structVal reflect.Value, args []string, ctype CommandType) (result string, got bool) {
 	mtype := method.Type
 	var needed int
-	params := []reflect.Value{reflect.ValueOf(s.currentNode()), reflect.ValueOf(s)}
+	c := &CommandInfo{Session: s, Type: ctype}
+	params := []reflect.Value{structVal, reflect.ValueOf(c)}
 	for i := 2; i < mtype.NumIn(); i++ {
-		isPointer := (mtype.In(i).Kind() == reflect.Pointer)
 		kind := mtype.In(i).Kind()
+		isPointer := (kind == reflect.Pointer)
 		av := reflect.New(mtype.In(i)).Elem()
 		if isPointer {
 			kind = mtype.In(i).Elem().Kind()
@@ -196,18 +240,19 @@ func (s *Session) structCommand(command string, args []string) string {
 				continue
 			}
 			params = append(params, av)
+			// zlog.Info("structCommand param", av)
 			continue
 		}
 		if needed != 0 {
 			continue
 		}
 		arg := zstr.ExtractFirstString(&args)
-		k := zreflect.KindFromReflectKind(kind)
+		k := zreflect.KindFromReflectKindAndType(kind, mtype.In(i))
 		n, err := strconv.ParseFloat(arg, 10)
 		if k == zreflect.KindInt || k == zreflect.KindFloat {
 			if err != nil {
 				s.TermSession.Writeln("error parsing '" + arg + "' to number.")
-				return ""
+				return
 			}
 		}
 		switch kind {
@@ -223,12 +268,12 @@ func (s *Session) structCommand(command string, args []string) string {
 			b, err := zbool.FromStringWithError(arg)
 			if err != nil {
 				s.TermSession.Writeln(arg+":", err)
-				return ""
+				return
 			}
 			av.SetBool(b)
 		default:
 			s.TermSession.Writeln("unsupported parameter #:", i, av.Kind())
-			return ""
+			return
 		}
 		if isPointer {
 			av = av.Addr()
@@ -237,32 +282,44 @@ func (s *Session) structCommand(command string, args []string) string {
 	}
 	if needed > 0 {
 		s.TermSession.Writeln(zwords.Pluralize("argument", needed), "needed")
-		return ""
+		return
 	}
 	if len(args) > 0 {
 		s.TermSession.Writeln("extra arguments unused:", args)
 	}
-	method.Func.Call(params)
-	return ""
+	// zlog.Info("Call:", method.Name, len(params), params)
+	vals := method.Func.Call(params)
+	return vals[0].Interface().(string), true
 }
 
-func (s *Session) methodNames(onlyCommands bool) []string {
+func anonStructsAndSelf(structure any) []any {
+	anon := []any{structure}
+	zreflect.ForEachField(structure, false, func(index int, v reflect.Value, sf reflect.StructField) bool {
+		if sf.Anonymous {
+			if v.CanAddr() {
+				v = v.Addr()
+			}
+			anon = append(anon, v.Interface())
+		}
+		return true
+	})
+	return anon
+}
+
+func (s *Session) methodNames(structure any) []string {
 	var names []string
-	c := s.currentNode()
-	rval := reflect.ValueOf(c)
+	rval := reflect.ValueOf(structure)
 	t := rval.Type()
-	// et := t
-	// if rval.Kind() == reflect.Ptr {
-	// 	et = rval.Elem().Type()
-	// }
+	if rval.Kind() == reflect.Pointer {
+
+	}
+	// zlog.Info("methodNames:", reflect.TypeOf(structure), t.NumMethod(), rval.Type(), rval.Kind())
 	for m := 0; m < t.NumMethod(); m++ {
 		method := t.Method(m)
 		mtype := method.Type
-		if mtype.NumIn() == 0 || reflect.TypeOf(&Session{}) != mtype.In(1) {
-			zlog.Info("No Session", method.Name, mtype.NumIn(), mtype.In(1))
-			if !onlyCommands {
-				names = append(names, "")
-			}
+		// zlog.Info("MethNames:", method.Name, mtype.NumIn())
+		if mtype.NumIn() == 1 || mtype.In(1) != commandInfoType {
+			// zlog.Info("No Session", method.Name, mtype.NumIn(), mtype.In(1))
 			continue
 		}
 		command := strings.ToLower(method.Name)
@@ -273,39 +330,66 @@ func (s *Session) methodNames(onlyCommands bool) []string {
 }
 
 func (s *Session) getChildNodes() map[string]any {
+	// zlog.Info("getChildNodes:", reflect.TypeOf(s.currentNode()))
 	m := map[string]any{}
-	zreflect.ForEachField(s.currentNode(), func(index int, v reflect.Value, sf reflect.StructField) {
+	for _, st := range anonStructsAndSelf(s.currentNode()) {
+		s.addChildNodes(m, st)
+	}
+	return m
+}
+
+func (s *Session) addChildNodes(m map[string]any, parent any) {
+	// zlog.Info("AddChildNodes:", reflect.TypeOf(parent))
+	zreflect.ForEachField(parent, true, func(index int, v reflect.Value, sf reflect.StructField) bool {
 		if v.Kind() == reflect.Pointer {
 			v = v.Elem()
 		}
 		if v.Kind() != reflect.Struct {
-			return
+			return true
 		}
-		meths := s.methodNames(true)
+		meths := s.methodNames(v.Addr().Interface())
 		if len(meths) == 0 {
-			return
+			return true
 		}
 		name := strings.ToLower(sf.Name)
-		m[name] = v.Interface()
+		m[name] = v.Addr().Interface()
+		return true
 	})
-	return m
 }
 
-func (s *Session) getMethodsHelp(index int) string {
-	t := reflect.ValueOf(s.currentNode()).Type()
-	method := t.Method(index)
-	mtype := method.Type
-	var args []reflect.Value
-	args = append(args, reflect.ValueOf(s.currentNode()))
-	var session *Session
-	args = append(args, reflect.ValueOf(session))
-	for i := 2; i < mtype.NumIn(); i++ {
-		atype := mtype.In(i)
-		z := reflect.Zero(atype)
-		args = append(args, z)
+type Help struct {
+	Method      string
+	Args        string
+	Description string
+}
+
+func (s *Session) GetAllMethodsHelp(structure any) []Help {
+	var help []Help
+	rval := reflect.ValueOf(structure)
+	t := rval.Type()
+	for m := 0; m < t.NumMethod(); m++ {
+		method := t.Method(m)
+		mtype := method.Type
+		if mtype.NumIn() == 1 || mtype.In(1) != commandInfoType {
+			// zlog.Info("No Session", method.Name, mtype.NumIn(), mtype.In(1))
+			continue
+		}
+		var args []reflect.Value
+		args = append(args, rval)
+		c := &CommandInfo{Session: s, Type: CommandHelp}
+		args = append(args, reflect.ValueOf(c))
+		for i := 2; i < mtype.NumIn(); i++ {
+			atype := mtype.In(i)
+			z := reflect.Zero(atype)
+			args = append(args, z)
+		}
+		rets := method.Func.Call(args)
+		returnString := rets[0].Interface().(string)
+		var h Help
+		h.Method = strings.ToLower(method.Name)
+		zstr.SplitN(returnString, "\t", &h.Args, &h.Description)
+		help = append(help, h)
 	}
-	rets := method.Func.Call(args)
-	help := rets[0].Interface().(string)
 	return help
 }
 
@@ -332,24 +416,14 @@ func (s *Session) changeDirectory(path string) {
 		s.TermSession.Writeln("no directory: '" + dir + "'")
 		return
 	}
+	s.GotoChildNode(dir, node)
+}
+
+func (s *Session) GotoChildNode(dir string, node any) {
 	nn := namedNode{dir, node}
 	s.nodeHistory = append(s.nodeHistory, nn)
 	s.updatePrompt()
 }
-
-// func findChildrenNodes(node any) {
-// 	zreflect.ForEachField(node, func(index int, val reflect.Value, sf reflect.StructField) {
-// 		var column string
-// 		dbTags := zreflect.GetTagAsMap(string(sf.Tag))["db"]
-
-// 		rval := reflect.ValueOf(c)
-// 		t := rval.Type()
-// 		et := t
-// 		if rval.Kind() == reflect.Ptr {
-// 			et = rval.Elem().Type()
-// 		}
-// 	})
-// }
 
 func (s *Session) expandChildStubArg(line, command string) (newLine string, newPos int, ok bool) {
 	if line == command {
@@ -360,4 +434,16 @@ func (s *Session) expandChildStubArg(line, command string) (newLine string, newP
 		return s.expandChildren(rest, command+" ")
 	}
 	return
+}
+
+func CreateCommanderAndTerminal(welcome string, keysdir string, rootNode any, port int) *Commander {
+	terminal := zterm.New(welcome + ". Type 'close' to exit.")
+	terminal.PublicKeyStorePath = keysdir + "terminal-pubkeys.json"
+	commander := NewCommander(rootNode, terminal)
+	terminal.HandleLine = commander.HandleTerminalLine
+	if port == 0 {
+		port = 2222
+	}
+	go terminal.ListenForever(port)
+	return commander
 }

@@ -8,56 +8,96 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
-type DefaultCommands struct {
+type defaultCommands struct {
 }
 
-func (r *DefaultCommands) Cd(s *Session, path *string) string {
-	if s == nil {
+type helpGetter interface {
+	GetHelpForNode() string
+}
+
+func expandPath(s *Session, path *string) string {
+	stub := ""
+	if path != nil {
+		stub = *path
+	}
+	return s.ExpandChildren(stub, "")
+}
+
+func (r *defaultCommands) Cd(c *CommandInfo, path *string) string {
+	if c.Type == CommandHelp {
 		return "<path>\tchange directory to path. .. is to parent, - is to previous."
+	}
+	if c.Type == CommandExpand {
+		return expandPath(c.Session, path)
 	}
 	dir := ""
 	if path != nil {
 		dir = *path
 	}
-	s.changeDirectory(dir)
+	c.Session.changeDirectory(dir)
 	return ""
 }
 
-func (r *DefaultCommands) Help(s *Session) string {
-	if s == nil {
+func (r *defaultCommands) Help(c *CommandInfo) string {
+	if c.Type == CommandHelp {
 		return "\tshows this help."
 	}
-	tabs := tabwriter.NewWriter(s.TermSession.Writer(), 5, 0, 3, ' ', 0)
-	for i, n := range s.methodNames(false) { // get ALL methods, so we get correct index to get args
-		// zlog.Info("writeHelp", n, s.TermSession != nil)
-		if n == "" {
-			continue
-		}
-		fmt.Fprint(tabs, zstr.EscYellow+n, "\t"+zstr.EscCyan)
-		help := s.getMethodsHelp(i)
-		help = strings.Replace(help, "\t", "\t"+zstr.EscNoColor, 1) + zstr.EscNoColor
-		fmt.Fprint(tabs, help)
-		fmt.Fprintln(tabs, "")
+	if c.Type == CommandExpand {
+		return ""
+	}
+	h, _ := c.Session.currentNode().(helpGetter)
+	if h != nil {
+		str := h.GetHelpForNode()
+		c.Session.TermSession.Writeln(str)
+	}
+	tabs := tabwriter.NewWriter(c.Session.TermSession.Writer(), 5, 0, 3, ' ', 0)
+	helpForStruct(c.Session, c.Session.currentNode(), tabs)
+	for _, n := range c.Session.commander.GlobalNodes {
+		helpForStruct(c.Session, n, tabs)
 	}
 	tabs.Flush()
 	return ""
 }
 
-func (r *DefaultCommands) LS(s *Session, path *string) string {
-	if s == nil {
+func helpForStruct(s *Session, structure any, tabs *tabwriter.Writer) {
+	for _, h := range s.GetAllMethodsHelp(structure) {
+		fmt.Fprint(tabs, zstr.EscYellow, h.Method, " ")
+		fmt.Fprint(tabs, zstr.EscCyan, h.Args, "\t")
+		parts := strings.Split(h.Description, "\n")
+		if len(parts) == 1 {
+			fmt.Fprint(tabs, zstr.EscNoColor, h.Description, "\n")
+			continue
+		}
+		fmt.Fprint(tabs, zstr.EscNoColor, parts[0], "\n")
+		for _, part := range parts[1:] {
+			fmt.Fprint(tabs, zstr.EscYellow, " ")
+			fmt.Fprint(tabs, zstr.EscCyan, " \t")
+			fmt.Fprint(tabs, zstr.EscNoColor, part, "\n")
+		}
+	}
+}
+
+func (r *defaultCommands) LS(c *CommandInfo, path *string) string {
+	if c.Type == CommandHelp {
 		return "\tlist childrem match path, or all in current directory."
 	}
-	nodes := s.getChildNodes()
+	if c.Type == CommandExpand {
+		return expandPath(c.Session, path)
+	}
+	nodes := c.Session.getChildNodes()
 	for name := range nodes {
-		s.TermSession.Writeln(name)
+		c.Session.TermSession.Writeln(name)
 	}
 	return ""
 }
 
-func (r *DefaultCommands) PWD(s *Session, path *string) string {
-	if s == nil {
+func (r *defaultCommands) PWD(c *CommandInfo, path *string) string {
+	if c.Type == CommandHelp {
 		return "\tPrint Working Directory, show path to where you are in hierarchy."
 	}
-	s.TermSession.Writeln(s.path())
+	if c.Type == CommandExpand {
+		return ""
+	}
+	c.Session.TermSession.Writeln(c.Session.Path())
 	return ""
 }
