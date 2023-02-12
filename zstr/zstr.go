@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -508,6 +509,10 @@ func CountWords(str string) int {
 }
 
 func HasPrefix(str, prefix string, rest *string) bool {
+	if prefix == "" {
+		*rest = str
+		return true
+	}
 	if strings.HasPrefix(str, prefix) {
 		*rest = str[len(prefix):]
 		return true
@@ -1214,4 +1219,12 @@ func Filter(slice []string, keep func(s string) bool) []string {
 		}
 	}
 	return n
+}
+
+func GetIDFromAnySliceItemWithIndex(a any, index int) string {
+	getter, _ := a.(StrIDer)
+	if getter != nil {
+		return getter.GetStrID()
+	}
+	return strconv.Itoa(index)
 }
