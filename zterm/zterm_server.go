@@ -90,6 +90,10 @@ func (s *Session) ReadValueLine() (string, error) {
 
 func (t *Terminal) ListenForever(port int) {
 	ssh.Handle(func(s ssh.Session) {
+		if len(s.Command()) != 0 {
+			s.Write([]byte("ssh commands not implemented yet.\n"))
+			return
+		}
 		ts := &Session{}
 		ts.session = s
 		ts.values = map[string]interface{}{}
