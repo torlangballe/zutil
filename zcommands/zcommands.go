@@ -437,7 +437,7 @@ func (s *Session) expandChildStubArg(line, command string) (newLine string, newP
 }
 
 func CreateCommanderAndTerminal(welcome string, keysdir string, rootNode any, port int) *Commander {
-	terminal := zterm.New(welcome + ". Type 'close' to exit.")
+	terminal := zterm.New(welcome + ". Type 'close' or press control-D to exit.")
 	terminal.PublicKeyStorePath = keysdir + "terminal-pubkeys.json"
 	commander := NewCommander(rootNode, terminal)
 	terminal.HandleLine = commander.HandleTerminalLine

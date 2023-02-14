@@ -105,7 +105,10 @@ func (t *Terminal) ListenForever(port int) {
 			fmt.Fprintln(ts.session, t.startText)
 		}
 		for {
-			line, _ := ts.goterm.ReadLine()
+			line, err := ts.goterm.ReadLine()
+			if err != nil {
+				return
+			}
 			if !t.HandleLine(line, ts) {
 				return
 			}
