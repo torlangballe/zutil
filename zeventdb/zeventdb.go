@@ -130,6 +130,9 @@ func (db *Database) Add(istruct interface{}, flush bool) {
 	storeLock.Lock()
 	itemsToStore = append(itemsToStore, istruct)
 	storeLock.Unlock()
+	if len(itemsToStore) > 2000 {
+		zlog.Info("zeventdb.Add", len(itemsToStore))
+	}
 	if flush {
 		db.writeItems()
 	}
@@ -169,7 +172,6 @@ func (db *Database) writeItems() bool {
 			break
 		}
 	}
-	itemsToStore = itemsToStore[pageSize:]
 	storeLock.Unlock()
 
 	//	for c := 0; c < 10; c++ {
@@ -180,6 +182,11 @@ func (db *Database) writeItems() bool {
 	db.Lock.Unlock()
 	if err != nil {
 		zlog.Error(err, "query", query, vals)
+		return false // so we get the sleep
+	} else {
+		storeLock.Lock()
+		itemsToStore = itemsToStore[pageSize:]
+		storeLock.Unlock()
 	}
 	return len(itemsToStore) > 0
 	//	}
