@@ -21,24 +21,29 @@ import (
 )
 
 func RunBashCommand(command string, timeoutSecs float64) (string, error) {
-	return RunCommand("/bin/bash", timeoutSecs, []string{"-c", command}...)
+	return RunCommand("/bin/bash", timeoutSecs, []any{"-c", command}...)
 }
 
-func RunCommand(command string, timeoutSecs float64, args ...string) (string, error) {
+func RunCommand(command string, timeoutSecs float64, args ...any) (string, error) {
 	var cmd *exec.Cmd
 	var cancel context.CancelFunc
 	if runtime.GOOS == "windows" {
 		for i, a := range args {
-			args[i] = strings.Replace(a, "&", "^&", -1)
+			s, is := a.(string)
+			if is {
+				args[i] = strings.Replace(s, "&", "^&", -1)
+			}
 		}
 	}
+	sargs := zstr.AnySliceToStrings(args)
+	// zlog.Info("zprocess.RunCommand:", sargs[0], "1:", sargs[1])
 	if timeoutSecs != 0 {
 		var ctx context.Context
 		// zlog.Info("RunCommand with timeout:", timeoutSecs)
 		ctx, cancel = context.WithTimeout(context.Background(), ztime.SecondsDur(timeoutSecs))
-		cmd = exec.CommandContext(ctx, command, args...)
+		cmd = exec.CommandContext(ctx, command, sargs...)
 	} else {
-		cmd = exec.Command(command, args...)
+		cmd = exec.Command(command, sargs...)
 	}
 	output, err := cmd.CombinedOutput()
 	str := string(output) // strings.Replace(, "\n", "", -1)
@@ -59,13 +64,14 @@ func GetAppProgramPath(appName string) string {
 	return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
 }
 
-func RunApp(appName string, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
+func RunApp(appName string, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
 	path := GetAppProgramPath(appName)
 	return MakeCommand(path, true, args...)
 }
 
-func MakeCommand(command string, start bool, args ...string) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
-	cmd = exec.Command(command, args...)
+func MakeCommand(command string, start bool, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
+	// zlog.Info("MakeCommand:", zstr.AnySliceToStrings(args))
+	cmd = exec.Command(command, zstr.AnySliceToStrings(args)...)
 	outPipe, err = cmd.StdoutPipe()
 	if err != nil {
 		err = zlog.Error(err, "connect stdout pipe")
@@ -90,6 +96,12 @@ func MakeCommand(command string, start bool, args ...string) (cmd *exec.Cmd, out
 	}
 	// zlog.Info("RunApp:", path, cmd.Process.Pid, args)
 	return
+}
+
+func CommandPiper(outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, pipe io.ReadWriter) {
+	go io.Copy(pipe, outPipe)
+	go io.Copy(pipe, errPipe)
+	go io.Copy(inPipe, pipe)
 }
 
 func RunAppleScript(command string, timeoutSecs float64) (string, error) {

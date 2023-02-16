@@ -98,9 +98,9 @@ func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
 	return ""
 }
 
-func OpenURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) error {
+func OpenURLInBrowser(surl string, btype zhttp.BrowserType, args ...any) error {
 	name := GetAppNameOfBrowser(btype, true)
-	args = append([]string{
+	args = append([]any{
 		"-g", // Don't bring app to foreground
 		"-F", // fresh, don't open old windows. Doesn't work for safari that has been force-quit
 		"-a", name,
@@ -116,7 +116,7 @@ func OpenURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) erro
 	return err
 }
 
-func RunURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) (*exec.Cmd, error) {
+func RunURLInBrowser(surl string, btype zhttp.BrowserType, args ...any) (*exec.Cmd, error) {
 	args = append(args, surl)
 	name := GetAppNameOfBrowser(btype, true)
 	cmd, _, _, _, err := zprocess.RunApp(name, args...)
@@ -294,7 +294,10 @@ func GetWindowImage(winID string, crop zgeo.Rect) (image.Image, error) {
 	start := time.Now()
 	cgimage := C.GetWindowImage(C.long(wid))
 	if cgimage == C.CGImageRef(0) {
-		return nil, zlog.Error(nil, "get window image returned nil", time.Since(start), "wid:", wid)
+		err := zlog.Error(nil, "get window image returned nil", time.Since(start), "wid:", wid)
+		PrintWindowTitles()
+		return nil, err
+
 	}
 	// zlog.Info("GetWindowImage:", time.Since(start))
 	img, err := CGImageToGoImage(cgimage, crop)
