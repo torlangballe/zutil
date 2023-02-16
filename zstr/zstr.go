@@ -297,6 +297,14 @@ func Spaced(parts ...interface{}) string {
 	return Concat(" ", parts...)
 }
 
+func AnySliceToStrings(parts []interface{}) []string {
+	s := make([]string, len(parts), len(parts))
+	for i, p := range parts {
+		s[i] = fmt.Sprint(p)
+	}
+	return s
+}
+
 func IndexOf(str string, strs []string) int {
 	for i, s := range strs {
 		//		fmt.Print("IndexOf: '", str, "' : '", s, "'\n")
