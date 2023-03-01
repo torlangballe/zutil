@@ -275,7 +275,7 @@ func TruncatedFromStart(str string, length int, endString string) string {
 
 // Concatinates parts, adding divider if prev or current added is not empty
 // Doesn't add divider if prev ends in divider og next part begins with it
-func Concat(divider string, parts ...interface{}) string {
+func Concat(divider string, parts ...any) string {
 	var str string
 	for _, p := range parts {
 		s := fmt.Sprintf("%v", p)
@@ -293,16 +293,24 @@ func Concat(divider string, parts ...interface{}) string {
 	return str
 }
 
-func Spaced(parts ...interface{}) string {
+func Spaced(parts ...any) string {
 	return Concat(" ", parts...)
 }
 
-func AnySliceToStrings(parts []interface{}) []string {
-	s := make([]string, len(parts), len(parts))
+func AnySliceToStrings(parts []any) []string {
+	s := make([]string, len(parts))
 	for i, p := range parts {
 		s[i] = fmt.Sprint(p)
 	}
 	return s
+}
+
+func StringsToAnySlice(parts []string) []any {
+	a := make([]any, len(parts))
+	for i, p := range parts {
+		a[i] = p
+	}
+	return a
 }
 
 func IndexOf(str string, strs []string) int {
@@ -641,6 +649,7 @@ func SplitByAnyOf(str string, seps []string, skipEmpty bool) []string {
 		}
 		parts = splits
 	}
+	// fmt.Println("SplitByAnyOf:", seps, "str:", str, "parts:", parts)
 	if skipEmpty {
 		for i := 0; i < len(parts); {
 			if parts[i] == "" {
@@ -1093,6 +1102,16 @@ func ReplaceAllCapturesFunc(regex *regexp.Regexp, str string, replace func(cap s
 		}
 	}
 	out += str[last:]
+	return out
+}
+
+func GetAllCaptures(regex *regexp.Regexp, str string) []string {
+	var out []string
+	ReplaceAllCapturesFunc(regex, str, func(cap string, index int) string {
+		fmt.Println("AllCaps:", cap)
+		out = append(out, cap)
+		return ""
+	})
 	return out
 }
 
