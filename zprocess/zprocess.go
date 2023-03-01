@@ -127,7 +127,7 @@ func RepeatPrintInOutRequests() {
 				return true
 			})
 			count := procs.Count()
-			if count > 5 {
+			if count > 10 {
 				lastProcPrint = time.Now()
 				zlog.Info("Ongoing I/O Requests:", count)
 			}

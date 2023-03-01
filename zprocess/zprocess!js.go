@@ -66,10 +66,11 @@ func GetAppProgramPath(appName string) string {
 
 func RunApp(appName string, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
 	path := GetAppProgramPath(appName)
-	return MakeCommand(path, true, args...)
+	cmd, outPipe, errPipe, err = MakeCommand(path, true, &inPipe, args...)
+	return
 }
 
-func MakeCommand(command string, start bool, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
+func MakeCommand(command string, start bool, inPipe *io.WriteCloser, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
 	// zlog.Info("MakeCommand:", zstr.AnySliceToStrings(args))
 	cmd = exec.Command(command, zstr.AnySliceToStrings(args)...)
 	outPipe, err = cmd.StdoutPipe()
@@ -82,10 +83,12 @@ func MakeCommand(command string, start bool, args ...any) (cmd *exec.Cmd, outPip
 		err = zlog.Error(err, "connect stderr pipe")
 		return
 	}
-	inPipe, err = cmd.StdinPipe()
-	if err != nil {
-		err = zlog.Error(err, "connect stdin pipe")
-		return
+	if inPipe != nil {
+		*inPipe, err = cmd.StdinPipe()
+		if err != nil {
+			err = zlog.Error(err, "connect stdin pipe")
+			return
+		}
 	}
 	if start {
 		err = cmd.Start()
@@ -96,12 +99,6 @@ func MakeCommand(command string, start bool, args ...any) (cmd *exec.Cmd, outPip
 	}
 	// zlog.Info("RunApp:", path, cmd.Process.Pid, args)
 	return
-}
-
-func CommandPiper(outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, pipe io.ReadWriter) {
-	go io.Copy(pipe, outPipe)
-	go io.Copy(pipe, errPipe)
-	go io.Copy(inPipe, pipe)
 }
 
 func RunAppleScript(command string, timeoutSecs float64) (string, error) {
