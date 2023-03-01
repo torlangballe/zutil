@@ -95,9 +95,10 @@ func anchorFromFileAndAnchor(file, anchor string) string {
 }
 
 type content struct {
-	level  int
-	title  string
-	anchor string
+	level   int
+	title   string
+	anchor  string
+	chapter string
 }
 
 func getNiceHeader(header *string, rest *string) bool {
@@ -112,10 +113,24 @@ func getNiceHeader(header *string, rest *string) bool {
 	return true
 }
 
-func FlattenMarkdown(pathPrefix string, chapters []string) (string, error) {
+// type chapterAnchor struct {
+// 	chapter string
+// 	anchor  string
+// }
+
+func getTableOfContents(contents []content) string {
+	table := "\\\n### Table of Contents\n\n\\\n\\\n"
+	for _, c := range contents {
+		table += "**[" + c.title + "](#" + c.anchor + ")**\n\n\\\n"
+	}
+	return table + "\\\n\\\n"
+}
+
+func FlattenMarkdown(pathPrefix string, chapters []string, tableOfContents bool) (string, error) {
 	var out, footers string
 	var contents []content
-	topFileAnchors := map[string]string{}
+
+	// var topFileAnchors []chapterAnchor
 
 	// str := `### ![open](open.png) Open prefs`
 	// zstr.ReplaceAllCapturesFunc(headerReg, str, func(capture string, index int) string {
@@ -137,15 +152,19 @@ func FlattenMarkdown(pathPrefix string, chapters []string) (string, error) {
 				c.level = i
 				header = strings.TrimSpace(header[i:])
 				id := headerToAnchorID(header)
-				c.anchor = id
 				c.title = header
+				c.anchor = anchorFromFileAndAnchor(chapter, id)
+				c.chapter = chapter
 				contents = append(contents, c)
-				topFileAnchors[chapter] = anchorFromFileAndAnchor(chapter, id)
+				// topFileAnchors = append(topFileAnchors, c.anchor})
 				// zlog.Info("ANCH:", topFileAnchors[chapter], chapter, id)
 				return false
 			}
 			return true
 		})
+	}
+	if tableOfContents {
+		out = getTableOfContents(contents)
 	}
 	for _, chapter := range chapters {
 		// atFooters := false
@@ -158,6 +177,7 @@ func FlattenMarkdown(pathPrefix string, chapters []string) (string, error) {
 			// 	return true
 			// }
 			snew := zstr.ReplaceAllCapturesFunc(linkInterReg, s, func(capture string, index int) string {
+				// zlog.Info("replace inter:", s, capture, index)
 				file, anchor := zstr.SplitInTwo(capture, "#")
 				if file == "" {
 					file = chapter
@@ -173,17 +193,29 @@ func FlattenMarkdown(pathPrefix string, chapters []string) (string, error) {
 				// }
 				// if !strings.Contains(capture, "#") {
 				// zlog.Info("replace md file:", chapter, capture, snew)
-				link := "#" + topFileAnchors[capture]
-				return link
+				for _, c := range contents {
+					if c.chapter == capture {
+						link := "#" + c.anchor
+						return link
+					}
+				}
+				return ""
 				// }
 				// file, anchor := zstr.SplitInTwo(capture, "#")
 				// link := "#" + anchorFromFileAndAnchor(file, anchor)
 				// return link
 			})
 			snew = zstr.ReplaceAllCapturesFunc(headerReg, snew, func(capture string, index int) string {
+				// zlog.Info("replace headers:", snew, capture, index)
 				if strings.HasPrefix(capture, "!") {
 					return capture
 				}
+				// var titleReg = regexp.MustCompile(`\[([(\w\s]+)\]\(\S+\)(.+)`)
+				// parts := zstr.GetAllCaptures(titleReg, capture)
+				// if len(parts) > 1 {
+				// 	zlog.Info("PARTS:", zstr.Spaced(zstr.StringsToAnySlice(parts)...))
+				// 	return zstr.Spaced(zstr.StringsToAnySlice(parts)...)
+				// }
 				var rest string
 				getNiceHeader(&capture, &rest)
 				id := headerToAnchorID(capture)
