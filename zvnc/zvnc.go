@@ -64,6 +64,11 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 
 	ticker := time.NewTicker(ztime.SecondsDur(updateSecs))
 	var getScreen bool
+	cc, err = vnc.Connect(context.Background(), nc, ccfg)
+	//	zlog.Info("Here:", err)
+	if err != nil || cc == nil {
+		return nil, zlog.Error(err, "connect")
+	}
 	go func() { // because vnc2video.Connect puts error on error channel during setup, we need to do for/select to pop it before calling:
 		// defer zlog.LogRecover()
 		for {
@@ -101,11 +106,6 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 		}
 	}()
 
-	cc, err = vnc.Connect(context.Background(), nc, ccfg)
-	//	zlog.Info("Here:", err)
-	if err != nil {
-		return nil, zlog.Error(err, "connect")
-	}
 	screenImage = cc.Canvas
 	for _, enc := range ccfg.Encodings {
 		myRenderer, ok := enc.(vnc.Renderer)
