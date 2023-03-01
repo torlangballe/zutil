@@ -1,11 +1,16 @@
+//go:build server
+
 package zcommands
 
 import (
+	"os/user"
 	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zterm"
@@ -252,7 +257,7 @@ func (s *Session) structCommandWithMethod(method reflect.Method, structVal refle
 		if k == zreflect.KindInt || k == zreflect.KindFloat {
 			if err != nil {
 				s.TermSession.Writeln("error parsing '" + arg + "' to number.")
-				return
+				return "", true // we return got==true
 			}
 		}
 		switch kind {
@@ -268,12 +273,12 @@ func (s *Session) structCommandWithMethod(method reflect.Method, structVal refle
 			b, err := zbool.FromStringWithError(arg)
 			if err != nil {
 				s.TermSession.Writeln(arg+":", err)
-				return
+				return "", true // we return got==true
 			}
 			av.SetBool(b)
 		default:
 			s.TermSession.Writeln("unsupported parameter #:", i, av.Kind())
-			return
+			return "", true // we return got==true
 		}
 		if isPointer {
 			av = av.Addr()
@@ -282,7 +287,7 @@ func (s *Session) structCommandWithMethod(method reflect.Method, structVal refle
 	}
 	if needed > 0 {
 		s.TermSession.Writeln(zwords.Pluralize("argument", needed), "needed")
-		return
+		return "", true // we return got==true
 	}
 	if len(args) > 0 {
 		s.TermSession.Writeln("extra arguments unused:", args)
@@ -436,14 +441,25 @@ func (s *Session) expandChildStubArg(line, command string) (newLine string, newP
 	return
 }
 
-func CreateCommanderAndTerminal(welcome string, keysdir string, rootNode any, port int) *Commander {
-	terminal := zterm.New(welcome + ". Type 'close' or press control-D to exit.")
-	terminal.PublicKeyStorePath = keysdir + "terminal-pubkeys.json"
-	commander := NewCommander(rootNode, terminal)
-	terminal.HandleLine = commander.HandleTerminalLine
+func CreateCommanderAndTerminal(welcome string, keysdir string, hardUsers map[string]string, rootNode any, port int) *Commander {
+	_, ip, _ := znet.GetCurrentLocalIPAddress()
+	if ip == "" {
+		ip = "localhost"
+	}
+	user, _ := user.Current()
 	if port == 0 {
 		port = 2222
 	}
+	zlog.Info("Command line interface connected.", "ssh", user.Username+"@"+ip, "-p", port)
+	terminal := zterm.New(welcome + ". Type 'close' or press control-D to exit.")
+	if keysdir != "" {
+		terminal.PublicKeyStorePath = keysdir + "terminal-pubkeys.json"
+	}
+	for user, pass := range hardUsers {
+		terminal.AddHardcodedUser(user, pass)
+	}
+	commander := NewCommander(rootNode, terminal)
+	terminal.HandleLine = commander.HandleTerminalLine
 	go terminal.ListenForever(port)
 	return commander
 }

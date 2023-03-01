@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/torlangballe/term"
@@ -19,26 +20,31 @@ import (
 // https://xtermjs.org for web client?
 // https://pkg.go.dev/github.com/gliderlabs/ssh = docs
 
+type hardUser struct {
+	password string
+	tokens   []string
+}
+
 type Terminal struct {
 	port               int
 	startText          string
 	userIDs            map[string]int64
 	sessionPublicKeys  map[string]string // maps sessionID to public key, as it is lost
+	hardcodedUsers     map[string]hardUser
 	PublicKeyStorePath string
 	HandleLine         func(line string, ts *Session) bool
 	HandleNewSession   func(ts *Session) func(line string, pos int, key rune) (newLine string, newPos int, ok bool)
 }
 
 type Session struct {
-	session ssh.Session
-	goterm  *term.Terminal
-	term    *Terminal
-	values  map[string]interface{}
-	// prompt  string
+	session  ssh.Session
+	goterm   *term.Terminal
+	Terminal *Terminal
+	values   map[string]interface{}
 }
 
 func (ts *Session) UserID() int64 {
-	return ts.term.userIDs[ts.session.User()]
+	return ts.Terminal.userIDs[ts.session.User()]
 }
 
 func (ts *Session) SetPrompt(str string) {
@@ -81,25 +87,42 @@ func New(startText string) *Terminal {
 	t.startText = startText
 	t.userIDs = map[string]int64{}
 	t.sessionPublicKeys = map[string]string{}
+	t.hardcodedUsers = map[string]hardUser{}
+
 	return t
+}
+
+func (t *Terminal) AddHardcodedUser(user, pass string) {
+	t.hardcodedUsers[user] = hardUser{password: pass}
 }
 
 func (s *Session) ReadValueLine() (string, error) {
 	return s.goterm.ReadValueLine()
 }
 
-func (t *Terminal) ListenForever(port int) {
-	ssh.Handle(func(s ssh.Session) {
-		if len(s.Command()) != 0 {
-			s.Write([]byte("ssh commands not implemented yet.\n"))
+func (s *Session) runCommands(commands string) {
+	coms := strings.Split(commands, ";")
+	for _, com := range coms {
+		com = strings.TrimSpace(com)
+		if !s.Terminal.HandleLine(com, s) {
 			return
 		}
+	}
+}
+
+func (t *Terminal) ListenForever(port int) {
+	ssh.Handle(func(s ssh.Session) {
 		ts := &Session{}
 		ts.session = s
 		ts.values = map[string]interface{}{}
-		ts.term = t
+		ts.Terminal = t
 		ts.goterm = term.NewTerminal(s, ts.session.User()+" /> ")
 		autoComplete := t.HandleNewSession(ts)
+		if len(s.Command()) != 0 {
+			com := strings.Join(s.Command(), " ")
+			ts.runCommands(com)
+			return
+		}
 		ts.goterm.AutoCompleteCallback = autoComplete
 		if t.startText != "" {
 			fmt.Fprintln(ts.session, t.startText)
@@ -115,9 +138,17 @@ func (t *Terminal) ListenForever(port int) {
 		}
 	})
 	var opts []ssh.Option
-	if t.PublicKeyStorePath != "" {
+	if t.PublicKeyStorePath != "" && (len(t.hardcodedUsers) != 0 || zusers.MainServer != nil) {
 		publicKeyOpt := ssh.PublicKeyAuth(func(ctx ssh.Context, key ssh.PublicKey) bool {
 			skey := "ssh:" + zstr.MD5Hex(key.Marshal())
+			for _, us := range t.hardcodedUsers {
+				if zstr.StringsContain(us.tokens, skey) {
+					return true
+				}
+			}
+			if zusers.MainServer == nil {
+				return false
+			}
 			uid, _ := zusers.MainServer.GetUserIDFromToken(skey)
 			// zlog.Info("SSH Try public key", ctx.User(), skey, uid)
 			if uid != 0 {
@@ -132,7 +163,16 @@ func (t *Terminal) ListenForever(port int) {
 		opts = append(opts, publicKeyOpt)
 	}
 	loginOpt := ssh.PasswordAuth(func(ctx ssh.Context, pass string) bool {
-		zlog.Info("SSH login?", pass)
+		zlog.Info("SSH login?", pass, t.hardcodedUsers)
+		for user, us := range t.hardcodedUsers {
+			if user == ctx.User() && us.password == pass {
+				delete(t.sessionPublicKeys, ctx.SessionID())
+				return true
+			}
+		}
+		if zusers.MainServer == nil {
+			return false
+		}
 		var ci zrpc2.ClientInfo
 		ci.Type = "ssh"
 		ci.IPAddress = ctx.RemoteAddr().String()

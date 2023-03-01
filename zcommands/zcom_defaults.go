@@ -1,11 +1,17 @@
+//go:build server
+
 package zcommands
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"text/tabwriter"
 
+	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/zterm"
 )
 
 type defaultCommands struct {
@@ -23,7 +29,7 @@ func expandPath(s *Session, path *string) string {
 	return s.ExpandChildren(stub, "")
 }
 
-func (r *defaultCommands) Cd(c *CommandInfo, path *string) string {
+func (d *defaultCommands) Cd(c *CommandInfo, path *string) string {
 	if c.Type == CommandHelp {
 		return "<path>\tchange directory to path. .. is to parent, - is to previous."
 	}
@@ -38,7 +44,7 @@ func (r *defaultCommands) Cd(c *CommandInfo, path *string) string {
 	return ""
 }
 
-func (r *defaultCommands) Help(c *CommandInfo) string {
+func (d *defaultCommands) Help(c *CommandInfo) string {
 	if c.Type == CommandHelp {
 		return "\tshows this help."
 	}
@@ -77,9 +83,9 @@ func helpForStruct(s *Session, structure any, tabs *tabwriter.Writer) {
 	}
 }
 
-func (r *defaultCommands) LS(c *CommandInfo, path *string) string {
+func (d *defaultCommands) LS(c *CommandInfo, path *string) string {
 	if c.Type == CommandHelp {
-		return "\tlist childrem match path, or all in current directory."
+		return "\tlist children match path, or all in current directory."
 	}
 	if c.Type == CommandExpand {
 		return expandPath(c.Session, path)
@@ -91,7 +97,7 @@ func (r *defaultCommands) LS(c *CommandInfo, path *string) string {
 	return ""
 }
 
-func (r *defaultCommands) PWD(c *CommandInfo, path *string) string {
+func (d *defaultCommands) PWD(c *CommandInfo, path *string) string {
 	if c.Type == CommandHelp {
 		return "\tPrint Working Directory, show path to where you are in hierarchy."
 	}
@@ -99,5 +105,47 @@ func (r *defaultCommands) PWD(c *CommandInfo, path *string) string {
 		return ""
 	}
 	c.Session.TermSession.Writeln(c.Session.Path())
+	return ""
+}
+
+type copier struct {
+	s *zterm.Session
+}
+
+func (c copier) Read(p []byte) (n int, err error) {
+	val, err := c.s.ReadValueLine()
+	if err != nil {
+		return 0, err
+	}
+	data := []byte(val)
+	max := zint.Min(len(data), len(p))
+	copy(p, []byte(val)[:max])
+	return max, io.EOF
+}
+
+func (d *defaultCommands) Bash(c *CommandInfo, command string) string {
+	if c.Type == CommandHelp {
+		return "<command> \"[arguments]\"\tCall bash shell command on server."
+	}
+	if c.Type == CommandExpand {
+		return ""
+	}
+	cmd, outPipe, errPipe, err := zprocess.MakeCommand("/bin/bash", false, nil, []any{"-c", command}...)
+	// fmt.Fprintln(s, "Running via ssh")
+	if err != nil {
+		c.Session.TermSession.Writeln(err)
+		return ""
+	}
+	copier := new(copier)
+	copier.s = c.Session.TermSession
+	cmd.Stdin = copier
+	w := c.Session.TermSession.Writer()
+	go io.Copy(w, outPipe)
+	go io.Copy(w, errPipe)
+	err = cmd.Run()
+	if err != nil {
+		c.Session.TermSession.Writeln(err)
+	}
+	// c.Session.TermSession.Terminal.HandleLine = old
 	return ""
 }
