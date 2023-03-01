@@ -137,6 +137,10 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
         forceScreenRecording = false;
     }
     CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
+    if (CFArrayGetCount(windowList) == 0) {
+        NSLog(@"getWindowIDs no windows!\n");
+        return "";
+    }
     for (NSMutableDictionary* entry in (__bridge NSArray*)windowList)
     {
         struct WinInfo w;
@@ -205,7 +209,6 @@ typedef struct WinIDInfo {
 } WinIDInfo;
 
 WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title) {
-    // NSLog(@"WindowGetIDAndScaleForTitle1\n");
     struct WinInfo find;
     struct WinIDInfo got;
     find.wid = 0;
@@ -216,7 +219,7 @@ WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title) {
         NSLog(@"getwin err: %s\n", got.err);
         return got;
     }
-    // NSLog(@"got win: %@ %g %g %g %g", find.title, (float)find.rect.origin.x, (float)find.rect.origin.y, (float)find.rect.size.width, (float)find.rect.size.height);
+    NSLog(@"got win: %@ %g %g %g %g", find.title, (float)find.rect.origin.x, (float)find.rect.origin.y, (float)find.rect.size.width, (float)find.rect.size.height);
     got.scale = getBestScreenForBounds(find.rect).backingScaleFactor;
     got.winID = find.wid;
     got.x = find.rect.origin.x;
