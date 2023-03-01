@@ -3,6 +3,7 @@ package ztimer
 //  Created by Tor Langballe on /18/11/15.
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -108,4 +109,16 @@ func (t *Timer) Stop() {
 
 func (t *Timer) IsRunning() bool {
 	return t.timer != nil
+}
+
+// TryFor waits for seecs for try function to run, then continues.
+// Note: it doesn't STOP the function somehow.
+func TryFor(secs float64, try func()) (err error) {
+	timer := TimerNew()
+	timer.StartIn(secs, func() {
+		err = errors.New("try failed")
+	})
+	try()
+	timer.Stop()
+	return
 }
