@@ -25,7 +25,6 @@ func StoreFileNew(path string) *Store {
 		zlog.Error(err, "unmarshal")
 		return nil
 	}
-	zlog.Info("KV: StoreFileNew", path, dict)
 	return k
 }
 
