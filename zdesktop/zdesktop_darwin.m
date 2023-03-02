@@ -137,7 +137,8 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
         forceScreenRecording = false;
     }
     CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
-    if (CFArrayGetCount(windowList) == 0) {
+    // NSLog(@"getWindowIDs: %d\n", windowList != nil);
+    if (windowList == nil || CFArrayGetCount(windowList) == 0) {
         NSLog(@"getWindowIDs no windows!\n");
         return "";
     }
