@@ -225,6 +225,20 @@ func ReadFromURLToFilepath(surl, filepath string, maxBytes int64) (path string, 
 	return
 }
 
+func FlatWalk(folder, wildcards string, got func(fname string, info os.FileInfo) error) {
+	Walk(folder, wildcards, func(fpath string, info os.FileInfo) error {
+		if fpath == folder {
+			return nil
+		}
+		_, name := filepath.Split(fpath)
+		r := got(name, info)
+		if info.IsDir() {
+			return filepath.SkipDir
+		}
+		return r
+	})
+}
+
 func Walk(folder, wildcards string, got func(fpath string, info os.FileInfo) error) {
 	var wcards []string
 	if wildcards != "" {
@@ -309,6 +323,14 @@ func RemoveAllQuicklyWithRename(dir string) error {
 		os.Remove(newName)
 	}()
 	return nil
+}
+
+func RemoveFolderWithContents(dir string) error {
+	err := RemoveContents(dir)
+	if err != nil {
+		return err
+	}
+	return os.Remove(dir)
 }
 
 func RemoveContents(dir string) error {
