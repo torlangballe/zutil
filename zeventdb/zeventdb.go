@@ -2,7 +2,6 @@ package zeventdb
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -11,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	sqlite "github.com/mattn/go-sqlite3" // Import go-sqlite3 library
+	// sqlite "github.com/mattn/go-sqlite3" // Import go-sqlite3 library
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
@@ -22,6 +21,7 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
+	"modernc.org/sqlite"
 )
 
 type Database struct {
@@ -60,7 +60,7 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 		file.Close()
 	}
 	db = &Database{}
-	db.DB, err = sql.Open("sqlite3", filepath)
+	db.DB, err = sql.Open("sqlite", filepath)
 	db.TableName = tableName
 	db.StructType = reflect.TypeOf(reflect.Indirect(reflect.ValueOf(istruct)).Interface())
 	if err != nil {
@@ -71,7 +71,8 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 	// zlog.Info("ZEDB CREATE:", query)
 	_, err = db.DB.Exec(query)
 	if err != nil {
-		if errors.Is(err, sqlite.ErrCorrupt) || err.Error() == "database disk image is malformed" {
+		e, _ := err.(*sqlite.Error)
+		if e != nil && e.Code() == 13 { // Corrupt
 			zlog.Info("CORRUPT!")
 			os.Remove(filepath)
 			_, err = db.DB.Exec(query)

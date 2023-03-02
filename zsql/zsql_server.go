@@ -46,7 +46,7 @@ func NewSQLite(filePath string) (*sql.DB, error) {
 	zfile.MakeDirAllIfNotExists(dir)
 	file := path.Join(dir, sub+".sqlite")
 
-	db, err := sql.Open("sqlite3", file)
+	db, err := sql.Open("sqlite", file)
 	if err != nil {
 		return nil, zlog.Error(err, "open file", file)
 	}
