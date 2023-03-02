@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"sync"
 )
 
@@ -73,4 +74,17 @@ func GetKeysAsStrings(m interface{}) (keys []string) {
 		keys = append(keys, k)
 	}
 	return
+}
+
+func SortedValues[K comparable, V any](m map[K]V, less func(a, b V) bool) []V {
+	vals := make([]V, len(m))
+	i := 0
+	for _, v := range m {
+		vals[i] = v
+		i++
+	}
+	sort.Slice(vals, func(i, j int) bool {
+		return less(vals[i], vals[j])
+	})
+	return vals
 }
