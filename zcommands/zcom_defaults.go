@@ -130,6 +130,10 @@ func (d *defaultCommands) Bash(c *CommandInfo, command string) string {
 	if c.Type == CommandExpand {
 		return ""
 	}
+	if !AllowBash {
+		c.Session.TermSession.Writeln("bash not enabled.")
+		return ""
+	}
 	cmd, outPipe, errPipe, err := zprocess.MakeCommand("/bin/bash", false, nil, []any{"-c", command}...)
 	// fmt.Fprintln(s, "Running via ssh")
 	if err != nil {

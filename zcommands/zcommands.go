@@ -72,7 +72,10 @@ type methodNode struct {
 	Name string
 }
 
-var commandInfoType = reflect.TypeOf(&CommandInfo{})
+var (
+	AllowBash       bool
+	commandInfoType = reflect.TypeOf(&CommandInfo{})
+)
 
 func NewCommander(rootNode any, term *zterm.Terminal) *Commander {
 	c := new(Commander)
@@ -141,7 +144,12 @@ func (s *Session) autoComplete(line string, pos int, key rune) (newLine string, 
 			ret := line + str
 			return ret, len(ret), true
 		}
-		return s.expandChildren(line, "")
+		var names []string
+		nodes := append(s.commander.GlobalNodes, s.currentNode())
+		for _, n := range nodes {
+			names = append(names, s.methodNames(n)...)
+		}
+		return s.expandForList(line, names, line)
 	}
 	return
 }
@@ -160,6 +168,7 @@ func (s *Session) expandChildren(fileStub, prefix string) (newLine string, newPo
 }
 
 func (s *Session) expandForList(stub string, list []string, prefix string) (newLine string, newPos int, ok bool) {
+	zlog.Info("expandForList", stub, list)
 	var commands []string
 	for _, c := range list {
 		if strings.HasPrefix(c, stub) {
