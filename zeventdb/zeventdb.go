@@ -131,18 +131,20 @@ func (db *Database) Add(istruct interface{}, flush bool) {
 	storeLock.Lock()
 	itemsToStore = append(itemsToStore, istruct)
 	storeLock.Unlock()
-	if len(itemsToStore) > 2000 {
-		zlog.Info("zeventdb.Add", len(itemsToStore))
-	}
 	if flush {
 		db.writeItems()
 	}
 }
 
 func (db *Database) repeatWriteItems() {
+	var count int
 	for {
-		if !db.writeItems() {
-			time.Sleep(time.Millisecond * 250)
+		if db.writeItems() {
+			count++
+		}
+		if count == 20 {
+			time.Sleep(time.Millisecond * 20) // give DB some time to be read/shared
+			count = 0
 		}
 	}
 }
@@ -152,6 +154,7 @@ func (db *Database) writeItems() bool {
 	if all == 0 {
 		return false
 	}
+	start := time.Now()
 	pageSize := zint.Min(all, 100)
 	skip := []string{db.PrimaryField}
 	params := "(" + strings.Repeat("?,", len(db.FieldInfos)-2) + "?)"
@@ -181,6 +184,9 @@ func (db *Database) writeItems() bool {
 	_, err := db.DB.Exec(query, vals...)
 	// zlog.Info("zedb:WriteEvents:", count, "/", all, err, t)
 	db.Lock.Unlock()
+	if len(itemsToStore) > 2000 {
+		zlog.Info("zeventdb.witeItems", len(itemsToStore), time.Since(start), err)
+	}
 	if err != nil {
 		zlog.Error(err, "query", query, vals)
 		return false // so we get the sleep
