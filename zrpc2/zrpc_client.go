@@ -44,6 +44,9 @@ func NewClient(prefixURL string, id string) *Client {
 
 func (c *Client) Call(method string, args, result any) error {
 	// start := time.Now()
+	if c.UseAuth && c.AuthToken == "" {
+		return zlog.Error(nil, "zrpc.Call", method, "no auth token set.")
+	}
 	var rp clientReceivePayload
 	cp := callPayload{Method: method, Args: args}
 	cp.ClientID = c.id
