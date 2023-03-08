@@ -225,7 +225,7 @@ func checkAndDoAuth() {
 	doingAuth = true
 	var user User
 
-	// zlog.Info("checkAndDoAuth:", token)
+	//	zlog.Info("checkAndDoAuth0:", zrpc2.MainClient.AuthToken)
 	if zrpc2.MainClient.AuthToken != "" {
 		err := zrpc2.MainClient.Call("UsersCalls.GetUserForToken", zrpc2.MainClient.AuthToken, &user)
 		if err == nil {

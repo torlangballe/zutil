@@ -65,6 +65,7 @@ func (c *Client) Call(method string, args, result any) error {
 	}
 	// zlog.Info("Called:", zlog.Full(rp))
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also
+		zlog.Info("zprc AuthenticationInvalid:", method, c.AuthToken)
 		if !c.KeepTokenOnAuthenticationInvalid {
 			c.AuthToken = ""
 		}

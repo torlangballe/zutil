@@ -100,11 +100,11 @@ func (s *SQLServer) GetUserForToken(token string) (user User, err error) {
 
 func (s *SQLServer) IsTokenValid(token string) bool {
 	var exists bool
-	// zlog.Info("IsTokenValid s:", s != nil)
 	squery := "SELECT true FROM zuser_sessions WHERE token=$1"
 	squery = s.customizeQuery(squery)
 	row := s.DB.QueryRow(squery, token)
 	row.Scan(&exists)
+	// zlog.Info("SQLServer.IsTokenValid s:", err, exists, token)
 	return exists
 }
 
