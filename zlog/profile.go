@@ -7,9 +7,10 @@ import (
 )
 
 type Profile struct {
-	Name  string
-	Start time.Time
-	Lines []Line
+	Name    string
+	Start   time.Time
+	Lines   []Line
+	MinSecs float64
 }
 
 type Line struct {
@@ -18,24 +19,17 @@ type Line struct {
 	Time     time.Time
 }
 
-type PeridocLogger struct {
-	last         time.Time
-	durationSecs float64
-}
-
-var profiles []Profile
-
-func PushProfile(name string) {
+func NewProfile(name string, minSecs float64) Profile {
 	p := Profile{}
 	p.Name = name
 	p.Start = time.Now()
-	profiles = append(profiles, p)
+	p.MinSecs = minSecs
+	return p
 }
 
-func ProfileLog(parts ...interface{}) {
+func (p *Profile) Log(parts ...interface{}) {
 	var line *Line
 	previ := -1
-	p := &profiles[len(profiles)-1]
 	str := zstr.SprintSpaced(parts...)
 	for i, l := range p.Lines {
 		if l.Text == str {
@@ -59,20 +53,15 @@ func ProfileLog(parts ...interface{}) {
 	// Info("Add:", p.Name, line.Duration)
 }
 
-func EndProfile(parts ...interface{}) {
+func (p *Profile) End(parts ...interface{}) {
 	if len(parts) != 0 {
-		ProfileLog(parts...)
+		p.Log(parts...)
 	}
-	p := &profiles[len(profiles)-1]
 	dur := time.Since(p.Start)
 	for _, l := range p.Lines {
-		percent := int(float64(l.Duration) / float64(dur) * 100)
-		Info(p.Name+":", l.Text, time.Since(p.Start), "    ", l.Duration, percent, "%")
+		if p.MinSecs == 0 || l.Duration > time.Duration(p.MinSecs*float64(time.Second)) {
+			percent := int(float64(l.Duration) / float64(dur) * 100)
+			Info(p.Name+":", l.Text, time.Since(p.Start), "    ", l.Duration, percent, `%`)
+		}
 	}
-	RemoveProfile()
 }
-
-func RemoveProfile() {
-	profiles = profiles[:len(profiles)-1]
-}
-
