@@ -269,7 +269,7 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 		}
 		vr := box.AlignPro(sc.OriginalSize, a, sc.Margin, sc.MaxSize, sc.MinSize)
 		// 	zlog.Info("layoutRectsInBoxes:", sc.Name, vr, r.Size, a, sc.Margin)
-		// zlog.Info(debugName, "r:", r, sc.Name, "sc.size:", sc.size, sc.MinSize, "  align:", sc.Alignment, "box:", box, sc.OriginalSize, "=", vr)
+		// zlog.Info("layout:", debugName, "rect:", r, sc.Name, "sc.size:", sc.size, sc.MinSize, "  align:", sc.Alignment, "box:", box, sc.OriginalSize, "=", vr)
 		x = box.Max().X + spacing // was vr.Max!!!
 		if vertical {
 			vr = vr.Swapped()
