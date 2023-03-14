@@ -76,15 +76,32 @@ func GetKeysAsStrings(m interface{}) (keys []string) {
 	return
 }
 
-func SortedValues[K comparable, V any](m map[K]V, less func(a, b V) bool) []V {
-	vals := make([]V, len(m))
+func Keys[K comparable, V any](m map[K]V) []K {
+	keys := make([]K, len(m))
 	i := 0
-	for _, v := range m {
-		vals[i] = v
-		i++
+	for k := range m {
+		keys[i] = k
 	}
-	sort.Slice(vals, func(i, j int) bool {
-		return less(vals[i], vals[j])
+	return keys
+}
+
+func SortedKeys[K comparable, V any](m map[K]V, less func(a, b V) bool) []K {
+	keys := Keys(m)
+	i := 0
+	for k := range m {
+		keys[i] = k
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return less(m[keys[i]], m[keys[j]])
 	})
+	return keys
+}
+
+func SortedValues[K comparable, V any](m map[K]V, less func(a, b V) bool) []V {
+	keys := SortedKeys(m, less)
+	vals := make([]V, len(keys))
+	for i, k := range keys {
+		vals[i] = m[k]
+	}
 	return vals
 }
