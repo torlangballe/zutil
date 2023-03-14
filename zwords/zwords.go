@@ -119,7 +119,7 @@ func PluralWordWithCount(word string, count float64, langCode, plural string, si
 		langCode = DefaultLanguage
 	}
 	scount := NiceFloat(count, significant) + " "
-	return PluralizeWordWithTable(word, count, langCode, plural, map[int]string{0: scount})
+	return scount + " " + PluralizeWord(word, count, langCode, plural)
 }
 
 // Pluralize is a convenience function to pluralize words with int, default langage and only rule-based pluralization
