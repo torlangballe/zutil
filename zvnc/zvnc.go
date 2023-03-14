@@ -114,19 +114,13 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 			myRenderer.SetTargetImage(screenImage)
 		}
 	}
-	// var out *os.File
-
 	zlog.Info("vnc connected to:", address)
-
 	cc.SetEncodings([]vnc.EncodingType{
 		vnc.EncCursorPseudo,
 		vnc.EncPointerPosPseudo,
 		vnc.EncCopyRect,
 		vnc.EncTight,
 		vnc.EncZRLE,
-		//vnc.EncHextile,
-		//vnc.EncZlib,
-		//vnc.EncRRE,
 	})
 	c := &Client{client: cc}
 	return c, err
