@@ -8,10 +8,12 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zterm"
+	"github.com/torlangballe/zutil/zwords"
 )
 
 type defaultCommands struct {
@@ -19,6 +21,10 @@ type defaultCommands struct {
 
 type helpGetter interface {
 	GetHelpForNode() string
+}
+
+func init() {
+	zdevice.InitNetworkBandwidth()
 }
 
 func expandPath(s *Session, path *string) string {
@@ -151,5 +157,35 @@ func (d *defaultCommands) Bash(c *CommandInfo, command string) string {
 		c.Session.TermSession.Writeln(err)
 	}
 	// c.Session.TermSession.Terminal.HandleLine = old
+	return ""
+}
+
+func (d *defaultCommands) Net(c *CommandInfo, path *string) string {
+	if c.Type == CommandHelp {
+		return "\tShow i/o network bandwidth per second, and drops/sec and errors/sec."
+	}
+	if c.Type == CommandExpand {
+		return ""
+	}
+	nets, err := zdevice.NetworkBandwidthPerSec()
+	if err != nil {
+		c.Session.TermSession.Writeln(err)
+		return ""
+	}
+	tabs := tabwriter.NewWriter(c.Session.TermSession.Writer(), 5, 0, 3, ' ', 0)
+	fmt.Fprintln(tabs, zstr.EscGreen+"name\treceived\tsent\tdrops\terrors"+zstr.EscNoColor)
+	names := zstr.SortedMapKeys(nets)
+	for _, name := range names {
+		info := nets[name]
+		if info.In.Bytes == 0 && info.Out.Bytes == 0 {
+			continue
+		}
+		fmt.Fprint(tabs, zstr.EscCyan, name, "\t")
+		fmt.Fprint(tabs, zwords.GetBandwidthString(info.In.Bytes, "", 2)+"/s", "\t")
+		fmt.Fprint(tabs, zwords.GetBandwidthString(info.Out.Bytes, "", 2)+"/s", "\t")
+		fmt.Fprint(tabs, info.In.Drops+info.Out.Drops, "\t")
+		fmt.Fprint(tabs, info.In.Errors+info.Out.Errors, zstr.EscNoColor, "\n")
+	}
+	tabs.Flush()
 	return ""
 }
