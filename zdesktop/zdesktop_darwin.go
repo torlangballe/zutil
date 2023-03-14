@@ -196,7 +196,7 @@ func CloseWindowForTitle(title, app string) error {
 // 	return title
 // }
 
-func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
+func SetWindowRectForTitle(title, app string, rect zgeo.Rect) (winPID int64, err error) {
 	//	title = getTitleWithApp(title, app)
 	pids := zprocess.GetPIDsForAppName(app, false)
 	// pid, _ := GetCachedPIDForAppName(app)
@@ -207,10 +207,10 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
 		// fmt.Println("SetWindowRectForTitle:", title, app, r)
 		if r != 0 {
-			return nil
+			return pid, nil
 		}
 	}
-	return errors.New("not found")
+	return 0, errors.New("not found")
 }
 
 func SendQuitCommandToApp(app string) error {
