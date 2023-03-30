@@ -138,7 +138,7 @@ func WindowWithTitleExists(title, app string) bool {
 	return false
 }
 
-func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, scale int, rect zgeo.Rect, pidOut int64, err error) {
+func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, scale int, cropMargins zgeo.Rect, pidOut int64, err error) {
 	// fmt.Println("GetIDAndScaleForWindowTitle title, app:", title, app)
 	pids := []int64{pid}
 	if pid == 0 {
@@ -163,23 +163,18 @@ func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, s
 	return
 }
 
-// var screenLock sync.Mutex
-
-func GetImageForWindowTitle(title, app string, oldPID int64, crop zgeo.Rect) (img image.Image, pid int64, err error) {
-	var winID string
-	winID, _, _, pid, err = GetIDScaleAndRectForWindowTitle(title, app, oldPID)
+func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect) (img image.Image, pid int64, err error) {
+	winID, _, _, pid, err := GetIDScaleAndRectForWindowTitle(title, app, oldPID)
 	fmt.Println("GetImageForWindowTitle:", winID, err, "pid:", pid, "oldpid:", oldPID, title, app, zprocess.GetPIDsForAppName(app, false))
 	if err != nil {
 		return nil, 0, zlog.Error(err, "get id scale")
 	}
-	img, err = GetWindowImage(winID, crop)
+	img, err = GetWindowImage(winID, insetRect)
 	return img, pid, err
 }
 
 func CloseWindowForTitle(title, app string) error {
-	//	title = getTitleWithApp(title, app)
 	pids := zprocess.GetPIDsForAppName(app, false)
-	// zlog.Info("CloseWindowForTitle:", app, title, pids)
 	for _, pid := range pids {
 		r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
 		if r == 1 {
@@ -189,23 +184,10 @@ func CloseWindowForTitle(title, app string) error {
 	return errors.New("window not found for closing")
 }
 
-// func getTitleWithApp(title, app string) string {
-// 	if app == "Google Chrome" {
-// 		return title + " - " + app
-// 	}
-// 	return title
-// }
-
 func SetWindowRectForTitle(title, app string, rect zgeo.Rect) (winPID int64, err error) {
-	//	title = getTitleWithApp(title, app)
 	pids := zprocess.GetPIDsForAppName(app, false)
-	// pid, _ := GetCachedPIDForAppName(app)
-	// fmt.Println("SetWindowRectForTitle:", title, app, pids)
 	for _, pid := range pids {
-		// if pid != 0 {
-		// fmt.Println("SetWindowRectForTitle:", title, app, rect)
 		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
-		// fmt.Println("SetWindowRectForTitle:", title, app, r)
 		if r != 0 {
 			return pid, nil
 		}
@@ -257,25 +239,25 @@ func createBitmapContext(width int, height int, data *C.uint32_t, bytesPerRow in
 		C.kCGImageAlphaNoneSkipFirst)
 }
 
-func CGImageToGoImage(cgimage C.CGImageRef, crop zgeo.Rect) (image.Image, error) {
+func CGImageToGoImage(cgimage C.CGImageRef, insetRect zgeo.Rect) (image.Image, error) {
 	var cw, ch int
 	iw := int(C.CGImageGetWidth(cgimage))
 	ih := int(C.CGImageGetHeight(cgimage))
 	cw = iw
 	ch = ih
-	if !crop.IsNull() {
-		cw = int(crop.Size.W)
-		ch = int(crop.Size.H)
+	if !insetRect.IsNull() {
+		cw = int(insetRect.Size.W)
+		ch = int(insetRect.Size.H)
 	}
 	img := image.NewNRGBA(image.Rect(0, 0, cw, ch))
 	if img == nil {
 		return nil, zlog.Error(nil, "NewRGBA returned nil", cw, ch)
 	}
-	// zlog.Info("THUMB CROP:", crop)
+	// zlog.Info("THUMB insetRect:", insetRect)
 	ctx := createBitmapContext(cw, ch, (*C.uint32_t)(unsafe.Pointer(&img.Pix[0])), img.Stride)
 	diff := float64(ih - ch)
-	x := C.CGFloat(-crop.Pos.X)
-	y := C.CGFloat(-diff + crop.Pos.Y)
+	x := C.CGFloat(-insetRect.Pos.X)
+	y := C.CGFloat(-diff + insetRect.Pos.Y)
 	cgDrawRect := C.CGRectMake(x, y, C.CGFloat(iw), C.CGFloat(ih))
 	C.CGContextDrawImage(ctx, cgDrawRect, cgimage)
 
@@ -285,7 +267,7 @@ func CGImageToGoImage(cgimage C.CGImageRef, crop zgeo.Rect) (image.Image, error)
 	return img, nil
 }
 
-func GetWindowImage(winID string, crop zgeo.Rect) (image.Image, error) {
+func GetWindowImage(winID string, insetRect zgeo.Rect) (image.Image, error) {
 	wid, _ := strconv.ParseInt(winID, 10, 64)
 	if wid == 0 {
 		return nil, zlog.Error(nil, "no valid image id")
@@ -300,7 +282,7 @@ func GetWindowImage(winID string, crop zgeo.Rect) (image.Image, error) {
 
 	}
 	// zlog.Info("GetWindowImage:", time.Since(start))
-	img, err := CGImageToGoImage(cgimage, crop)
+	img, err := CGImageToGoImage(cgimage, insetRect)
 	// zlog.Info("GetWindowImage Make Go Image:", time.Since(start))
 	C.CGImageRelease(cgimage)
 	return img, err

@@ -26,7 +26,7 @@ NSString *removeNonASCIIAndTruncate(NSString *str) {
     if (range.length != 0) {
         s = (NSMutableString *)[s substringToIndex:range.location];
     }
-    return s;
+    return [NSString stringWithString:s];
 }
 
 int canControlComputer(int prompt) {
@@ -238,7 +238,7 @@ AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL de
     CFArrayRef windowArray = nil;
     AXError err = AXUIElementCopyAttributeValue(appElementRef, kAXWindowsAttribute, (CFTypeRef*)&windowArray);
     if (windowArray == nil) {
-        NSLog(@"getAXElementOfWindowForTitle is nil: %s pid=%ld err=%d\n", title, pid, err);
+        // NSLog(@"getAXElementOfWindowForTitle is nil: %s pid=%ld err=%d\n", title, pid, err);
         CFRelease(appElementRef);
         return nil;
     }
@@ -323,13 +323,13 @@ int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int 
     winPos.y = y;
     CFTypeRef size = (CFTypeRef)(AXValueCreate(kAXValueCGSizeType, (const void *)&winSize));
     CFTypeRef pos = (CFTypeRef)(AXValueCreate(kAXValueCGPointType, (const void *)&winPos));
-    err = AXUIElementSetAttributeValue(winRef, (__bridge CFStringRef)NSAccessibilitySizeAttribute, (CFTypeRef *)size);
-    if (err != 0) {
-        NSLog(@"SetWindowRectForTitle set size error: %s %d\n", title, err);
-    }
     err = AXUIElementSetAttributeValue(winRef, (__bridge CFStringRef)NSAccessibilityPositionAttribute, (CFTypeRef *)pos);
     if (err != 0) {
         NSLog(@"SetWindowRectForTitle set pos error: %s %d\n", title, err);
+    }
+    err = AXUIElementSetAttributeValue(winRef, (__bridge CFStringRef)NSAccessibilitySizeAttribute, (CFTypeRef *)size);
+    if (err != 0) {
+        NSLog(@"SetWindowRectForTitle set size error: %s %d\n", title, err);
     }
     // NSLog(@"PlaceWindowForTitle %s %ld\n", title, pid);
     CFRelease(winRef);
