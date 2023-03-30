@@ -42,6 +42,8 @@ var (
 	TestTime                 = MustParse("2020-05-17T10:30:45.0+02:00")      // Random time we can use in tests when it has to look normal and be a fixed time
 	DefaultDisplayServerTime bool
 	ServerTimezoneOffsetSecs int
+	SundayFirstWeekdays      = []time.Weekday{time.Sunday, time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday}
+	Weekdays                 = []time.Weekday{time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday, time.Sunday}
 )
 
 // https://github.com/jinzhu/now -- interesting library for getting start of this minute etc
