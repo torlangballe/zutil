@@ -31,7 +31,7 @@ func GetHostAndPort(u *url.URL) (host string, port int) {
 	return
 }
 
-func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
+func GetCurrentLocalIPAddress(netInterface string) (ip16, ip4 string, err error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return
@@ -39,7 +39,9 @@ func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
 	var oldName string
 	var oldNum int = -1
 	for _, iface := range ifaces {
-		// zlog.Info("CurrentLocalIP Stuff:", iface)
+		if netInterface != "" && iface.Name != netInterface {
+			continue
+		}
 		addresses, e := iface.Addrs()
 		if e != nil {
 			err = e

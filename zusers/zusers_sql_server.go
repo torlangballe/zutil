@@ -126,7 +126,7 @@ func (s *SQLServer) GetUserIDFromToken(token string) (id int64, err error) {
 	row := s.DB.QueryRow(squery, token)
 	err = row.Scan(&id)
 	if err != nil {
-		// zlog.Error(err, squery, token)
+		zlog.Error(err, squery, token)
 		return 0, AuthFailedError
 	}
 	squery = "UPDATE zuser_sessions SET used=$NOW WHERE token=$1"

@@ -31,6 +31,7 @@ var (
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	o := req.Header.Get("Origin")
+	// zlog.Info("AddCorsHeaders1:", o, req.URL.String())
 	if o == "" {
 		return
 	}
@@ -205,7 +206,7 @@ func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, 
 		// 	}
 		// 	ReturnError(w, req, "timeout out handling", http.StatusGatewayTimeout)
 		// })
-		p := zprocess.PushProcess(30, "AddFileHandler:"+req.URL.String())
+		p := zprocess.PushProcess(30, "zrest.Handler:"+req.URL.String())
 		CurrentInRequests++
 		f(w, req)
 		CurrentInRequests--

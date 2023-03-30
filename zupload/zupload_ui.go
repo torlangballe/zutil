@@ -220,7 +220,7 @@ func (v *UploadView) addUploadButton() {
 	v.upload = zbutton.New("choose file")
 	v.upload.SetMinWidth(100)
 	len := v.CountChildren()
-	v.Add(v.upload, zgeo.CenterLeft, len-1)
+	v.AddAdvanced(v.upload, zgeo.CenterLeft, zgeo.Size{}, zgeo.Size{}, len-1, false)
 	v.upload.SetUploader(v.handleGivenFile, v.checkExtensions, nil)
 }
 
@@ -271,6 +271,7 @@ func CallHTTUpload(up UploadPayload, data []byte) {
 		"type": up.Type,
 	}
 	params.Headers["X-Password"] = up.Password
+	params.TimeoutSecs = 120
 	// params.PrintBody = true
 	surl := zapp.DownloadPathPrefix + "zupload"
 	surl, _ = zhttp.MakeURLWithArgs(surl, args)

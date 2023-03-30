@@ -18,7 +18,7 @@ func GetIntFromBits(data []byte, bits, startFromEnd int) int {
 	up := zint.Max(0, startFromEnd-bits)
 	mask := uint16((1<<bits - 1) << up)
 	full := binary.BigEndian.Uint16(data)
-	// fmt.Printf("GetIntFromBits: mask:%b full:%b bits:%d startfe:%d shift:%d and:%b\n", mask, full, bits, startFromEnd, up, full&mask)
+	// fmt.Printf("GetIntFromBits: mask:%b full:%b bits:%d startfe:%d shift:%d and:%b %x %x\n", mask, full, bits, startFromEnd, up, full&mask, data[0], data[1])
 	return int((full & mask) >> up)
 }
 

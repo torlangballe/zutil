@@ -63,6 +63,7 @@ func makeSaltyHash(password string) (hash, salt, token string) {
 func (*UsersCalls) GetUserForToken(token string, user *User) error {
 	u, err := MainServer.GetUserForToken(token)
 	if err != nil {
+		zlog.Error(err, "GetUserForToken", token)
 		return err
 	}
 	*user = u

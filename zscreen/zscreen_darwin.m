@@ -39,7 +39,7 @@ void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh) {
  
     CGGetOnlineDisplayList(MAX, displays, &numDisplays); 
     CGDirectDisplayID mainID = CGMainDisplayID();
- 
+
     for (int i = 0; i < numDisplays; i++) // 2
     {
         long             bestWidth = 0, bestHeight = 0;
@@ -59,7 +59,6 @@ void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh) {
             CGDisplayModeRef mode = (CGDisplayModeRef)CFArrayGetValueAtIndex(modeList, mi);
             long width = CGDisplayModeGetWidth(mode);
             long height = CGDisplayModeGetHeight(mode);
-            NSLog(@"SetRez mode: %ld x %ld", width, height);
  
             if (width >= minw && width <= maxw && height >= minh && height <= maxh && (bestWidth == 0.0 || bestWidth > width)) {
                 bestWidth = width;
@@ -68,7 +67,6 @@ void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh) {
             }
         }
         if (bestWidth != 0) {
-            NSLog(@"SetMode: %ldx%ld", bestWidth, bestHeight);
             CGDisplayConfigRef config;
             CGError err = CGBeginDisplayConfiguration(&config);
             CGConfigureDisplayWithDisplayMode(config, mainID, bestMode, NULL);
