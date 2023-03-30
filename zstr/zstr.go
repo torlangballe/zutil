@@ -38,37 +38,6 @@ type StrInt struct {
 	Int64  int64
 }
 
-func GetColorEscapeCode(r, g, b int) string {
-	R := r&128 > 0
-	G := g&128 > 0
-	B := b&128 > 0
-	if R && G && B {
-		return EscWhite
-	}
-	if !R && !G && !B {
-		return EscBlack
-	}
-	if R && !G && !B {
-		return EscRed
-	}
-	if !R && G && !B {
-		return EscGreen
-	}
-	if !R && !G && B {
-		return EscBlue
-	}
-	if R && G && !B {
-		return EscYellow
-	}
-	if R && !G && B {
-		return EscMagenta
-	}
-	if !R && G && B {
-		return EscCyan
-	}
-	return ""
-}
-
 func GetLevenshteinRatio(a, b string) float64 { // returns distance / min length of a or b
 	len := float64(zint.Min(len(a), len(b)))
 	return float64(GetLevenshteinDistance(a, b)) / len

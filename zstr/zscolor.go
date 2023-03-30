@@ -42,3 +42,34 @@ func termColor(r, g, b uint16) uint16 {
 
 	return rterm + gterm + bterm + 16 + 1 // termbox default color offset
 }
+
+func GetColorEscapeCode(r, g, b int) string {
+	R := r&128 > 0
+	G := g&128 > 0
+	B := b&128 > 0
+	if R && G && B {
+		return EscWhite
+	}
+	if !R && !G && !B {
+		return EscBlack
+	}
+	if R && !G && !B {
+		return EscRed
+	}
+	if !R && G && !B {
+		return EscGreen
+	}
+	if !R && !G && B {
+		return EscBlue
+	}
+	if R && G && !B {
+		return EscYellow
+	}
+	if R && !G && B {
+		return EscMagenta
+	}
+	if !R && G && B {
+		return EscCyan
+	}
+	return ""
+}
