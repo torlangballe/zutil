@@ -27,6 +27,11 @@ func (l *LockMap[K, V]) Set(k K, v V) {
 	l.Map.Store(k, v)
 }
 
+func (l *LockMap[K, V]) Has(k K) bool {
+	_, ok := l.Map.Load(k)
+	return ok
+}
+
 func (l *LockMap[K, V]) Get(k K) (v V, ok bool) {
 	a, ok := l.Map.Load(k)
 	if ok {
