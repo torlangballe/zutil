@@ -208,15 +208,15 @@ func (s Size) ScaledTo(in Size) Size {
 	return scaled
 }
 
-func (s *Size) Floor() Size {
+func (s Size) Floor() Size {
 	return Size{math.Floor(s.W), math.Floor(s.H)}
 }
 
-func (s *Size) Ceil() Size {
+func (s Size) Ceil() Size {
 	return Size{math.Ceil(s.W), math.Ceil(s.H)}
 }
 
-func (s *Size) Round() Size {
+func (s Size) Round() Size {
 	return Size{math.Round(s.W), math.Round(s.H)}
 }
 
@@ -224,22 +224,20 @@ func (s Size) String() string { // we don't use String() since we're doing that 
 	return fmt.Sprintf("%gx%g", s.W, s.H)
 }
 
-func (s *Size) FromString(str string) error { // we don't use String() since that's special in Go
+func SizeFromString(str string) (Size, error) { // we don't use String() since that's special in Go
 	var sw, sh string
 	if !zstr.SplitN(str, "x", &sw, &sh) {
-		return errors.New("no x: " + str)
+		return Size{}, errors.New("no x: " + str)
 	}
 	w, err := strconv.ParseFloat(sw, 64)
 	if err != nil {
-		return zlog.Error(err, zlog.StackAdjust(1), "parse w", sw)
+		return Size{}, zlog.Error(err, zlog.StackAdjust(1), "parse w", sw)
 	}
 	h, err := strconv.ParseFloat(sh, 64)
 	if err != nil {
-		return zlog.Error(err, zlog.StackAdjust(1), "parse h", sh)
+		return Size{}, zlog.Error(err, zlog.StackAdjust(1), "parse h", sh)
 	}
-	s.W = w
-	s.H = h
-	return nil
+	return Size{w, h}, nil
 }
 
 func (s Size) ZUIString() string {
@@ -247,7 +245,7 @@ func (s Size) ZUIString() string {
 }
 
 func (s *Size) ZUISetFromString(str string) {
-	s.FromString(str)
+	*s, _ = SizeFromString(str)
 }
 
 /*

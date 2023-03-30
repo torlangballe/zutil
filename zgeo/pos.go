@@ -227,3 +227,20 @@ func (pos Pos) ArcTanToRad() float64 {
 	}
 	return a
 }
+
+func (p Pos) Floor() Pos {
+	return Pos{math.Floor(p.X), math.Floor(p.Y)}
+}
+
+func (p Pos) Ceil() Pos {
+	return Pos{math.Ceil(p.X), math.Ceil(p.Y)}
+}
+
+func (p Pos) Round() Pos {
+	return Pos{math.Round(p.X), math.Round(p.Y)}
+}
+
+type IPos struct {
+	X int
+	Y int
+}

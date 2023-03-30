@@ -115,6 +115,12 @@ func (r *Rect) SetCenter(c Pos) {
 	r.Pos = c.Minus(r.Size.Pos().DividedByD(2))
 }
 
+func (r *Rect) Translated(t Pos) Rect {
+	tr := *r
+	tr.Pos.Add(t)
+	return tr
+}
+
 func MergeAll(rects []Rect) []Rect {
 	var merged = true
 	var rold = rects
@@ -448,7 +454,7 @@ func centerToRect(center Pos, radius float64, radiusy float64) Rect {
 	return Rect{center.Minus(s.Pos()), s.TimesD(2.0)}
 }
 
-func (r *Rect) ExpandedToInt() Rect {
+func (r Rect) ExpandedToInt() Rect {
 	var ir Rect
 	ir.Pos.X = math.Floor(r.Pos.X)
 	ir.Pos.Y = math.Floor(r.Pos.Y)
