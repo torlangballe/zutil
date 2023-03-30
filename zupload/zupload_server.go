@@ -8,6 +8,12 @@ package zupload
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/bramvdbogaerde/go-scp"
 	"github.com/bramvdbogaerde/go-scp/auth"
 	"github.com/gorilla/mux"
@@ -17,10 +23,6 @@ import (
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
 	"golang.org/x/crypto/ssh"
-	"io"
-	"net/http"
-	"strings"
-	"sync"
 )
 
 var (
@@ -55,7 +57,7 @@ func CopySPC(url, password string, consume func(reader io.ReadCloser) error) err
 		address += ":22"
 	}
 	path := url
-	client := scp.NewClient(address, &config)
+	client := scp.NewClientWithTimeout(address, &config, time.Minute*2)
 	err = client.Connect()
 	if err != nil {
 		return zlog.Error(err, "connect", address, password)
