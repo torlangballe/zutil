@@ -120,7 +120,7 @@ func RepeatPrintInOutRequests() {
 		if time.Since(lastProcPrint) > time.Second*1 {
 			procs.ForEach(func(k int64, p *proc) bool {
 				if time.Since(p.start) > time.Second*10 {
-					zlog.Info("Slow Request:", time.Since(p.start), p.info, p.stack)
+					zlog.Info("Slow Request:", time.Since(p.start), "count:", p.info, p.stack)
 					lastProcPrint = time.Now()
 					return true
 				}
