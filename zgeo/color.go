@@ -205,6 +205,10 @@ func (c Color) WithOpacity(opacity float32) Color {
 	return ColorNew(c.Colors.R, c.Colors.G, c.Colors.B, opacity)
 }
 
+func (c Color) OpacityInverted() Color {
+	return c.WithOpacity(1 - c.Opacity())
+}
+
 func (c Color) Mixed(withColor Color, amount float32) Color {
 	wc := withColor.RGBAValue()
 	col := c.RGBAValue()
