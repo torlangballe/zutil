@@ -11,7 +11,6 @@ import (
 	"io"
 	"net/url"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -904,16 +903,6 @@ func PadCamelCase(str, pad string) string {
 	return out
 }
 
-var hashRegEx = regexp.MustCompile(`#([A-Za-z_]\w+)`) // (\s|\B) at start needed?
-
-func ReplaceHashTags(text string, f func(tag string) string) string {
-	out := hashRegEx.ReplaceAllStringFunc(text, func(tag string) string {
-		tag = strings.Replace(tag, "#", "", 1)
-		return f(tag)
-	})
-	return out
-}
-
 func HashTo64Hex(str string) string {
 	h := zint.HashTo64(str)
 	return fmt.Sprintf("%x", h)
@@ -1046,44 +1035,6 @@ func SplitInTwo(str string, sep string) (string, string) {
 	return "", ""
 }
 
-// ReplaceAllCapturesFunc calls replace with contents of the first capture group and index 1, then next and index 2 etc.
-// The returned string replaces the capture group, and the entire surrounding string and new contents is returned.
-func ReplaceAllCapturesFunc(regex *regexp.Regexp, str string, replace func(cap string, index int) string) string {
-	var out string
-	groups := regex.FindAllStringSubmatchIndex(str, -1)
-	if len(groups) == 0 {
-		return str
-	}
-	var last int
-	// fmt.Println("Groups:", groups, str)
-	for _, group := range groups {
-		glen := len(group)
-		for i := 2; i < glen; i += 2 {
-			s := group[i]
-			e := group[i+1]
-			if s == -1 || e == -1 {
-				// we don't set last, so this whole part is copied in next loop or end
-				continue
-			}
-			out += str[last:s]
-			last = e
-			out += replace(str[s:e], i/2)
-		}
-	}
-	out += str[last:]
-	return out
-}
-
-func GetAllCaptures(regex *regexp.Regexp, str string) []string {
-	var out []string
-	ReplaceAllCapturesFunc(regex, str, func(cap string, index int) string {
-		fmt.Println("AllCaps:", cap)
-		out = append(out, cap)
-		return ""
-	})
-	return out
-}
-
 // ScanLinesWithCR is a replacement for bufio.Scanner
 func ScanLinesWithCR(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	if atEOF && len(data) == 0 {
@@ -1112,15 +1063,6 @@ func ScanLinesWithCR(data []byte, atEOF bool) (advance int, token []byte, err er
 		return len(data), data, nil
 	}
 	return 0, nil, nil
-}
-
-var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
-
-func IsValidEmail(email string) bool {
-	if len(email) < 3 && len(email) > 254 {
-		return false
-	}
-	return emailRegex.MatchString(email)
 }
 
 func IsTypableASCII(s string) bool {
