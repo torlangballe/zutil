@@ -15,11 +15,13 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zstr"
 )
 
 type Priority int
 type StackAdjust int
+type LimitID string
 
 const (
 	Verbose Priority = iota
@@ -40,6 +42,7 @@ var (
 	PrintDate               = true
 	lastGoRoutineCount      int
 	lastGoRoutineOutputTime time.Time
+	rateLimiters            zmap.LockMap[LimitID, time.Time]
 )
 
 func init() {
@@ -148,6 +151,15 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		t, got := p.(time.Time)
 		if got {
 			parts[i] = t.Local().Format("06-Jan-02 15:04:05.9-07")
+		}
+		rl, got := p.(LimitID)
+		if got {
+			parts = append(parts[:i], parts[i+1:]...)
+			t, _ := rateLimiters.Get(rl)
+			if time.Since(t) < time.Second {
+				return nil
+			}
+			rateLimiters.Set(rl, time.Now())
 		}
 	}
 	col := ""
@@ -428,4 +440,12 @@ func Full(v interface{}) string {
 
 func Pointer(v interface{}) string {
 	return fmt.Sprintf("%p", v)
+}
+
+func Hex(v interface{}) string {
+	return fmt.Sprintf("%X", v)
+}
+
+func Limit(parts ...any) LimitID {
+	return LimitID(fmt.Sprint(parts...))
 }
