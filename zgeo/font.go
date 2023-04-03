@@ -75,6 +75,9 @@ func FontNice(size float64, style FontStyle) *Font {
 }
 
 func (f *Font) NewWithSize(size float64) *Font {
+	if size < 0 {
+		size = f.Size + size
+	}
 	return FontNew(f.Name, size, f.Style)
 }
 
