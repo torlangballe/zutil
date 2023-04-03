@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zwords"
@@ -708,4 +709,25 @@ func XToTime(minX, maxX float64, x float64, start, end time.Time) time.Time {
 func TimeToX(minX, maxX float64, t, start, end time.Time) float64 {
 	diff := DurSeconds(end.Sub(start))
 	return minX + DurSeconds(t.Sub(start))*(maxX-minX)/diff
+}
+
+// AddMonthAndYearToTime adds months and years to a date.
+// It increases/decreases month-count, not using 30 days.
+// If the results day of year is outside current month it is truncated.
+func AddMonthAndYearToTime(t time.Time, months, years int) time.Time {
+	year := t.Year()
+	month := t.Month()
+	day := t.Day()
+	year += years
+	month += time.Month(months)
+	max := DaysInMonth(month, year)
+	zint.Minimize(&day, max)
+	n := time.Date(year, month, day, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
+	return n
+}
+
+// DaysInMonth returns the number of days in a month for a given year
+func DaysInMonth(month time.Month, year int) int {
+	t := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC) // 0 of next month is the same as last day of given month
+	return t.Day()
 }
