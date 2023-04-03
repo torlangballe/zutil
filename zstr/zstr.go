@@ -1010,14 +1010,6 @@ func SplitIntoLengths(s string, length int) []string {
 	return subs
 }
 
-func SprintSpaced(items ...interface{}) string {
-	if len(items) == 0 {
-		return ""
-	}
-	str := fmt.Sprintln(items...)
-	return TruncatedCharsAtEnd(str, 1)
-}
-
 func FromInterface(i interface{}) string {
 	s, _ := i.(string)
 	return s

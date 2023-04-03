@@ -30,7 +30,7 @@ func NewProfile(name string, minSecs float64) Profile {
 func (p *Profile) Log(parts ...interface{}) {
 	var line *Line
 	previ := -1
-	str := zstr.SprintSpaced(parts...)
+	str := zstr.Spaced(parts...)
 	for i, l := range p.Lines {
 		if l.Text == str {
 			line = &p.Lines[i]

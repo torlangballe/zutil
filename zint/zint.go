@@ -203,26 +203,6 @@ func MapBoolToSlice64(m map[int64]bool) (slice []int64) {
 	return
 }
 
-// func SortedMap(m map[int64]int64, desc bool, each func(k int64, v int64)) {
-// 	mapCopy := map[int64]int64{}
-// 	for k, v := range m {
-// 		mapCopy[k] = v
-// 	}
-// 	for len(mapCopy) > 0 {
-// 		extreme := int64(math.MaxInt64)
-// 		if desc {
-// 			extreme = math.MinInt64
-// 		}
-// 		for k, _ := range mapCopy {
-// 			if (desc && k > extreme) || (!desc && k < extreme) {
-// 				extreme = k
-// 			}
-// 		}
-// 		each(extreme, m[extreme])
-// 		delete(mapCopy, extreme)
-// 	}
-// }
-
 func HashTo32(str string) int32 {
 	h := fnv.New32a()
 	h.Write([]byte(str))

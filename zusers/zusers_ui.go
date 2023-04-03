@@ -19,6 +19,7 @@ import (
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zui/zwindow"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zguiutil"
 	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc2"
@@ -107,10 +108,10 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	usernameField.SetChangedHandler(validate)
 	passwordField.SetChangedHandler(validate)
 
-	_, s1, _ := zlabel.Labelize(usernameField, UserNameType(), column, zgeo.CenterLeft)
+	_, s1, _ := zguiutil.Labelize(usernameField, UserNameType(), column, zgeo.CenterLeft)
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
 
-	_, s2, _ := zlabel.Labelize(passwordField, "Password", column, zgeo.CenterLeft)
+	_, s2, _ := zguiutil.Labelize(passwordField, "Password", column, zgeo.CenterLeft)
 	v1.Add(s2, zgeo.TopLeft|zgeo.HorExpand)
 
 	if UserNameIsEmail && doLogin {
@@ -265,7 +266,7 @@ func showDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title strin
 		style.KeyboardType = zkeyboard.TypeEmailAddress
 	}
 	textField := ztext.NewView(oldValue, style, 20, 1)
-	_, s1, _ := zlabel.Labelize(textField, name, column, zgeo.CenterLeft)
+	_, s1, _ := zguiutil.Labelize(textField, name, column, zgeo.CenterLeft)
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
 
 	att := zpresent.AttributesNew()
