@@ -89,9 +89,20 @@ func (a Alignment) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + a.String() + `"`), nil
 }
 
-func AlignmentFromVector(fromVector Pos) Alignment {
-	//        a.init(rawValue rawFromVector(fromVector))
-	return AlignmentNone
+func (a Alignment) Vector() Pos {
+	if a&Left != 0 {
+		return Pos{-1, 0}
+	}
+	if a&Right != 0 {
+		return Pos{1, 0}
+	}
+	if a&Top != 0 {
+		return Pos{0, -1}
+	}
+	if a&Bottom != 0 {
+		return Pos{0, 1}
+	}
+	return Pos{}
 }
 
 func (a Alignment) FlippedVertical() Alignment {
