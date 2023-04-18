@@ -32,7 +32,7 @@ func CheckIsSlicePtr(s interface{}) error {
 func RemoveAt(slice interface{}, index int) error {
 	err := CheckIsSlicePtr(slice)
 	if err != nil {
-		return zlog.Fatal(err, zlog.StackAdjust(1), "not slice pointer", slice)
+		return zlog.Fatal(err, zlog.StackAdjust(1), "not slice pointer", slice, reflect.TypeOf(slice).Kind(), reflect.TypeOf(slice))
 	}
 
 	slicePtrValue := reflect.ValueOf(slice)

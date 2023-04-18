@@ -1,5 +1,4 @@
 //go:build !js && !windows
-// +build !js,!windows
 
 package zdevice
 

@@ -290,7 +290,10 @@ func HandleResetPassword(args map[string]string) {
 	stack := zcontainer.StackViewHor("stack")
 	att := zpresent.AttributesNew()
 	att.MakeFull = true
-	zpresent.PresentView(stack, att, func(*zwindow.Window) {
+	zpresent.PresentView(stack, att, func(win *zwindow.Window) {
+		if win == nil {
+			return
+		}
 		// zlog.Info("HandleResetPassword2")
 		var resetDialog struct {
 			NewPassword string `zui:"password"`

@@ -52,7 +52,7 @@ func FromString(str string, def bool) bool {
 func FromStringWithError(str string) (bool, error) {
 	bind := FromStringWithInd(str, Unknown)
 	if bind == Unknown {
-		return false, zlog.NewError("bad tyoe:", str)
+		return false, zlog.NewError("bad type:", str)
 	}
 	return bind.Bool(), nil
 }
