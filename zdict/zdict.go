@@ -35,12 +35,25 @@ func BitsetToItem(bi zbits.BitsetItem) Item {
 	return Item{Name: bi.TitleOrName(), Value: bi.Mask}
 }
 
+func (item Item) Equal(to Item) bool {
+	if item.Name != to.Name {
+		return false
+	}
+	if item.Value == nil && to.Value == nil {
+		return true
+	}
+	if item.Value == nil || to.Value == nil {
+		return false
+	}
+	return reflect.DeepEqual(item.Value, to.Value)
+}
+
 func (items Items) Equal(to Items) bool {
 	if len(items) != len(to) {
 		return false
 	}
 	for i := range items {
-		if items[i] != to[i] {
+		if !items[i].Equal(to[i]) {
 			return false
 		}
 	}
