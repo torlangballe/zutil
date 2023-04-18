@@ -364,10 +364,15 @@ func AppendToFile(fpath, str string) error {
 	return err
 }
 
-func handleErr(err error, why, path string, file *os.File) error {
-	ferr := file.Close()
+func handleErr(err error, why, path string, file *os.File, close bool) error {
+	var ferr error
+	if close {
+		ferr = file.Close()
+	}
 	rerr := os.Remove(path)
-	fmt.Println(err, "{nolog}WriteToFileAtomically call write func", ferr, rerr)
+	if ferr != nil || rerr != nil {
+		fmt.Println(err, "{nolog}WriteToFileAtomically call write func", ferr, rerr)
+	}
 	return err
 }
 
@@ -382,15 +387,16 @@ func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error
 	}
 	err = write(file)
 	if err != nil {
-		return handleErr(err, "write", tempPath, file)
+		return handleErr(err, "write", tempPath, file, true)
 	}
 	err = file.Close()
 	if err != nil {
-		return handleErr(err, "close", tempPath, file)
+		return handleErr(err, "close", tempPath, file, false)
 	}
+	// fmt.Println("WriteToFileAtomically:", tempPath, "->", fpath, Exists(tempPath), Size(tempPath))
 	err = os.Rename(tempPath, fpath)
 	if err != nil {
-		return handleErr(err, "rename", tempPath, file)
+		return handleErr(err, "rename", tempPath, file, false)
 	}
 	return nil
 }
