@@ -13,7 +13,7 @@ func getLocalStorage() js.Value {
 	return js.Global().Get("localStorage")
 }
 
-func (k Store) getItem(key string, v interface{}) bool {
+func (k Store) GetItem(key string, v interface{}) bool {
 	var err error
 	k.prefixKey(&key)
 	local := getLocalStorage()
@@ -22,7 +22,7 @@ func (k Store) getItem(key string, v interface{}) bool {
 	// zlog.Info("get kv item:", key, o.Type(), o)
 	switch o.Type() {
 	case js.TypeUndefined:
-		// zlog.Debug(nil, zlog.StackAdjust(1), "Store getItem item undefined:", key)
+		// zlog.Debug(nil, zlog.StackAdjust(1), "Store GetItem item undefined:", key)
 		return false
 
 	case js.TypeNumber:
@@ -68,7 +68,7 @@ func (k Store) getItem(key string, v interface{}) bool {
 	return false
 }
 
-func (k *Store) setItem(key string, v interface{}, sync bool) error {
+func (k *Store) SetItem(key string, v interface{}, sync bool) error {
 	k.prefixKey(&key)
 	local := getLocalStorage()
 	local.Set(key, v)
