@@ -38,7 +38,7 @@ func GetCurrentLocalIPAddress(netInterface string) (ip16, ip4 string, err error)
 	}
 	var oldName string
 	var oldNum int = -1
-	for _, iface := range ifaces {
+	for i, iface := range ifaces {
 		if netInterface != "" && iface.Name != netInterface {
 			continue
 		}
@@ -50,6 +50,7 @@ func GetCurrentLocalIPAddress(netInterface string) (ip16, ip4 string, err error)
 		for _, a := range addresses {
 			ipnet, ok := a.(*net.IPNet)
 			if ok {
+				// zlog.Info("IP:", a.String(), iface.Name, ipnet.IP.IsLoopback())
 				if ipnet.IP.IsLoopback() {
 					continue
 				}
@@ -59,6 +60,7 @@ func GetCurrentLocalIPAddress(netInterface string) (ip16, ip4 string, err error)
 				var snum string
 				win := (runtime.GOOS == "windows")
 
+				// code to prefer en/eth interfaces with highest number
 				if oldName == "" || (!win && zstr.HasPrefix(name, "en", &snum) || zstr.HasPrefix(name, "eth", &snum)) ||
 					win && name == "Ethernet" {
 					if oldName == "" || (!strings.HasPrefix(oldName, "en") && !strings.HasPrefix(oldName, "eth")) {
@@ -72,7 +74,7 @@ func GetCurrentLocalIPAddress(netInterface string) (ip16, ip4 string, err error)
 						oldNum = num
 					}
 				}
-				if get {
+				if get || i == len(ifaces)-1 {
 					i16 := ipnet.IP.To16()
 					if i16 != nil {
 						ip16 = i16.String()
@@ -81,7 +83,7 @@ func GetCurrentLocalIPAddress(netInterface string) (ip16, ip4 string, err error)
 					if i4 != nil {
 						str := i4.String()
 						// zlog.Info("IP:", a.String(), ip4, iface.Name, str)
-						if strings.HasPrefix(str, "169.") && ip4 != "" {
+						if strings.HasPrefix(str, "192.168.") && ip4 != "" {
 							continue
 						}
 						ip4 = str
