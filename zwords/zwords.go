@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -31,15 +32,18 @@ var TSL = func(str, langCode string) string {
 	return str
 }
 
+func init() {
+	zlog.MemoryStringFunc = func(m int64) string {
+		return GetMemoryString(m, "", 1)
+	}
+}
+
 func getSizeString(b int64, multiples int64, suffix, langCode string, maxSignificant int) string {
 	prefs := []string{"", "K", "M", "G", "T", "P"}
-	if langCode == "" {
-		langCode = DefaultLanguage
-	}
 	var n int64 = 1
 	for _, pref := range prefs {
 		if b < n*multiples {
-			return PluralWordWithCount(pref+suffix, float64(b)/float64(n), langCode, "", maxSignificant)
+			return NiceFloat(float64(b)/float64(n), maxSignificant) + pref + suffix
 		}
 		n *= multiples
 	}
@@ -47,15 +51,15 @@ func getSizeString(b int64, multiples int64, suffix, langCode string, maxSignifi
 }
 
 func GetBandwidthString(b int64, langCode string, maxSignificant int) string {
-	return getSizeString(b, 1000, "Bit", langCode, maxSignificant)
+	return getSizeString(b, 1000, "b", langCode, maxSignificant)
 }
 
 func GetStorageSizeString(b int64, langCode string, maxSignificant int) string {
-	return getSizeString(b, 1000, "Byte", langCode, maxSignificant)
+	return getSizeString(b, 1000, "B", langCode, maxSignificant)
 }
 
 func GetMemoryString(b int64, langCode string, maxSignificant int) string {
-	return getSizeString(b, 1024, "Byte", langCode, maxSignificant)
+	return getSizeString(b, 1024, "B", langCode, maxSignificant)
 }
 
 // NiceFloat converts a float to string, with only significant amount of post-comma digits
