@@ -338,12 +338,13 @@ func FieldForIndex(istruct any, flatten bool, index int) (fieldRefVal reflect.Va
 	return
 }
 
-func FieldForName(istruct any, flatten bool, name string) (fieldRefVal reflect.Value, sf reflect.StructField, found bool) {
+func FieldForName(istruct any, flatten bool, name string) (fieldRefVal reflect.Value, sf reflect.StructField, index int) {
+	index = -1
 	ForEachField(istruct, flatten, func(i int, rv reflect.Value, f reflect.StructField) bool {
 		if f.Name == name {
 			fieldRefVal = rv
 			sf = f
-			found = true
+			index = i
 			return false
 		}
 		return true
