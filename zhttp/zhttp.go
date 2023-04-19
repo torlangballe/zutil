@@ -434,17 +434,37 @@ func EscapeURLComponent(str string) string {
 	return strings.ReplaceAll(str, "+", "%2B")
 }
 
+// func GetRedirectedURLOld(surl string) (string, error) {
+// 	params := MakeParameters()
+// 	params.Method = http.MethodGet
+// 	if runtime.GOOS == "js" {
+// 		params.Headers["jsFetchRedirect"] = "follow"
+// 	}
+// 	resp, err := GetResponse(surl, params)
+// 	if err != nil {
+// 		return surl, errors.New(fmt.Sprint("getRedirectedURL: ", surl, " ", err))
+// 	}
+// 	defer resp.Body.Close()
+// 	defer io.Copy(ioutil.Discard, resp.Body)
+// 	return resp.Request.URL.String(), nil
+// }
+
 func GetRedirectedURL(surl string) (string, error) {
-	params := MakeParameters()
-	params.Method = http.MethodGet
-	params.Headers["jsFetchRedirect"] = "follow"
-	resp, err := GetResponse(surl, params)
+	req, err := http.NewRequest("GET", surl, nil)
 	if err != nil {
-		return surl, errors.New(fmt.Sprint("getRedirectedURL: ", surl, " ", err))
+		return surl, err
 	}
-	defer resp.Body.Close()
-	defer io.Copy(ioutil.Discard, resp.Body)
-	return resp.Request.URL.String(), nil
+	client := http.Client{}
+	lastUrlQuery := surl
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) > 10 {
+			return errors.New("too many redirects")
+		}
+		lastUrlQuery = req.URL.RequestURI()
+		return nil
+	}
+	_, err = client.Do(req)
+	return lastUrlQuery, err
 }
 
 func ReplaceURLsInText(text string, f func(surl string) string) string {
