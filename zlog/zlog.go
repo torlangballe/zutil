@@ -2,6 +2,7 @@ package zlog
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/pprof"
 	"os"
 	"os/user"
@@ -43,6 +44,7 @@ var (
 	lastGoRoutineCount      int
 	lastGoRoutineOutputTime time.Time
 	rateLimiters            zmap.LockMap[LimitID, time.Time]
+	MemoryStringFunc        func(m int64) string
 )
 
 func init() {
@@ -381,13 +383,24 @@ func PrintStartupInfo(version, commitHash, builtAt, builtBy, builtOn string) {
 	)
 }
 
-func SetProfilingHandle(r *mux.Router) {
-	r.HandleFunc("/debug/pprof/", pprof.Index)
+func SetProfilingHandle(port int) {
+	if port == 0 {
+		port = 6060
+	}
+	router := mux.NewRouter()
+
+	// http.Handle("/debug/pprof/", pprof.Index)
+	router.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
+	router.HandleFunc("/debug/pprof/", pprof.Index)
+
 	//	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	//
 	// r.HandleFunc("/debug/pprof/profile", pprof.Index)
 	// r.HandleFunc("/debug/pprof/heap", pprof.Index)
+	//
 	//	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	//	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	go http.ListenAndServe(":6060", router)
 }
 
 func HandlePanic(exit bool) error {
@@ -424,8 +437,8 @@ func OnErrorTestError(t *testing.T, err error, items ...interface{}) bool {
 func PrintMemoryStats() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-
-	fmt.Printf("MemAlloc:%vKB TotalAlloc:%vKB Sys:%vKB NumGC:%d\n", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
+	rss := m.HeapSys - m.HeapReleased
+	fmt.Printf("MemAlloc:%s TotalAlloc:%s Sys:%s RSS:%s NumGC:%d\n", MemoryStringFunc(int64(m.Alloc)), MemoryStringFunc(int64(m.TotalAlloc)), MemoryStringFunc(int64(m.Sys)), MemoryStringFunc(int64(rss)), m.NumGC)
 }
 
 func PrintAllGoroutines() {
