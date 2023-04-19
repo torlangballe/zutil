@@ -2,8 +2,6 @@ package zlog
 
 import (
 	"fmt"
-	"net/http"
-	"net/http/pprof"
 	"os"
 	"os/user"
 	"path"
@@ -14,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zstr"
@@ -381,26 +378,6 @@ func PrintStartupInfo(version, commitHash, builtAt, builtBy, builtOn string) {
 		builtOn,
 		zstr.EscNoColor,
 	)
-}
-
-func SetProfilingHandle(port int) {
-	if port == 0 {
-		port = 6060
-	}
-	router := mux.NewRouter()
-
-	// http.Handle("/debug/pprof/", pprof.Index)
-	router.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
-	router.HandleFunc("/debug/pprof/", pprof.Index)
-
-	//	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	//
-	// r.HandleFunc("/debug/pprof/profile", pprof.Index)
-	// r.HandleFunc("/debug/pprof/heap", pprof.Index)
-	//
-	//	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	//	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	go http.ListenAndServe(":6060", router)
 }
 
 func HandlePanic(exit bool) error {

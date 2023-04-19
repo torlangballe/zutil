@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -140,7 +141,6 @@ func GetFloatVal(vals url.Values, name string, def float64) float64 {
 
 func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Route {
 	pattern = strings.TrimRight(AppURLPrefix+pattern, "/")
-	// zlog.Info("zrest.AddSubHandler:", pattern)
 	defer zlog.HandlePanic(false)
 	p := zprocess.PushProcess(30, "AddSubHandler:"+pattern)
 	CurrentInRequests++
@@ -184,7 +184,6 @@ func AddFileHandler(router *mux.Router, pattern, dir string, peek func(filepath,
 
 func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	pattern = AppURLPrefix + pattern
-	// zlog.Info("zrest.AddHandler:", pattern)
 	defer zlog.HandlePanic(false)
 	if router == nil {
 		http.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
@@ -224,4 +223,26 @@ func Handle(pattern string, handler http.Handler) {
 	http.Handle(spath, handler)
 	zprocess.PopProcess(p)
 	CurrentInRequests--
+}
+
+func SetProfilingHandle(port int) {
+	if port == 0 {
+		port = 6060
+	}
+	router := mux.NewRouter()
+
+	// http.Handle("/debug/pprof/", pprof.Index)
+	spath := "/debug/pprof"
+	router.PathPrefix(spath).Handler(http.DefaultServeMux)
+	router.HandleFunc(spath+"/", pprof.Index)
+
+	zlog.Info("SetProfilingHandle:", spath, port)
+	//	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	//
+	// r.HandleFunc("/debug/pprof/profile", pprof.Index)
+	// router.HandleFunc("/qtt/debug/pprof/heap", pprof.Index)
+	//
+	//	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	//	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	go http.ListenAndServe(fmt.Sprint(":", port), router)
 }
