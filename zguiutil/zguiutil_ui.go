@@ -3,6 +3,9 @@
 package zguiutil
 
 import (
+	"time"
+
+	"github.com/torlangballe/zui/zapp"
 	"github.com/torlangballe/zui/zcanvas"
 	"github.com/torlangballe/zui/zcheckbox"
 	"github.com/torlangballe/zui/zcontainer"
@@ -11,7 +14,9 @@ import (
 	"github.com/torlangballe/zui/ztextinfo"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zlocale"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
 )
 
@@ -74,4 +79,46 @@ func Labelize(view zview.View, prefix string, minWidth float64, alignment zgeo.A
 	// zlog.Info("Labelize view:", view.ObjectName(), alignment, marg)
 	viewCell = stack.Add(view, alignment, marg)
 	return
+}
+
+func NewCurrentTimeLabel() *zlabel.Label {
+	label := zlabel.New("")
+	label.SetObjectName("time")
+	label.SetFont(zgeo.FontDefault().NewWithSize(zgeo.FontDefaultSize - 2))
+	label.SetColor(zgeo.ColorNewGray(0.5, 1))
+	label.SetMinWidth(145)
+	label.SetTextAlignment(zgeo.Right)
+	label.SetPressedDownHandler(func() {
+		toggleTimeZoneMode(label)
+	})
+	updateCurrentTime(label)
+	ztimer.RepeatForever(1, func() {
+		updateCurrentTime(label)
+	})
+	return label
+}
+
+func toggleTimeZoneMode(label *zlabel.Label) {
+	d := !zlocale.DisplayServerTime.Get()
+	zlog.Info("toggleTimeZoneMode", d)
+	zlocale.DisplayServerTime.Set(d)
+	updateCurrentTime(label)
+}
+
+func updateCurrentTime(label *zlabel.Label) {
+	t := time.Now()
+	t = t.Add(zapp.ServerTimeDifference)
+	if zapp.ServerTimezoneName != "" {
+		loc, _ := time.LoadLocation(zapp.ServerTimezoneName)
+		if loc != nil {
+			t = t.In(loc)
+		}
+	}
+	str := ztime.GetNice(time.Now(), true)
+	label.SetText(str)
+	col := zgeo.ColorBlack
+	if zapp.ServerTimeDifference > time.Second*4 {
+		col = zgeo.ColorRed
+	}
+	label.SetColor(col.WithOpacity(0.7))
 }
