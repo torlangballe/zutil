@@ -13,6 +13,7 @@ import (
 	"github.com/torlangballe/zui/zstyle"
 	"github.com/torlangballe/zui/ztextinfo"
 	"github.com/torlangballe/zui/zview"
+	"github.com/torlangballe/zui/zwindow"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlocale"
 	"github.com/torlangballe/zutil/zlog"
@@ -103,6 +104,7 @@ func toggleTimeZoneMode(label *zlabel.Label) {
 	zlog.Info("toggleTimeZoneMode", d)
 	zlocale.DisplayServerTime.Set(d)
 	updateCurrentTime(label)
+	zwindow.GetMain().Reload()
 }
 
 func updateCurrentTime(label *zlabel.Label) {
