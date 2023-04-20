@@ -122,3 +122,9 @@ func TryFor(secs float64, try func()) (err error) {
 	timer.Stop()
 	return
 }
+
+func StartAt(t time.Time, f func()) *Timer {
+	secs := ztime.DurSeconds(time.Until(t))
+	timer := StartIn(secs, f)
+	return timer
+}
