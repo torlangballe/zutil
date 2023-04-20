@@ -158,8 +158,10 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 }
 
 // AddFileHandler adds a file serving handler, which removes the pattern path prefix before creating the filepath.
-// It uses a FuncHandler function that is it's own http.Handler
-func AddFileHandler(router *mux.Router, pattern, dir string, peek func(filepath, urlpath string, req *http.Request)) *mux.Route {
+// It uses a FuncHandler function that is it's own http.Handler.
+// It calls preprocess (if != nil) before serving the file, this can manipulate the corresponding filepath,
+// or just be used for observing perposes.
+func AddFileHandler(router *mux.Router, pattern, dir string, override func(w http.ResponseWriter, filepath *string, urlpath string, req *http.Request) bool) *mux.Route {
 	return AddSubHandler(router, pattern, FuncHandler(func(w http.ResponseWriter, req *http.Request) {
 		var path string
 		if zstr.HasPrefix(req.URL.Path, AppURLPrefix+pattern, &path) {
@@ -170,8 +172,12 @@ func AddFileHandler(router *mux.Router, pattern, dir string, peek func(filepath,
 			// zlog.OnError(err, path, filepath)
 			// str = strings.Replace(str, "\n", "•", -1)
 			// zlog.Info("Serve Manifest:", err, path, str)
-			if peek != nil {
-				peek(filepath, path, req)
+			if override != nil {
+				if override(w, &filepath, path, req) {
+					zprocess.PopProcess(p)
+					CurrentInRequests--
+					return
+				}
 			}
 			http.ServeFile(w, req, filepath)
 			zprocess.PopProcess(p)
