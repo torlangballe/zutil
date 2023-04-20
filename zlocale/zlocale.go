@@ -9,13 +9,14 @@ import (
 
 //  Created by Tor Langballe on /1/11/15.
 
-// https://github.com/RadhiFadlillah/sysloc
+// see: https://github.com/RadhiFadlillah/sysloc
 
 // TODO: Move out of zui?
 var (
 	IsMondayFirstInWeek       = Option[bool]{Key: "ztime.IsMondayFirstInWeek", Default: true}
 	IsShowWeekdaysInCalendars = Option[bool]{Key: "ztime.IsShowWeekdaysInCalendars", Default: true}
 	IsUse24HourClock          = Option[bool]{Key: "ztime.IsUse24HourClock", Default: true}
+	DisplayServerTime         = Option[bool]{Key: "ztime.DisplayServerTime", Default: false}
 )
 
 type Option[V any] struct {
@@ -41,6 +42,7 @@ func (t *Option[V]) Get() V {
 }
 
 func (t *Option[V]) Set(v V) {
+	t.value = v
 	zkeyvalue.DefaultStore.SetItem(t.Key, t.value, true)
 }
 

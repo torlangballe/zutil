@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zlocale"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zstr"
@@ -39,10 +40,9 @@ type Differ time.Time
 
 // Distant is a very far-future time when you want to do things forever etc
 var (
-	Distant                  = time.Unix(1<<62, 0)
-	BigTime                  = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000
-	TestTime                 = MustParse("2020-05-17T10:30:45.0+02:00")      // Random time we can use in tests when it has to look normal and be a fixed time
-	DefaultDisplayServerTime bool
+	Distant  = time.Unix(1<<62, 0)
+	BigTime  = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000
+	TestTime = MustParse("2020-05-17T10:30:45.0+02:00")      // Random time we can use in tests when it has to look normal and be a fixed time
 	ServerTimezoneOffsetSecs int
 	SundayFirstWeekdays      = []time.Weekday{time.Sunday, time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday}
 	Weekdays                 = []time.Weekday{time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday, time.Sunday}
@@ -147,7 +147,7 @@ func IsBigTime(t time.Time) bool {
 }
 
 func GetTimeWithServerLocation(t time.Time) time.Time {
-	if !DefaultDisplayServerTime {
+	if !zlocale.DisplayServerTime.Get() {
 		//		zlog.Info("GetTimeWithServerLocation", t, ServerTimezoneOffsetSecs, t.Location())
 		t = t.Local()
 		return t
@@ -171,11 +171,12 @@ func GetNice(t time.Time, secs bool) string {
 	if secs {
 		f += ":05"
 	}
-	if DefaultDisplayServerTime {
+	serverTime := zlocale.DisplayServerTime.Get()
+	if serverTime {
 		f += "-07"
 	}
 	t = GetTimeWithServerLocation(t)
-	if IsToday(t) && !DefaultDisplayServerTime {
+	if IsToday(t) && !serverTime {
 		str = t.Format(f) + " today"
 	} else {
 		f += " 02-Jan"
