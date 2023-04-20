@@ -117,9 +117,10 @@ func NewServer(prefix, certFilesSuffix string, port int, ping bool, got func(s *
 	server.connections = map[string]*connection{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 
-	http.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(prefix, func(w http.ResponseWriter, req *http.Request) {
 		zlog.Info("HANDLE WEBSOCK", prefix)
-		handleSocketRequest(w, r, ping, server, got)
+		handleSocketRequest(w, req, ping, server, got)
+		req.Body.Close()
 	})
 
 	znet.ServeHTTPInBackground(port, certFilesSuffix, nil)

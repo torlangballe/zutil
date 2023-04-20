@@ -187,6 +187,7 @@ func (c *Cache) HandlerWithCheckToken(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		t := req.URL.Query().Get("token")
 		if !c.IsTokenValid(t) {
+			req.Body.Close()
 			zrest.ReturnError(w, req, "bad token for get cached file", http.StatusBadRequest)
 			return
 		}

@@ -235,6 +235,7 @@ func FlattenMarkdown(pathPrefix string, chapters []string, tableOfContents bool)
 }
 
 func ServeAsHTML(w http.ResponseWriter, req *http.Request, filepath, cssURL string, variables zdict.Dict) {
+	defer req.Body.Close()
 	markdown, err := zfile.ReadStringFromFile(filepath)
 	if err != nil {
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, err, "read")

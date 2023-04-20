@@ -135,6 +135,7 @@ func handleUpload(w http.ResponseWriter, req *http.Request) {
 	var result zdict.Dict
 	var err error
 
+	defer req.Body.Close()
 	values := req.URL.Query()
 	up.Name = values.Get("name")
 	up.Type = values.Get("type")

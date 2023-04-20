@@ -35,8 +35,10 @@ func (s MDServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	switch filepath.Ext(path) {
 	case ".md":
 		s.handleAsHTML(w, req)
+		req.Body.Close()
 	case ".pdf":
 		s.handleAsPDF(w, req)
+		req.Body.Close()
 	default:
 		file := filepath.Join(s.dir, req.URL.Path)
 		zlog.Info("ServeFile:", file)
@@ -56,7 +58,6 @@ func (s *MDServer) getVariables(req *http.Request) zdict.Dict {
 }
 
 func (s *MDServer) handleAsPDF(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
 	fullmd, err := zmarkdown.FlattenMarkdown(s.dir, s.getFilesForPDF())
 	if err != nil {
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, err, "building pdf guide")
@@ -77,7 +78,6 @@ func (s *MDServer) handleAsHTML(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *MDServer) handleSetVariables(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
 	vars := zdict.Dict{}
 	err := json.NewDecoder(req.Body).Decode(&vars)
 	if err != nil {
