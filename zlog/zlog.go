@@ -415,7 +415,8 @@ func PrintMemoryStats() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	rss := m.HeapSys - m.HeapReleased
-	fmt.Printf("MemAlloc:%s TotalAlloc:%s Sys:%s RSS:%s NumGC:%d\n", MemoryStringFunc(int64(m.Alloc)), MemoryStringFunc(int64(m.TotalAlloc)), MemoryStringFunc(int64(m.Sys)), MemoryStringFunc(int64(rss)), m.NumGC)
+	goroutines := runtime.NumGoroutine()
+	fmt.Printf("MemAlloc:%s TotalAlloc:%s Sys:%s RSS:%s NumGC:%d Go:%d\n", MemoryStringFunc(int64(m.Alloc)), MemoryStringFunc(int64(m.TotalAlloc)), MemoryStringFunc(int64(m.Sys)), MemoryStringFunc(int64(rss)), m.NumGC, goroutines)
 }
 
 func PrintAllGoroutines() {
