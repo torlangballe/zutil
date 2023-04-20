@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/ztime"
 )
 
 var (
@@ -65,7 +64,7 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	if r.ticker != nil {
 		r.Stop()
 	}
-	r.ticker = time.NewTicker(ztime.SecondsDur(secs))
+	r.ticker = time.NewTicker(secs2Dur(secs))
 	// repeatersMutex.Lock()
 	// r.stack = zlog.FileLineAndCallingFunctionString(4)
 	// repeaters[r.stack]++
@@ -142,10 +141,18 @@ func RepeatAtMostEvery(secs float64, do func() bool) {
 			if !do() {
 				return
 			}
-			left := secs - ztime.Since(start)
+			left := secs - secsSince(start)
 			if left > 0 {
-				time.Sleep(ztime.SecondsDur(left))
+				time.Sleep(secs2Dur(left))
 			}
 		}
 	}()
+}
+
+func secs2Dur(secs float64) time.Duration {
+	return time.Duration(secs * float64(time.Second))
+}
+
+func dur2Secs(d time.Duration) float64 {
+	return float64(d) / float64(time.Second)
 }

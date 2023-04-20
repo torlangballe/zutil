@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/ztime"
 )
 
 // create a RateLimiter to only do a function every n seconds since last time it was done for a given id.
@@ -40,13 +39,16 @@ func NewRateLimiter(secs, maxSecs float64) *RateLimiter {
 	return r
 }
 
+func secsSince(t time.Time) float64 {
+	return float64(time.Since(t)) / float64(time.Second)
+}
+
 func (r *RateLimiter) Do(do func()) {
 	if r.executing {
 		return
 	}
-	ready := (ztime.Since(r.last) > r.freqSecs)
+	ready := (secsSince(r.last) > r.freqSecs)
 	if ready {
-		r.last = time.Now()
 		r.executing = true
 		do()
 		r.executing = false
@@ -66,7 +68,7 @@ func (r *RateLimiter) DoBackoff(do func() bool) {
 			r.freqSecs *= r.multiply
 		}
 	}
-	ready := (ztime.Since(r.last) > r.freqSecs)
+	ready := (secsSince(r.last) > r.freqSecs)
 	if ready {
 		r.last = time.Now()
 	}
@@ -92,7 +94,7 @@ func NewRateLimiters(secs float64) *RateLimiters {
 		r.lock.Lock()
 		for id, rl := range r.cache {
 			max := math.Max(rl.startSecs, rl.maxSecs)
-			if !rl.last.IsZero() && ztime.Since(rl.last) > max+50 {
+			if !rl.last.IsZero() && secsSince(rl.last) > max+50 {
 				delete(r.cache, id)
 			}
 		}
@@ -108,6 +110,7 @@ func (r *RateLimiters) Do(id string, secs float64, do func()) {
 	rc := r.cache[id]
 	r.lock.Unlock() // unlock before r.Add(), it locks
 	if rc == nil {
+		zlog.Info("NewRateLimitersDo:", id, secs)
 		rc = r.Add(id, secs, 0)
 	}
 	rc.Do(do)

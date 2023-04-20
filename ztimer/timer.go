@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/ztime"
 )
 
 type Timer struct {
@@ -31,48 +30,6 @@ func StartIn(secs float64, perform func()) *Timer {
 	return t
 }
 
-/*
-func (t *Timer) check(perform func()) {
-	t.mutex.Lock()
-	// fmt.Printf("timer start1: %p %v\n", t, t.timer)
-	// fmt.Printf("timer start2: %p %v\n", t, t.timer)
-	// fmt.Printf("timer start3: %p %v\n", t, t.timer)
-	if t.timer != nil {
-		c := t.timer.C
-		t.mutex.Unlock()
-		// fmt.Printf("timer start 2.5: %p %p\n", t, t.timer)
-		<-c
-		perform()
-	} else {
-		t.mutex.Unlock()
-		// zlog.Error(nil, "timer start 2.5-II: %p %p\n", t, t.timer)
-		//		zlog.Error(nil, "timer was nil")
-	}
-}
-
-func (t *Timer) StartIn(secs float64, perform func()) *Timer {
-	// zlog.Info("timer start1:")
-	t.Stop()
-	t.timer = time.NewTimer(ztime.SecondsDur(secs))
-	go func() {
-		defer zlog.HandlePanic(true)
-		t.check(perform)
-	}()
-	return t
-}
-
-func (t *Timer) Stop() {
-	// fmt.Printf("timer stop: %p %p\n", t, t.timer)
-	t.mutex.Lock()
-	if t.timer != nil {
-		t.timer.Stop()
-		t.timer = nil
-	}
-	t.mutex.Unlock()
-	// fmt.Printf("timer stop end: %p %p\n", t, t.timer)
-}
-*/
-
 var (
 	timersCount = map[float64]int{}
 	countMutex  sync.Mutex
@@ -87,7 +44,8 @@ func (t *Timer) StartIn(secs float64, perform func()) {
 		zlog.Error(nil, timersCount[secs], "timers of", secs, "seconds started", zlog.CallingStackString())
 	}
 	countMutex.Unlock()
-	t.timer = time.AfterFunc(ztime.SecondsDur(secs), func() {
+
+	t.timer = time.AfterFunc(secs2Dur(secs), func() {
 		countMutex.Lock()
 		timersCount[secs]--
 		countMutex.Unlock()
@@ -124,7 +82,7 @@ func TryFor(secs float64, try func()) (err error) {
 }
 
 func StartAt(t time.Time, f func()) *Timer {
-	secs := ztime.DurSeconds(time.Until(t))
+	secs := dur2Secs(time.Until(t))
 	timer := StartIn(secs, f)
 	return timer
 }
