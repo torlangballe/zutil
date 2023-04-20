@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
@@ -290,6 +291,8 @@ func ServeHTTPInBackground(port int, certificatesPath string, handler http.Handl
 	address := fmt.Sprintf(":%d", port)
 	s.Server = &http.Server{Addr: address}
 	s.Server.Handler = handler
+	s.Server.ReadTimeout = 60 * time.Second
+	s.Server.WriteTimeout = 60 * time.Second
 	s.Server.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	s.doneChannel = make(chan bool, 100)
 	go func() {
