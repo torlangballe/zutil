@@ -285,3 +285,14 @@ func GetNextOfSliceCombinations[S comparable](sets [][]S, current ...*S) {
 		*current[i] = sets[i][index]
 	}
 }
+
+func GetClosestTo(n float64, to []float64) float64 {
+	best := -1
+	for i, t := range to {
+		a := math.Abs(n - t)
+		if best == -1.0 || a < math.Abs(n-to[best]) {
+			best = i
+		}
+	}
+	return to[best]
+}

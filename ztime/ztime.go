@@ -12,6 +12,7 @@ import (
 
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zwords"
 )
@@ -118,26 +119,28 @@ func GetHourAndAm(t time.Time, use24hour bool) (hour int, am bool) {
 	return
 }
 
-func GetFloatingHour(t, base time.Time) float64 {
-	h := t.Hour()
-	m := t.Minute()
-	s := t.Second()
-	if !base.IsZero() {
-		_, _, tday := t.Date()
-		_, _, bday := base.Date()
-		if tday != bday {
-			if base.After(t) {
-				h -= 24
-			} else {
-				h += 24
+/*
+// GetFloatingHour returns the hour, min, secs as hours with a decimal fraction
+
+	func GetFloatingHour(t, base time.Time) float64 {
+		h := t.Hour()
+		m := t.Minute()
+		s := t.Second()
+		if !base.IsZero() {
+			_, _, tday := t.Date()
+			_, _, bday := base.Date()
+			if tday != bday {
+				if base.After(t) {
+					h -= 24
+				} else {
+					h += 24
+				}
 			}
 		}
+		hour := float64(h) + float64(m)/60.0 + float64(s)/3600.0
+		return hour
 	}
-	hour := float64(h) + float64(m)/60.0 + float64(s)/3600.0
-
-	//	zlog.Info("GetFloatingHour:", t, "base:", base, hour, "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-	return hour
-}
+*/
 
 func IsBigTime(t time.Time) bool {
 	return t.UTC() == BigTime
@@ -521,17 +524,6 @@ func GetDurationString(d time.Duration, secs, mins, hours bool, subDigits int) (
 	return
 }
 
-func GetClosestTo(n float64, to []float64) float64 {
-	best := -1
-	for i, t := range to {
-		a := math.Abs(n - t)
-		if best == -1.0 || a < math.Abs(n-to[best]) {
-			best = i
-		}
-	}
-	return to[best]
-}
-
 func GetNiceIncsOf(start, stop time.Time, incCount int) (inc time.Duration, first time.Time) {
 	diff := stop.Sub(start)
 	parts := []time.Duration{time.Second, time.Minute, time.Hour, Day}
@@ -554,9 +546,9 @@ func GetNiceIncsOf(start, stop time.Time, incCount int) (inc time.Duration, firs
 	i := math.Max(1.0, math.Round(bestPart/float64(incCount)))
 	switch part {
 	case time.Second, time.Minute:
-		i = GetClosestTo(i, []float64{1, 2, 5, 10, 15, 20, 30})
+		i = zmath.GetClosestTo(i, []float64{1, 2, 5, 10, 15, 20, 30})
 	case time.Hour:
-		i = GetClosestTo(i, []float64{1, 2, 3, 6, 12, 24})
+		i = zmath.GetClosestTo(i, []float64{1, 2, 3, 6, 12, 24})
 	}
 	u := start.Unix()
 	ui := int64((time.Duration(i) * part) / time.Second)
@@ -730,4 +722,8 @@ func AddMonthAndYearToTime(t time.Time, months, years int) time.Time {
 func DaysInMonth(month time.Month, year int) int {
 	t := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC) // 0 of next month is the same as last day of given month
 	return t.Day()
+}
+
+func OnTheNextHour(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 60, 0, 0, t.Location())
 }
