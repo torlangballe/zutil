@@ -3,6 +3,7 @@
 package zprocess
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -238,4 +239,16 @@ func RepeatLogProcessUse() {
 		zlog.Info("##ProcessCount:", len(procs), "goroutines:", runtime.NumGoroutine())
 		return true
 	})
+}
+
+func GetOpenFileCount() int {
+	pid := os.Getpid()
+	zlog.Info("GetOpenFileCount:", pid)
+	str, err := RunCommand("lsof", 6, "-p", pid)
+	if zlog.OnError(err, str) {
+		return 0
+	}
+	zlog.Info("Str:", str)
+	count := bytes.Count([]byte(str), []byte("\n"))
+	return count - 1
 }
