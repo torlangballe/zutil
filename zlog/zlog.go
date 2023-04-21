@@ -41,7 +41,7 @@ var (
 	lastGoRoutineCount      int
 	lastGoRoutineOutputTime time.Time
 	rateLimiters            zmap.LockMap[LimitID, time.Time]
-	MemoryStringFunc        func(m int64) string
+	// MemoryStringFunc        func(m int64) string
 )
 
 func init() {
@@ -409,20 +409,6 @@ func OnErrorTestError(t *testing.T, err error, items ...interface{}) bool {
 		return true
 	}
 	return false
-}
-
-func PrintMemoryStats() {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	rss := m.HeapSys - m.HeapReleased
-	goroutines := runtime.NumGoroutine()
-	fmt.Printf("MemAlloc:%s TotalAlloc:%s Sys:%s RSS:%s NumGC:%d Go:%d\n", MemoryStringFunc(int64(m.Alloc)), MemoryStringFunc(int64(m.TotalAlloc)), MemoryStringFunc(int64(m.Sys)), MemoryStringFunc(int64(rss)), m.NumGC, goroutines)
-}
-
-func PrintAllGoroutines() {
-	buf := make([]byte, 1<<16)
-	runtime.Stack(buf, true)
-	fmt.Printf("%s", buf)
 }
 
 func Full(v interface{}) string {

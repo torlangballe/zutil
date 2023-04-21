@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -30,12 +29,6 @@ var TS = func(str string) string {
 // TSL uses TL but with a specific language to translate to
 var TSL = func(str, langCode string) string {
 	return str
-}
-
-func init() {
-	zlog.MemoryStringFunc = func(m int64) string {
-		return GetMemoryString(m, "", 1)
-	}
 }
 
 func getSizeString(b int64, multiples int64, suffix, langCode string, maxSignificant int) string {

@@ -14,6 +14,7 @@ import (
 	"github.com/torlangballe/zui/ztextinfo"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zui/zwindow"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlocale"
 	"github.com/torlangballe/zutil/zlog"
@@ -33,7 +34,7 @@ func NewBar(title string) *zcontainer.StackView {
 		label.SetMaxWidth(500)
 		label.SetMaxLines(1)
 		label.SetLongPressedHandler(func() {
-			zlog.PrintAllGoroutines()
+			zdebug.PrintAllGoroutines()
 			ztimer.DumpRepeaters()
 		})
 		bar.Add(label, zgeo.Left|zgeo.VertCenter|zgeo.HorExpand, zgeo.Size{0, 0})
