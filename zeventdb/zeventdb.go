@@ -25,14 +25,15 @@ import (
 )
 
 type Database struct {
-	DB           *sql.DB
-	TableName    string
-	TimeField    string
-	PrimaryField string
-	FieldInfos   []zsql.FieldInfo
-	StructType   reflect.Type
-	istruct      interface{}
-	Lock         sync.Mutex
+	DB             *sql.DB
+	TableName      string
+	TimeField      string
+	PrimaryField   string
+	FieldInfos     []zsql.FieldInfo
+	StructType     reflect.Type
+	waitAfterError bool
+	istruct        interface{}
+	Lock           sync.Mutex
 }
 
 type CompareItem struct {
@@ -139,6 +140,10 @@ func (db *Database) Add(istruct interface{}, flush bool) {
 func (db *Database) repeatWriteItems() {
 	var count int
 	for {
+		if db.waitAfterError {
+			time.Sleep(time.Second)
+			db.waitAfterError = false
+		}
 		if db.writeItems() {
 			count++
 		}
@@ -150,6 +155,7 @@ func (db *Database) repeatWriteItems() {
 }
 
 func (db *Database) writeItems() bool {
+	const limitID = "zeventdb.writeItems."
 	all := len(itemsToStore)
 	if all == 0 {
 		return false
@@ -185,10 +191,11 @@ func (db *Database) writeItems() bool {
 	// zlog.Info("zedb:WriteEvents:", count, "/", all, err, t)
 	db.Lock.Unlock()
 	if len(itemsToStore) > 2000 {
-		zlog.Info("zeventdb.witeItems", len(itemsToStore), time.Since(start), err)
+		zlog.Info("zeventdb.writeItems", len(itemsToStore), time.Since(start), err)
 	}
 	if err != nil {
-		zlog.Error(err, "query", query, vals)
+		db.waitAfterError = true
+		zlog.Error(err, zlog.LimitID(limitID), "query", query, vals, "end!", "[", err, "]")
 		return false // so we get the sleep
 	} else {
 		storeLock.Lock()
