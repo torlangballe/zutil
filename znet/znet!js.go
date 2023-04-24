@@ -278,7 +278,6 @@ func ServeHTTPInBackground(port int, certificatesPath string, handler http.Handl
 	if certificatesPath != "" {
 		str += "S"
 	}
-	zlog.Info(str+":", port)
 	stack := zlog.CallingStackString()
 	if port == 0 {
 		if certificatesPath != "" {
@@ -287,6 +286,7 @@ func ServeHTTPInBackground(port int, certificatesPath string, handler http.Handl
 			port = 80
 		}
 	}
+	zlog.Info(str+":", port)
 	s := &HTTPServer{}
 	address := fmt.Sprintf(":%d", port)
 	s.Server = &http.Server{Addr: address}
