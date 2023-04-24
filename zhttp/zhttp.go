@@ -460,10 +460,13 @@ func GetRedirectedURL(surl string) (string, error) {
 		if len(via) > 10 {
 			return errors.New("too many redirects")
 		}
-		lastUrlQuery = req.URL.RequestURI()
+		lastUrlQuery = req.URL.String()
 		return nil
 	}
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	return lastUrlQuery, err
 }
 
