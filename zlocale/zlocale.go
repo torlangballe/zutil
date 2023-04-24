@@ -13,10 +13,10 @@ import (
 
 // TODO: Move out of zui?
 var (
-	IsMondayFirstInWeek       = Option[bool]{Key: "ztime.IsMondayFirstInWeek", Default: true}
-	IsShowWeekdaysInCalendars = Option[bool]{Key: "ztime.IsShowWeekdaysInCalendars", Default: true}
-	IsUse24HourClock          = Option[bool]{Key: "ztime.IsUse24HourClock", Default: true}
-	DisplayServerTime         = Option[bool]{Key: "ztime.DisplayServerTime", Default: false}
+	IsMondayFirstInWeek          = Option[bool]{Key: "ztime.IsMondayFirstInWeek", Default: true}
+	IsShowWeekNumbersInCalendars = Option[bool]{Key: "ztime.IsShowWeekNumbersInCalendars", Default: true}
+	IsUse24HourClock             = Option[bool]{Key: "ztime.IsUse24HourClock", Default: true}
+	DisplayServerTime            = Option[bool]{Key: "ztime.DisplayServerTime", Default: false}
 )
 
 type Option[V any] struct {
