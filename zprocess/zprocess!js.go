@@ -243,12 +243,10 @@ func RepeatLogProcessUse() {
 
 func GetOpenFileCount() int {
 	pid := os.Getpid()
-	zlog.Info("GetOpenFileCount:", pid)
-	str, err := RunCommand("lsof", 6, "-p", pid)
+	str, err := RunCommand("lsof", 6, "-n", "-p", pid) // -n inhibits the conversion of network numbers to host names for network files.
 	if zlog.OnError(err, str) {
 		return 0
 	}
-	zlog.Info("Str:", str)
 	count := bytes.Count([]byte(str), []byte("\n"))
 	return count - 1
 }
