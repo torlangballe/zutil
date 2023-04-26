@@ -29,7 +29,6 @@ func replaceAllCaptures(regex *regexp.Regexp, str string, keepMatch bool, replac
 		return str
 	}
 	var last int
-	fmt.Println("Groups:", groups, str)
 	for _, group := range groups {
 		glen := len(group)
 		for i := 2; i < glen; i += 2 {
