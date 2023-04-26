@@ -1,17 +1,28 @@
 package zmail
 
 import (
+	"errors"
 	"fmt"
 	"net/smtp"
 
+	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 )
 
+type ServiceType string
+
+const (
+	PlunkType    ServiceType = "plunk"
+	SMTPType     ServiceType = "smtp"
+	SendGridType ServiceType = "sendgrid"
+)
+
 type Authentication struct {
-	UserID   string
-	Password string
-	Server   string
-	Port     int
+	ServiceType ServiceType
+	UserID      string
+	Password    string
+	Server      string
+	Port        int
 }
 
 type Address struct {
@@ -83,3 +94,31 @@ func (m Mail) SendWithSMTP(a Authentication) (err error) {
 	}
 	return err
 }
+
+func (m Mail) Send(a Authentication) error {
+	switch a.ServiceType {
+	case PlunkType:
+		return m.SendWithPlunk(a)
+	case SMTPType:
+		return m.SendWithSMTP(a)
+	}
+	return errors.New("Bad type: " + string(a.ServiceType))
+}
+
+func (m Mail) SendWithPlunk(a Authentication) error {
+	var body = struct {
+		To      string `json:"to"`
+		Subject string `json:"subject"`
+		Body    string `json:"body"`
+	}{}
+	params := zhttp.MakeParameters()
+	params.Headers["Authorization"] = "Bearer " + a.Password
+	surl := "https://api.useplunk.com/v1/send"
+
+	body.To = m.To[0].Email
+	body.Subject = m.Subject
+	body.Body = m.TextContent
+	_, err := zhttp.Post(surl, params, body, nil)
+	return err
+}
+

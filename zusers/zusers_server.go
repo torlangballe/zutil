@@ -114,7 +114,8 @@ func (*UsersCalls) SendResetPasswordMail(email string, r *zrpc2.Unused) error {
 	m.AddTo("", email)
 	m.Subject = "Reset password for " + Reset.ProductName
 	m.TextContent = "Click here to reset your password:\n\n" + surl
-	err := m.SendWithSMTP(Reset.MailAuth)
+	// err := m.SendWithSMTP(Reset.MailAuth)
+	err := m.Send(Reset.MailAuth)
 	if err == nil {
 		zlog.Error(err, "forgot password send error:", m, Reset.MailAuth)
 		resetCache.Put(random, email)
