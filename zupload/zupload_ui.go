@@ -71,6 +71,7 @@ func NewUploadView(storeName string, allow []string) *UploadView {
 
 func (v *UploadView) Init(view zview.View, storeName string, allow []string) {
 	v.StackView.Init(v, false, storeName)
+	v.SetMinSize(zgeo.Size{0, 32}) // avoids 
 	var items zdict.Items
 	for _, a := range allTypes {
 		if len(allow) == 0 || zstr.StringsContain(allow, a) {
