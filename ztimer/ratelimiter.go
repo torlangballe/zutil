@@ -64,7 +64,7 @@ func (r *RateLimiter) DoBackoff(do func() bool) {
 		r.multiply = math.Pow(r.maxSecs, 1/float64(r.StepsToMax)) / math.Pow(r.freqSecs, 1/float64(r.StepsToMax))
 	} else {
 		if r.freqSecs+0.000001 < r.maxSecs {
-			// zlog.Info("DoBackoff:", r.multiply, r.freqSecs, r.startSecs)
+			// zlog.Info("DoBackoff:", r.multiply, r.freqSecs, r.startSecs, r.maxSecs)
 			r.freqSecs *= r.multiply
 		}
 	}
@@ -140,4 +140,8 @@ func (r *RateLimiters) Add(id string, secs, maxSecs float64) *RateLimiter {
 	r.cache[id] = rc
 	r.lock.Unlock()
 	return rc
+}
+
+func (r *RateLimiters) Remove(id string) {
+	delete(r.cache, id)
 }
