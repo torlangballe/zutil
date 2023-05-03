@@ -132,3 +132,9 @@ func Reverse(s interface{}) {
 		swap(i, j)
 	}
 }
+
+func Swap[A any](slice []A, i, j int) {
+	t := slice[i]
+	slice[i] = slice[j]
+	slice[j] = t
+}
