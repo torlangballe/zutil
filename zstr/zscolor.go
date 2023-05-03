@@ -32,6 +32,7 @@ var ColorSetter = strings.NewReplacer(
 	"🟨", EscYellow,
 	"🟦", EscBlue,
 	"🟪", EscMagenta,
+	"🔵", EscCyan,
 )
 
 // termColor converts a 24-bit RGB color into a term256 compatible approximation.
