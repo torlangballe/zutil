@@ -40,9 +40,9 @@ type Differ time.Time
 
 // Distant is a very far-future time when you want to do things forever etc
 var (
-	Distant  = time.Unix(1<<62, 0)
-	BigTime  = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000
-	TestTime = MustParse("2020-05-17T10:30:45.0+02:00")      // Random time we can use in tests when it has to look normal and be a fixed time
+	Distant                  = time.Unix(1<<62, 0)
+	BigTime                  = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000
+	TestTime                 = MustParse("2020-05-17T10:30:45.0+02:00")      // Random time we can use in tests when it has to look normal and be a fixed time
 	ServerTimezoneOffsetSecs int
 	SundayFirstWeekdays      = []time.Weekday{time.Sunday, time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday}
 	Weekdays                 = []time.Weekday{time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday, time.Sunday}
@@ -106,12 +106,9 @@ func ParseISO8601(str string) (t time.Time, e error) {
 	return
 }
 
-func GetHourAndAm(t time.Time, use24hour bool) (hour int, am bool) {
+func GetHourAndAM(t time.Time) (hour int, am bool) {
 	hour = t.Hour()
-	am = true
-	if hour >= 12 {
-		am = false
-	}
+	am = hour < 12
 	hour %= 12
 	if hour == 0 {
 		hour = 12
