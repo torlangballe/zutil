@@ -13,38 +13,12 @@ import (
 
 // TODO: Move out of zui?
 var (
-	IsMondayFirstInWeek          = Option[bool]{Key: "ztime.IsMondayFirstInWeek", Default: true}
-	IsShowWeekNumbersInCalendars = Option[bool]{Key: "ztime.IsShowWeekNumbersInCalendars", Default: true}
-	IsUse24HourClock             = Option[bool]{Key: "ztime.IsUse24HourClock", Default: true}
-	DisplayServerTime            = Option[bool]{Key: "ztime.DisplayServerTime", Default: false}
+	IsMondayFirstInWeek          = zkeyvalue.Option[bool]{Key: "ztime.IsMondayFirstInWeek", Default: true}
+	IsShowWeekNumbersInCalendars = zkeyvalue.Option[bool]{Key: "ztime.IsShowWeekNumbersInCalendars", Default: true}
+	IsUse24HourClock             = zkeyvalue.Option[bool]{Key: "ztime.IsUse24HourClock", Default: true}
+	IsShowMonthBeforeDay         = zkeyvalue.Option[bool]{Key: "ztime.IsShowMonthBeforeDay", Default: false}
+	DisplayServerTime            = zkeyvalue.Option[bool]{Key: "ztime.DisplayServerTime", Default: false}
 )
-
-type Option[V any] struct {
-	Key         string
-	Default     V
-	MakeDefault func() V
-	value       V
-	read        bool
-}
-
-func (t *Option[V]) Get() V {
-	if !t.read {
-		if !zkeyvalue.DefaultStore.GetItem(t.Key, &t.value) {
-			if t.MakeDefault != nil {
-				t.value = t.MakeDefault()
-			} else {
-				t.value = t.Default
-			}
-		}
-		t.read = true
-	}
-	return t.value
-}
-
-func (t *Option[V]) Set(v V) {
-	t.value = v
-	zkeyvalue.DefaultStore.SetItem(t.Key, t.value, true)
-}
 
 func GetDeviceLanguageCode() string {
 	return "en"
