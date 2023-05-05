@@ -15,7 +15,7 @@ func getLocalStorage() js.Value {
 
 func (k Store) GetItem(key string, v interface{}) bool {
 	var err error
-	k.prefixKey(&key)
+	k.postfixKey(&key)
 	local := getLocalStorage()
 	o := local.Get(key)
 
@@ -69,13 +69,13 @@ func (k Store) GetItem(key string, v interface{}) bool {
 }
 
 func (k *Store) SetItem(key string, v interface{}, sync bool) error {
-	k.prefixKey(&key)
+	k.postfixKey(&key)
 	local := getLocalStorage()
 	local.Set(key, v)
 	return nil
 }
 
 func (s Store) RemoveForKey(key string, sync bool) {
-	s.prefixKey(&key)
+	s.postfixKey(&key)
 	getLocalStorage().Call("removeItem", key)
 }

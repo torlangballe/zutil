@@ -28,10 +28,8 @@ func StoreFileNew(path string) *Store {
 	return k
 }
 
-func (k Store) GetItem(key string, pointer interface{}) bool {
-	if key[0] != '/' && k.KeyPrefix != "" {
-		key = k.KeyPrefix + "/" + key
-	}
+func (s Store) GetItem(key string, pointer interface{}) bool {
+	s.postfixKey(&key)
 	lock.Lock()
 	defer lock.Unlock()
 	gval, got := dict[key]
@@ -43,7 +41,7 @@ func (k Store) GetItem(key string, pointer interface{}) bool {
 }
 
 func (s *Store) SetItem(key string, v interface{}, sync bool) error {
-	s.prefixKey(&key)
+	s.postfixKey(&key)
 	lock.Lock()
 	dict[key] = v
 	lock.Unlock()
@@ -62,7 +60,7 @@ func (s *Store) save() error {
 }
 
 func (s *Store) RemoveForKey(key string, sync bool) {
-	s.prefixKey(&key)
+	s.postfixKey(&key)
 	lock.Lock()
 	delete(dict, key)
 	lock.Unlock()

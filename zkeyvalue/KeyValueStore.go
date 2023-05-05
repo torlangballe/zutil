@@ -17,13 +17,16 @@ import (
 // https://github.com/nanobox-io/golang-scribble
 
 type Store struct {
-	Local     bool   // if true, only for single browser or device, otherwise for user anywhere
-	Secure    bool   // true if key/value stored in secure key chain
-	KeyPrefix string // this can be a user id. Not used if key starts with /
-	filepath  string // Some variants of store use this
+	Local      bool   // if true, only for single browser or device, otherwise for user anywhere
+	Secure     bool   // true if key/value stored in secure key chain
+	KeyPostfix string // this can be a user id. Not used if key starts with /
+	filepath   string // Some variants of store use this
 }
 
-var DefaultStore *Store
+var (
+	GlobalKeyPostfix string // this is added to ALL key prefixes
+	DefaultStore     *Store
+)
 
 func NewStore(local bool) *Store {
 	return &Store{Local: local}
@@ -116,11 +119,12 @@ func (s Store) SetBoolInd(value zbool.BoolInd, key string, sync bool) {
 	s.SetItem(key, int(value), sync)
 }
 
-func (s Store) prefixKey(key *string) {
-	if (*key)[0] != '/' && s.KeyPrefix != "" {
-		*key = s.KeyPrefix + "/" + *key
+func (s Store) postfixKey(key *string) {
+	if (*key)[0] != '/' && s.KeyPostfix != "" {
+		*key = *key + s.KeyPostfix
 	}
 	if zlog.IsInTests {
 		*key += "_test"
 	}
+	*key = *key + GlobalKeyPostfix
 }
