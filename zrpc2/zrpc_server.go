@@ -22,7 +22,7 @@ var (
 	Calls                        = new(RPCCalls)
 	updatedResourcesSentToClient = map[string]map[string]bool{}
 	updatedResourcesMutex        sync.Mutex
-	IPAddressWhitelist           = map[string]bool{}
+	IPAddressWhitelist           = map[string]bool{} // if non-empty, only ip-addresses in map are allowed to be called from
 	authenticator                TokenAuthenticator
 )
 
