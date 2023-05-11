@@ -93,6 +93,7 @@ func (*UsersCalls) Authenticate(ci zrpc2.ClientInfo, a Authentication, ui *Clien
 		ui.UserName = a.UserName
 		ui.Permissions = []string{} // nothing yet, we just registered
 	} else {
+		ci.Token = "" // clear any old token already stored, so Login generates a new one
 		*ui, err = MainServer.Login(ci, a.UserName, a.Password)
 		// zlog.Info("Login:", r.UserID, r.Token, err)
 	}
