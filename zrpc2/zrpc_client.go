@@ -18,6 +18,7 @@ type Client struct {
 	HandleAuthenticanFailedFunc      func()
 	TimeoutSecs                      float64
 	KeepTokenOnAuthenticationInvalid bool
+	SkipVerifyCertificate            bool
 }
 
 type clientReceivePayload struct {
@@ -49,6 +50,7 @@ func (c *Client) Call(method string, args, result any) error {
 	cp.ClientID = c.id
 	params := zhttp.MakeParameters()
 	params.TimeoutSecs = c.TimeoutSecs
+	params.SkipVerifyCertificate = c.SkipVerifyCertificate
 	// params.PrintBody = true
 	if c.AuthToken != "" {
 		params.Headers["X-Token"] = c.AuthToken
