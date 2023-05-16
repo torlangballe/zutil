@@ -12,12 +12,12 @@ import (
 	"github.com/torlangballe/zutil/zprocess"
 )
 
-func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
+func GetAppNameOfBrowser(btype zdevice.BrowserType, fullName bool) string {
 	switch btype {
-	case zhttp.Safari:
+	case zdevice.Safari:
 		zlog.Fatal(nil)
 
-	case zhttp.Chrome:
+	case zdevice.Chrome:
 		if fullName {
 			return "Google Chrome"
 		}
@@ -31,7 +31,7 @@ func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
 	return ""
 }
 
-func OpenURLInBrowser(surl string, btype zhttp.BrowserType, args ...string) error {
+func OpenURLInBrowser(surl string, btype zdevice.BrowserType, args ...string) error {
 	name := GetAppNameOfBrowser(btype, false)
 	//	_, err := zprocess.RunCommand("start", 5, args...)
 	// zlog.Info("*********** OpenURLInBrowser:", surl)

@@ -28,15 +28,6 @@ import (
 	"github.com/torlangballe/zutil/ztime"
 )
 
-type BrowserType string
-
-const (
-	Safari  BrowserType = "safari"
-	Chrome  BrowserType = "chrome"
-	Edge    BrowserType = "edge"
-	Default BrowserType = "default"
-)
-
 type ErrJSON struct {
 	Messages []string `json:"messages"`
 }

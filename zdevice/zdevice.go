@@ -16,6 +16,17 @@ type CellularNetworkType int
 type OSType string
 type ArchitectureType string
 
+type BrowserType string
+
+const (
+	Safari      BrowserType = "safari"
+	Chrome      BrowserType = "chrome"
+	Edge        BrowserType = "edge"
+	Firefox     BrowserType = "firefox"
+	Default     BrowserType = "default"
+	BrowserNone BrowserType = ""
+)
+
 const (
 	CellularUnknown CellularNetworkType = iota
 	CellularWifiMax

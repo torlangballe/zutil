@@ -1,7 +1,6 @@
 package zdevice
 
 import (
-	"strings"
 	"syscall/js"
 	"time"
 
@@ -30,8 +29,18 @@ func IsBrowser() bool {
 	return true
 }
 
-func WasmBrowser() string {
-	return strings.ToLower(getUserAgentInfo().Name)
+func WasmBrowser() BrowserType {
+	switch getUserAgentInfo().Name {
+	case ua.Chrome:
+		return Chrome
+	case ua.Safari:
+		return Safari
+	case ua.Edge:
+		return Edge
+	case ua.Firefox:
+		return Firefox
+	}
+	return BrowserNone
 }
 
 // OS Returns the underlying operating system program is running on.

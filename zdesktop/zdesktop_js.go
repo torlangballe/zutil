@@ -6,7 +6,7 @@ import (
 	"image"
 )
 
-func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
+func GetAppNameOfBrowser(btype zdevice.BrowserType, fullName bool) string {
 	return string(btype)
 }
 

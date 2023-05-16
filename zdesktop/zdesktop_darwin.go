@@ -46,8 +46,8 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 )
@@ -83,13 +83,13 @@ func GetCachedPIDForAppName(app string) (int64, error) {
 	return pid, nil
 }
 
-func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
+func GetAppNameOfBrowser(btype zdevice.BrowserType, fullName bool) string {
 	switch btype {
-	case zhttp.Safari:
+	case zdevice.Safari:
 		return "Safari"
-	case zhttp.Chrome:
+	case zdevice.Chrome:
 		return "Google Chrome"
-	case zhttp.Edge:
+	case zdevice.Edge:
 		if fullName {
 			return "Microsoft Edge Canary"
 		}
@@ -98,7 +98,7 @@ func GetAppNameOfBrowser(btype zhttp.BrowserType, fullName bool) string {
 	return ""
 }
 
-func OpenURLInBrowser(surl string, btype zhttp.BrowserType, args ...any) error {
+func OpenURLInBrowser(surl string, btype zdevice.BrowserType, args ...any) error {
 	name := GetAppNameOfBrowser(btype, true)
 	args = append([]any{
 		"-g", // Don't bring app to foreground
@@ -116,7 +116,7 @@ func OpenURLInBrowser(surl string, btype zhttp.BrowserType, args ...any) error {
 	return err
 }
 
-func RunURLInBrowser(surl string, btype zhttp.BrowserType, args ...any) (*exec.Cmd, error) {
+func RunURLInBrowser(surl string, btype zdevice.BrowserType, args ...any) (*exec.Cmd, error) {
 	args = append(args, surl)
 	name := GetAppNameOfBrowser(btype, true)
 	cmd, _, _, _, err := zprocess.RunApp(name, args...)
