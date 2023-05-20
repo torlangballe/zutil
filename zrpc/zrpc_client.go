@@ -1,4 +1,4 @@
-package zrpc2
+package zrpc
 
 import (
 	"encoding/json"

@@ -10,14 +10,14 @@ import (
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmail"
-	"github.com/torlangballe/zutil/zrpc2"
+	zrpc "github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 )
 
-type UsersCalls zrpc2.CallsBase
+type UsersCalls zrpc.CallsBase
 
 type Session struct {
-	zrpc2.ClientInfo
+	zrpc.ClientInfo
 	UserID  int64
 	Created time.Time
 }
@@ -41,10 +41,10 @@ var (
 
 func setupWithSQLServer(s *SQLServer) {
 	MainServer = s
-	zrpc2.Register(Calls)
-	zrpc2.SetMethodAuthNotNeeded("UsersCalls.Authenticate")
-	zrpc2.SetMethodAuthNotNeeded("UsersCalls.SendResetPasswordMail")
-	zrpc2.SetMethodAuthNotNeeded("UsersCalls.SetNewPasswordFromReset")
+	zrpc.Register(Calls)
+	zrpc.SetMethodAuthNotNeeded("UsersCalls.Authenticate")
+	zrpc.SetMethodAuthNotNeeded("UsersCalls.SendResetPasswordMail")
+	zrpc.SetMethodAuthNotNeeded("UsersCalls.SetNewPasswordFromReset")
 }
 
 func makeHash(str, salt string) string {
@@ -70,11 +70,11 @@ func (*UsersCalls) GetUserForToken(token string, user *User) error {
 	return nil
 }
 
-func (*UsersCalls) Logout(ci zrpc2.ClientInfo, username string) error { // reply *zrpc2.Unused
+func (*UsersCalls) Logout(ci zrpc.ClientInfo, username string) error { // reply *zrpc.Unused
 	return MainServer.UnauthenticateToken(ci.Token)
 }
 
-func (*UsersCalls) Authenticate(ci zrpc2.ClientInfo, a Authentication, ui *ClientUserInfo) error {
+func (*UsersCalls) Authenticate(ci zrpc.ClientInfo, a Authentication, ui *ClientUserInfo) error {
 	var err error
 	makeToken := true
 	if a.IsRegister {
@@ -104,7 +104,7 @@ func (*UsersCalls) Authenticate(ci zrpc2.ClientInfo, a Authentication, ui *Clien
 	return nil
 }
 
-func (*UsersCalls) SendResetPasswordMail(email string, r *zrpc2.Unused) error {
+func (*UsersCalls) SendResetPasswordMail(email string, r *zrpc.Unused) error {
 	var m zmail.Mail
 	random := zstr.GenerateRandomHexBytes(20)
 	surl, _ := zhttp.MakeURLWithArgs(Reset.URL, map[string]string{
@@ -124,7 +124,7 @@ func (*UsersCalls) SendResetPasswordMail(email string, r *zrpc2.Unused) error {
 	return err
 }
 
-func (uc *UsersCalls) SetNewPasswordFromReset(ci zrpc2.ClientInfo, reset ResetPassword, token *string) error {
+func (uc *UsersCalls) SetNewPasswordFromReset(ci zrpc.ClientInfo, reset ResetPassword, token *string) error {
 	var email string
 	got := resetCache.Get(&email, reset.ResetToken)
 	if !got {
@@ -144,17 +144,17 @@ func (uc *UsersCalls) SetNewPasswordFromReset(ci zrpc2.ClientInfo, reset ResetPa
 	return err
 }
 
-func (*UsersCalls) ChangePasswordForSelf(ci zrpc2.ClientInfo, change ChangeInfo, token *string) error {
+func (*UsersCalls) ChangePasswordForSelf(ci zrpc.ClientInfo, change ChangeInfo, token *string) error {
 	var err error
 	*token, err = MainServer.ChangePasswordForUser(ci, change.UserID, change.NewString)
 	return err
 }
 
-func (*UsersCalls) ChangeUserNameForSelf(ci zrpc2.ClientInfo, change ChangeInfo) error {
+func (*UsersCalls) ChangeUserNameForSelf(ci zrpc.ClientInfo, change ChangeInfo) error {
 	return MainServer.ChangeUserNameForUser(change.UserID, change.NewString)
 }
 
-func (s *UsersCalls) GetAllUsers(in *zrpc2.Unused, us *[]AllUserInfo) error {
+func (s *UsersCalls) GetAllUsers(in *zrpc.Unused, us *[]AllUserInfo) error {
 	var err error
 	*us, err = MainServer.GetAllUsers()
 	return err
@@ -164,7 +164,7 @@ func (s *UsersCalls) DeleteUserForID(id int64) error {
 	return MainServer.DeleteUserForID(id)
 }
 
-func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci zrpc2.ClientInfo, change ClientUserInfo) error {
+func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci zrpc.ClientInfo, change ClientUserInfo) error {
 	callingUser, err := MainServer.GetUserForToken(ci.Token)
 	if err != nil {
 		return zlog.Error(err, "getting admin user")
@@ -189,7 +189,7 @@ func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci zrpc2.ClientInfo, change
 	return nil
 }
 
-func (*UsersCalls) UnauthenticateUser(ci zrpc2.ClientInfo, userID int64) error {
+func (*UsersCalls) UnauthenticateUser(ci zrpc.ClientInfo, userID int64) error {
 	zlog.Info("US.UnauthenticateUser")
 	callingUser, err := MainServer.GetUserForToken(ci.Token)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zreflect"
-	"github.com/torlangballe/zutil/zrpc2"
+	zrpc "github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -25,7 +25,7 @@ type Base struct {
 	Type BaseType
 }
 
-type SQLCalls zrpc2.CallsBase
+type SQLCalls zrpc.CallsBase
 type SQLDictSlice []zdict.Dict
 
 var (

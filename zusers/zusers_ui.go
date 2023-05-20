@@ -22,7 +22,7 @@ import (
 	"github.com/torlangballe/zutil/zguiutil"
 	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zrpc2"
+	zrpc "github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztimer"
 	"github.com/torlangballe/zutil/zwords"
@@ -47,14 +47,14 @@ func Init() {
 	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
 	// zlog.Info("checkAndDoAuth:", token)
 	if token != "" {
-		zrpc2.MainClient.AuthToken = token
+		zrpc.MainClient.AuthToken = token
 	}
 	perms := append([]string{AdminPermission}, AppSpecificPermissions...)
 	zfields.AddStringBasedEnum("Permissions", perms...)
 }
 
 func StartAuth() {
-	zrpc2.MainClient.HandleAuthenticanFailedFunc = func() {
+	zrpc.MainClient.HandleAuthenticanFailedFunc = func() {
 		checkAndDoAuth()
 	}
 	ztimer.StartIn(0.1, checkAndDoAuth)
@@ -125,7 +125,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 				username = usernameField.Text()
 			}
 			zalert.PromptForText("Send reset email to address:", username, func(email string) {
-				err := zrpc2.MainClient.Call("UsersCalls.SendResetPasswordMail", email, nil)
+				err := zrpc.MainClient.Call("UsersCalls.SendResetPasswordMail", email, nil)
 				// zlog.Info("Calling:", err)
 				if err != nil {
 					zalert.ShowError(err)
@@ -200,14 +200,14 @@ func callAuthenticate(view zview.View, a Authentication, got func()) {
 	var aret ClientUserInfo
 	zkeyvalue.DefaultStore.SetString(a.UserName, usernameKey, true)
 
-	err := zrpc2.MainClient.Call("UsersCalls.Authenticate", a, &aret)
+	err := zrpc.MainClient.Call("UsersCalls.Authenticate", a, &aret)
 	if err != nil {
 		zalert.ShowError(err)
 		return
 	}
 	if !(a.IsRegister && !AllowRegistration) {
 		CurrentUser = aret
-		zrpc2.MainClient.AuthToken = CurrentUser.Token
+		zrpc.MainClient.AuthToken = CurrentUser.Token
 		zkeyvalue.DefaultStore.SetString(CurrentUser.Token, tokenKey, true)
 	}
 	doingAuth = false
@@ -226,9 +226,9 @@ func checkAndDoAuth() {
 	doingAuth = true
 	var user User
 
-	//	zlog.Info("checkAndDoAuth0:", zrpc2.MainClient.AuthToken)
-	if zrpc2.MainClient.AuthToken != "" {
-		err := zrpc2.MainClient.Call("UsersCalls.GetUserForToken", zrpc2.MainClient.AuthToken, &user)
+	//	zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken)
+	if zrpc.MainClient.AuthToken != "" {
+		err := zrpc.MainClient.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
 		if err == nil {
 			CurrentUser.UserID = user.ID
 			CurrentUser.UserName = user.UserName
@@ -317,7 +317,7 @@ func HandleResetPassword(args map[string]string) {
 
 func callResetPassword(reset ResetPassword) {
 	var token string
-	err := zrpc2.MainClient.Call("UsersCalls.SetNewPasswordFromReset", reset, &token)
+	err := zrpc.MainClient.Call("UsersCalls.SetNewPasswordFromReset", reset, &token)
 	if err != nil {
 		zalert.ShowError(err)
 		return

@@ -11,7 +11,7 @@ import (
 	"github.com/lib/pq"
 	// _ "github.com/mattn/go-sqlite3"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zrpc2"
+	zrpc "github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zsql"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -180,7 +180,7 @@ func (s *SQLServer) ChangeUserNameForUser(id int64, username string) error {
 	return err
 }
 
-func (s *SQLServer) ChangePasswordForUser(ci zrpc2.ClientInfo, id int64, password string) (token string, err error) {
+func (s *SQLServer) ChangePasswordForUser(ci zrpc.ClientInfo, id int64, password string) (token string, err error) {
 	var salt, hash string
 
 	squery := "UPDATE zusers SET passwordhash=$1, salt=$2, login=$NOW WHERE id=$3"
@@ -286,7 +286,7 @@ func (s *SQLServer) AddNewUser(username, password, hash, salt string, perm []str
 	return
 }
 
-func (s *SQLServer) Login(ci zrpc2.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
+func (s *SQLServer) Login(ci zrpc.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
 	//	zlog.Info("Login:", username)
 	u, err := s.GetUserForUserName(username)
 	if err != nil {
@@ -319,7 +319,7 @@ func (s *SQLServer) Login(ci zrpc2.ClientInfo, username, password string) (ui Cl
 	return
 }
 
-func (s *SQLServer) Register(ci zrpc2.ClientInfo, username, password string, makeToken bool) (id int64, token string, err error) {
+func (s *SQLServer) Register(ci zrpc.ClientInfo, username, password string, makeToken bool) (id int64, token string, err error) {
 	_, err = s.GetUserForUserName(username)
 	if err == nil {
 		err = errors.New("user already exists: " + username)
@@ -342,7 +342,7 @@ func (s *SQLServer) Register(ci zrpc2.ClientInfo, username, password string, mak
 	return
 }
 
-func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci zrpc2.ClientInfo, change ClientUserInfo) error {
+func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci zrpc.ClientInfo, change ClientUserInfo) error {
 	squery := "UPDATE zusers SET username=$1, permissions=$2 WHERE id=$3"
 	squery = s.customizeQuery(squery)
 	_, err := s.DB.Exec(squery, change.UserName, pq.Array(change.Permissions), change.UserID)

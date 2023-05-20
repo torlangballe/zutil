@@ -15,7 +15,7 @@ import (
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zrpc2"
+	zrpc "github.com/torlangballe/zutil/zrpc"
 )
 
 type userTable struct {
@@ -90,7 +90,7 @@ func storeUser(item AllUserInfo, showErr *bool, last bool) error {
 	changed.Permissions = item.Permissions
 	changed.UserID = item.ID
 	changed.UserName = item.UserName
-	err := zrpc2.MainClient.Call("UsersCalls.ChangeUsersUserNameAndPermissions", changed, nil)
+	err := zrpc.MainClient.Call("UsersCalls.ChangeUsersUserNameAndPermissions", changed, nil)
 	// zlog.Info("ChangeUsersUserNameAndPermissions", changed.Permissions, err)
 	if err != nil && *showErr {
 		*showErr = false
@@ -100,7 +100,7 @@ func storeUser(item AllUserInfo, showErr *bool, last bool) error {
 }
 
 func deleteUser(item *AllUserInfo, showErr *bool, last bool) error {
-	err := zrpc2.MainClient.Call("UsersCalls.DeleteUserForID", item.ID, nil)
+	err := zrpc.MainClient.Call("UsersCalls.DeleteUserForID", item.ID, nil)
 	zlog.Info("deleteUsers", item.ID, item.UserName, err)
 	if err != nil && *showErr {
 		*showErr = false
@@ -113,7 +113,7 @@ func (t *userTable) unauthorizeUsers(sids []string) {
 	var shownError bool
 	for _, sid := range sids {
 		id, _ := strconv.ParseInt(sid, 10, 64)
-		err := zrpc2.MainClient.Call("UsersCalls.UnauthenticateUser", id, nil)
+		err := zrpc.MainClient.Call("UsersCalls.UnauthenticateUser", id, nil)
 		if err != nil && !shownError {
 			zalert.ShowError(err)
 			shownError = true
@@ -160,7 +160,7 @@ func (u *AllUserInfo) HandleAction(f *zfields.Field, action zfields.ActionType, 
 
 func getAndShowUserList() {
 	var us []AllUserInfo
-	err := zrpc2.MainClient.Call("UsersCalls.GetAllUsers", nil, &us)
+	err := zrpc.MainClient.Call("UsersCalls.GetAllUsers", nil, &us)
 	if err != nil {
 		zalert.ShowError(err)
 		return

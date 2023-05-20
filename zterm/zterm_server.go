@@ -12,7 +12,7 @@ import (
 	"github.com/torlangballe/term"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zrpc2"
+	zrpc "github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zusers"
 )
@@ -173,7 +173,7 @@ func (t *Terminal) ListenForever(port int) {
 		if zusers.MainServer == nil {
 			return false
 		}
-		var ci zrpc2.ClientInfo
+		var ci zrpc.ClientInfo
 		ci.Type = "ssh"
 		ci.IPAddress = ctx.RemoteAddr().String()
 		ci.UserAgent = ctx.ClientVersion()

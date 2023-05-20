@@ -1,4 +1,4 @@
-package zrpc2
+package zrpc
 
 import (
 	"context"
@@ -69,7 +69,7 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		if call && len(IPAddressWhitelist) > 0 {
 			if !IPAddressWhitelist[req.RemoteAddr] {
-				err := zlog.NewError("zrpc2.Call", cp.Method, "calling ip not in whitelist", req.RemoteAddr, IPAddressWhitelist)
+				err := zlog.NewError("zrpc.Call", cp.Method, "calling ip not in whitelist", req.RemoteAddr, IPAddressWhitelist)
 				rp.TransportError = err.Error()
 				rp.AuthenticationInvalid = true
 				zlog.Error(err)
