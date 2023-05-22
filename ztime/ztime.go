@@ -495,12 +495,10 @@ func GetDurNice(d time.Duration, fractDigits int) string {
 
 func GetDurationString(d time.Duration, secs, mins, hours bool, subDigits int) (str string, overflow bool) {
 	h, m, s, fract := GetDurationHourMinSec(d)
-	if h > 0 {
-		if hours {
-			str = fmt.Sprint(h)
-		} else {
-			overflow = true
-		}
+	if hours {
+		str = fmt.Sprint(h)
+	} else if h > 0 {
+		overflow = true
 	}
 	if mins {
 		str = zstr.Concat(":", str, fmt.Sprintf("%02d", m))
