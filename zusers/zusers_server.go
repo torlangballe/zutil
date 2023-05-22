@@ -42,9 +42,9 @@ var (
 func setupWithSQLServer(s *SQLServer) {
 	MainServer = s
 	zrpc.Register(Calls)
-	zrpc.SetMethodAuthNotNeeded("UsersCalls.Authenticate")
-	zrpc.SetMethodAuthNotNeeded("UsersCalls.SendResetPasswordMail")
-	zrpc.SetMethodAuthNotNeeded("UsersCalls.SetNewPasswordFromReset")
+	zrpc.SetAuthNotNeededForMethod("UsersCalls.Authenticate")
+	zrpc.SetAuthNotNeededForMethod("UsersCalls.SendResetPasswordMail")
+	zrpc.SetAuthNotNeededForMethod("UsersCalls.SetNewPasswordFromReset")
 }
 
 func makeHash(str, salt string) string {
@@ -70,7 +70,7 @@ func (*UsersCalls) GetUserForToken(token string, user *User) error {
 	return nil
 }
 
-func (*UsersCalls) Logout(ci zrpc.ClientInfo, username string) error { // reply *zrpc.Unused
+func (*UsersCalls) Logout(ci zrpc.ClientInfo, username string, reply *zrpc.Unused) error { 
 	return MainServer.UnauthenticateToken(ci.Token)
 }
 
