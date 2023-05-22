@@ -46,6 +46,15 @@ func (l *LockMap[K, V]) ForEach(f func(key K, value V) bool) {
 	})
 }
 
+func (l *LockMap[K, V]) AnyKey() K {
+	var key K
+	l.ForEach(func(k K, v V) bool {
+		key = k
+		return false
+	})
+	return key
+}
+
 func (l *LockMap[K, V]) Remove(k K) {
 	l.Map.Delete(k)
 }
