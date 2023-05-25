@@ -40,6 +40,15 @@ func (l *LockMap[K, V]) Get(k K) (v V, ok bool) {
 	return
 }
 
+func (l *LockMap[K, V]) Pop(k K) (v V, ok bool) {
+	a, ok := l.Map.Load(k)
+	if ok {
+		l.Map.Delete(k)
+		return a.(V), true
+	}
+	return
+}
+
 func (l *LockMap[K, V]) ForEach(f func(key K, value V) bool) {
 	l.Map.Range(func(k, v any) bool {
 		return f(k.(K), v.(V))
