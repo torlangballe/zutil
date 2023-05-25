@@ -1,13 +1,12 @@
 package zrpc
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/torlangballe/zutil/zhttp"
 )
 
-// This is functionality to set in the server if a named resource has changed.
+// This is functionality to set that a named resource has changed.
 // A RPC function can query for changed resources, and its ClientID is stored so as to
 // not report is as changed to that client until updated again.
 var (
@@ -18,8 +17,6 @@ var (
 // GetUpdatedResourcesAndSetSent is called from clients (often browsers) to ask for updated resource-ids
 // The client id is stored as it having checked them out for that given update.
 func (RPCCalls) GetUpdatedResourcesAndSetSent(ci ClientInfo, in Unused, reply *[]string) error {
-	fmt.Println("GetUpdatedResourcesAndSetSent", ci.ClientID)
-	// zlog.Info("GetUpdatedResourcesAndSetSent", clientID, updatedResourcesSentToClient)
 	*reply = []string{}
 	updatedResourcesMutex.Lock()
 	for res, m := range updatedResourcesSentToClient {
@@ -29,7 +26,6 @@ func (RPCCalls) GetUpdatedResourcesAndSetSent(ci ClientInfo, in Unused, reply *[
 		}
 	}
 	updatedResourcesMutex.Unlock()
-	// zlog.Info("GetUpdatedResources Got", *reply)
 	return nil
 }
 
