@@ -5,7 +5,7 @@
 // For URL and SCP, the file is copied in the backend. For Drop/Upload it is in the post body.
 // It has a HandleID used to invoke the correct UploadedHandler and handler in server.
 // Set AcceptExtensions to limit draggable/uploadable file types.
-// Calling RegisterFieldViewWidget allows widget:zupload tags in a struct field to create an uploader.
+// Calling RegisterWidget allows widget:zupload tags in a struct field to create an uploader.
 //   the "handleid", "allow" and "ext' tags are used to set fields.
 //   use SetWidgeterFileHandler to set a handle for this upload widget.
 
@@ -59,8 +59,8 @@ var (
 	storeKeyPrefix   = "zwidgets.UploadView."
 )
 
-func RegisterFieldViewWidget() {
-	zfields.RegisterWigeter("zupload", UploadWidgeter{})
+func RegisterWidget() {
+	zfields.RegisterWidgeter("zupload", UploadWidgeter{})
 }
 
 func NewUploadView(storeName string, allow []string) *UploadView {
@@ -71,7 +71,7 @@ func NewUploadView(storeName string, allow []string) *UploadView {
 
 func (v *UploadView) Init(view zview.View, storeName string, allow []string) {
 	v.StackView.Init(v, false, storeName)
-	v.SetMinSize(zgeo.Size{0, 32}) // avoids 
+	v.SetMinSize(zgeo.Size{0, 32}) // avoids
 	var items zdict.Items
 	for _, a := range allTypes {
 		if len(allow) == 0 || zstr.StringsContain(allow, a) {
