@@ -273,7 +273,12 @@ func getHexAsValue(str string, len int) float32 {
 }
 
 func (c Color) Hex() string {
-	return fmt.Sprintf("#%02x%02x%02x%02x", int(c.Colors.R*255), int(c.Colors.G*255), int(c.Colors.B*255), int(c.Colors.A*255))
+	str := c.HexNoAlpha()
+	return str + fmt.Sprintf("%02x", int(c.Colors.A*255))
+}
+
+func (c Color) HexNoAlpha() string {
+	return fmt.Sprintf("#%02x%02x%02x", int(c.Colors.R*255), int(c.Colors.G*255), int(c.Colors.B*255))
 }
 
 func ColorFromString(str string) Color {
