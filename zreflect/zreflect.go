@@ -303,11 +303,13 @@ func forEachField(rval reflect.Value, flatten bool, istart int, got func(index i
 		return
 	}
 	j := istart
-	// zlog.Info("ForEach:", rval.Type(), rval.Kind(), rval.NumField())
+	// zlog.Info("zreflect.ForEachStart:", rval.Type(), rval.Kind(), rval.NumField())
 	for i := 0; i < rval.NumField(); i++ {
 		fv := rval.Field(i)
 		f := rval.Type().Field(i)
+		// zlog.Info("zreflect.ForEach:", i, j, f.Name, f.IsExported())
 		if !fv.CanInterface() {
+			j++
 			continue
 		}
 		if flatten && f.Anonymous {
