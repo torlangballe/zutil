@@ -18,7 +18,7 @@ type CallPayload struct {
 	ClientID string
 	Method   string
 	Args     interface{}
-	Token    string
+	Token    string `json:",omitempty"`
 }
 
 // callPayloadReceive is what received. It has to have same named fields as callPayload
@@ -27,14 +27,14 @@ type callPayloadReceive struct {
 	ClientID string
 	Method   string
 	Args     json.RawMessage
-	Token    string
+	Token    string `json:",omitempty"`
 }
 
 // receivePayload is what the result of the call is returned in.
 type receivePayload struct {
 	Result                any
-	Error                 string
-	TransportError        string
+	Error                 string         `json:",omitempty"`
+	TransportError        TransportError `json:",omitempty"`
 	AuthenticationInvalid bool
 }
 
@@ -52,9 +52,9 @@ type methodType struct {
 type ClientInfo struct {
 	Type      string // Type is zrpc or zrpc-rev for these calls. Might be something else if used elsewhere.
 	ClientID  string // ClientID identifies the client
-	Token     string // Token can be any token, or a authentication token needed to allow the call
-	UserAgent string // From the http request
-	IPAddress string // From the http request
+	Token     string `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
+	UserAgent string `json:",omitempty"` // From the http request
+	IPAddress string `json:",omitempty"` // From the http request
 }
 
 // TransportError is a specific error type. Any problem with the actual transport of an zrpc call is

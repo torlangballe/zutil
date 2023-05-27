@@ -1,8 +1,8 @@
 package zrpc
 
 import (
+	"encoding/json"
 	"errors"
-	"reflect"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
@@ -19,7 +19,7 @@ import (
 // pendingCall is a payload waiting to be gotten by the asking client
 type pendingCall struct {
 	CallPayload
-	done chan *receivePayload // the done channel has a reieveiPayLoad written to it when received.
+	done chan *clientReceivePayload // the done channel has a reieveiPayLoad written to it when received.
 }
 
 var (
@@ -70,13 +70,14 @@ func (RPCCalls) ReversePoll(receiverID string, cp *CallPayload) error {
 }
 
 func (RPCCalls) ReversePushResult(rp ReverseResult) error {
+	// zlog.Info("ReversePushResult:", reflect.TypeOf(rp.Result), rp.Result)
 	rc := findOrHandleNewReverseReceiver(rp.ReverseReceiverID)
 	pendingCall, got := rc.pendingCallsSent.Pop(rp.Token)
 	if !got {
 		zlog.Error(nil, "No call for result with token:", rp.Token, "in", rp.ReverseReceiverID, rc.pendingCallsSent.Count()) // make some kind of transport error
 		return NoCallForTokenErr
 	}
-	pendingCall.done <- &rp.receivePayload
+	pendingCall.done <- &rp.clientReceivePayload
 	return nil
 }
 
@@ -84,7 +85,7 @@ func findOrHandleNewReverseReceiver(id string) *ReverseClient {
 	rc, _ := AllReverseClients.Get(id)
 	if rc == nil {
 		rc = HandleNewReceiverFunc(id, false)
-		zlog.Info("ADDING new recevier:", id)
+		// zlog.Info("ADDING new recevier:", id)
 	}
 	rc.LastPolled = time.Now()
 	return rc
@@ -99,7 +100,7 @@ func (rc *ReverseClient) Call(method string, args, resultPtr any) error {
 	pc.CallPayload = CallPayload{Method: method, Args: args}
 	token := zstr.GenerateRandomHexBytes(20)
 	pc.CallPayload.Token = token
-	pc.done = make(chan *receivePayload, 10)
+	pc.done = make(chan *clientReceivePayload, 10)
 	rc.pendingCallsToSend.Set(token, pc)
 	ticker := time.NewTicker(ztime.SecondsDur(PollRestartSecs))
 	select {
@@ -108,7 +109,11 @@ func (rc *ReverseClient) Call(method string, args, resultPtr any) error {
 		rc.pendingCallsToSend.Remove(token)
 		return zlog.NewError("zrpc.Call reverse timed out:", method)
 	case r := <-pc.done:
-		reflect.ValueOf(resultPtr).Elem().Set(reflect.ValueOf(r.Result))
+		err := json.Unmarshal(r.Result, resultPtr)
+		if err != nil {
+			return err
+		}
+		// zlog.Info("ChannelPushed, call done", reflect.TypeOf(r.Result), resultPtr)
 		return nil
 	}
 }

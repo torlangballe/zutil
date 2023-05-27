@@ -23,11 +23,11 @@ type Client struct {
 	SkipVerifyCertificate            bool    // if true, no certificate checking is done for https calls
 }
 
-// clientReceivePayload is structure to store received info from the call
+// client is structure to store received info from the call
 type clientReceivePayload struct {
 	Result                json.RawMessage
-	Error                 string
-	TransportError        TransportError
+	Error                 string         `json:",omitempty"`
+	TransportError        TransportError `json:",omitempty"`
 	AuthenticationInvalid bool
 }
 

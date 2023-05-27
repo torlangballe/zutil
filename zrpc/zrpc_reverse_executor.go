@@ -2,6 +2,7 @@ package zrpc
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
@@ -18,7 +19,7 @@ const PollRestartSecs = 10 // PollRestartSecs is how long to wait asking for a c
 // ReverseResult is always sent with a poll. It can contain an existing result (if Token set), or in any case
 // a ReverseReceiverID to identify who is asking for calls.
 type ReverseResult struct {
-	receivePayload
+	clientReceivePayload
 	ReverseReceiverID string
 	Token             string
 }
@@ -45,9 +46,9 @@ func startCallingPollForReverseCalls(client *Client) {
 			time.Sleep(time.Millisecond * 50) // lets not go nuts
 			continue
 		}
-		if cp.Method == "" { // we got a dummy callPayloadReceive, because we sent a receivePayload, but did't have anything
-			continue
-		}
+		// if cp.Method == "" { // we got a dummy callPayloadReceive, because we sent a receivePayload, but did't have anything
+		// 	continue
+		// }
 		// zlog.Info("execute method:", cp.Method, cp.Token)
 		go func() {
 			var ci ClientInfo
@@ -60,7 +61,15 @@ func startCallingPollForReverseCalls(client *Client) {
 			if err != nil {
 				rr.Error = err.Error()
 			}
-			rr.receivePayload = receive
+			if err != nil {
+				rr.Error = err.Error()
+			}
+			// zlog.Info("call receive:", cp.Method, reflect.TypeOf(receive.Result), receive.Result)
+			rr.clientReceivePayload.Error = receive.Error
+			rr.clientReceivePayload.AuthenticationInvalid = receive.AuthenticationInvalid
+			rr.clientReceivePayload.Result, err = json.Marshal(receive.Result)
+			zlog.OnError(err, "marshal receive")
+			rr.clientReceivePayload.TransportError = receive.TransportError
 			rr.Token = cp.Token
 			rr.ReverseReceiverID = client.id
 			cerr := client.Call("RPCCalls.ReversePushResult", rr, nil)

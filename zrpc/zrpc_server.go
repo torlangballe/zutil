@@ -71,7 +71,7 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	err := decoder.Decode(&cp)
 	call := true
 	if err != nil {
-		rp.TransportError = err.Error()
+		rp.TransportError = TransportError(err.Error())
 		call = false
 	} else {
 		token = cp.Token
@@ -86,7 +86,7 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if call && len(IPAddressWhitelist) > 0 {
 			if !IPAddressWhitelist[req.RemoteAddr] {
 				err := zlog.NewError("zrpc.Call", cp.Method, "calling ip not in whitelist", req.RemoteAddr, IPAddressWhitelist)
-				rp.TransportError = err.Error()
+				rp.TransportError = TransportError(err.Error())
 				rp.AuthenticationInvalid = true
 				zlog.Error(err)
 				call = false
@@ -237,7 +237,6 @@ func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg js
 		rp.Error = err.Error()
 		return rp, nil
 	}
-	// zlog.Info("Called:", hasReply, mtype.Method.Name, replyv)
 	if hasReply {
 		rp.Result = replyv.Interface()
 	}
