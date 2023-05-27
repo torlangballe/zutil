@@ -49,7 +49,7 @@ type AllUserInfo struct {
 }
 
 const (
-	AdminPermission = "admin"
+	AdminPermission = "admin" // This is someone who can add/delete users, set permissions
 	AdminStar       = "★"
 )
 
