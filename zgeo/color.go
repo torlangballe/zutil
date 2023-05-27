@@ -358,7 +358,8 @@ func ColorFromString(str string) Color {
 			}
 		}
 		return ColorNew(r, g, b, a)
-	} else if zstr.HasPrefix(str, "#", &str) {
+	}
+	if zstr.HasPrefix(str, "#", &str) {
 		slen := len(str)
 		switch slen {
 		case 1, 2:
@@ -494,4 +495,24 @@ func floatToUint8(x float64) int {
 		return 0
 	}
 	return int(math.Ceil(x + 0.5))
+}
+
+func (c *Color) UnmarshalJSON(b []byte) error {
+	str := string(b)
+	// zlog.Info("UnmarshalJSON:", "'"+str+"'")
+	if str == `"invalid"` || str == `""` || str == "" {
+		*c = Color{}
+		return nil
+	}
+	str = strings.Trim(str, `"`)
+	c.SetFromString(str)
+	return nil
+}
+
+func (c Color) MarshalJSON() ([]byte, error) {
+	if !c.Valid {
+		return []byte(`"invalid"`), nil
+	}
+	// zlog.Info("Color.MarshalJSON:", *c)
+	return []byte(`"` + c.Hex() + `"`), nil
 }
