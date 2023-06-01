@@ -12,7 +12,7 @@ import (
 	"github.com/torlangballe/term"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
-	zrpc "github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zusers"
 )

@@ -22,7 +22,7 @@ import (
 	"github.com/torlangballe/zutil/zguiutil"
 	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
-	zrpc "github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztimer"
 	"github.com/torlangballe/zutil/zwords"

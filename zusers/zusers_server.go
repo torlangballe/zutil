@@ -10,7 +10,7 @@ import (
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmail"
-	zrpc "github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -70,7 +70,7 @@ func (*UsersCalls) GetUserForToken(token string, user *User) error {
 	return nil
 }
 
-func (*UsersCalls) Logout(ci zrpc.ClientInfo, username string, reply *zrpc.Unused) error { 
+func (*UsersCalls) Logout(ci zrpc.ClientInfo, username string, reply *zrpc.Unused) error {
 	return MainServer.UnauthenticateToken(ci.Token)
 }
 

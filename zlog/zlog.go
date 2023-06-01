@@ -426,3 +426,7 @@ func Hex(v interface{}) string {
 func Limit(parts ...any) LimitID {
 	return LimitID(fmt.Sprint(parts...))
 }
+
+func Func() {
+	Info(CallingFunctionString(3))
+}

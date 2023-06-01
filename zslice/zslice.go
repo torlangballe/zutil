@@ -65,6 +65,8 @@ func MakeAnElementOfSliceType(slice any) any {
 	if rval.Kind() == reflect.Pointer {
 		rval = rval.Elem()
 	}
+	// zlog.Info("MakeAnElementOfSliceType:", rval.Type(), rval.Kind())
+	// return reflect.New(rval.Type()).Elem().Interface()
 	return reflect.New(rval.Type().Elem()).Elem().Interface()
 }
 

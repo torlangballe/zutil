@@ -4,7 +4,7 @@ import (
 	"github.com/torlangballe/zutil/zbits"
 )
 
-type Alignment int32
+type Alignment zbits.NamedBit
 
 const (
 	Left Alignment = 1 << iota
@@ -47,46 +47,42 @@ const (
 	Horizontal = HorPos | HorScale | HorOut
 )
 
-var alignmentList = []zbits.BitsetItem{
-	zbits.BSItem("none", int64(AlignmentNone)),
-	zbits.BSItem("left", int64(Left)),
-	zbits.BSItem("horcenter", int64(HorCenter)),
-	zbits.BSItem("right", int64(Right)),
-	zbits.BSItem("top", int64(Top)),
-	zbits.BSItem("vertcenter", int64(VertCenter)),
-	zbits.BSItem("bottom", int64(Bottom)),
-	zbits.BSItem("horexpand", int64(HorExpand)),
-	zbits.BSItem("vertexpand", int64(VertExpand)),
-	zbits.BSItem("horshrink", int64(HorShrink)),
-	zbits.BSItem("vertshrink", int64(VertShrink)),
-	zbits.BSItem("horout", int64(HorOut)),
-	zbits.BSItem("vertout", int64(VertOut)),
-	zbits.BSItem("proportional", int64(Proportional)),
-	zbits.BSItem("marginissoffset", int64(MarginIsOffset)),
-	zbits.BSItem("center", int64(Center)),
-	zbits.BSItem("expand", int64(Expand)),
-	zbits.BSItem("shrink", int64(Shrink)),
-	zbits.BSItem("scale", int64(Scale)),
-}
-
-func AlignmentFromString(str string) Alignment {
-	return Alignment(zbits.StrToInt64FromList(str, alignmentList))
-}
-func (a *Alignment) FromStringToBits(str string) {
-	*a = AlignmentFromString(str)
+var nameMap = zbits.NamedBitMap{
+	"none":            uint64(AlignmentNone),
+	"left":            uint64(Left),
+	"horcenter":       uint64(HorCenter),
+	"right":           uint64(Right),
+	"top":             uint64(Top),
+	"vertcenter":      uint64(VertCenter),
+	"bottom":          uint64(Bottom),
+	"horexpand":       uint64(HorExpand),
+	"vertexpand":      uint64(VertExpand),
+	"horshrink":       uint64(HorShrink),
+	"vertshrink":      uint64(VertShrink),
+	"horout":          uint64(HorOut),
+	"vertout":         uint64(VertOut),
+	"proportional":    uint64(Proportional),
+	"marginissoffset": uint64(MarginIsOffset),
+	"center":          uint64(Center),
+	"expand":          uint64(Expand),
+	"shrink":          uint64(Shrink),
+	"scale":           uint64(Scale),
 }
 
 func (a Alignment) String() string {
-	return zbits.Int64ToStringFromList(int64(a), alignmentList)
+	return zbits.NamedBit(a).ToString(nameMap)
+}
+
+func AlignmentFromString(str string) Alignment {
+	return Alignment(zbits.NamedFromString(str, nameMap))
 }
 
 func (a *Alignment) UnmarshalJSON(b []byte) error {
-	a.FromStringToBits(string(b))
-	return nil
+	return (*zbits.NamedBit)(a).FromJSON(b, nameMap)
 }
 
 func (a Alignment) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + a.String() + `"`), nil
+	return zbits.NamedBit(a).ToJSON(nameMap)
 }
 
 func (a Alignment) Vector() Pos {

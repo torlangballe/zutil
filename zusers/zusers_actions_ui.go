@@ -8,7 +8,7 @@ import (
 	"github.com/torlangballe/zui/zmenu"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
-	zrpc "github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/zrpc"
 )
 
 func NewActionsIcon() *zimageview.ImageView {

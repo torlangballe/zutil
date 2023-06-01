@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/torlangballe/zutil/zbits"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
@@ -29,10 +28,6 @@ type Items []Item
 
 type ItemsGetter interface {
 	GetItems() Items
-}
-
-func BitsetToItem(bi zbits.BitsetItem) Item {
-	return Item{Name: bi.TitleOrName(), Value: bi.Mask}
 }
 
 func (item Item) Equal(to Item) bool {

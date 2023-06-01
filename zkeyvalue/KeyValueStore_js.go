@@ -9,14 +9,17 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
-func getLocalStorage() js.Value {
+func (k Store) getLocalStorage() js.Value {
+	if k.SessionOnly {
+		return js.Global().Get("sessionStorage")
+	}
 	return js.Global().Get("localStorage")
 }
 
 func (k Store) GetItem(key string, v interface{}) bool {
 	var err error
 	k.postfixKey(&key)
-	local := getLocalStorage()
+	local := k.getLocalStorage()
 	o := local.Get(key)
 
 	// zlog.Info("get kv item:", key, o.Type(), o)
@@ -70,12 +73,12 @@ func (k Store) GetItem(key string, v interface{}) bool {
 
 func (k *Store) SetItem(key string, v interface{}, sync bool) error {
 	k.postfixKey(&key)
-	local := getLocalStorage()
+	local := k.getLocalStorage()
 	local.Set(key, v)
 	return nil
 }
 
-func (s Store) RemoveForKey(key string, sync bool) {
-	s.postfixKey(&key)
-	getLocalStorage().Call("removeItem", key)
+func (k Store) RemoveForKey(key string, sync bool) {
+	k.postfixKey(&key)
+	k.getLocalStorage().Call("removeItem", key)
 }

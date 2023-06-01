@@ -17,19 +17,20 @@ import (
 // https://github.com/nanobox-io/golang-scribble
 
 type Store struct {
-	Local      bool   // if true, only for single browser or device, otherwise for user anywhere
-	Secure     bool   // true if key/value stored in secure key chain
-	KeyPostfix string // this can be a user id. Not used if key starts with /
-	filepath   string // Some variants of store use this
+	SessionOnly bool   // if true, only for while a "session" is open.
+	Secure      bool   // true if key/value stored in secure key chain
+	KeyPostfix  string // this can be a user id. Not used if key starts with /
+	filepath    string // Some variants of store use this
 }
 
 var (
-	GlobalKeyPostfix string // this is added to ALL key prefixes
-	DefaultStore     *Store
+	GlobalKeyPostfix   string // this is added to ALL key prefixes
+	DefaultStore       *Store
+	DefaultSessionStore *Store
 )
 
-func NewStore(local bool) *Store {
-	return &Store{Local: local}
+func NewStore(session bool) *Store {
+	return &Store{SessionOnly: session}
 }
 
 func (s Store) GetObject(key string, objectPtr interface{}) (got bool) {

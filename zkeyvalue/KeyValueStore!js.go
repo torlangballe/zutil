@@ -18,7 +18,7 @@ var lock sync.Mutex
 var dict = zdict.Dict{}
 
 func StoreFileNew(path string) *Store {
-	k := &Store{Local: true}
+	k := &Store{SessionOnly: false}
 	k.filepath = zfile.ChangedExtension(path, ".json")
 	err := zjson.UnmarshalFromFile(&dict, k.filepath, true)
 	if err != nil {
