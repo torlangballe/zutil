@@ -15,7 +15,8 @@ func (n NamedBit) ToString(m NamedBitMap) string {
 			continue
 		}
 		for s, j := range m {
-			if j == i {
+			// zlog.Info("BitAdd?:", s, mask, j)
+			if j == uint64(mask) {
 				str += s + "|"
 				break
 			}

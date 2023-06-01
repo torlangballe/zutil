@@ -27,7 +27,7 @@ import (
 	"github.com/torlangballe/zui/zmenu"
 	"github.com/torlangballe/zui/ztext"
 	"github.com/torlangballe/zui/zview"
-	"github.com/torlangballe/zui/zwidget"
+	"github.com/torlangballe/zui/zwidgets"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zhttp"
@@ -42,9 +42,9 @@ type UploadView struct {
 	password         *ztext.TextView
 	button           *zbutton.Button
 	upload           *zbutton.Button
-	DropWell         *zwidget.DropWell
+	DropWell         *zwidgets.DropWell
 	actionMenu       *zmenu.MenuView
-	activity         *zwidget.ActivityView
+	activity         *zwidgets.ActivityView
 	HandleID         string
 	AcceptExtensions []string
 	TargetDirectory  string // if empty, a temporary directory is used
@@ -118,12 +118,12 @@ func (v *UploadView) Init(view zview.View, storeName string, allow []string) {
 	v.Add(v.button, zgeo.CenterLeft)
 	v.button.SetPressedHandler(v.buttonPressed)
 
-	v.DropWell = zwidget.NewDropWell("", zgeo.Size{10, 20})
+	v.DropWell = zwidgets.NewDropWell("", zgeo.Size{10, 20})
 	v.Add(v.DropWell, zgeo.CenterLeft|zgeo.Expand)
 	v.DropWell.HandleDroppedFile = v.handleGivenFile
 	v.DropWell.HandleDropPreflight = v.checkExtensions
 
-	v.activity = zwidget.NewActivityView(zgeo.SizeBoth(16))
+	v.activity = zwidgets.NewActivityView(zgeo.SizeBoth(16))
 	v.Add(v.activity, zgeo.CenterLeft)
 }
 
