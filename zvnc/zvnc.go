@@ -65,7 +65,6 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 	ticker := time.NewTicker(ztime.SecondsDur(updateSecs))
 	var getScreen bool
 	cc, err = vnc.Connect(context.Background(), nc, ccfg)
-	//	zlog.Info("Here:", err)
 	if err != nil || cc == nil {
 		return nil, zlog.Error(err, "connect")
 	}

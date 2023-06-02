@@ -40,7 +40,7 @@ func NewClient(prefixURL string, id string) *Client {
 	c := &Client{}
 	c.callURL = zstr.Concat("/", prefixURL, zrest.AppURLPrefix, "zrpc")
 	if id == "" {
-		id = zstr.GenerateRandomHexBytes(10)
+		id = zstr.GenerateRandomHexBytes(12)
 	}
 	c.id = id
 	c.TimeoutSecs = 100

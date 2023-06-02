@@ -98,7 +98,7 @@ func findOrHandleNewReverseReceiver(id string) *ReverseClient {
 func (rc *ReverseClient) Call(method string, args, resultPtr any) error {
 	var pc pendingCall
 	pc.CallPayload = CallPayload{Method: method, Args: args}
-	token := zstr.GenerateRandomHexBytes(20)
+	token := zstr.GenerateRandomHexBytes(16)
 	pc.CallPayload.Token = token
 	pc.done = make(chan *clientReceivePayload, 10)
 	rc.pendingCallsToSend.Set(token, pc)

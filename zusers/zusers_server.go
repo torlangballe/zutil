@@ -106,7 +106,7 @@ func (*UsersCalls) Authenticate(ci zrpc.ClientInfo, a Authentication, ui *Client
 
 func (*UsersCalls) SendResetPasswordMail(email string, r *zrpc.Unused) error {
 	var m zmail.Mail
-	random := zstr.GenerateRandomHexBytes(20)
+	random := zstr.GenerateRandomHexBytes(16)
 	surl, _ := zhttp.MakeURLWithArgs(Reset.URL, map[string]string{
 		"reset": random,
 		"email": email,

@@ -65,7 +65,6 @@ func RunCommandWithSSHPass(cmd string, passwords []string, options *SSHPassOptio
 	go func() {
 		for range ch {
 			if err := pty.InheritSize(os.Stdin, pt); err != nil {
-				zlog.Info("Here:", err)
 				log.Printf("error resizing pty: %s", err)
 			}
 		}
@@ -73,8 +72,8 @@ func RunCommandWithSSHPass(cmd string, passwords []string, options *SSHPassOptio
 	ch <- syscall.SIGHUP
 
 	oldState, err := terminal.MakeRaw(int(os.Stdin.Fd()))
-	zlog.Info("Here2:", oldState, err)
 	if err != nil {
+		zlog.Info("HereErr:", oldState, err)
 		return err
 	}
 	defer func() { _ = terminal.Restore(int(os.Stdin.Fd()), oldState) }()
