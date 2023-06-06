@@ -471,3 +471,14 @@ func GetHemisphereDirectionsFromGeoAlignment(alignment zgeo.Alignment, separator
 	}
 	return str
 }
+
+func IsNonTitleableWord(word, langCode string) bool {
+	switch langCode {
+	case "en", "":
+		switch strings.ToLower(word) {
+		case "this", "a", "the", "an", "and", "of":
+			return true
+		}
+	}
+	return false
+}

@@ -4,7 +4,9 @@ import (
 	"strings"
 
 	"github.com/torlangballe/zutil/zkeyvalue"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/zwords"
 )
 
 //  Created by Tor Langballe on /1/11/15.
@@ -52,4 +54,15 @@ func UsesCelsius() bool {
 
 func Uses24Hour() bool {
 	return true
+}
+
+func FirstToTitleCaseExcept(str string, langCode string) (out string) {
+	parts := strings.Split(str, " ")
+	for i, p := range parts {
+		if i != 0 && zwords.IsNonTitleableWord(p, langCode) {
+			zlog.Info("FirstToTitleCaseExcept:", p, zwords.IsNonTitleableWord(p, langCode))
+			parts[i] = strings.ToLower(p)
+		}
+	}
+	return strings.Join(parts, " ")
 }
