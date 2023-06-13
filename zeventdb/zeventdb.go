@@ -146,6 +146,9 @@ func (db *Database) repeatWriteItems() {
 		}
 		if db.writeItems() {
 			count++
+		} else {
+			time.Sleep(time.Millisecond * 20) // Wait a bit if nothing happening
+			continue
 		}
 		if count == 20 {
 			time.Sleep(time.Millisecond * 20) // give DB some time to be read/shared
