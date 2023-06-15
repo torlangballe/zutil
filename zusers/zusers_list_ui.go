@@ -167,8 +167,6 @@ func getAndShowUserList() {
 	}
 	// zlog.Info("USERS:", zlog.Full(us))
 	table := makeTableOwner(us)
-	att := zpresent.AttributesNew()
-	att.Modal = true
-	att.ModalCloseOnOutsidePress = true
+	att := zpresent.ModalDialogAttributes
 	zpresent.PresentTitledView(table.grid, "Users", att, nil, nil, nil, nil)
 }
