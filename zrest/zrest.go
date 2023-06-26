@@ -168,6 +168,7 @@ func AddFileHandler(router *mux.Router, pattern, dir string, override func(w htt
 			p := zprocess.PushProcess(30, "AddFileHandler:"+path)
 			CurrentInRequests++
 			filepath := filepath.Join(dir, path)
+			// zlog.Info("AddFileHandler:", path, filepath)
 			// str, err := zfile.ReadStringFromFile(filepath)
 			// zlog.OnError(err, path, filepath)
 			// str = strings.Replace(str, "\n", "•", -1)

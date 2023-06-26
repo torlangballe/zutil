@@ -110,7 +110,7 @@ func (r *RateLimiters) Do(id string, secs float64, do func()) {
 	rc := r.cache[id]
 	r.lock.Unlock() // unlock before r.Add(), it locks
 	if rc == nil {
-		zlog.Info("NewRateLimitersDo:", id, secs)
+		// zlog.Info("NewRateLimitersDo:", id, secs)
 		rc = r.Add(id, secs, 0)
 	}
 	rc.Do(do)

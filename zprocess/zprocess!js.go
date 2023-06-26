@@ -72,7 +72,6 @@ func RunApp(appName string, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.Rea
 }
 
 func MakeCommand(command string, start bool, inPipe *io.WriteCloser, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
-	// zlog.Info("MakeCommand:", zstr.AnySliceToStrings(args))
 	cmd = exec.Command(command, zstr.AnySliceToStrings(args)...)
 	outPipe, err = cmd.StdoutPipe()
 	if err != nil {
