@@ -160,3 +160,28 @@ func PopProcess(p *proc) {
 	p.timer.Stop()
 	procs.Remove(p.id)
 }
+
+type OnceWait struct {
+	done   bool
+	inited bool
+	wg     sync.WaitGroup
+}
+
+func (o *OnceWait) Wait() {
+	if !o.inited {
+		o.inited = true
+		o.wg.Add(1)
+	}
+	o.wg.Wait()
+}
+
+func (o *OnceWait) Done() {
+	if !o.inited {
+		o.inited = true
+		o.wg.Add(1)
+	}
+	if !o.done {
+		o.done = true
+		o.wg.Done()
+	}
+}
