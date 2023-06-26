@@ -6,8 +6,10 @@ import (
 
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztimer"
 )
 
 // This is functionality to call rpc calls, using a client.
@@ -21,6 +23,7 @@ type Client struct {
 	TimeoutSecs                      float64 // A new client with a different timeout can be created. This is total time of comminication to server, execution, and returning the result
 	KeepTokenOnAuthenticationInvalid bool    // if KeepTokenOnAuthenticationInvalid is true, the auth token isn't cleared on failure to authenticate
 	SkipVerifyCertificate            bool    // if true, no certificate checking is done for https calls
+	gettingResources                 zmap.LockMap[string, bool]
 }
 
 // client is structure to store received info from the call
@@ -32,7 +35,10 @@ type clientReceivePayload struct {
 }
 
 // MainClient is the main, default client. Is set in zapp, and used in zusers.
-var MainClient *Client
+var (
+	MainClient          *Client
+	registeredResources []string
+)
 
 // NewClient creates a client with a url prefix, adding zrest.AppURLPrefix
 // This is
@@ -100,4 +106,31 @@ func (c *Client) CallWithTimeout(timeoutSecs float64, method string, args, resul
 	n := *c
 	n.TimeoutSecs = timeoutSecs
 	return n.Call(method, args, result)
+}
+
+func (c *Client) PollForUpdatedResources(got func(resID string)) {
+	for _, r := range registeredResources {
+		got(r)
+	}
+	ztimer.RepeatForever(1, func() {
+		var resIDs []string
+		err := c.Call("RPCCalls.GetUpdatedResourcesAndSetSent", nil, &resIDs)
+		if err != nil {
+			zlog.Error(err, "updateResources err:")
+			return
+		}
+		for _, s := range resIDs {
+			setting, _ := c.gettingResources.Get(s)
+			if setting {
+				continue
+			}
+			c.gettingResources.Set(s, true)
+			got(s)
+			c.gettingResources.Set(s, false)
+		}
+	})
+}
+
+func RegisterResources(resources ...string) {
+	registeredResources = zstr.UnionStringSet(registeredResources, resources)
 }

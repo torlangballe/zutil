@@ -16,16 +16,16 @@ var (
 
 // GetUpdatedResourcesAndSetSent is called from clients (often browsers) to ask for updated resource-ids
 // The client id is stored as it having checked them out for that given update.
-func (RPCCalls) GetUpdatedResourcesAndSetSent(ci ClientInfo, in Unused, reply *[]string) error {
-	*reply = []string{}
+func (RPCCalls) GetUpdatedResourcesAndSetSent(ci ClientInfo, int Unused, reply *[]string) error {
 	updatedResourcesMutex.Lock()
+	defer updatedResourcesMutex.Unlock()
+	*reply = []string{}
 	for res, m := range updatedResourcesSentToClient {
 		if !m[ci.ClientID] {
 			*reply = append(*reply, res)
 			m[ci.ClientID] = true
 		}
 	}
-	updatedResourcesMutex.Unlock()
 	return nil
 }
 
