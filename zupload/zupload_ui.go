@@ -1,9 +1,9 @@
 // an UploadView is a gui control that allows the user to get a file to the backend.
 // The allow parameter allows it use Drop, URL, SCP or Upload.
-// It has an UploadedHandler function to intercept uploaded data or urls, or it defaults to
+// It has an FileReadyToSendHandler function to intercept data in gui from upload/drag, or it defaults to
 // Uploading it to the server via POST method.
 // For URL and SCP, the file is copied in the backend. For Drop/Upload it is in the post body.
-// It has a HandleID used to invoke the correct UploadedHandler and handler in server.
+// It has a HandleID used to invoke the correct method set by RegisterUploadHandler in the server.
 // Set AcceptExtensions to limit draggable/uploadable file types.
 // Calling RegisterWidget allows widget:zupload tags in a struct field to create an uploader.
 //   the "handleid", "allow" and "ext' tags are used to set fields.
@@ -14,6 +14,7 @@
 package zupload
 
 import (
+	"errors"
 	"net/url"
 	"path"
 	"strings"
@@ -22,7 +23,6 @@ import (
 	"github.com/torlangballe/zui/zapp"
 	"github.com/torlangballe/zui/zbutton"
 	"github.com/torlangballe/zui/zcontainer"
-	"github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/zmenu"
 	"github.com/torlangballe/zui/ztext"
@@ -38,30 +38,24 @@ import (
 
 type UploadView struct {
 	zcontainer.StackView
-	mainText         *ztext.TextView
-	password         *ztext.TextView
-	button           *zbutton.Button
-	upload           *zbutton.Button
-	DropWell         *zwidgets.DropWell
-	actionMenu       *zmenu.MenuView
-	activity         *zwidgets.ActivityView
-	HandleID         string
-	AcceptExtensions []string
-	TargetDirectory  string // if empty, a temporary directory is used
-	UploadedHandler  func(payload UploadPayload, data []byte)
+	mainText                    *ztext.TextView
+	password                    *ztext.TextView
+	button                      *zbutton.Button
+	upload                      *zbutton.Button
+	DropWell                    *zwidgets.DropWell
+	actionMenu                  *zmenu.MenuView
+	activity                    *zwidgets.ActivityView
+	HandleID                    string
+	AcceptExtensions            []string
+	TargetDirectory             string // if empty, a temporary directory is used
+	FileReadyToSendHandler      func(payload UploadPayload, data []byte)
+	FileUploadedToServerHandler func(result zdict.Dict, err error)
 }
-
-type UploadWidgeter struct{}
 
 var (
-	allTypes         = []string{Drop, URL, SCP, Upload}
-	widgeterHandlers = map[string]func(up UploadPayload, data []byte){}
-	storeKeyPrefix   = "zwidgets.UploadView."
+	allTypes       = []string{Drop, URL, SCP, Upload}
+	storeKeyPrefix = "zwidgets.UploadView."
 )
-
-func RegisterWidget() {
-	zfields.RegisterWidgeter("zupload", UploadWidgeter{})
-}
 
 func NewUploadView(storeName string, allow []string) *UploadView {
 	v := &UploadView{}
@@ -69,12 +63,12 @@ func NewUploadView(storeName string, allow []string) *UploadView {
 	return v
 }
 
-func (v *UploadView) Init(view zview.View, storeName string, allow []string) {
+func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string) {
 	v.StackView.Init(v, false, storeName)
-	v.SetMinSize(zgeo.Size{0, 32}) // avoids
+	v.SetMinSize(zgeo.Size{0, 22}) // avoids
 	var items zdict.Items
 	for _, a := range allTypes {
-		if len(allow) == 0 || zstr.StringsContain(allow, a) {
+		if len(allowTypes) == 0 || zstr.StringsContain(allowTypes, a) {
 			items = append(items, zdict.Item{a, a})
 		}
 	}
@@ -89,7 +83,7 @@ func (v *UploadView) Init(view zview.View, storeName string, allow []string) {
 		zkeyvalue.DefaultStore.SetString(set, actionKey, true)
 		v.updateWidgets()
 	})
-	v.Add(v.actionMenu, zgeo.CenterLeft)
+	v.Add(v.actionMenu, zgeo.BottomLeft)
 
 	textKey := storeKeyPrefix + "Text"
 	text, _ := zkeyvalue.DefaultStore.GetString(textKey)
@@ -130,6 +124,9 @@ func (v *UploadView) Init(view zview.View, storeName string, allow []string) {
 func (v *UploadView) ReadyToShow(beforeWin bool) {
 	if beforeWin {
 		v.updateWidgets()
+		if v.FileReadyToSendHandler == nil {
+			v.FileReadyToSendHandler = v.CallHTTUpload
+		}
 	}
 }
 
@@ -138,26 +135,26 @@ func (v *UploadView) checkExtensions(name string) bool {
 		ext := path.Ext(name)
 		if !zstr.StringsContain(v.AcceptExtensions, ext) {
 			zalert.ShowError(nil, "Incorrect file extension:", ext, v.AcceptExtensions)
-			return true
+			return false
 		}
 	}
 	v.activity.Start()
-	return false
+	return true
 }
 
-func (v *UploadView) callUploadHandler(up UploadPayload, data []byte) {
+func (v *UploadView) callFileReadyToSendHandler(up UploadPayload, data []byte) {
+	zlog.Info("callFileReadyToSendHandler:", v != nil)
 	v.activity.Start()
-	v.UploadedHandler(up, data)
+	v.FileReadyToSendHandler(up, data)
 	v.activity.Stop()
 }
 
 func (v *UploadView) handleGivenFile(data []byte, name string) {
-	// zlog.Info("handleGivenFile:", name)
 	var up UploadPayload
 	up.HandleID = v.HandleID
 	up.Name = name
 	up.Type = v.actionMenu.CurrentValue().(string)
-	go v.callUploadHandler(up, data)
+	go v.callFileReadyToSendHandler(up, data)
 }
 
 func (v *UploadView) buttonPressed() {
@@ -170,7 +167,7 @@ func (v *UploadView) buttonPressed() {
 	case SCP:
 		up.Password = v.password.Text()
 	}
-	go v.callUploadHandler(up, nil)
+	go v.callFileReadyToSendHandler(up, nil)
 }
 
 func (v *UploadView) updateWidgets() {
@@ -225,44 +222,7 @@ func (v *UploadView) addUploadButton() {
 	v.upload.SetUploader(v.handleGivenFile, v.checkExtensions, nil)
 }
 
-func (a UploadWidgeter) Create(f *zfields.Field) zview.View {
-	min := f.MinWidth
-	if min == 0 {
-		min = 100
-	}
-	var allow []string
-	sallow := f.CustomFields["allow"]
-	for _, a := range strings.Split(sallow, "|") {
-		if zstr.StringsContain(allTypes, a) {
-			allow = append(allow, a)
-		}
-	}
-	// zlog.Info("UploadWidgeter:", allows, allowMask)
-	uploader := NewUploadView(f.ValueStoreKey, allow)
-	uploader.DropWell.SetPlaceholder(f.Placeholder)
-	sext := f.CustomFields["ext"]
-	if sext != "" {
-		uploader.AcceptExtensions = strings.Split(sext, "|")
-	}
-	uploader.HandleID = f.CustomFields["handleid"]
-	zlog.Assert(len(uploader.HandleID) > 0)
-	zlog.Assert(uploader.HandleID != "")
-	handler := widgeterHandlers[uploader.HandleID]
-	if handler != nil {
-		uploader.UploadedHandler = handler
-	} else {
-		uploader.UploadedHandler = CallHTTUpload
-	}
-	if f.Styling.FGColor.Valid {
-		col := f.Styling.FGColor
-		if col.Valid {
-			uploader.SetColor(col)
-		}
-	}
-	return uploader
-}
-
-func CallHTTUpload(up UploadPayload, data []byte) {
+func (v *UploadView) CallHTTUpload(up UploadPayload, data []byte) {
 	var result zdict.Dict
 	params := zhttp.MakeParameters()
 	args := map[string]string{
@@ -281,21 +241,17 @@ func CallHTTUpload(up UploadPayload, data []byte) {
 		zalert.ShowError(err)
 	}
 	if result != nil {
-		str := result["message"]
-		if str != "" {
-			zalert.Show(str)
+		str, _ := result["error"].(string)
+		if v.FileUploadedToServerHandler != nil {
+			v.FileUploadedToServerHandler(result, errors.New(str))
+		} else {
+			if str != "" {
+				zalert.Show(str)
+			}
 		}
+		return
 	}
-	// zlog.Info("CallHTTUpload Done", err, storedURL)
-}
-
-func (a UploadWidgeter) IsStatic() bool {
-	return true
-}
-
-func (a UploadWidgeter) SetValue(view zview.View, val any) {
-}
-
-func SetWidgeterFileHandler(id string, handler func(up UploadPayload, data []byte)) {
-	widgeterHandlers[id] = handler
+	if v.FileUploadedToServerHandler != nil {
+		v.FileUploadedToServerHandler(result, nil)
+	}
 }

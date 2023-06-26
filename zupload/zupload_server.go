@@ -1,6 +1,5 @@
 // The zupload server component needs to be Init()'ed to handle posts from the gui's default handling.
-// Call RegisterUploadHandler to register a handler for a given gui's HandleID.
-// Use id="" if gui hasn't set a HandleID for a "default" handler.
+// Call RegisterUploadHandler to register an upload handler. It handles a string id set in gui for an uploader.
 
 //go:build server
 
@@ -33,6 +32,8 @@ func Init(router *mux.Router) {
 	zrest.AddHandler(router, "zupload", handleUpload).Methods("POST")
 }
 
+// RegisterUploadHandler registers a method to call if an upload with id is done by gui.
+// It can return status in a dictionary for the gui.
 func RegisterUploadHandler(id string, handler func(name string, reader io.ReadCloser) (zdict.Dict, error)) {
 	handlers[id] = handler
 }
@@ -42,7 +43,6 @@ func callHandler(up UploadPayload, reader io.ReadCloser) (zdict.Dict, error) {
 	if h == nil {
 		return nil, zlog.NewError(nil, "no handle for upload with id", up.HandleID)
 	}
-	// zlog.Info("callHandler", up.HandleID, up.Type, up.Name, up.Text, up.Password)
 	return h(up.Name, reader)
 }
 
@@ -87,39 +87,6 @@ func copySPC(up UploadPayload) (result zdict.Dict, err error) {
 	return
 }
 
-/*
-func copySPC(up UploadPayload) (result zdict.Dict, err error) {
-	str := up.Text
-	user := zstr.HeadUntilLast(str, "@", &str)
-	config, err := auth.PasswordKey(user, up.Password, ssh.InsecureIgnoreHostKey())
-
-	address := zstr.HeadUntilLast(str, ":", &str)
-	if !strings.Contains(address, ":") {
-		address += ":22"
-	}
-	path := str
-	client := scp.NewClient(address, &config)
-	err = client.Connect()
-	if err != nil {
-		return nil, zlog.Error(err, "connect", address, up.Password)
-	}
-	reader, writer := io.Pipe()
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		result, err = callHandler(up, reader) // this starts sucking from reader in goroutine, or copy below will hang
-		wg.Done()
-	}()
-	copyErr := client.CopyFromRemotePassThru(context.Background(), writer, path, nil) // use another error as err is set in goroutine above
-	writer.Close()
-	wg.Wait()
-	if copyErr != nil {
-		return nil, zlog.Error(copyErr, "copy", address, up.Password)
-	}
-	return
-}
-*/
-
 func copyURL(up UploadPayload) (result zdict.Dict, err error) {
 	params := zhttp.MakeParameters()
 	params.Method = http.MethodGet
@@ -144,7 +111,6 @@ func handleUpload(w http.ResponseWriter, req *http.Request) {
 	up.Password = req.Header.Get("X-Password")
 	reader := req.Body
 
-	// zlog.Info("Upload", up.HandleID, up.Type, len(up.Data), up.Name, up.Text, up.Password)
 	switch up.Type {
 	case SCP:
 		result, err = copySPC(up)
@@ -155,8 +121,7 @@ func handleUpload(w http.ResponseWriter, req *http.Request) {
 		result, err = callHandler(up, reader)
 	}
 	if err != nil {
-		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, err)
-		return
+		result["error"] = err.Error()
 	}
 	zrest.ReturnDict(w, req, result)
 }
