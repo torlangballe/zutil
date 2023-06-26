@@ -1,7 +1,6 @@
 package zstr
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 )
@@ -10,6 +9,7 @@ var (
 	InDoubleSquigglyBracketsRegex = regexp.MustCompile(`{{([^}]+)}}`)
 	HashRegEx                     = regexp.MustCompile(`#([A-Za-z_]\w+)`) // (\s|\B) at start needed?
 	EmailRegex                    = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+	DollarArgRegex                = regexp.MustCompile(`\$(\w+)`)
 )
 
 // ReplaceAllCapturesFunc calls replace with contents of the first capture group and index 1, then next and index 2 etc.
@@ -60,7 +60,6 @@ func replaceAllCaptures(regex *regexp.Regexp, str string, keepMatch bool, replac
 func GetAllCaptures(regex *regexp.Regexp, str string) []string {
 	var out []string
 	ReplaceAllCapturesFunc(regex, str, func(cap string, index int) string {
-		fmt.Println("AllCaps:", cap)
 		out = append(out, cap)
 		return ""
 	})
