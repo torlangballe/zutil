@@ -235,7 +235,7 @@ func CallingFunctionInfo(pos int) (function, file string, line int) {
 }
 
 func CallingStackString() string {
-	return CallingStackStringAt(0)
+	return CallingStackStringAt(1)
 }
 
 func CallingStackStringAt(index int) string {
