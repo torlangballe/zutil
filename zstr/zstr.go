@@ -1,7 +1,9 @@
 package zstr
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"crypto/md5"
 	cryptoRand "crypto/rand"
 	"crypto/sha256"
@@ -251,8 +253,13 @@ func Concat(divider string, parts ...any) string {
 			if str == "" {
 				str = s
 			} else {
-				if !strings.HasSuffix(str, divider) && !strings.HasPrefix(s, divider) {
+				prevHas := strings.HasSuffix(str, divider)
+				currentHas := strings.HasPrefix(s, divider)
+				if !prevHas && !currentHas {
 					str += divider
+				}
+				if prevHas && currentHas {
+					str = TruncatedCharsAtEnd(str, 1)
 				}
 				str += s
 			}
@@ -890,9 +897,13 @@ func PadCamelCase(str, pad string) string {
 				if len(big) == 1 {
 					out += big
 				} else {
-					out += big[:len(big)-1]
-					out += pad
-					out += big[len(big)-1:]
+					if big == "URL" {
+						out += big
+					} else {
+						out += big[:len(big)-1]
+						out += pad
+						out += big[len(big)-1:]
+					}
 				}
 				big = ""
 			}
@@ -1027,6 +1038,7 @@ func SplitInTwo(str string, sep string) (string, string) {
 	return "", ""
 }
 
+/*
 // ScanLinesWithCR is a replacement for bufio.Scanner
 func ScanLinesWithCR(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	if atEOF && len(data) == 0 {
@@ -1055,6 +1067,23 @@ func ScanLinesWithCR(data []byte, atEOF bool) (advance int, token []byte, err er
 		return len(data), data, nil
 	}
 	return 0, nil, nil
+}
+*/
+
+func NewLineScanner(reader io.Reader, ctx context.Context, got func(line string, err error)) *bufio.Scanner {
+	s := bufio.NewScanner(reader)
+	go func() {
+		for (ctx == nil || ctx.Err() == nil) && s.Scan() {
+			if ctx == nil || ctx.Err() == nil {
+				got(s.Text(), nil)
+			}
+		}
+		err := s.Err()
+		if err != nil {
+			got("", err)
+		}
+	}()
+	return s
 }
 
 func IsTypableASCII(s string) bool {
