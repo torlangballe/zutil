@@ -12,7 +12,6 @@ import (
 	"github.com/torlangballe/zui/zpresent"
 	"github.com/torlangballe/zui/zslicegrid"
 	"github.com/torlangballe/zui/zstyle"
-	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc"
@@ -36,7 +35,7 @@ func (t *userTable) findUser(id string) (*AllUserInfo, int) {
 func makeTableOwner(users []AllUserInfo) *userTable {
 	ut := &userTable{}
 	ut.users = users
-	ut.grid = zslicegrid.TableViewNew(&ut.users, "users-table", zslicegrid.AddMenu|zslicegrid.AllowEditAndDelete|zslicegrid.AddHeader|zslicegrid.AddBar)
+	ut.grid = zslicegrid.TableViewNew(&ut.users, "users-table", zslicegrid.AddMenu|zslicegrid.AllowAllEditing|zslicegrid.AddHeader|zslicegrid.AddBar)
 	ut.grid.EditParameters.SkipFieldNames = []string{"AdminStar"}
 	ut.grid.FieldParameters.AllStatic = true
 	ut.grid.FieldParameters.HideStatic = false
@@ -124,21 +123,21 @@ func (t *userTable) unauthorizeUsers(sids []string) {
 	t.grid.UpdateViewFunc()
 }
 
-func (u *AllUserInfo) HandleAction(f *zfields.Field, action zfields.ActionType, view *zview.View) bool {
+func (u *AllUserInfo) HandleAction(ap zfields.ActionPack) bool {
 	// zlog.Info("Action:", action, zfields.ID(f))
-	if f == nil {
+	if ap.Field == nil {
 		return false
 	}
-	switch action {
+	switch ap.Action {
 	case zfields.SetupFieldAction:
-		if f.FieldName == "UserName" && UserNameIsEmail {
-			f.Name = "Email Address"
-			f.Format = "email"
+		if ap.Field.FieldName == "UserName" && UserNameIsEmail {
+			ap.Field.Name = "Email Address"
+			ap.Field.Format = "email"
 		}
 		return false
 	case zfields.DataChangedAction:
-		if f.FieldName == "UserName" {
-			label, _ := (*view).(*zlabel.Label)
+		if ap.Field.FieldName == "UserName" {
+			label, _ := (*ap.View).(*zlabel.Label)
 			if label != nil { // it is null if it's a TextView in edit dialog
 				font := label.Font()
 				if u.UserName == CurrentUser.UserName {
@@ -147,7 +146,7 @@ func (u *AllUserInfo) HandleAction(f *zfields.Field, action zfields.ActionType, 
 				}
 			}
 		}
-		if f.FieldName == "AdminStar" {
+		if ap.Field.FieldName == "AdminStar" {
 			str := ""
 			if IsAdmin(u.Permissions) {
 				str = AdminStar
