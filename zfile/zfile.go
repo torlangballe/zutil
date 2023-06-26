@@ -21,6 +21,16 @@ import (
 	"github.com/torlangballe/zutil/ztimer"
 )
 
+type WalkOptions int
+
+const (
+	WalkOptionsNone     WalkOptions = 0
+	WalkOptionRecursive WalkOptions = 1 << iota
+	WalkOptionGiveFolders
+	WalkOptionGiveHidden
+	WalkOptionGiveNameOnly
+)
+
 func CreateTempFile(name string) (file *os.File, fpath string, err error) {
 	fpath = CreateTempFilePath(name)
 	//	fmt.Println("fpath:", fpath)
@@ -225,53 +235,70 @@ func ReadFromURLToFilepath(surl, filepath string, maxBytes int64) (path string, 
 	return
 }
 
-func FlatWalk(folder, wildcards string, got func(fname string, info os.FileInfo) error) {
-	Walk(folder, wildcards, func(fpath string, info os.FileInfo) error {
-		if fpath == folder {
-			return nil
-		}
-		_, name := filepath.Split(fpath)
-		r := got(name, info)
-		if info.IsDir() {
-			return filepath.SkipDir
-		}
-		return r
-	})
-}
-
-func Walk(folder, wildcards string, got func(fpath string, info os.FileInfo) error) {
+// Walk walks though the contents of folder, calling got on each, matching names with tab-separated wildcards (if any).
+// folders are entered without wildcard matching.
+// info.IsDir can be checked to see if the content is a folder, and path.SkipDir / path.SkipAll can be returned
+// to abort a sub-folder or all. Any other error returned from got stops all and returns that error.
+func Walk(folder, wildcards string, opts WalkOptions, got func(fpath string, info os.FileInfo) error) error {
 	var wcards []string
 	if wildcards != "" {
 		wcards = strings.Split(wildcards, "\t")
 	}
-	filepath.Walk(folder, func(fpath string, info os.FileInfo, err error) error {
+	return filepath.Walk(folder, func(fpath string, info os.FileInfo, err error) error {
 		// fmt.Println("zFile walk:", fpath, len(wcards), err)
-		if err == nil {
-			if info.IsDir() {
-				return got(fpath, info)
-			}
-			matched := true
-			if len(wcards) > 0 {
-				_, name := filepath.Split(fpath)
-				matched = false
-				for _, w := range wcards {
-					m, _ := filepath.Match(w, name)
-					if m {
-						matched = true
-						break
-					}
-				}
-			}
-			if matched {
-				return got(fpath, info)
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			if fpath == folder {
+				return nil
 			}
 		}
-		return nil
+		_, name := filepath.Split(fpath)
+		// zlog.Info("zWalk:", fpath)
+		if opts&WalkOptionGiveHidden == 0 && strings.HasPrefix(name, ".") {
+			// zlog.Info("isHidden?:", name)
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		matched := true
+		if len(wcards) > 0 {
+			matched = false
+			for _, w := range wcards {
+				m, _ := filepath.Match(w, name)
+				if m {
+					matched = true
+					break
+				}
+			}
+		}
+		if !matched {
+			return nil
+		}
+		rpath := fpath
+		if opts&WalkOptionGiveNameOnly != 0 {
+			rpath = name
+		}
+		if info.IsDir() {
+			if opts&WalkOptionGiveFolders != 0 {
+				e := got(rpath, info)
+				if e != nil {
+					return e
+				}
+			}
+			if opts&WalkOptionRecursive != 0 {
+				return nil
+			}
+			return nil
+		}
+		return got(rpath, info)
 	})
 }
 
 // GetFilesFromPath returns a list of names of files inside path. If path has a wildcard
-func GetFilesFromPath(path string, addDirs bool) (files []string, err error) {
+func GetFilesFromPath(path string, opts WalkOptions) (files []string, err error) {
 	var wild string
 	dir, name := filepath.Split(path)
 	if dir != "" && NotExist(dir) {
@@ -285,13 +312,10 @@ func GetFilesFromPath(path string, addDirs bool) (files []string, err error) {
 	} else {
 		dir = path
 	}
-	Walk(dir, wild, func(fpath string, info os.FileInfo) error {
+	Walk(dir, wild, opts, func(fpath string, info os.FileInfo) error {
 		if info.IsDir() {
 			if fpath == dir {
 				return nil
-			}
-			if addDirs {
-				files = append(files, fpath+"/")
 			}
 			return filepath.SkipDir
 		}
@@ -301,8 +325,8 @@ func GetFilesFromPath(path string, addDirs bool) (files []string, err error) {
 	return files, nil
 }
 
-func RemoveOldFilesFromFolder(folder, wildcard string, olderThan time.Duration) {
-	Walk(folder, wildcard, func(fpath string, info os.FileInfo) error {
+func RemoveOldFilesFromFolder(folder, wildcard string, opt WalkOptions, olderThan time.Duration) {
+	Walk(folder, wildcard, opt, func(fpath string, info os.FileInfo) error {
 		if time.Since(info.ModTime()) > olderThan {
 			os.Remove(fpath)
 		}
@@ -562,6 +586,16 @@ func DeleteOldInSubFolders(dir string, sleep time.Duration, before time.Time, de
 		progress(1, count, total)
 	}
 	return nil
+}
+
+// WorkingDirPathToAbsolute prefixes wpath with working dir.
+// If wpath is absolute, it returns it as-is.
+func WorkingDirPathToAbsolute(wpath string) string {
+	if strings.HasPrefix(wpath, "/") {
+		return wpath
+	}
+	wd, _ := os.Getwd()
+	return zstr.Concat("/", wd, wpath)
 }
 
 // merge fs.FS interface inspiration:
