@@ -125,7 +125,8 @@ func forOSX() (name string, err error) {
 // 	return
 // }
 
-func GetCurrentLocalIPAddressOld() (ip16, ip4 string, err error) {
+// TODO: Consolidate with with znet.go variants
+func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return
@@ -269,7 +270,7 @@ type HTTPServer struct {
 	doneChannel chan bool
 }
 
-func ServeHTTPInBackground(port int, certificatesPath string, handler http.Handler) *HTTPServer {
+func ServeHTTPInBackground(address string, certificatesPath string, handler http.Handler) *HTTPServer {
 	// https://ap.www.namecheap.com/Domains/DomainControlPanel/etheros.online/advancedns
 	// https://github.com/denji/golang-tls
 	//
@@ -277,17 +278,22 @@ func ServeHTTPInBackground(port int, certificatesPath string, handler http.Handl
 	if certificatesPath != "" {
 		str += "S"
 	}
-	stack := zlog.CallingStackString()
-	if port == 0 {
-		if certificatesPath != "" {
-			port = 443
-		} else {
-			port = 80
+	host, sport, err := net.SplitHostPort(address)
+	if err == nil {
+		if host == "127.0.0.1" {
+			address = ":" + sport
+		}
+		if sport == "" {
+			if certificatesPath != "" {
+				sport = "443"
+			} else {
+				sport = "80"
+			}
+			address = host + ":" + sport
 		}
 	}
-	zlog.Info(str+":", port)
+	stack := zlog.CallingStackString()
 	s := &HTTPServer{}
-	address := fmt.Sprintf(":%d", port)
 	s.Server = &http.Server{Addr: address}
 	s.Server.Handler = handler
 	s.Server.ReadTimeout = 60 * time.Second
