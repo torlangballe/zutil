@@ -451,7 +451,7 @@ func (s *Session) expandChildStubArg(line, command string) (newLine string, newP
 }
 
 func CreateCommanderAndTerminal(welcome string, keysdir string, hardUsers map[string]string, rootNode any, port int) *Commander {
-	_, ip, _ := znet.GetCurrentLocalIPAddress("")
+	_, ip, _ := znet.GetCurrentLocalIPAddress()
 	if ip == "" {
 		ip = "localhost"
 	}
