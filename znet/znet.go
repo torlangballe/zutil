@@ -1,6 +1,7 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -31,21 +33,36 @@ func GetHostAndPort(u *url.URL) (host string, port int) {
 	return
 }
 
-func GetCurrentLocalIPAddress(netInterface string) (ip16, ip4 string, err error) {
+func GetCurrentLocalIP4Address(skipLocal bool, netInterface string) (ip4 string, err error) {
+	all, err := GetCurrentLocalIP4Addresses(skipLocal)
+	if err != nil {
+		return "", err
+	}
+	if len(all) == 0 {
+		return "", errors.New("no ip4 address")
+	}
+	if netInterface != "" {
+		ip4 = all[netInterface]
+		if ip4 != "" {
+			return
+		}
+	}
+	err = zmap.GetAnyValue(&ip4, all)
+	return ip4, err
+}
+
+func GetCurrentLocalIP4Addresses(skipLocal bool) (map[string]string, error) {
+	m := map[string]string{}
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return
+		return nil, err
 	}
 	var oldName string
 	var oldNum int = -1
 	for i, iface := range ifaces {
-		if netInterface != "" && iface.Name != netInterface {
-			continue
-		}
 		addresses, e := iface.Addrs()
 		if e != nil {
-			err = e
-			return
+			return m, e
 		}
 		for _, a := range addresses {
 			ipnet, ok := a.(*net.IPNet)
@@ -75,24 +92,24 @@ func GetCurrentLocalIPAddress(netInterface string) (ip16, ip4 string, err error)
 					}
 				}
 				if get || i == len(ifaces)-1 {
-					i16 := ipnet.IP.To16()
-					if i16 != nil {
-						ip16 = i16.String()
-					}
+					// i16 := ipnet.IP.To16()
+					// if i16 != nil {
+					// 	ip16 = i16.String()
+					// }
 					i4 := ipnet.IP.To4()
 					if i4 != nil {
 						str := i4.String()
-						// zlog.Info("IP:", a.String(), ip4, iface.Name, str)
-						if strings.HasPrefix(str, "192.168.") && ip4 != "" {
+						// zlog.Info("IP:", a.String(), iface.Name, str)
+						if skipLocal && (strings.HasPrefix(str, "192.168.") || str == "127.0.0.1") {
 							continue
 						}
-						ip4 = str
+						m[iface.Name] = str
 					}
 				}
 			}
 		}
 	}
-	return
+	return m, nil
 }
 
 func GetIP4AddressAsParts(address string) (parts []int, err error) {
