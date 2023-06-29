@@ -29,15 +29,20 @@ func StoreFileNew(path string) *Store {
 }
 
 func (s Store) GetItem(key string, pointer interface{}) bool {
-	s.postfixKey(&key)
-	lock.Lock()
-	defer lock.Unlock()
-	gval, got := dict[key]
+	gval, got := s.GetItemAsAny(key)
 	if got {
 		reflect.ValueOf(pointer).Elem().Set(reflect.ValueOf(gval))
 		return true
 	}
 	return false
+}
+
+func (s Store) GetItemAsAny(key string) (any, bool) {
+	s.postfixKey(&key)
+	lock.Lock()
+	defer lock.Unlock()
+	gval, got := dict[key]
+	return gval, got
 }
 
 func (s *Store) SetItem(key string, v interface{}, sync bool) error {

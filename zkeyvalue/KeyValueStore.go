@@ -24,8 +24,8 @@ type Store struct {
 }
 
 var (
-	GlobalKeyPostfix   string // this is added to ALL key prefixes
-	DefaultStore       *Store
+	GlobalKeyPostfix    string // this is added to ALL key prefixes
+	DefaultStore        *Store
 	DefaultSessionStore *Store
 )
 
@@ -38,7 +38,7 @@ func (s Store) GetObject(key string, objectPtr interface{}) (got bool) {
 	got = s.GetItem(key, &rawjson)
 	if got {
 		err := json.Unmarshal([]byte(rawjson), objectPtr)
-		if zlog.OnError(err, "unmarshal") {
+		if zlog.OnError(err, "unmarshal", string(rawjson), zlog.CallingStackString()) {
 			return
 		}
 	}

@@ -16,10 +16,34 @@ func (k Store) getLocalStorage() js.Value {
 	return js.Global().Get("localStorage")
 }
 
-func (k Store) GetItem(key string, v interface{}) bool {
+func (s Store) GetItemAsAny(key string) (any, bool) {
+	var i int64
+	var f float64
+	var b bool
+	var str string
+	got := s.GetItem(key, &i)
+	if got {
+		return i, true
+	}
+	got = s.GetItem(key, &f)
+	if got {
+		return f, true
+	}
+	got = s.GetItem(key, &b)
+	if got {
+		return b, true
+	}
+	got = s.GetItem(key, &str)
+	if got {
+		return str, true
+	}
+	return nil, false
+}
+
+func (s Store) GetItem(key string, v interface{}) bool {
 	var err error
-	k.postfixKey(&key)
-	local := k.getLocalStorage()
+	s.postfixKey(&key)
+	local := s.getLocalStorage()
 	o := local.Get(key)
 
 	// zlog.Info("get kv item:", key, o.Type(), o)
