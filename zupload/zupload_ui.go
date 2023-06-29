@@ -241,13 +241,16 @@ func (v *UploadView) CallHTTUpload(up UploadPayload, data []byte) {
 		zalert.ShowError(err)
 	}
 	if result != nil {
-		str, _ := result["error"].(string)
+		var err error
+		serr, _ := result["error"].(string)
+		if serr != "" {
+			delete(result, "error")
+			err = errors.New(serr)
+		}
 		if v.FileUploadedToServerHandler != nil {
-			v.FileUploadedToServerHandler(result, errors.New(str))
-		} else {
-			if str != "" {
-				zalert.Show(str)
-			}
+			v.FileUploadedToServerHandler(result, err)
+		} else if err != nil {
+			zalert.ShowError(err)
 		}
 		return
 	}

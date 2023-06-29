@@ -121,7 +121,7 @@ func handleUpload(w http.ResponseWriter, req *http.Request) {
 		result, err = callHandler(up, reader)
 	}
 	if err != nil {
-		result["error"] = err.Error()
+		result = zdict.Dict{"error": err.Error()}
 	}
 	zrest.ReturnDict(w, req, result)
 }
