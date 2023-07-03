@@ -167,5 +167,5 @@ func getAndShowUserList() {
 	// zlog.Info("USERS:", zlog.Full(us))
 	table := makeTableOwner(us)
 	att := zpresent.ModalDialogAttributes
-	zpresent.PresentTitledView(table.grid, "Users", att, nil, nil, nil, nil)
+	zpresent.PresentTitledView(table.grid, "Users", att, nil, nil)
 }

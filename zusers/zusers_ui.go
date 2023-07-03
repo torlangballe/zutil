@@ -170,7 +170,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	}
 	att := zpresent.AttributesNew()
 	att.Modal = true
-	zpresent.PresentView(v1, att, nil, nil)
+	zpresent.PresentView(v1, att)
 }
 
 func validateFields(user, pass *ztext.TextView, login, register *zbutton.Button) {
@@ -290,7 +290,7 @@ func HandleResetPassword(args map[string]string) {
 	stack := zcontainer.StackViewHor("stack")
 	att := zpresent.AttributesNew()
 	att.MakeFull = true
-	zpresent.PresentView(stack, att, func(win *zwindow.Window) {
+	att.PresentedFunc = func(win *zwindow.Window) {
 		if win == nil {
 			return
 		}
@@ -311,7 +311,8 @@ func HandleResetPassword(args map[string]string) {
 			go callResetPassword(reset)
 			return true
 		})
-	}, nil)
+	}
+	zpresent.PresentView(stack, att)
 	select {}
 }
 
