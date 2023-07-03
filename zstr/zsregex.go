@@ -1,6 +1,7 @@
 package zstr
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -79,4 +80,50 @@ func IsValidEmail(email string) bool {
 		return false
 	}
 	return EmailRegex.MatchString(email)
+}
+
+// WildcardAsteriskToRegExCapture turns *'s in a string to wildcard capture symbols
+func WildcardAsteriskToRegExCapture(str string) (*regexp.Regexp, error) {
+	str = regexp.QuoteMeta(str)
+	str = strings.Replace(str, `\*`, "(.*)", -1)
+	return regexp.Compile(str)
+}
+
+// A WildCardTransformer takes has a from: Big* and a to: Medium* which need the same amount of '*'s.
+// Each * in from replaces the next * in to. BigDog -> MediumDog etc
+// Big* to: *Medium would yield: BigDog -> DogMedium
+type WildCardTransformer struct {
+	regEx         *regexp.Regexp
+	wildTo        string
+	asteriskCount int
+}
+
+func NewWildCardTransformer(wildFrom, wildTo string) (*WildCardTransformer, error) {
+	var err error
+
+	cf := strings.Count(wildFrom, "*")
+	ct := strings.Count(wildTo, "*")
+	if cf != ct {
+		return nil, fmt.Errorf("Mismatch in number of wildcard asterisks: %s != %s", cf, ct)
+	}
+	w := &WildCardTransformer{}
+	w.asteriskCount = cf
+	w.wildTo = wildTo
+	w.regEx, err = WildcardAsteriskToRegExCapture(wildFrom)
+	if err != nil {
+		return nil, fmt.Errorf("%v: %s", err, wildFrom)
+	}
+	return w, nil
+}
+
+func (w *WildCardTransformer) Transform(str string) (string, error) {
+	matches := GetAllCaptures(w.regEx, str)
+	if len(matches) != w.asteriskCount {
+		return "", fmt.Errorf("input string has different nuber of matches than from wildcard wants: %d != %d", len(matches), w.asteriskCount)
+	}
+	replaced := w.wildTo
+	for _, m := range matches {
+		replaced = strings.Replace(replaced, "*", m, 1)
+	}
+	return replaced, nil
 }
