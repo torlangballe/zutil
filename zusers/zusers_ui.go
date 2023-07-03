@@ -45,7 +45,7 @@ var (
 
 func Init() {
 	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
-	// zlog.Info("checkAndDoAuth:", token)
+	zlog.Info("checkAndDoAuth:", token)
 	if token != "" {
 		zrpc.MainClient.AuthToken = token
 	}
@@ -272,7 +272,7 @@ func showDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title strin
 	att := zpresent.AttributesNew()
 	att.Modal = true
 
-	zalert.PresentOKCanceledView(v1, title, att, func(ok bool) bool {
+	zalert.PresentOKCanceledView(v1, title, att, nil, func(ok bool) bool {
 		if ok {
 			got(textField.Text())
 		}
