@@ -99,7 +99,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 
 	login := zbutton.New(zwords.Login())
 	login.SetMinWidth(90)
-	login.MakeEnterDefault()
+	login.MakeReturnKeyDefault()
 	login.SetUsable(false)
 
 	validate := func() {
