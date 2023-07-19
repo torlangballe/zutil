@@ -5,6 +5,7 @@ package zdesktop
 // #cgo LDFLAGS: -framework AppKit
 // #cgo LDFLAGS: -framework CoreGraphics
 // #include <CoreGraphics/CoreGraphics.h>
+// #include <stdlib.h>
 // typedef struct WinIDInfo {
 //     long       winID;
 //     int        scale;
@@ -130,7 +131,9 @@ func WindowWithTitleExists(title, app string) bool {
 	//	title = getTitleWithApp(title, app)
 	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
-		wInfo := C.WindowGetIDScaleAndRectForTitle(C.CString(title), C.long(pid))
+		ctitle := C.CString(title)
+		wInfo := C.WindowGetIDScaleAndRectForTitle(ctitle, C.long(pid))
+		C.free(unsafe.Pointer(ctitle))
 		if int(wInfo.winID) != 0 {
 			return true
 		}
@@ -148,7 +151,9 @@ func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, s
 	// fmt.Println("SetWindowRectForTitle:", title, app, pids)
 	for _, pid := range pids {
 		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
-		w := C.WindowGetIDScaleAndRectForTitle(C.CString(title), C.long(pid))
+		ctitle := C.CString(title)
+		w := C.WindowGetIDScaleAndRectForTitle(ctitle, C.long(pid))
+		C.free(unsafe.Pointer(ctitle))
 		serr := C.GoString(w.err)
 		// fmt.Println("GetIDAndScaleForWindowTitle2 go:", serr, w.winID)
 		if serr != "" {
@@ -176,7 +181,9 @@ func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect
 func CloseWindowForTitle(title, app string) error {
 	pids := zprocess.GetPIDsForAppName(app, false)
 	for _, pid := range pids {
-		r := C.CloseWindowForTitle(C.CString(title), C.long(pid))
+		ctitle := C.CString(title)
+		r := C.CloseWindowForTitle(ctitle, C.long(pid))
+		C.free(unsafe.Pointer(ctitle))
 		if r == 1 {
 			return nil
 		}
@@ -187,7 +194,9 @@ func CloseWindowForTitle(title, app string) error {
 func SetWindowRectForTitle(title, app string, rect zgeo.Rect) (winPID int64, err error) {
 	pids := zprocess.GetPIDsForAppName(app, false)
 	for _, pid := range pids {
-		r := C.SetWindowRectForTitle(C.CString(title), C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
+		ctitle := C.CString(title)
+		r := C.SetWindowRectForTitle(ctitle, C.long(pid), C.int(rect.Pos.X), C.int(rect.Pos.Y), C.int(rect.Size.W), C.int(rect.Size.H))
+		C.free(unsafe.Pointer(ctitle))
 		if r != 0 {
 			return pid, nil
 		}
@@ -205,7 +214,9 @@ func ActivateWindow(title, app string) {
 	//	title = getTitleWithApp(title, app)
 	pid, _ := GetCachedPIDForAppName(app)
 	if pid != 0 {
-		C.ActivateWindowForTitle(C.CString(title), C.long(pid))
+		ctitle := C.CString(title)
+		C.ActivateWindowForTitle(ctitle, C.long(pid))
+		C.free(unsafe.Pointer(ctitle))
 	}
 }
 
