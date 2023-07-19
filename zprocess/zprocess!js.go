@@ -273,3 +273,13 @@ func RestartSelf() error {
 	}
 	return syscall.Exec(self, args, env)
 }
+
+func MemoryBytesUsedByProcess(processID int64) int64 {
+	proc, err := process.NewProcess(int32(processID))
+	if zlog.OnError(err) {
+		return -1
+	}
+	info, err := proc.MemoryInfo()
+	// zlog.Info("MemoryBytesUsedBySelf:", zlog.Full(info), err)
+	return int64(info.RSS)
+}
