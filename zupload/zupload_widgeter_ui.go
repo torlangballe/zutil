@@ -43,7 +43,6 @@ func (a UploadWidgeter) Create(f *zfields.Field) zview.View {
 	zlog.Assert(len(v.HandleID) > 0)
 	zlog.Assert(v.HandleID != "")
 	v.FileReadyToSendHandler = widgeterHandlers[v.HandleID]
-	zlog.Info("Create:", v.CallHTTUpload != nil)
 	if f.Styling.FGColor.Valid {
 		col := f.Styling.FGColor
 		if col.Valid {

@@ -38,6 +38,11 @@ import (
 
 type UploadView struct {
 	zcontainer.StackView
+	HandleID                    string
+	AcceptExtensions            []string
+	TargetDirectory             string // if empty, a temporary directory is used
+	FileReadyToSendHandler      func(payload UploadPayload, data []byte)
+	FileUploadedToServerHandler func(result zdict.Dict, err error)
 	mainText                    *ztext.TextView
 	password                    *ztext.TextView
 	button                      *zbutton.Button
@@ -45,17 +50,17 @@ type UploadView struct {
 	DropWell                    *zwidgets.DropWell
 	actionMenu                  *zmenu.MenuView
 	activity                    *zwidgets.ActivityView
-	HandleID                    string
-	AcceptExtensions            []string
-	TargetDirectory             string // if empty, a temporary directory is used
-	FileReadyToSendHandler      func(payload UploadPayload, data []byte)
-	FileUploadedToServerHandler func(result zdict.Dict, err error)
 }
 
 var (
 	allTypes       = []string{Drop, URL, SCP, Upload}
 	storeKeyPrefix = "zwidgets.UploadView."
+	AuthTokenFunc  func() string // AuthTokenFunc is set in ui and server, and sent from ui in CallHTTUpload, and checked in server's handleUpload
 )
+
+func Init(authTokenGetter func() string) {
+	AuthTokenFunc = authTokenGetter
+}
 
 func NewUploadView(storeName string, allow []string) *UploadView {
 	v := &UploadView{}
@@ -232,6 +237,10 @@ func (v *UploadView) CallHTTUpload(up UploadPayload, data []byte) {
 		"type": up.Type,
 	}
 	params.Headers["X-Password"] = up.Password
+	if AuthTokenFunc != nil {
+		params.Headers["X-Token"] = AuthTokenFunc()
+	}
+	zlog.Info("CallHTTUpload:", AuthTokenFunc != nil, params.Headers["X-Token"])
 	params.TimeoutSecs = 120
 	// params.PrintBody = true
 	surl := zapp.DownloadPathPrefix + "zupload"
@@ -251,6 +260,11 @@ func (v *UploadView) CallHTTUpload(up UploadPayload, data []byte) {
 			v.FileUploadedToServerHandler(result, err)
 		} else if err != nil {
 			zalert.ShowError(err)
+		} else {
+			message, got := result[ShowMessageKey]
+			if got {
+				zalert.Show(message)
+			}
 		}
 		return
 	}

@@ -20,16 +20,19 @@ import (
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
+	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 	"golang.org/x/crypto/ssh"
 )
 
 var (
-	handlers = map[string]func(name string, reader io.ReadCloser) (zdict.Dict, error){}
+	handlers      = map[string]func(name string, reader io.ReadCloser) (zdict.Dict, error){}
+	authenticator zrpc.TokenAuthenticator
 )
 
-func Init(router *mux.Router) {
+func Init(router *mux.Router, a zrpc.TokenAuthenticator) {
 	zrest.AddHandler(router, "zupload", handleUpload).Methods("POST")
+	authenticator = a
 }
 
 // RegisterUploadHandler registers a method to call if an upload with id is done by gui.
@@ -109,6 +112,11 @@ func handleUpload(w http.ResponseWriter, req *http.Request) {
 	up.HandleID = values.Get("id")
 	up.Text = values.Get("text")
 	up.Password = req.Header.Get("X-Password")
+	token := req.Header.Get("X-Token")
+	if authenticator != nil && !authenticator.IsTokenValid(token) {
+		zrest.ReturnAndPrintError(w, req, http.StatusUnauthorized)
+		return
+	}
 	reader := req.Body
 
 	switch up.Type {
