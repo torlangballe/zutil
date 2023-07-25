@@ -21,16 +21,9 @@ import (
 // https://reposhub.com/javascript/css/antonmedv-codejar.html
 // https://godoc.org/github.com/russross/blackfriday
 
-func newTemplater() *Templater {
-	t := &Templater{}
-	t.TeXFontSize = 14
-	t.DPI = 144
-	return t
-}
-
-func ConvertToHTML(input, title, cssURL string, variables zdict.Dict) (string, error) {
+func ConvertToHTML(filepath, title, cssURL string, variables zdict.Dict) (string, error) {
 	t := newTemplater()
-	input = t.Preprocess(title, input, variables)
+	input := t.Preprocess(filepath, title, variables)
 	params := blackfriday.HTMLRendererParameters{}
 	params.Title = title
 	params.Flags = blackfriday.CompletePage | blackfriday.HrefTargetBlank
@@ -50,10 +43,10 @@ var extensions = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.
 	blackfriday.Autolink | blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HeadingIDs |
 	blackfriday.BackslashLineBreak | blackfriday.DefinitionLists | blackfriday.HardLineBreak
 
-func ConvertToPDF(input, title, localFilePathPrefix string, variables zdict.Dict) (string, error) {
+func ConvertToPDF(filepath, title, localFilePathPrefix string, variables zdict.Dict) (string, error) {
 	t := newTemplater()
 	t.DPI = 300
-	input = t.Preprocess(title, input, variables)
+	input := t.Preprocess(filepath, title, variables)
 	tempFile := zfile.CreateTempFilePath(title + ".pdf")
 	renderer := mdtopdf.NewPdfRenderer("", "", tempFile, "trace.log")
 	renderer.LocalFilePathPrefix = localFilePathPrefix
@@ -236,12 +229,7 @@ func FlattenMarkdown(pathPrefix string, chapters []string, tableOfContents bool)
 
 func ServeAsHTML(w http.ResponseWriter, req *http.Request, filepath, cssURL string, variables zdict.Dict) {
 	defer req.Body.Close()
-	markdown, err := zfile.ReadStringFromFile(filepath)
-	if err != nil {
-		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, err, "read")
-		return
-	}
-	html, err := ConvertToHTML(markdown, req.URL.Path, cssURL, variables)
+	html, err := ConvertToHTML(filepath, req.URL.Path, cssURL, variables)
 	if err != nil {
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, err, "convert")
 		return
