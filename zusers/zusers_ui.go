@@ -121,19 +121,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 		v1.Add(forgot, zgeo.TopRight)
 
 		forgot.SetPressedHandler(func() {
-			if username == "" {
-				username = usernameField.Text()
-			}
-			zalert.PromptForText("Send reset email to address:", username, func(email string) {
-				err := zrpc.MainClient.Call("UsersCalls.SendResetPasswordMail", email, nil)
-				// zlog.Info("Calling:", err)
-				if err != nil {
-					zalert.ShowError(err)
-					return
-				}
-				zkeyvalue.DefaultStore.SetString(email, usernameKey, true)
-				zalert.Show("Reset email sent to:\n", email, "\n\nCheck your inbox and spam mailbox in a little while.")
-			})
+			doForgot(usernameField.Text())
 		})
 	}
 	h1 := zcontainer.StackViewHor("buttons")
@@ -171,6 +159,23 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	att := zpresent.AttributesNew()
 	att.Modal = true
 	zpresent.PresentView(v1, att)
+}
+
+func doForgot(username string) {
+	zalert.PromptForText("Send reset email to address:", username, func(email string) {
+		if !zstr.IsValidEmail(email) {
+			zalert.Show("Enter a valid email address to set password reset instructions to.")
+			return
+		}
+		err := zrpc.MainClient.Call("UsersCalls.SendResetPasswordMail", email, nil)
+		// zlog.Info("Calling:", err)
+		if err != nil {
+			zalert.ShowError(err)
+			return
+		}
+		zkeyvalue.DefaultStore.SetString(email, usernameKey, true)
+		zalert.Show("Reset email sent to:\n", email, "\n\nCheck your inbox and spam mailbox in a little while.")
+	})
 }
 
 func validateFields(user, pass *ztext.TextView, login, register *zbutton.Button) {
