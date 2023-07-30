@@ -6,10 +6,12 @@ import (
 	"go/token"
 	"net/http"
 	"reflect"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 type CallsBase struct{} // CallsBase is just a dummy type one can derive from when defining a type to add methods to for registation. You don't need to use it.
@@ -100,6 +102,9 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 			ci.Token = token
 			ci.UserAgent = req.UserAgent()
 			ci.IPAddress = req.RemoteAddr
+			sdate := req.Header.Get("X-Date")
+			ci.SendDate, _ = time.Parse(ztime.ISO8601Format, sdate)
+
 			rp, err = callMethodName(ctx, ci, cp.Method, cp.Args)
 			if err != nil {
 				zlog.Error(err, "call")

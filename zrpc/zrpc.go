@@ -11,6 +11,7 @@ package zrpc
 import (
 	"encoding/json"
 	"reflect"
+	"time"
 )
 
 // CallPayload is what a call is packaged into and serialized to json
@@ -50,11 +51,12 @@ type methodType struct {
 
 // ClientInfo stores information about the client calling.
 type ClientInfo struct {
-	Type      string // Type is zrpc or zrpc-rev for these calls. Might be something else if used elsewhere.
-	ClientID  string // ClientID identifies the client
-	Token     string `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
-	UserAgent string `json:",omitempty"` // From the http request
-	IPAddress string `json:",omitempty"` // From the http request
+	Type      string    // Type is zrpc or zrpc-rev for these calls. Might be something else if used elsewhere.
+	ClientID  string    // ClientID identifies the client
+	Token     string    `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
+	UserAgent string    `json:",omitempty"` // From the http request
+	IPAddress string    `json:",omitempty"` // From the http request
+	SendDate  time.Time `json:",omitempty"` // From the http requests Date header
 }
 
 // TransportError is a specific error type. Any problem with the actual transport of an zrpc call is

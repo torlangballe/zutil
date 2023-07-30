@@ -228,7 +228,6 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 	p := zprocess.PushProcess(30, "GetResponseFromReqClient:"+request.URL.String())
 	resp, err = client.Do(request)
 	zprocess.PopProcess(p)
-	// zlog.Info("zhttp.GetResponse:", err,request.URL)
 	if err == nil && resp == nil {
 		return nil, errors.New("client.Do gave no response: " + request.URL.String())
 	}

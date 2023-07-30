@@ -3,12 +3,14 @@ package zrpc
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
 )
 
@@ -62,7 +64,7 @@ func (c *Client) Call(method string, input, result any) error {
 	params := zhttp.MakeParameters()
 	params.TimeoutSecs = c.TimeoutSecs
 	params.SkipVerifyCertificate = c.SkipVerifyCertificate
-	// params.PrintBody = true
+	params.Headers["X-Date"] = time.Now().UTC().Format(ztime.ISO8601Format)
 	if c.AuthToken != "" {
 		cp.Token = c.AuthToken
 	}
