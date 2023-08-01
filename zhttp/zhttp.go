@@ -17,6 +17,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -161,15 +162,26 @@ var defClient *http.Client
 var defSkipClient *http.Client
 
 func makeClient(skipVerify bool) *http.Client {
-	return &http.Client{
+	c := &http.Client{
 		Timeout: 15 * time.Second,
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 5,
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true, // params.SkipVerifyCertificate,
+				InsecureSkipVerify: true,
 			},
 		},
 	}
+	if runtime.GOOS != "js" {
+		c.Transport = &http.Transport{ //
+			MaxIdleConnsPerHost: 100,
+			MaxConnsPerHost:     100,
+			MaxIdleConns:        100,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+	return c
 }
 
 func MakeRequest(surl string, params Parameters) (request *http.Request, client *http.Client, err error) {
