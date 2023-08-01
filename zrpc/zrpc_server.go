@@ -63,6 +63,7 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var rp receivePayload
 	var token string
 
+	// zlog.Info("ServeRPC:", req.Header.Get("X-Date"))
 	zrest.AddCORSHeaders(w, req)
 	defer req.Body.Close()
 	if req.Method == "OPTIONS" {
@@ -103,7 +104,7 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 			ci.UserAgent = req.UserAgent()
 			ci.IPAddress = req.RemoteAddr
 			sdate := req.Header.Get("X-Date")
-			ci.SendDate, _ = time.Parse(ztime.ISO8601Format, sdate)
+			ci.SendDate, _ = time.Parse(ztime.JavascriptISO, sdate)
 
 			rp, err = callMethodName(ctx, ci, cp.Method, cp.Args)
 			if err != nil {

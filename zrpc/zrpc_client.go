@@ -64,7 +64,7 @@ func (c *Client) Call(method string, input, result any) error {
 	params := zhttp.MakeParameters()
 	params.TimeoutSecs = c.TimeoutSecs
 	params.SkipVerifyCertificate = c.SkipVerifyCertificate
-	params.Headers["X-Date"] = time.Now().UTC().Format(ztime.ISO8601Format)
+	params.Headers["X-Date"] = time.Now().UTC().Format(ztime.JavascriptISO)
 	if c.AuthToken != "" {
 		cp.Token = c.AuthToken
 	}
