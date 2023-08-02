@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/sasha-s/go-deadlock"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/ztimer"
@@ -20,8 +20,7 @@ type connection struct {
 
 type Server struct {
 	connections map[string]*connection
-	mutex       deadlock.Mutex
-	//	mutex       sync.Mutex
+	mutex       sync.Mutex
 }
 
 var upgrader = websocket.Upgrader{} // use default options

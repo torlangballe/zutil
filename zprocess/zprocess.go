@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sasha-s/go-deadlock"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/ztime"
@@ -47,7 +46,7 @@ func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 }
 
 type TimedMutex struct {
-	deadlock.Mutex
+	sync.Mutex
 }
 
 /*
