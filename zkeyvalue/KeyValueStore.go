@@ -6,6 +6,8 @@ import (
 
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zfloat"
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -56,11 +58,15 @@ func (s Store) GetDict(key string) (dict zdict.Dict, got bool) {
 }
 
 func (s Store) GetInt64(key string, def int64) (val int64, got bool) {
-	got = s.GetItem(key, &val)
+	a, got := s.GetItemAsAny(key)
 	if got {
-		return
+		n, err := zint.GetAny(a)
+		if zlog.OnError(err) {
+			return def, false
+		}
+		return n, true
 	}
-	return def, true
+	return def, false
 }
 
 func (s Store) GetInt(key string, def int) (int, bool) {
@@ -70,11 +76,15 @@ func (s Store) GetInt(key string, def int) (int, bool) {
 }
 
 func (s Store) GetDouble(key string, def float64) (val float64, got bool) {
-	got = s.GetItem(key, &val)
+	a, got := s.GetItemAsAny(key)
 	if got {
-		return val, true
+		n, err := zfloat.GetAny(a)
+		if zlog.OnError(err) {
+			return def, false
+		}
+		return n, true
 	}
-	return def, true
+	return def, false
 }
 
 func (s Store) GetTime(key string) (time.Time, bool) {
