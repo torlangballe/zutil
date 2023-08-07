@@ -10,14 +10,10 @@ import (
 	"path/filepath"
 	"time"
 
-	//zrest "github.com/torlangballe/utils/urest"
+	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
-
-	//"github.com/torlangballe/zutil/zrest"
-
-	"github.com/gorilla/mux"
 )
 
 type Handler struct {
@@ -38,6 +34,7 @@ type HandlerFunc func(http.ResponseWriter, *http.Request, *Handler)
 
 func AddHandler(router *mux.Router, pattern string, handler *Handler, handlerFunc HandlerFunc) *mux.Route {
 	return zrest.AddHandler(router, "templates/"+pattern, func(w http.ResponseWriter, req *http.Request) {
+		zlog.Info("PlayTemplate:", req.URL.Query().Get("Title"))
 		handlerFunc(w, req, handler)
 	})
 }
