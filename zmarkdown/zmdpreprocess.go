@@ -98,23 +98,18 @@ func getImageMarkdownFromCacheID(title, cacheID string) string {
 	return fmt.Sprintf("![%s](%s)", title, surl)
 }
 
-func (t *Templater) Preprocess(fpath, title string, variables zdict.Dict) string {
+func (t *Templater) Preprocess(markdownText, dir, title string, variables zdict.Dict) string {
 	zlog.Assert(Cache != nil, "cache")
 	var buf bytes.Buffer
 	funcMap := template.FuncMap{
 		// "tex": t.processTex,
 		// "dot": t.processDot,
 	}
-	markdownText, err := zfile.ReadStringFromFile(fpath)
-	if err != nil {
-		return errToStr(err, title, "markdown read")
-	}
+
 	template, err := template.New(title).Funcs(funcMap).Parse(markdownText)
 	if err != nil {
 		return errToStr(err, title, "template-parse")
 	}
-	dir, _ := filepath.Split(fpath)
-
 	zfile.Walk(dir, "*.shared.md", zfile.WalkOptionRecursive, func(fpath string, info os.FileInfo) error {
 		_, fname := filepath.Split(fpath)
 		input, _ := zfile.ReadStringFromFile(fpath)
@@ -126,6 +121,7 @@ func (t *Templater) Preprocess(fpath, title string, variables zdict.Dict) string
 	})
 	err = template.Execute(&buf, variables)
 	if err != nil {
+		zlog.Error(err, "markdown execute", dir)
 		return errToStr(err, title, "template-execute")
 	}
 	return buf.String()

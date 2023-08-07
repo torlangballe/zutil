@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -21,9 +22,10 @@ import (
 // https://reposhub.com/javascript/css/antonmedv-codejar.html
 // https://godoc.org/github.com/russross/blackfriday
 
-func ConvertToHTML(filepath, title, cssURL string, variables zdict.Dict) (string, error) {
+func ConvertToHTML(input, dir, title, cssURL string, variables zdict.Dict) (string, error) {
 	t := newTemplater()
-	input := t.Preprocess(filepath, title, variables)
+	input = t.Preprocess(input, dir, title, variables)
+	zlog.Info("ConvertToHTML:", variables, input)
 	params := blackfriday.HTMLRendererParameters{}
 	params.Title = title
 	params.Flags = blackfriday.CompletePage | blackfriday.HrefTargetBlank
@@ -43,15 +45,14 @@ var extensions = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.
 	blackfriday.Autolink | blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HeadingIDs |
 	blackfriday.BackslashLineBreak | blackfriday.DefinitionLists | blackfriday.HardLineBreak
 
-func ConvertToPDF(filepath, title, localFilePathPrefix string, variables zdict.Dict) (string, error) {
+func ConvertToPDF(input, dir, title, localFilePathPrefix string, variables zdict.Dict) (string, error) {
 	t := newTemplater()
 	t.DPI = 300
-	input := t.Preprocess(filepath, title, variables)
+	input = t.Preprocess(input, dir, title, variables)
 	tempFile := zfile.CreateTempFilePath(title + ".pdf")
 	renderer := mdtopdf.NewPdfRenderer("", "", tempFile, "trace.log")
 	renderer.LocalFilePathPrefix = localFilePathPrefix
 	renderer.LocalImagePathAlternativePrefix = Cache.GetWorkDirectoryStart()
-	zlog.Info("ConvertToPDF:", renderer.LocalImagePathAlternativePrefix)
 	err := renderer.Process([]byte(input), blackfriday.WithExtensions(extensions)) //blackfriday.HeadingIDs))
 	if err != nil {
 		return "", zlog.Error(err, "processing", zlog.CallingStackString())
@@ -213,7 +214,7 @@ func FlattenMarkdown(pathPrefix string, chapters []string, tableOfContents bool)
 				getNiceHeader(&capture, &rest)
 				id := headerToAnchorID(capture)
 				anchor := anchorFromFileAndAnchor(chapter, id)
-				nstr := fmt.Sprintf("%s {#%s} %s", capture, anchor, rest)
+				nstr := fmt.Sprintf("%s {{`{#%s}`}} %s", capture, anchor, rest)
 				return nstr
 			})
 			out += snew + "\n"
@@ -227,9 +228,14 @@ func FlattenMarkdown(pathPrefix string, chapters []string, tableOfContents bool)
 	return out, nil
 }
 
-func ServeAsHTML(w http.ResponseWriter, req *http.Request, filepath, cssURL string, variables zdict.Dict) {
+func ServeAsHTML(w http.ResponseWriter, req *http.Request, fpath, cssURL string, variables zdict.Dict) {
 	defer req.Body.Close()
-	html, err := ConvertToHTML(filepath, req.URL.Path, cssURL, variables)
+	input, err := zfile.ReadStringFromFile(fpath)
+	if zlog.OnError(err) {
+		return
+	}
+	dir, _ := filepath.Split(fpath)
+	html, err := ConvertToHTML(input, dir, req.URL.Path, cssURL, variables)
 	if err != nil {
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, err, "convert")
 		return
