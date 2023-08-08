@@ -283,3 +283,25 @@ func MemoryBytesUsedByProcess(processID int64) int64 {
 	// zlog.Info("MemoryBytesUsedBySelf:", zlog.Full(info), err)
 	return int64(info.RSS)
 }
+
+func ConsumeOutAndError(outPipe, errPipe io.ReadCloser, ctx context.Context, dump func(isErr bool, line string)) {
+	if dump == nil {
+		dump = func(isErr bool, line string) {
+			if isErr {
+				zlog.Error(nil, line)
+			} else {
+				zlog.Info(line)
+			}
+		}
+	}
+	if errPipe != nil {
+		zstr.NewLineScanner(errPipe, ctx, func(line string, err error) {
+			dump(true, line)
+		})
+	}
+	if outPipe != nil {
+		zstr.NewLineScanner(outPipe, ctx, func(line string, err error) {
+			dump(false, line)
+		})
+	}
+}
