@@ -455,13 +455,16 @@ func SlicesAreEqual(aset, bset []string) bool {
 	return true
 }
 
-func AddToSet(strs *[]string, str string) bool {
-	i := IndexOf(str, *strs)
-	if i == -1 {
-		*strs = append(*strs, str)
-		return true
+func AddToSet(strs *[]string, str ...string) int {
+	var count int
+	for _, s := range str {
+		if StringsContain(*strs, s) {
+			continue
+		}
+		*strs = append(*strs, s)
+		count++
 	}
-	return false
+	return count
 }
 
 func GenerateRandomBytes(count int) []byte {
