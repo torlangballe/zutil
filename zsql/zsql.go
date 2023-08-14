@@ -44,6 +44,7 @@ type QueryBase struct {
 type BaseType int
 
 const (
+	NoType          = 0
 	SQLite BaseType = iota + 1
 	Postgres
 	MySQL // Not used yet

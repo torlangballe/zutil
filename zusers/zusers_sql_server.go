@@ -24,6 +24,10 @@ type SQLServer struct {
 }
 
 func NewSQLServer(db *sql.DB, btype zsql.BaseType) (*SQLServer, error) {
+	if db == nil {
+		setupWithSQLServer(nil)
+		return nil, nil
+	}
 	s := &SQLServer{}
 	s.DB = db
 	s.Type = btype

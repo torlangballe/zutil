@@ -45,7 +45,7 @@ var (
 
 func Init() {
 	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
-	zlog.Info("checkAndDoAuth:", token)
+	// zlog.Info("checkAndDoAuth:", token)
 	if token != "" {
 		zrpc.MainClient.AuthToken = token
 	}

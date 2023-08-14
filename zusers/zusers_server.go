@@ -22,7 +22,7 @@ type Session struct {
 	Created time.Time
 }
 
-type ResetData struct {
+type ForgotPasswordData struct {
 	MailAuth    zmail.Authentication
 	ProductName string
 	URL         string
@@ -36,15 +36,15 @@ var (
 	StoreAuthenticationError = fmt.Errorf("Store authentication failed: %w", AuthFailedError)
 	NoTokenError             = fmt.Errorf("no token for user: %w", AuthFailedError)
 	NoUserError              = fmt.Errorf("no user: %w", AuthFailedError)
-	Reset                    = ResetData{ProductName: "This service"}
+	ForgotPassword           = ForgotPasswordData{ProductName: "This service"}
 )
 
 func setupWithSQLServer(s *SQLServer) {
 	MainServer = s
 	zrpc.Register(Calls)
 	zrpc.SetAuthNotNeededForMethod("UsersCalls.Authenticate")
-	zrpc.SetAuthNotNeededForMethod("UsersCalls.SendResetPasswordMail")
-	zrpc.SetAuthNotNeededForMethod("UsersCalls.SetNewPasswordFromReset")
+	zrpc.SetAuthNotNeededForMethod("UsersCalls.SendForgotPasswordPasswordMail")
+	zrpc.SetAuthNotNeededForMethod("UsersCalls.SetNewPasswordFromForgotPassword")
 }
 
 func makeHash(str, salt string) string {
@@ -61,6 +61,9 @@ func makeSaltyHash(password string) (hash, salt, token string) {
 }
 
 func (*UsersCalls) GetUserForToken(token string, user *User) error {
+	if MainServer == nil {
+		return nil
+	}
 	u, err := MainServer.GetUserForToken(token)
 	if err != nil {
 		zlog.Error(err, "GetUserForToken", token)
@@ -71,10 +74,16 @@ func (*UsersCalls) GetUserForToken(token string, user *User) error {
 }
 
 func (*UsersCalls) Logout(ci zrpc.ClientInfo, username string, reply *zrpc.Unused) error {
+	if MainServer == nil {
+		return nil
+	}
 	return MainServer.UnauthenticateToken(ci.Token)
 }
 
 func (*UsersCalls) Authenticate(ci zrpc.ClientInfo, a Authentication, ui *ClientUserInfo) error {
+	if MainServer == nil {
+		return nil
+	}
 	var err error
 	makeToken := true
 	if a.IsRegister {
@@ -104,27 +113,33 @@ func (*UsersCalls) Authenticate(ci zrpc.ClientInfo, a Authentication, ui *Client
 	return nil
 }
 
-func (*UsersCalls) SendResetPasswordMail(email string, r *zrpc.Unused) error {
+func (*UsersCalls) SendForgotPasswordPasswordMail(email string, r *zrpc.Unused) error {
+	if MainServer == nil {
+		return nil
+	}
 	var m zmail.Mail
 	random := zstr.GenerateRandomHexBytes(16)
-	surl, _ := zhttp.MakeURLWithArgs(Reset.URL, map[string]string{
+	surl, _ := zhttp.MakeURLWithArgs(ForgotPassword.URL, map[string]string{
 		"reset": random,
 		"email": email,
 	})
 	m.From.Name = "Tor Langballe"
 	m.AddTo("", email)
-	m.Subject = "Reset password for " + Reset.ProductName
+	m.Subject = "Reset password for " + ForgotPassword.ProductName
 	m.TextContent = "Click here to reset your password:\n\n" + surl
-	// err := m.SendWithSMTP(Reset.MailAuth)
-	err := m.Send(Reset.MailAuth)
+	// err := m.SendWithSMTP(ForgotPassword.MailAuth)
+	err := m.Send(ForgotPassword.MailAuth)
 	if err == nil {
-		zlog.Error(err, "forgot password send error:", m, Reset.MailAuth)
+		zlog.Error(err, "forgot password send error:", m, ForgotPassword.MailAuth)
 		resetCache.Put(random, email)
 	}
 	return err
 }
 
-func (uc *UsersCalls) SetNewPasswordFromReset(ci zrpc.ClientInfo, reset ResetPassword, token *string) error {
+func (uc *UsersCalls) SetNewPasswordFromForgotPassword(ci zrpc.ClientInfo, reset ResetPassword, token *string) error {
+	if MainServer == nil {
+		return nil
+	}
 	var email string
 	got := resetCache.Get(&email, reset.ResetToken)
 	if !got {
@@ -145,26 +160,41 @@ func (uc *UsersCalls) SetNewPasswordFromReset(ci zrpc.ClientInfo, reset ResetPas
 }
 
 func (*UsersCalls) ChangePasswordForSelf(ci zrpc.ClientInfo, change ChangeInfo, token *string) error {
+	if MainServer == nil {
+		return nil
+	}
 	var err error
 	*token, err = MainServer.ChangePasswordForUser(ci, change.UserID, change.NewString)
 	return err
 }
 
 func (*UsersCalls) ChangeUserNameForSelf(ci zrpc.ClientInfo, change ChangeInfo) error {
+	if MainServer == nil {
+		return nil
+	}
 	return MainServer.ChangeUserNameForUser(change.UserID, change.NewString)
 }
 
 func (s *UsersCalls) GetAllUsers(in *zrpc.Unused, us *[]AllUserInfo) error {
+	if MainServer == nil {
+		return nil
+	}
 	var err error
 	*us, err = MainServer.GetAllUsers()
 	return err
 }
 
 func (s *UsersCalls) DeleteUserForID(id int64) error {
+	if MainServer == nil {
+		return nil
+	}
 	return MainServer.DeleteUserForID(id)
 }
 
 func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci zrpc.ClientInfo, change ClientUserInfo) error {
+	if MainServer == nil {
+		return nil
+	}
 	callingUser, err := MainServer.GetUserForToken(ci.Token)
 	if err != nil {
 		return zlog.Error(err, "getting admin user")
@@ -190,6 +220,9 @@ func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci zrpc.ClientInfo, change 
 }
 
 func (*UsersCalls) UnauthenticateUser(ci zrpc.ClientInfo, userID int64) error {
+	if MainServer == nil {
+		return nil
+	}
 	zlog.Info("US.UnauthenticateUser")
 	callingUser, err := MainServer.GetUserForToken(ci.Token)
 	if err != nil {

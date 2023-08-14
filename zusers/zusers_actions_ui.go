@@ -20,6 +20,9 @@ func NewActionsIcon() *zimageview.ImageView {
 	actions.DownsampleImages = true
 	actionMenu := zmenu.NewMenuedOwner()
 	actionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {
+		if CurrentUser.UserID == 0 {
+			return []zmenu.MenuedOItem{}
+		}
 		var items []zmenu.MenuedOItem
 		isAdmin := IsAdmin(CurrentUser.Permissions)
 		if CurrentUser.UserID != 0 {
