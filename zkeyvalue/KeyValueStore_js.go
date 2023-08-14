@@ -40,7 +40,7 @@ func (s Store) GetItemAsAny(key string) (any, bool) {
 	return nil, false
 }
 
-func (s Store) GetItem(key string, v interface{}) bool {
+func (s Store) GetItem(key string, v any) bool {
 	var err error
 	s.postfixKey(&key)
 	local := s.getLocalStorage()
@@ -69,14 +69,14 @@ func (s Store) GetItem(key string, v interface{}) bool {
 		ib, _ := v.(*bool)
 		if ib != nil {
 			*ib, err = zbool.FromStringWithError(o.String())
-			if zlog.OnError(err, "parse bool") {
+			if err != nil {
 				return false
 			}
 		}
 		ip, _ := v.(*int64)
 		if ip != nil {
 			*ip, err = strconv.ParseInt(o.String(), 10, 64)
-			if zlog.OnError(err, "parse int") {
+			if err != nil {
 				return false
 			}
 			// zlog.Info("get kv item int:", *ip)
@@ -84,7 +84,7 @@ func (s Store) GetItem(key string, v interface{}) bool {
 		fp, _ := v.(*float64)
 		if fp != nil {
 			*fp, err = strconv.ParseFloat(o.String(), 64)
-			if zlog.OnError(err, "parse float") {
+			if err != nil {
 				return false
 			}
 			// zlog.Info("get kv item float:", o.Float())
@@ -95,7 +95,7 @@ func (s Store) GetItem(key string, v interface{}) bool {
 	return false
 }
 
-func (k *Store) SetItem(key string, v interface{}, sync bool) error {
+func (k *Store) SetItem(key string, v any, sync bool) error {
 	k.postfixKey(&key)
 	local := k.getLocalStorage()
 	local.Set(key, v)
