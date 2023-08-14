@@ -45,7 +45,7 @@ func (s Store) GetItemAsAny(key string) (any, bool) {
 	return gval, got
 }
 
-func (s *Store) SetItem(key string, v interface{}, sync bool) error {
+func (s *Store) SetItem(key string, v any, sync bool) error {
 	s.postfixKey(&key)
 	lock.Lock()
 	dict[key] = v
