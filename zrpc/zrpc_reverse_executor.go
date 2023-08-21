@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/ztimer"
 )
 
 // Reverse execution funcionality is typically run on a browser or something not callable from server.
@@ -16,6 +17,13 @@ import (
 
 const PollRestartSecs = 10 // PollRestartSecs is how long to wait asking for a call, before doing a new poll.
 
+type ReverseExecutor struct {
+	client    *Client
+	pollTimer *ztimer.Repeater
+	stop      bool
+	on        bool
+}
+
 // ReverseResult is always sent with a poll. It can contain an existing result (if Token set), or in any case
 // a ReverseReceiverID to identify who is asking for calls.
 type ReverseResult struct {
@@ -25,54 +33,79 @@ type ReverseResult struct {
 }
 
 // reverseResults stores results from executed methods, waiting to be sent on next poll
-var reverseResults []ReverseResult
+var (
+	reverseResults    []ReverseResult
+	debugReverseCalls bool
+)
 
-// Starts the polling process in the background
-func InitReverseExecutor(pollClient *Client, id string) {
-	timedClient := *pollClient
-	timedClient.TimeoutSecs = PollRestartSecs // polling should be fast, total time with execution not included
-	timedClient.id = id
-	timedClient.KeepTokenOnAuthenticationInvalid = true
-	go startCallingPollForReverseCalls(&timedClient)
+func (r *ReverseExecutor) Remove() {
+	r.stop = true // should use a channel
 }
 
-func startCallingPollForReverseCalls(client *Client) {
+func (r *ReverseExecutor) SetOn(on bool) {
+	// zlog.Info("RE: SetOn", zlog.Pointer(r), on)
+	r.on = on
+}
+
+// Starts the polling process in the background
+func NewReverseExecutor(pollClient *Client, id string) *ReverseExecutor {
+	// zlog.Info("NewReverseExecutor", pollClient.AuthToken)
+	var r ReverseExecutor
+	r.client = pollClient.Copy()
+	r.client.TimeoutSecs = PollRestartSecs // polling should be fast, total time with execution not included
+	r.client.id = id
+	r.client.KeepTokenOnAuthenticationInvalid = true
+	go startCallingPollForReverseCalls(&r)
+	return &r
+}
+
+func startCallingPollForReverseCalls(r *ReverseExecutor) {
+	// zlog.Info("startCallingPollForReverseCalls", r.client.id)
 	for {
+		if r.stop {
+			return
+		}
+		if !r.on {
+			// zlog.Info("startCallingPollForReverseCalls off", zlog.Pointer(r), r.client.id)
+			time.Sleep(time.Millisecond * 50)
+			continue
+		}
 		// we loop forever calling RPCCalls.ReversePoll. No need to sleep between, as it waits on other end for a call to be ready
 		var cp callPayloadReceive
-		err := client.Call("RPCCalls.ReversePoll", client.id, &cp)
+		err := r.client.Call("RPCCalls.ReversePoll", r.client.id, &cp)
 		if err != nil {
-			zlog.Info("Call RPCCalls.ReversePoll, error! rp.Token:", err, cp.Token)
+			if debugReverseCalls {
+				zlog.Info("Call RPCCalls.ReversePoll, error! cp.Token:", err, cp.Token)
+			}
 			time.Sleep(time.Millisecond * 50) // lets not go nuts
 			continue
 		}
-		// if cp.Method == "" { // we got a dummy callPayloadReceive, because we sent a receivePayload, but did't have anything
-		// 	continue
-		// }
+		if cp.Method == "" { // we got a dummy callPayloadReceive, because we sent a receivePayload, but did't have anything
+			// zlog.Info("Call RPCCalls.ReversePoll, reveived dummy:")
+			continue
+		}
+		// zlog.Info("Call RPCCalls.ReversePoll, ok cp.Token:", err, cp.Token)
 		// zlog.Info("execute method:", cp.Method, cp.Token)
 		go func() {
 			var ci ClientInfo
 			var rr ReverseResult
 			ctx := context.Background()
 			ci.Type = "zrpc-rev"
-			ci.ClientID = client.id
-			ci.Token = client.AuthToken
+			ci.ClientID = r.client.id
+			ci.Token = r.client.AuthToken
 			receive, err := callMethodName(ctx, ci, cp.Method, cp.Args)
 			if err != nil {
 				rr.Error = err.Error()
 			}
-			if err != nil {
-				rr.Error = err.Error()
-			}
-			// zlog.Info("call receive:", cp.Method, reflect.TypeOf(receive.Result), receive.Result)
+			// zlog.Info("call receive:", cp.Method, cp.Token, err)
 			rr.clientReceivePayload.Error = receive.Error
 			rr.clientReceivePayload.AuthenticationInvalid = receive.AuthenticationInvalid
 			rr.clientReceivePayload.Result, err = json.Marshal(receive.Result)
 			zlog.OnError(err, "marshal receive")
 			rr.clientReceivePayload.TransportError = receive.TransportError
 			rr.Token = cp.Token
-			rr.ReverseReceiverID = client.id
-			cerr := client.Call("RPCCalls.ReversePushResult", rr, nil)
+			rr.ReverseReceiverID = r.client.id
+			cerr := r.client.Call("RPCCalls.ReversePushResult", rr, nil)
 			if cerr != nil {
 				zlog.Error(cerr, "call push result", rr.Token)
 			}

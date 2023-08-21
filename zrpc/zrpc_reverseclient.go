@@ -23,14 +23,9 @@ type pendingCall struct {
 }
 
 var (
-	AllReverseClients     zmap.LockMap[string, *ReverseClient]         // AllReverseClients stores all clients who have called ReversePoll with a unique ReverseReceiverID. Removed if no poll for a while.
-	HandleNewReceiverFunc func(id string, deleted bool) *ReverseClient // HandleNewReceiverFunc is called when a new receiver polls for calls
-	NoCallForTokenErr     = errors.New("NoCallForTokenErr")
+	NoCallForTokenErr = errors.New("NoCallForTokenErr")
+	allReverseClients zmap.LockMap[string, *ReverseClient] // allReverseClients stores all clients who have called ReversePoll with a unique ReverseReceiverID. Removed if no poll for a while.
 )
-
-func init() {
-	HandleNewReceiverFunc = DefaultHandleNewReceiverFunc
-}
 
 // The ReverseClient is very simple. All actual communication is done by zrpc from client to server.
 // It has a ReverseReceiverID, and is used to call to a specific (reverse) client.
@@ -48,10 +43,14 @@ type ReverseClient struct {
 // intermittently sleeping for a short while, awaiting a call added.
 // It returns without error if no calls waiting, cp.Method will be empty.
 func (RPCCalls) ReversePoll(receiverID string, cp *CallPayload) error {
-	rc := findOrHandleNewReverseReceiver(receiverID)
+	rc := findReverseClient(receiverID)
+	// zlog.Info("ReversePoll", receiverID, allReverseClients.Count(), rc.pendingCallsToSend.Count(), rc.pendingCallsSent.Count())
 	start := time.Now()
 	for time.Since(start) < time.Second*(PollRestartSecs-1) {
 		var has bool
+		// if findReverseClient(receiverID) != rc {
+		// 	zlog.Info("ReversePoll2", findReverseClient(receiverID) != rc)
+		// }
 		if rc.pendingCallsToSend.Count() != 0 {
 			has = true
 			rc.pendingCallsToSend.ForEach(func(token string, call pendingCall) bool {
@@ -62,16 +61,18 @@ func (RPCCalls) ReversePoll(receiverID string, cp *CallPayload) error {
 			})
 		}
 		if has {
+			// zlog.Info("ReversePoll has:", receiverID, cp.Token)
 			return nil
 		}
 		time.Sleep(time.Millisecond * 10)
 	}
+	// zlog.Info("ReversePoll hasnt:", receiverID, cp.Token)
 	return nil
 }
 
 func (RPCCalls) ReversePushResult(rp ReverseResult) error {
-	// zlog.Info("ReversePushResult:", reflect.TypeOf(rp.Result), rp.Result)
-	rc := findOrHandleNewReverseReceiver(rp.ReverseReceiverID)
+	// zlog.Info("ReversePushResult:", rp.Token)
+	rc := findReverseClient(rp.ReverseReceiverID)
 	pendingCall, got := rc.pendingCallsSent.Pop(rp.Token)
 	if !got {
 		zlog.Error(nil, "No call for result with token:", rp.Token, "in", rp.ReverseReceiverID, rc.pendingCallsSent.Count()) // make some kind of transport error
@@ -81,12 +82,9 @@ func (RPCCalls) ReversePushResult(rp ReverseResult) error {
 	return nil
 }
 
-func findOrHandleNewReverseReceiver(id string) *ReverseClient {
-	rc, _ := AllReverseClients.Get(id)
-	if rc == nil {
-		rc = HandleNewReceiverFunc(id, false)
-		// zlog.Info("ADDING new recevier:", id)
-	}
+func findReverseClient(id string) *ReverseClient {
+	rc, _ := allReverseClients.Get(id)
+	zlog.Assert(rc != nil, id)
 	rc.LastPolled = time.Now()
 	return rc
 }
@@ -102,50 +100,51 @@ func (rc *ReverseClient) Call(method string, args, resultPtr any) error {
 	pc.CallPayload.Token = token
 	pc.done = make(chan *clientReceivePayload, 10)
 	rc.pendingCallsToSend.Set(token, pc)
+	// zlog.Info("CALL:", method, pc.ClientID, token, rc.pendingCallsToSend.Count())
 	ticker := time.NewTicker(ztime.SecondsDur(PollRestartSecs))
 	select {
 	case <-ticker.C:
-		zlog.Info("Call timed out")
+		zlog.Info("Call timed out:", method)
 		rc.pendingCallsToSend.Remove(token)
 		return zlog.NewError("zrpc.Call reverse timed out:", method)
 	case r := <-pc.done:
-		err := json.Unmarshal(r.Result, resultPtr)
-		if err != nil {
-			return err
+		if resultPtr != nil {
+			err := json.Unmarshal(r.Result, resultPtr)
+			// zlog.Info("RevCall done", err)
+			if err != nil {
+				return err
+			}
 		}
 		// zlog.Info("ChannelPushed, call done", reflect.TypeOf(r.Result), resultPtr)
 		return nil
 	}
 }
 
-// DefaultHandleNewReceiverFunc adds or removes a ReverseClient to AllReverseClients.
+// DefaultHandleNewReceiverFunc adds or removes a ReverseClient to allReverseClients.
 // When overriding HandleNewReceiverFunc, you probably call this anyway, but use the ReverseClient.
-func DefaultHandleNewReceiverFunc(id string, deleted bool) *ReverseClient {
-	if deleted {
-		c, _ := AllReverseClients.Get(id)
-		AllReverseClients.Remove(id)
-		return c
-	}
+func NewReverseClient(receiverID string) *ReverseClient {
 	c := &ReverseClient{}
 	c.TimeoutSecs = 100
 	c.LastPolled = time.Now()
-	AllReverseClients.Set(id, c)
-	ztimer.RepeatIn(PollRestartSecs+5, func() bool {
+	allReverseClients.Set(receiverID, c)
+	ztimer.RepeatForever(PollRestartSecs+5, func() {
 		if time.Since(c.LastPolled) > ztime.SecondsDur(PollRestartSecs+5) {
-			zlog.Info("zrpc: Removed unpolling client from AllReverseClients", id)
-			AllReverseClients.Remove(id)
-			HandleNewReceiverFunc(id, true)
-			return false
+			zlog.Info("zrpc: Unresponsive client from allReverseClients", receiverID)
+			// allReverseClients.Remove(receiverID)
+			// HandleNewReceiverFunc(receiverID, true)
 		}
-		return true
 	})
 	return c
+}
+
+func RemoveReverseClient(receiverID string) {
+	allReverseClients.Remove(receiverID)
 }
 
 var multiWaiting zmap.LockMap[string, bool]
 
 func CallAllReceivers[R any](method, receiveIDWildcard string, args any, got func(result *R, err error)) {
-	AllReverseClients.ForEach(func(id string, rc *ReverseClient) bool {
+	allReverseClients.ForEach(func(id string, rc *ReverseClient) bool {
 		if receiveIDWildcard == "*" || zstr.MatchWildcard(receiveIDWildcard, id) {
 			sid := id + ":" + method
 			if multiWaiting.Has(sid) {
