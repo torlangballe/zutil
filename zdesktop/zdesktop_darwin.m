@@ -232,7 +232,7 @@ WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title) {
         NSLog(@"getwin err: %s\n", got.err);
         return got;
     }
-    NSLog(@"got win: %@ %g %g %g %g", find.title, (float)find.rect.origin.x, (float)find.rect.origin.y, (float)find.rect.size.width, (float)find.rect.size.height);
+    // NSLog(@"got win: %@ %g %g %g %g", find.title, (float)find.rect.origin.x, (float)find.rect.origin.y, (float)find.rect.size.width, (float)find.rect.size.height);
     got.scale = getBestScreenForBounds(find.rect).backingScaleFactor;
     got.winID = find.wid;
     got.x = find.rect.origin.x;
