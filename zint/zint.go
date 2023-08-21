@@ -130,6 +130,16 @@ func SubtractedSets64(set []int64, subtract []int64) []int64 {
 	return ns
 }
 
+func Intersection64(a, b []int64) []int64 {
+	var ns []int64
+	for _, n := range a {
+		if Slice64Contains(b, n) {
+			ns = append(ns, n)
+		}
+	}
+	return ns
+}
+
 func IsInSlice32(n int32, slice []int32) bool {
 	for _, s := range slice {
 		if s == n {
