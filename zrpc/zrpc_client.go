@@ -26,6 +26,7 @@ type Client struct {
 	KeepTokenOnAuthenticationInvalid bool    // if KeepTokenOnAuthenticationInvalid is true, the auth token isn't cleared on failure to authenticate
 	SkipVerifyCertificate            bool    // if true, no certificate checking is done for https calls
 	gettingResources                 zmap.LockMap[string, bool]
+	rateLimiters                     *ztimer.RateLimiters
 }
 
 // client is structure to store received info from the call
@@ -55,9 +56,46 @@ func NewClient(prefixURL string, id string) *Client {
 	return c
 }
 
+// Copy makes a copy of a client, to alter timeout or other fields.
+// Avoid copying the struct instead, as it contains mutexes and rate limiters not meant to be used in two places.
+func (c *Client) Copy() *Client {
+	var n Client
+	n.callURL = c.callURL
+	n.id = c.id
+	n.AuthToken = c.AuthToken
+	n.TimeoutSecs = c.TimeoutSecs
+	n.KeepTokenOnAuthenticationInvalid = c.KeepTokenOnAuthenticationInvalid
+	n.SkipVerifyCertificate = c.SkipVerifyCertificate
+	return &n
+}
+
+func (c *Client) AddRateLimiter(secs float64) {
+	c.rateLimiters = ztimer.NewRateLimiters(0.1)
+}
+
 // Call is used to execute a remote call. method is Type.MethodName
-// inoput can be nil if not used, and result can be nil if not used/not in method.
+// input can be nil if not used, and result can be nil if not used/not in method.
 func (c *Client) Call(method string, input, result any) error {
+	var err, terr error
+	if c.rateLimiters != nil {
+		c.rateLimiters.DoBackoff(method, 0.1, 2, func() bool {
+			err, terr = c.callWithTransportError(method, c.TimeoutSecs, input, result)
+			if terr != nil {
+				err = terr
+				return false
+			}
+			return true
+		})
+		return err
+	}
+	err, terr = c.callWithTransportError(method, c.TimeoutSecs, input, result)
+	if terr != nil && err == nil {
+		err = terr
+	}
+	return err
+}
+
+func (c *Client) callWithTransportError(method string, timeoutSecs float64, input, result any) (err error, terr error) {
 	var rp clientReceivePayload
 	cp := CallPayload{Method: method, Args: input}
 	cp.ClientID = c.id
@@ -72,9 +110,9 @@ func (c *Client) Call(method string, input, result any) error {
 		"method": method,
 	}
 	surl, _ := zhttp.MakeURLWithArgs(c.callURL, urlArgs)
-	_, err := zhttp.Post(surl, params, cp, &rp)
+	_, err = zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
-		return zlog.Error(err, "post")
+		return nil, zlog.NewError(err, "post")
 	}
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also
 		zlog.Info("zprc AuthenticationInvalid:", method, c.AuthToken)
@@ -87,27 +125,28 @@ func (c *Client) Call(method string, input, result any) error {
 		}
 	}
 	if rp.TransportError != "" {
-		err = rp.TransportError
-		return err
+		return nil, rp.TransportError
 	}
 	if rp.Error != "" {
-		return errors.New(rp.Error)
+		return errors.New(rp.Error), nil
 	}
 	if !rp.AuthenticationInvalid && result != nil {
 		err = json.Unmarshal(rp.Result, result)
 		if err != nil {
 			zlog.Error(err, c.AuthToken, "unmarshal", string(rp.Result))
-			return TransportError(err.Error())
+			return nil, TransportError(err.Error())
 		}
 	}
-	return nil
+	return nil, nil
 }
 
-// CallWithTimeout is a convenience method that makes a copy of c with a new timeout
-func (c *Client) CallWithTimeout(timeoutSecs float64, method string, args, result any) error {
-	n := *c
-	n.TimeoutSecs = timeoutSecs
-	return n.Call(method, args, result)
+// CallWithTimeout is a convenience method that calls method with a different timeout
+func (c *Client) CallWithTimeout(timeoutSecs float64, method string, input, result any) error {
+	err, terr := c.callWithTransportError(method, timeoutSecs, input, result)
+	if terr != nil && err == nil {
+		return terr
+	}
+	return err
 }
 
 func (c *Client) PollForUpdatedResources(got func(resID string)) {
