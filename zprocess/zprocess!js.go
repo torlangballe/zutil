@@ -66,14 +66,19 @@ func GetAppProgramPath(appName string) string {
 	return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
 }
 
-func RunApp(appName string, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
+func RunApp(appName string, ctx context.Context, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
 	path := GetAppProgramPath(appName)
-	cmd, outPipe, errPipe, err = MakeCommand(path, true, &inPipe, args...)
+	cmd, outPipe, errPipe, err = MakeCommand(path, ctx, true, &inPipe, args...)
 	return
 }
 
-func MakeCommand(command string, start bool, inPipe *io.WriteCloser, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
-	cmd = exec.Command(command, zstr.AnySliceToStrings(args)...)
+func MakeCommand(command string, ctx context.Context, start bool, inPipe *io.WriteCloser, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
+	sargs := zstr.AnySliceToStrings(args)
+	if ctx != nil {
+		cmd = exec.CommandContext(ctx, command, sargs...)
+	} else {
+		cmd = exec.Command(command, sargs...)
+	}
 	outPipe, err = cmd.StdoutPipe()
 	if err != nil {
 		err = zlog.Error(err, "connect stdout pipe")
