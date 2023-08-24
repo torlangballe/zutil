@@ -231,31 +231,31 @@ func checkAndDoAuth() {
 	doingAuth = true
 	var user User
 
-	//	zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken)
-	if zrpc.MainClient.AuthToken != "" {
-		err := zrpc.MainClient.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
-		if err == nil {
-			CurrentUser.UserID = user.ID
-			CurrentUser.UserName = user.UserName
-			CurrentUser.Permissions = user.Permissions
-			if AuthenticatedFunc != nil {
-				AuthenticatedFunc()
-			}
-			doingAuth = false
-			return
+	err := zrpc.MainClient.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
+	// zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken, err)
+	if err == nil {
+		CurrentUser.UserID = user.ID
+		CurrentUser.UserName = user.UserName
+		CurrentUser.Permissions = user.Permissions
+		if AuthenticatedFunc != nil {
+			AuthenticatedFunc()
 		}
-		zalert.ShowError(err)
+		doingAuth = false
+		return
 	}
-	ztimer.RepeatNow(0.1, func() bool {
-		if !zpresent.FirstPresented {
-			return true
-		}
-		OpenDialog(AllowRegistration, true, CanCancelAuthDialog, func() {
-			if AuthenticatedFunc != nil {
-				AuthenticatedFunc()
+	a := zalert.New(err.Error())
+	a.ShowOK(func() {
+		ztimer.RepeatNow(0.1, func() bool {
+			if !zpresent.FirstPresented {
+				return true
 			}
+			OpenDialog(AllowRegistration, true, CanCancelAuthDialog, func() {
+				if AuthenticatedFunc != nil {
+					AuthenticatedFunc()
+				}
+			})
+			return false
 		})
-		return false
 	})
 }
 
