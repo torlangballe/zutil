@@ -166,11 +166,14 @@ func (d Dict) ToStruct(structPtr any) {
 			name = zstr.FirstToTitleCase(name)
 			val, got = d[name]
 		}
+		if val == nil {
+			return true
+		}
 		// zlog.Info("Dict2Struct1:", name, fval.Kind())
 		switch fval.Kind() {
 		case reflect.String:
 			str, got := val.(string)
-			zlog.Assert(got)
+			zlog.Assert(got, reflect.TypeOf(val), name)
 			fval.Addr().Elem().SetString(str)
 		case reflect.Float32, reflect.Float64:
 			f, err := zfloat.GetAny(val)
