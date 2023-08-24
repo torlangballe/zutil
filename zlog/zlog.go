@@ -138,7 +138,7 @@ func NewError(parts ...interface{}) error {
 }
 
 func baseLog(err error, priority Priority, pos int, parts ...interface{}) error {
-	if priority < ErrorLevel && IsInTests {
+	if priority < WarningLevel && IsInTests {
 		return nil
 	}
 	for i, p := range parts {
