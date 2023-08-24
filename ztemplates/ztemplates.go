@@ -34,7 +34,7 @@ type HandlerFunc func(http.ResponseWriter, *http.Request, *Handler)
 
 func AddHandler(router *mux.Router, pattern string, handler *Handler, handlerFunc HandlerFunc) *mux.Route {
 	return zrest.AddHandler(router, "templates/"+pattern, func(w http.ResponseWriter, req *http.Request) {
-		zlog.Info("PlayTemplate:", req.URL.Query().Get("Title"))
+		zlog.Info("PlayTemplate:", req.URL.Query().Get("Title"), req.RemoteAddr)
 		handlerFunc(w, req, handler)
 	})
 }
@@ -144,7 +144,7 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 	// zlog.Info("ExecuteTemplate:", req.URL.Path)
 	err = h.mainTemplate.ExecuteTemplate(out, name, v)
 	if err != nil {
-		zlog.Error(err, "exe error:")
+		zlog.Warn(err, "exe error:")
 		return false
 	}
 	return true
