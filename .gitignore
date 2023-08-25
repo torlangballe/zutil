@@ -12,3 +12,4 @@
 *.zip
 *.out
 *.pprof
+testdata
