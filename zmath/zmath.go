@@ -248,7 +248,11 @@ func LengthIntoDividePoints(len int) (points []int) {
 	return
 }
 
-func RoundToMod(n, mod int64) int64 {
+func RoundToMod(n, mod int) int {
+	return n - n%mod
+}
+
+func RoundToMod64(n, mod int64) int64 {
 	return n - n%mod
 }
 
