@@ -38,7 +38,7 @@ func NewWithExpiry(expirySecs float64, fixed bool) *Cache {
 	c.items = map[string]*item{}
 	c.defaultExpiry = ztime.SecondsDur(expirySecs)
 	c.fixedExpiry = fixed
-	ztimer.RepeatIn(60*10, func() bool {
+	ztimer.Repeat(60*10, func() bool {
 		if !c.hasExpiries {
 			return true
 		}

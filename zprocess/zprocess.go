@@ -92,7 +92,7 @@ func (t *TimedMutex) Lock() {
 	t.started = time.Now()
 	currentMutexes.Remove(t.id)
 	timer.Stop()
-	t.repeater = ztimer.RepeatIn(warnSecs, func() bool {
+	t.repeater = ztimer.Repeat(warnSecs, func() bool {
 		zlog.Info("🟥TimeMutex still locked for:", time.Since(t.start), stack)
 		reportExisting(t.id)
 		return true

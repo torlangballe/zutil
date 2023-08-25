@@ -24,7 +24,7 @@ func RepeaterNew() *Repeater {
 	return &Repeater{}
 }
 
-func RepeatIn(secs float64, perform func() bool) *Repeater {
+func Repeat(secs float64, perform func() bool) *Repeater {
 	r := RepeaterNew()
 	r.Set(secs, false, perform)
 	return r

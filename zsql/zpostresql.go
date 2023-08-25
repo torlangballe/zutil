@@ -367,7 +367,7 @@ func SetupPostgres(userName, dbName, address string) (db *sql.DB, err error) {
 
 func PeriodicDump() {
 	folder := "dumps/"
-	ztimer.RepeatIn(60, func() bool {
+	ztimer.Repeat(60, func() bool {
 		file := folder + "latest.db"
 		if zfile.Exists(file) && time.Since(zfile.Modified(file)) > ztime.Day {
 			zfile.MakeDirAllIfNotExists(folder)

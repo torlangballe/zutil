@@ -27,7 +27,7 @@ var upgrader = websocket.Upgrader{} // use default options
 
 func setupConnection(c *connection, server *Server, ping bool, id string) {
 	if ping {
-		c.Pinger = ztimer.RepeatIn(20, func() bool {
+		c.Pinger = ztimer.Repeat(20, func() bool {
 			werr := c.Connection.WriteControl(websocket.PingMessage, nil, time.Now().Add(time.Second*15))
 			if werr != nil {
 				server.mutex.Lock()
