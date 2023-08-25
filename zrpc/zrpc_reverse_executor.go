@@ -81,7 +81,9 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 			continue
 		}
 		if cp.Method == "" { // we got a dummy callPayloadReceive, because we sent a receivePayload, but did't have anything
-			// zlog.Info("Call RPCCalls.ReversePoll, reveived dummy:")
+			if debugReverseCalls {
+				zlog.Info("Call RPCCalls.ReversePoll, reveived dummy:")
+			}
 			continue
 		}
 		// zlog.Info("Call RPCCalls.ReversePoll, ok cp.Token:", err, cp.Token)
@@ -95,16 +97,19 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 			ci.Token = r.client.AuthToken
 			receive, err := callMethodName(ctx, ci, cp.Method, cp.Args)
 			if err != nil {
-				rr.Error = err.Error()
+				rr.clientReceivePayload.Error = err.Error()
 			}
-			// zlog.Info("call receive:", cp.Method, cp.Token, err)
-			rr.clientReceivePayload.Error = receive.Error
+			// zlog.Info("call receive:", cp.Method, cp.Token, err, rr.Error)
+			if rr.clientReceivePayload.Error == "" {
+				rr.clientReceivePayload.Error = receive.Error
+			}
 			rr.clientReceivePayload.AuthenticationInvalid = receive.AuthenticationInvalid
 			rr.clientReceivePayload.Result, err = json.Marshal(receive.Result)
 			zlog.OnError(err, "marshal receive")
 			rr.clientReceivePayload.TransportError = receive.TransportError
 			rr.Token = cp.Token
 			rr.ReverseReceiverID = r.client.id
+			// zlog.Info("execute method:", err, cp.Method, rr.Error)
 			cerr := r.client.Call("RPCCalls.ReversePushResult", rr, nil)
 			if cerr != nil {
 				zlog.Error(cerr, "call push result", rr.Token)

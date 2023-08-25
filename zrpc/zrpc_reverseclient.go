@@ -71,7 +71,7 @@ func (RPCCalls) ReversePoll(receiverID string, cp *CallPayload) error {
 }
 
 func (RPCCalls) ReversePushResult(rp ReverseResult) error {
-	// zlog.Info("ReversePushResult:", rp.Token)
+	// zlog.Info("ReversePushResult:", rp.Token, rp.Error)
 	rc := findReverseClient(rp.ReverseReceiverID)
 	pendingCall, got := rc.pendingCallsSent.Pop(rp.Token)
 	if !got {
@@ -108,6 +108,9 @@ func (rc *ReverseClient) Call(method string, args, resultPtr any) error {
 		rc.pendingCallsToSend.Remove(token)
 		return zlog.NewError("zrpc.Call reverse timed out:", method)
 	case r := <-pc.done:
+		if r.Error != "" {
+			return errors.New(r.Error)
+		}
 		if resultPtr != nil {
 			err := json.Unmarshal(r.Result, resultPtr)
 			// zlog.Info("RevCall done", err)
