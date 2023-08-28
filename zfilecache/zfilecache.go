@@ -121,21 +121,21 @@ func (c *Cache) CacheFromReader(reader io.Reader, name string) (string, error) {
 // This should really call CacheFromReader, not visa versa
 func (c *Cache) CacheFromData(data []byte, name string) (string, error) {
 	var err error
-	if name == "" || strings.HasPrefix(name, ".") {
+	// zlog.Warn("CacheFromData1:", name)
+	hashName := (name == "" || strings.HasPrefix(name, "."))
+	if hashName {
 		h := fnv.New64a()
 		h.Write(data)
 		hash := h.Sum64()
 		name = fmt.Sprintf("%x", hash) + name
 	}
 	path, dir := c.GetPathForName(name)
+	// zlog.Warn("CacheFromData:", path)
 	err = zfile.MakeDirAllIfNotExists(dir)
 	if err != nil {
 		return "", zlog.Error(err, "make dir", dir)
 	}
-	// outUrl := getURLForName(name)
-
-	// zlog.Info("CacheFromReader path:", path)
-	if zfile.Exists(path) {
+	if hashName && zfile.Exists(path) {
 		err = zfile.SetModified(path, time.Now())
 		return name, err
 	}
