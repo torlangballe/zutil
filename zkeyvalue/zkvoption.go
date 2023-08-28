@@ -1,6 +1,8 @@
 package zkeyvalue
 
-import "github.com/torlangballe/zutil/zslice"
+import (
+	"github.com/torlangballe/zutil/zslice"
+)
 
 type Option[V any] struct {
 	Key         string
@@ -13,6 +15,12 @@ type Option[V any] struct {
 var changeHandlers []changeHandler
 
 func (o *Option[V]) Get() V {
+	if DefaultStore == nil {
+		if o.MakeDefault != nil {
+			return o.MakeDefault()
+		}
+		return o.value
+	}
 	if !o.read {
 		if !DefaultStore.GetItem(o.Key, &o.value) {
 			if o.MakeDefault != nil {
