@@ -55,6 +55,5 @@ func SetFromLine(lines string, linefeed, space string) {
 
 func (info Info) ZUIString() string {
 	str := zstr.Concat(" • ", info.Version, ztime.GetNice(info.At, true), info.CommitHash, info.Branch, info.User, info.Host)
-	zlog.Info("info.ZUIString", str, info)
 	return str
 }
