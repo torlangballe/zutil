@@ -163,7 +163,7 @@ func (t *Terminal) ListenForever(port int) {
 		opts = append(opts, publicKeyOpt)
 	}
 	loginOpt := ssh.PasswordAuth(func(ctx ssh.Context, pass string) bool {
-		zlog.Info("SSH login?", pass, t.hardcodedUsers)
+		zlog.Info("SSH login?", pass, t.hardcodedUsers, zusers.MainServer != nil)
 		for user, us := range t.hardcodedUsers {
 			if user == ctx.User() && us.password == pass {
 				delete(t.sessionPublicKeys, ctx.SessionID())
@@ -171,7 +171,7 @@ func (t *Terminal) ListenForever(port int) {
 			}
 		}
 		if zusers.MainServer == nil {
-			return false
+			return len(t.hardcodedUsers) == 0
 		}
 		var ci zrpc.ClientInfo
 		ci.Type = "ssh"
@@ -180,8 +180,9 @@ func (t *Terminal) ListenForever(port int) {
 		ci.Token = t.sessionPublicKeys[ctx.SessionID()]
 		userName := ctx.User()
 		cui, err := zusers.MainServer.Login(ci, userName, pass) // call login with read-made token to store in session
+		zlog.Info("TermLogin:", userName, pass, err)
 		if err != nil {
-			zlog.Info("Login error:", err)
+			zlog.Info("Login error:", err, userName)
 			return false
 		}
 		t.userIDs[userName] = cui.UserID
