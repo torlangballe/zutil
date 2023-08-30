@@ -22,7 +22,7 @@ type StackAdjust int
 type LimitID string
 
 const (
-	Verbose Priority = iota
+	VerboseLevel Priority = iota
 	DebugLevel
 	InfoLevel
 	WarningLevel
@@ -31,7 +31,7 @@ const (
 )
 
 var (
-	PrintPriority           = Verbose
+	PrintPriority           = DebugLevel
 	outputHooks             = map[string]func(s string){}
 	UseColor                = false
 	PanicHandler            func(reason string, exit bool)
@@ -74,6 +74,11 @@ func FatalNotImplemented() {
 // Info performs Log with InfoLevel priority
 func Info(parts ...interface{}) {
 	baseLog(nil, InfoLevel, 4, parts...)
+}
+
+// Verbose performs Log with InfoLevel priority
+func Verbose(parts ...interface{}) {
+	baseLog(nil, VerboseLevel, 4, parts...)
 }
 
 // Info performs Log with InfoLevel priority
@@ -138,6 +143,9 @@ func NewError(parts ...interface{}) error {
 }
 
 func baseLog(err error, priority Priority, pos int, parts ...interface{}) error {
+	if priority < PrintPriority {
+		return nil
+	}
 	if priority < WarningLevel && IsInTests {
 		return nil
 	}
