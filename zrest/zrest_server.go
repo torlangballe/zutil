@@ -22,12 +22,11 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
-const StaticFolder = "www"
-
 var (
-	RunningOnServer   bool
-	LegalCORSOrigins  = map[string]bool{}
-	CurrentInRequests int
+	RunningOnServer      bool
+	LegalCORSOrigins     = map[string]bool{}
+	CurrentInRequests    int
+	StaticFolderPathFunc func(add string) string
 )
 
 // Adds CORS headers to response if appropriate.
