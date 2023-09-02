@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -88,7 +87,7 @@ func IsFolder(fpath string) bool {
 }
 
 func ReadStringFromFile(sfile string) (string, error) {
-	bytes, err := ioutil.ReadFile(sfile)
+	bytes, err := os.ReadFile(sfile)
 	if err != nil {
 		err = fmt.Errorf("zfile.ReadFileToString: %w: %s", err, sfile)
 		//		fmt.Println("Error reading file:", sfile, err)
