@@ -140,3 +140,7 @@ func Swap[A any](slice []A, i, j int) {
 	slice[i] = slice[j]
 	slice[j] = t
 }
+
+func Add[T any](s *[]T, a T) {
+	*s = append(*s, a)
+}
