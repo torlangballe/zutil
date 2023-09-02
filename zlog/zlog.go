@@ -1,6 +1,7 @@
 package zlog
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -12,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -20,6 +20,7 @@ import (
 type Priority int
 type StackAdjust int
 type LimitID string
+type Enabler bool
 
 const (
 	VerboseLevel Priority = iota
@@ -135,7 +136,7 @@ func NewError(parts ...interface{}) error {
 		p = pnew + zstr.EscNoColor
 	}
 	if err != nil {
-		err = errors.Wrap(err, p)
+		err = fmt.Errorf("%w %s", err, p)
 	} else {
 		err = errors.New(p)
 	}
@@ -167,6 +168,10 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 				return nil
 			}
 			rateLimiters.Set(rl, time.Now())
+		}
+		enable, got := p.(Enabler)
+		if got && !bool(enable) {
+			return nil
 		}
 	}
 	col := ""
@@ -367,7 +372,7 @@ func (w *WrappedError) Unwrap() error {
 
 func Wrap(err error, parts ...interface{}) error {
 	p := strings.TrimSpace(fmt.Sprintln(parts...))
-	return errors.Wrap(err, p)
+	return fmt.Errorf("%w %s", err, p)
 
 }
 
