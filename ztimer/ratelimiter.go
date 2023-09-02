@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zslice"
 )
 
 // create a RateLimiter to only do a function every n seconds since last time it was done for a given id.
@@ -28,6 +29,11 @@ type RateLimiters struct {
 	lock        sync.Mutex
 	defaultSecs float64
 	StepsToMax  int
+}
+
+type RateCounter struct {
+	Window     time.Duration
+	timeStamps []time.Time
 }
 
 func NewRateLimiter(secs, maxSecs float64) *RateLimiter {
@@ -144,4 +150,22 @@ func (r *RateLimiters) Add(id string, secs, maxSecs float64) *RateLimiter {
 
 func (r *RateLimiters) Remove(id string) {
 	delete(r.cache, id)
+}
+
+func (r *RateCounter) Add() (countInWindow int) {
+	now := time.Now()
+	for i := 0; i < len(r.timeStamps); i++ {
+		if time.Since(r.timeStamps[i]) > r.Window {
+			zslice.RemoveAt(&r.timeStamps, i)
+			i--
+		} else {
+			break // timeStamps are chronological, so don't need to continue
+		}
+	}
+	r.timeStamps = append(r.timeStamps, now)
+	return len(r.timeStamps)
+}
+
+func (r *RateCounter) Clear() {
+	r.timeStamps = []time.Time{}
 }
