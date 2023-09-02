@@ -39,19 +39,27 @@ func NewWithExpiry(expirySecs float64, fixed bool) *Cache {
 	c.defaultExpiry = ztime.SecondsDur(expirySecs)
 	c.fixedExpiry = fixed
 	ztimer.Repeat(60*10, func() bool {
-		if !c.hasExpiries {
+		if c.hasExpiries {
+			c.purge()
 			return true
 		}
-		c.lock.Lock()
-		for key, i := range c.items {
-			if time.Since(i.touched) > i.expiry {
-				delete(c.items, key)
-			}
-		}
-		c.lock.Unlock()
 		return true
 	})
 	return c
+}
+
+func (c *Cache) Count() int {
+	var count int
+	c.lock.Lock()
+	for key, i := range c.items {
+		if time.Since(i.touched) > i.expiry {
+			delete(c.items, key)
+		} else {
+			count++
+		}
+	}
+	c.lock.Unlock()
+	return count
 }
 
 func (c *Cache) Put(key string, val interface{}) bool {
@@ -74,6 +82,17 @@ func (c *Cache) PutWithExpiry(key string, val interface{}, expiry time.Duration)
 	i.expiry = expiry
 	c.lock.Unlock()
 	return false
+}
+
+func (c *Cache) purge() {
+	c.lock.Lock()
+	for key, i := range c.items {
+		if time.Since(i.touched) >= i.expiry {
+			delete(c.items, key)
+		}
+	}
+	c.hasExpiries = false
+	c.lock.Unlock()
 }
 
 func (c *Cache) Get(toPtr interface{}, key string) (got bool) {
