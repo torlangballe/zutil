@@ -4,35 +4,35 @@ import (
 	"encoding/json"
 	"html/template"
 	"io"
-	"io/ioutil"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
 )
 
 type Handler struct {
-	templates     map[string]*template.Template
-	baseDirectory string
-	mainTemplate  *template.Template
+	templateLoaded zmap.LockMap[string, bool]
+	basePath       string
+	mainTemplate   *template.Template
+	fileSystem     fs.FS
 }
 
-func NewHandler(base string) (h *Handler) {
+func NewHandler(base string, fileSystem fs.FS) (h *Handler) {
 	h = new(Handler)
-	h.templates = map[string]*template.Template{}
-	h.baseDirectory = base
-
+	h.basePath = base
+	h.fileSystem = fileSystem
 	return
 }
 
-type HandlerFunc func(http.ResponseWriter, *http.Request, *Handler)
-
-func AddHandler(router *mux.Router, pattern string, handler *Handler, handlerFunc HandlerFunc) *mux.Route {
+func AddHandler(router *mux.Router, pattern string, handler *Handler, handlerFunc func(http.ResponseWriter, *http.Request, *Handler)) *mux.Route {
 	return zrest.AddHandler(router, "templates/"+pattern, func(w http.ResponseWriter, req *http.Request) {
 		zlog.Info("PlayTemplate:", req.Method, req.URL.Query().Get("Title"), req.RemoteAddr)
 		handlerFunc(w, req, handler)
@@ -93,32 +93,30 @@ var fmap = map[string]interface{}{
 	"either":   Either,
 }
 
-func (h *Handler) LoadTemplates() (err error) { // https://stackoverflow.com/questions/38686583/golang-parse-all-templates-in-directory-and-subdirectories
-	spath := h.baseDirectory + "templates/"
-	root := template.New("base")
-	index := len(spath)
-	// zlog.Info("load temps1:", spath)
-	filepath.Walk(spath, func(fpath string, info os.FileInfo, err error) error {
-		if err == nil && spath != fpath && filepath.Ext(fpath) == ".gohtml" {
-			data, errio := ioutil.ReadFile(fpath)
-			if errio != nil {
-				return zlog.Error(errio, "readfile")
-			}
-			name := "templates/" + fpath[index:]
-			// zlog.Info("load temps:", name, spath, fpath)
-			t := root.New(name).Funcs(fmap)
-			t, err = t.Parse(string(data))
-			if err != nil {
-				return zlog.Error(err, "parse")
-			}
-		}
-		return nil
-	})
-	h.mainTemplate = root
-	if err != nil {
-		return
+func (h *Handler) loadTemplate(name string) error { // https://stackoverflow.com/questions/38686583/golang-parse-all-templates-in-directory-and-subdirectories
+	if filepath.Ext(name) != ".gohtml" {
+		return zlog.NewError("not template:", name)
 	}
-	return
+	loaded, _ := h.templateLoaded.Get(name)
+	if loaded {
+		return nil
+	}
+	tpath := zstr.Concat("/", h.basePath, "templates/")
+	if h.mainTemplate == nil {
+		h.mainTemplate = template.New("base")
+	}
+	data, errio := zfile.ReadBytesFromFileInFS(h.fileSystem, tpath)
+	if errio != nil {
+		return zlog.Error(errio, "ReadBytesFromFileInFS", tpath)
+	}
+	zlog.Info("load temps:", tpath)
+	t := h.mainTemplate.New(name).Funcs(fmap)
+	t, err := t.Parse(string(data))
+	if err != nil {
+		return zlog.Error(err, "parse")
+	}
+	h.templateLoaded.Set(name, true)
+	return nil
 }
 
 func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump bool, v interface{}) bool {
@@ -132,15 +130,15 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 	if req.Method == "OPTIONS" {
 		return true
 	}
-	err := h.LoadTemplates()
-	if err != nil {
-		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "templates get error:", req.URL.Path, err)
-		return false
-	}
 	path := req.URL.Path
 	//	name := req.URL.Path[1:] + ".gohtml"
 	zstr.HasPrefix(path, zrest.AppURLPrefix, &path)
 	name := path + ".gohtml"
+	err := h.loadTemplate(name)
+	if err != nil {
+		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "templates get error:", req.URL.Path, err)
+		return false
+	}
 	// zlog.Info("ExecuteTemplate:", req.URL.Path)
 	err = h.mainTemplate.ExecuteTemplate(out, name, v)
 	if err != nil {
