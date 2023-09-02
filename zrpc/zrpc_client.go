@@ -26,7 +26,6 @@ type Client struct {
 	KeepTokenOnAuthenticationInvalid bool    // if KeepTokenOnAuthenticationInvalid is true, the auth token isn't cleared on failure to authenticate
 	SkipVerifyCertificate            bool    // if true, no certificate checking is done for https calls
 	gettingResources                 zmap.LockMap[string, bool]
-	rateLimiters                     *ztimer.RateLimiters
 }
 
 // client is structure to store received info from the call
@@ -69,26 +68,10 @@ func (c *Client) Copy() *Client {
 	return &n
 }
 
-func (c *Client) AddRateLimiter(secs float64) {
-	c.rateLimiters = ztimer.NewRateLimiters(0.1)
-}
-
 // Call is used to execute a remote call. method is Type.MethodName
 // input can be nil if not used, and result can be nil if not used/not in method.
 func (c *Client) Call(method string, input, result any) error {
-	var err, terr error
-	if c.rateLimiters != nil {
-		c.rateLimiters.DoBackoff(method, 0.1, 2, func() bool {
-			err, terr = c.callWithTransportError(method, c.TimeoutSecs, input, result)
-			if terr != nil {
-				err = terr
-				return false
-			}
-			return true
-		})
-		return err
-	}
-	err, terr = c.callWithTransportError(method, c.TimeoutSecs, input, result)
+	err, terr := c.callWithTransportError(method, c.TimeoutSecs, input, result)
 	if terr != nil && err == nil {
 		err = terr
 	}
