@@ -101,7 +101,7 @@ func (h *Handler) loadTemplate(name string) error { // https://stackoverflow.com
 	if loaded {
 		return nil
 	}
-	tpath := zstr.Concat("/", h.basePath, "templates/")
+	tpath := zstr.Concat("/", h.basePath, name)
 	if h.mainTemplate == nil {
 		h.mainTemplate = template.New("base")
 	}
@@ -134,15 +134,15 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 	//	name := req.URL.Path[1:] + ".gohtml"
 	zstr.HasPrefix(path, zrest.AppURLPrefix, &path)
 	name := path + ".gohtml"
+	// zlog.Info("ExecuteTemplate:", name)
 	err := h.loadTemplate(name)
 	if err != nil {
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "templates get error:", req.URL.Path, err)
 		return false
 	}
-	// zlog.Info("ExecuteTemplate:", req.URL.Path)
 	err = h.mainTemplate.ExecuteTemplate(out, name, v)
 	if err != nil {
-		zlog.Warn(err, "exe error:")
+		zlog.Warn(err, "exe error:", name)
 		return false
 	}
 	return true

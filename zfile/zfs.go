@@ -12,6 +12,7 @@ type MultiFS []fs.FS
 func (m MultiFS) Open(name string) (fs.File, error) {
 	for _, f := range m {
 		file, err := f.Open(name)
+		// zlog.Info("fs.Open", name, err)
 		if err == nil || !errors.Is(err, fs.ErrNotExist) {
 			return file, err
 		}
