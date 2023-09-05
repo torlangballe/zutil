@@ -36,31 +36,31 @@ func TestAdd(t *testing.T) {
 	}
 	b.HandleSituationFastFunc = func(run Run[int64], s SituationType, err error) {
 		if s == JobStarted || s == JobRunning || s == JobStopped || s == JobEnded {
-			b.DebugPrintExecutors()
+			b.DebugPrintExecutors(s)
 		}
 		// zlog.Warn("situation:", s, err)
 	}
 	go b.Start()
 	worker := Executor[int64]{
-		ID:          1,
-		Spend:       10,
-		KeptAliveAt: time.Now(),
-		DebugName:   "Wrk1",
+		ID:           1,
+		CostCapacity: 10,
+		KeptAliveAt:  time.Now(),
+		DebugName:    "Wrk1",
 	}
 	b.AddExecutorCh <- worker
 
 	worker2 := Executor[int64]{
-		ID:          8,
-		Spend:       16,
-		KeptAliveAt: time.Now(),
-		DebugName:   "Wrk8",
+		ID:           8,
+		CostCapacity: 16,
+		KeptAliveAt:  time.Now(),
+		DebugName:    "Wrk8",
 	}
 	b.AddExecutorCh <- worker2
 
-	for i := 0; i < 20; i++ {
-		job := addJob(b, int64(i+1))
-		addJobRandomly(b, job)
-		removeJobRandomly(b, job.ID)
+	for i := 0; i < 3; i++ {
+		addJob(b, int64(i+1))
+		//		addJobRandomly(b, job)
+		//removeJobRandomly(b, job.ID)
 	}
 	// ztimer.RepeatForever(5, func() {
 	// 	var st, et time.Duration

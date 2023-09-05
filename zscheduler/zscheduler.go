@@ -153,7 +153,6 @@ func (b *Scheduler[I]) stopJob(jobID I, remove, outsideRequest bool) {
 		zlog.Assert(outsideRequest)
 		return
 	}
-	b.HandleSituationFastFunc(*run, JobStarted, nil)
 	if run.Stopping {
 		zlog.Assert(outsideRequest)
 		zlog.Warn("Bailing stopJob on stopping already", zlog.Full(run))
@@ -171,6 +170,7 @@ func (b *Scheduler[I]) stopJob(jobID I, remove, outsideRequest bool) {
 	run.RanAt = time.Time{}
 	run.StartedAt = time.Time{}
 	run.ExecutorID = b.zeroID
+	b.HandleSituationFastFunc(*run, JobStarted, nil)
 	ctx, _ := context.WithDeadline(context.Background(), now.Add(b.SlowFuncsTimeout))
 	go func() {
 		err := b.StopJobOnExecutorSlowFunc(r, ctx)
@@ -467,8 +467,8 @@ func (b *Scheduler[I]) Start() {
 				return
 			}
 			b.setDebugState(jobID, false, false, false, true)
-			b.HandleSituationFastFunc(*r, JobRunning, nil)
 			r.RanAt = time.Now()
+			b.HandleSituationFastFunc(*r, JobRunning, nil)
 			b.startAndStopRuns()
 
 		case <-b.ChangeJobCh:

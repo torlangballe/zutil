@@ -68,30 +68,51 @@ func (b *Scheduler[I]) setDebugState(jobID I, existing, starting, ending, runnin
 	b.Debug.Set(jobID, d)
 }
 
-func (b *Scheduler[I]) DebugPrintExecutors() {
+func intPadded(i int) string {
+	if i == 0 {
+		return "  "
+	}
+	return fmt.Sprintf("%-2d", i)
+}
+
+func (b *Scheduler[I]) DebugPrintExecutors(s SituationType) {
 	runningCount := map[I]int{}
 	startingCount := map[I]int{}
 	endingCount := map[I]int{}
 	for _, r := range b.runs {
 		if !r.RanAt.IsZero() {
 			runningCount[r.ExecutorID]++
-		} else if r.StoppedAt.IsZero() {
+		} else if !r.StoppedAt.IsZero() {
 			endingCount[r.ExecutorID]++
 		} else if !r.StartedAt.IsZero() {
 			startingCount[r.ExecutorID]++
 		}
 	}
 	if debugPrintExecutorRowsPrinted%20 == 0 {
+		fmt.Printf("                ")
 		for _, e := range b.executors {
-			fmt.Printf("%10s ", e.DebugName)
+			fmt.Printf("%-6s  ", e.DebugName)
 		}
-		fmt.Println("")
+		fmt.Println(zstr.EscNoColor)
 	}
+	var str string
+	switch s {
+	case JobStarted:
+		str = "S"
+	case JobEnded:
+		str = "E"
+	case JobRunning:
+		str = "r"
+	case JobStopped:
+		str = "s"
+	}
+	fmt.Print(time.Now().Format("15:04:05.09: "), str, "  ")
 	for _, e := range b.executors {
-		fmt.Printf(zstr.EscYellow+"%-2d ", startingCount[e.ID])
-		fmt.Printf(zstr.EscGreen+"%-2d ", runningCount[e.ID])
-		fmt.Printf(zstr.EscRed+"%-2d ", endingCount[e.ID])
+		fmt.Printf(zstr.EscYellow + intPadded(startingCount[e.ID]))
+		fmt.Printf(zstr.EscGreen + intPadded(runningCount[e.ID]))
+		fmt.Printf(zstr.EscRed + intPadded(endingCount[e.ID]))
+		fmt.Print("  ")
 	}
-	fmt.Println("")
+	fmt.Println(zstr.EscNoColor)
 	debugPrintExecutorRowsPrinted++
 }
