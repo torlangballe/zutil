@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+
+	"github.com/torlangballe/zutil/zlog"
 )
 
 type MultiFS []fs.FS
@@ -20,6 +22,19 @@ func (m MultiFS) Open(name string) (fs.File, error) {
 	return nil, fs.ErrNotExist
 }
 
+func (m MultiFS) Stat(name string) (fs.FileInfo, error) {
+	for _, f := range m {
+		is, i := f.(fs.StatFS)
+		zlog.Assert(is != nil, i)
+		info, err := is.Stat(name)
+		zlog.Info("fs.Stat", name, err)
+		if err == nil || !errors.Is(err, fs.ErrNotExist) {
+			return info, err
+		}
+	}
+	return nil, fs.ErrNotExist
+}
+
 func (m *MultiFS) Add(f fs.FS) {
 	*m = append(*m, f)
 }
@@ -29,10 +44,19 @@ func ReadBytesFromFileInFS(f fs.FS, name string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buff := bytes.NewBuffer([]byte{})
-	_, err = io.Copy(buff, file)
+	buffer := bytes.NewBuffer([]byte{})
+	_, err = io.Copy(buffer, file)
 	if err != nil {
 		return nil, err
 	}
-	return buff.Bytes(), nil
+	return buffer.Bytes(), nil
+}
+
+func ReaderAtFromFileInFS(f fs.FS, name string) (reader io.ReaderAt, length int64, err error) {
+	data, err := ReadBytesFromFileInFS(f, name)
+	if err != nil {
+		return nil, 0, err
+	}
+	reader = bytes.NewReader(data)
+	return reader, int64(len(data)), nil
 }
