@@ -60,7 +60,7 @@ func CopySPC(url, password string, consume func(reader io.ReadCloser) error) err
 		address += ":22"
 	}
 	path := url
-	client := scp.NewClientWithTimeout(address, &config, time.Minute*10)
+	client := scp.NewClientWithTimeout(address, &config, time.Minute*time.Duration(UploadTimeoutMinutes)*10)
 	err = client.Connect()
 	if err != nil {
 		return zlog.Error(err, "connect", address, password)

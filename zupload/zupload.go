@@ -1,10 +1,10 @@
 package zupload
 
 const (
-	Drop   = "drop"
-	URL    = "url"
-	SCP    = "scp" // https://pkg.go.dev/github.com/lkbhargav/go-scp#section-readme
-	Upload = "upload"
+	Drop           = "drop"
+	URL            = "url"
+	SCP            = "scp" // https://pkg.go.dev/github.com/lkbhargav/go-scp#section-readme
+	Upload         = "upload"
 	ShowMessageKey = "show-message"
 )
 
@@ -16,3 +16,5 @@ type UploadPayload struct {
 	Password string
 	// Data     []byte
 }
+
+var UploadTimeoutMinutes = 10

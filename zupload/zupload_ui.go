@@ -70,7 +70,7 @@ func NewUploadView(storeName string, allow []string) *UploadView {
 
 func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string) {
 	v.StackView.Init(v, false, storeName)
-	v.SetMinSize(zgeo.Size{0, 22}) // avoids
+	v.SetMinSize(zgeo.Size{0, 22})
 	var items zdict.Items
 	for _, a := range allTypes {
 		if len(allowTypes) == 0 || zstr.StringsContain(allowTypes, a) {
@@ -241,7 +241,7 @@ func (v *UploadView) CallHTTUpload(up UploadPayload, data []byte) {
 		params.Headers["X-Token"] = AuthTokenFunc()
 	}
 	zlog.Info("CallHTTUpload:", AuthTokenFunc != nil, params.Headers["X-Token"])
-	params.TimeoutSecs = 120
+	params.TimeoutSecs = float64(UploadTimeoutMinutes) * 60
 	// params.PrintBody = true
 	surl := zapp.DownloadPathPrefix + "zupload"
 	surl, _ = zhttp.MakeURLWithArgs(surl, args)
