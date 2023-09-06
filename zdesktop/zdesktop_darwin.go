@@ -170,7 +170,6 @@ func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, s
 
 func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect) (img image.Image, pid int64, err error) {
 	winID, _, _, pid, err := GetIDScaleAndRectForWindowTitle(title, app, oldPID)
-	fmt.Println("GetImageForWindowTitle:", winID, err, "pid:", pid, "oldpid:", oldPID, title, app, zprocess.GetPIDsForAppName(app, false))
 	if err != nil {
 		return nil, 0, zlog.Error(err, "get id scale")
 	}
