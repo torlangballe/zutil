@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"go/token"
 	"reflect"
+	"time"
 
 	"github.com/torlangballe/zutil/zlog"
 )
@@ -102,6 +103,12 @@ func methodNeedsAuth(name string) bool {
 
 func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg json.RawMessage) (rp receivePayload, err error) {
 	// zlog.Info("callMethod:", mtype.Method.Name)
+	start := time.Now()
+	defer func() {
+		if time.Since(start) > time.Second*2 {
+			zlog.Info("🟪Slow zrpc call:", mtype.Method, time.Since(start), err)
+		}
+	}()
 	var argv, replyv reflect.Value
 	argIsValue := false // if true, need to indirect before calling.
 	if mtype.ArgType.Kind() == reflect.Ptr {
@@ -141,7 +148,7 @@ func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg js
 	errInter := returnValues[0].Interface()
 	if errInter != nil {
 		err := errInter.(error)
-		zlog.Error(err, "Call Error", mtype.Method)
+		zlog.Error(err, "Call Error", mtype.Method.Name)
 		rp.Error = err.Error()
 		return rp, nil
 	}
