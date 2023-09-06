@@ -44,7 +44,7 @@ type Scheduler[I comparable] struct {
 	SetJobsOnExecutorCh  chan JobsOnExecutor[I]
 
 	refreshCh   chan struct{}
-	clearRunCh  chan I // clearJobCh sets a run to after stopped status
+	endRunCh    chan I // clearJobCh sets a run to after stopped status
 	removeRunCh chan I // removeRunCh does local remove of a run
 
 	executors []Executor[I]
@@ -74,10 +74,10 @@ type Run[I comparable] struct {
 	Job        Job[I]
 	ExecutorID I
 	Count      int
-	Accepted   bool
-	StartedAt  time.Time
-	RanAt      time.Time
-	StoppedAt  time.Time
+	// Accepted   bool
+	StartedAt time.Time
+	RanAt     time.Time
+	StoppedAt time.Time
 	// EndedAt    time.Time
 	Removing bool
 	Stopping bool
@@ -117,7 +117,7 @@ func NewScheduler[I comparable]() *Scheduler[I] {
 	b.RemoveExecutorCh = make(chan I)
 	b.AddExecutorCh = make(chan Executor[I])
 	b.refreshCh = make(chan struct{})
-	b.clearRunCh = make(chan I)
+	b.endRunCh = make(chan I)
 
 	b.ExecutorAliveDuration = time.Second * 10
 	b.SimultaneousStarts = 1
@@ -166,11 +166,12 @@ func (b *Scheduler[I]) stopJob(jobID I, remove, outsideRequest bool) {
 	run.Stopping = true
 	run.StoppedAt = now
 	run.Removing = remove
-	r := *run
 	run.RanAt = time.Time{}
 	run.StartedAt = time.Time{}
-	run.ExecutorID = b.zeroID
-	b.HandleSituationFastFunc(*run, JobStarted, nil)
+	r := *run
+	// zlog.Warn("stopJob handleSit:", r.Job.ID, r.ExecutorID)
+	b.HandleSituationFastFunc(r, JobStopped, nil)
+	// run.ExecutorID = b.zeroID
 	ctx, _ := context.WithDeadline(context.Background(), now.Add(b.SlowFuncsTimeout))
 	go func() {
 		err := b.StopJobOnExecutorSlowFunc(r, ctx)
@@ -178,8 +179,7 @@ func (b *Scheduler[I]) stopJob(jobID I, remove, outsideRequest bool) {
 		if err != nil {
 			b.HandleSituationFastFunc(r, RemoveJobFromExecutorFailed, err)
 		}
-		b.HandleSituationFastFunc(r, JobEnded, nil)
-		b.clearRunCh <- jobID
+		b.endRunCh <- jobID
 	}()
 	b.startAndStopRuns()
 }
@@ -217,7 +217,7 @@ func (b *Scheduler[I]) runnableExecutorIDs() map[I]bool {
 
 func (b *Scheduler[I]) hasUnrunJobs() bool {
 	for _, r := range b.runs {
-		if r.ExecutorID == b.zeroID || r.Stopping || r.StartedAt.IsZero() {
+		if r.ExecutorID == b.zeroID || r.Stopping || r.Removing || r.StartedAt.IsZero() {
 			return true
 		}
 	}
@@ -412,6 +412,8 @@ func (b *Scheduler[I]) startJob(run *Run[I]) {
 	e, _ := b.findExecutor(bestExID)
 	// zlog.Warn("startJob:", run.Job.DebugName, e.DebugName, str)
 	b.setDebugState(run.Job.ID, false, true, false, false)
+	run.StoppedAt = time.Time{}
+	run.Removing = false
 	run.StartedAt = now
 	// run.Starting = true
 	run.ExecutorID = bestExID
@@ -426,7 +428,7 @@ func (b *Scheduler[I]) startJob(run *Run[I]) {
 		zlog.Assert(r != nil, jobID)
 		if err != nil {
 			zlog.Warn(r.Job.DebugName, "started end err", err)
-			b.clearRunCh <- r.Job.ID
+			b.endRunCh <- r.Job.ID
 			b.HandleSituationFastFunc(*run, ErrorStartingJob, err)
 		} else {
 			b.JobIsRunningCh <- jobID
@@ -492,8 +494,8 @@ func (b *Scheduler[I]) Start() {
 		case <-b.refreshCh:
 			b.startAndStopRuns()
 
-		case jobID := <-b.clearRunCh:
-			b.clearRun(jobID)
+		case jobID := <-b.endRunCh:
+			b.endRun(jobID)
 			b.startAndStopRuns()
 
 		case jobID := <-b.removeRunCh:
@@ -510,7 +512,7 @@ func (b *Scheduler[I]) Start() {
 func (b *Scheduler[I]) removeRun(jobID I) {
 	r, i := b.findRun(jobID)
 	if i == -1 {
-		zlog.Error(nil, "clearRun: job not found", jobID)
+		zlog.Error(nil, "removeRun: job not found", jobID)
 		return
 	}
 	zlog.Warn(r.Job.DebugName, "removeRun", jobID)
@@ -520,16 +522,15 @@ func (b *Scheduler[I]) removeRun(jobID I) {
 }
 
 func (b *Scheduler[I]) endRun(jobID I) {
-}
-
-func (b *Scheduler[I]) clearRun(jobID I) {
 	_, i := b.findRun(jobID)
 	if i == -1 {
 		zlog.Error(nil, "clearRun: job not found", jobID)
 		return
 	}
+	b.runs[i].ExecutorID = b.zeroID
 	b.runs[i].Removing = false
 	b.runs[i].Stopping = false
+	b.HandleSituationFastFunc(b.runs[i], JobEnded, nil)
 	// b.runs[i].EndedAt = time.Now()
 }
 

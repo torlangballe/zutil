@@ -36,7 +36,7 @@ func TestAdd(t *testing.T) {
 	}
 	b.HandleSituationFastFunc = func(run Run[int64], s SituationType, err error) {
 		if s == JobStarted || s == JobRunning || s == JobStopped || s == JobEnded {
-			b.DebugPrintExecutors(s)
+			b.DebugPrintExecutors(run, s)
 		}
 		// zlog.Warn("situation:", s, err)
 	}
