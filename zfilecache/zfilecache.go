@@ -166,10 +166,6 @@ func (c *Cache) GetPathForName(name string) (path, dir string) {
 	return
 }
 
-func (c *Cache) GetWorkDirectoryStart() string {
-	return filepath.Join(c.workDir, c.urlPrefix) + "/"
-}
-
 func (c *Cache) IsCached(name string) bool {
 	path, _ := c.GetPathForName(name)
 	return zfile.Exists(path)
