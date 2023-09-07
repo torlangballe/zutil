@@ -3,19 +3,15 @@ package zmarkdown
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"path/filepath"
+	"strings"
 	"text/template"
 
 	// "github.com/go-latex/latex/drawtex/drawimg"
 	// "github.com/go-latex/latex/mtex"
 	// "github.com/goccy/go-graphviz"
-	"github.com/gorilla/mux"
-	"github.com/torlangballe/zutil/zdict"
+
 	"github.com/torlangballe/zutil/zfile"
-	"github.com/torlangballe/zutil/zfilecache"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zstr"
 )
 
 type Templater struct {
@@ -28,22 +24,11 @@ const (
 	DotType = "dot"
 )
 
-var Cache *zfilecache.Cache
-
 func newTemplater() *Templater {
 	t := &Templater{}
 	t.TeXFontSize = 14
 	t.DPI = 144
 	return t
-}
-
-func InitCache(router *mux.Router, workDir, urlPrefix string) {
-	Cache = zfilecache.Init(router, workDir, urlPrefix, "zmd-rendercache")
-	Cache.NestInHashFolders = false
-}
-
-func getHash(str string, stype string, scale float64) string {
-	return zstr.HashTo64Hex(fmt.Sprintf("%s-%s-%g", str, stype, scale)) + ".png"
 }
 
 func errToStr(err error, title, desc string) string {
@@ -93,13 +78,13 @@ func errToStr(err error, title, desc string) string {
 // 	return getImageMarkdownFromCacheID(title, cacheID)
 // }
 
-func getImageMarkdownFromCacheID(title, cacheID string) string {
-	surl := Cache.GetURLForName(cacheID)
-	return fmt.Sprintf("![%s](%s)", title, surl)
-}
+// func getImageMarkdownFromCacheID(title, cacheID string) string {
+// 	surl := Cache.GetURLForName(cacheID)
+// 	return fmt.Sprintf("![%s](%s)", title, surl)
+// }
 
-func (t *Templater) Preprocess(markdownText, dir, title string, variables zdict.Dict) string {
-	zlog.Assert(Cache != nil, "cache")
+func (t *Templater) Preprocess(m *MarkdownConverter, markdownText, title string) string {
+	// zlog.Assert(Cache != nil, "cache")
 	var buf bytes.Buffer
 	funcMap := template.FuncMap{
 		// "tex": t.processTex,
@@ -110,18 +95,19 @@ func (t *Templater) Preprocess(markdownText, dir, title string, variables zdict.
 	if err != nil {
 		return errToStr(err, title, "template-parse")
 	}
-	zfile.Walk(dir, "*.shared.md", zfile.WalkOptionRecursive, func(fpath string, info os.FileInfo) error {
-		_, fname := filepath.Split(fpath)
-		input, _ := zfile.ReadStringFromFile(fpath)
-		_, err := template.New(fname).Funcs(funcMap).Parse(input)
-		if zlog.OnError(err, fname, "parse sub-template") {
-			return nil
+	for _, name := range m.PartNames {
+		if !strings.HasSuffix(name, "shared.md") {
+			continue
 		}
-		return nil
-	})
-	err = template.Execute(&buf, variables)
+		input, _ := zfile.ReadStringFromFileInFS(m.FileSystem, name)
+		_, err := template.New(name).Funcs(funcMap).Parse(input)
+		if zlog.OnError(err, name, "parse sub-template") {
+			continue
+		}
+	}
+	err = template.Execute(&buf, m.Variables)
 	if err != nil {
-		zlog.Error(err, "markdown execute", dir)
+		zlog.Error(err, "markdown execute", m.Dir)
 		return errToStr(err, title, "template-execute")
 	}
 	return buf.String()
