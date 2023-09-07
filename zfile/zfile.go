@@ -107,13 +107,13 @@ func WriteStringToFile(str, sfile string) error {
 	return WriteBytesToFile([]byte(str), sfile)
 }
 
-func ForAllFileLines(path string, skipEmpty bool, f func(str string) bool) error {
+func ForAllFileLines(path string, skipEmpty bool, line func(str string) bool) error {
 	str, err := ReadStringFromFile(path)
 	if err != nil {
 		return err
 	}
 	//TODO: Don't read file to memory
-	zstr.RangeStringLines(str, skipEmpty, f)
+	zstr.RangeStringLines(str, skipEmpty, line)
 	return nil
 }
 
