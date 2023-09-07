@@ -22,6 +22,15 @@ func (m MultiFS) Open(name string) (fs.File, error) {
 	return nil, fs.ErrNotExist
 }
 
+func CanOpenInFS(f fs.FS, name string) bool {
+	file, err := f.Open(name)
+	if err != nil {
+		return false
+	}
+	file.Close()
+	return true
+}
+
 func (m MultiFS) Stat(name string) (fs.FileInfo, error) {
 	for _, f := range m {
 		is, i := f.(fs.StatFS)
@@ -50,6 +59,14 @@ func ReadBytesFromFileInFS(f fs.FS, name string) ([]byte, error) {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
+}
+
+func ReadStringFromFileInFS(f fs.FS, name string) (string, error) {
+	data, err := ReadBytesFromFileInFS(f, name)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func ReaderAtFromFileInFS(f fs.FS, name string) (reader io.ReaderAt, length int64, err error) {
