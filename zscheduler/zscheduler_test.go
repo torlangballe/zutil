@@ -19,9 +19,13 @@ func TestAdd(t *testing.T) {
 	b.MinDurationBetweenSimultaneousStarts = time.Millisecond * 300
 	b.ExecutorAliveDuration = 0
 	b.LoadBalanceIfCostDifference = 2
+	b.KeepJobsBeyondAtEndUntilEnoughSlack = time.Second * 20
 	b.StartJobOnExecutorSlowFunc = func(run Run[int64], ctx context.Context) error {
 		//		zlog.Warn(jobID, "start:") //, executorID)
-		d := time.Millisecond * 500
+		d := time.Millisecond * 200
+		if run.ExecutorID == 8 {
+			d *= 5
+		}
 		time.Sleep(d)
 		startTotal += d
 		//		zlog.Warn(jobID, "start done:") //, executorID)
@@ -29,7 +33,7 @@ func TestAdd(t *testing.T) {
 		return nil
 	}
 	b.StopJobOnExecutorSlowFunc = func(run Run[int64], ctx context.Context) error {
-		d := time.Millisecond * 900
+		d := time.Millisecond * 20
 		time.Sleep(d)
 		endTotal += d
 		return nil
@@ -43,25 +47,33 @@ func TestAdd(t *testing.T) {
 	go b.Start()
 	worker := Executor[int64]{
 		ID:           1,
-		CostCapacity: 10,
+		CostCapacity: 30,
 		KeptAliveAt:  time.Now(),
 		DebugName:    "Wrk1",
 	}
 	b.AddExecutorCh <- worker
 
-	worker2 := Executor[int64]{
+	worker8 := Executor[int64]{
 		ID:           8,
-		CostCapacity: 16,
+		CostCapacity: 30,
 		KeptAliveAt:  time.Now(),
 		DebugName:    "Wrk8",
 	}
-	b.AddExecutorCh <- worker2
+	b.AddExecutorCh <- worker8
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 30; i++ {
 		addJob(b, int64(i+1))
 		//		addJobRandomly(b, job)
 		//removeJobRandomly(b, job.ID)
 	}
+	// ztimer.StartIn(9, func() {
+	// 	w := worker8
+	// 	w.Paused = true
+	// 	b.ChangeExecutorCh <- w
+	// })
+	// ztimer.StartIn(15, func() {
+	// 	b.ChangeExecutorCh <- worker8 // with !paused
+	// })
 	// ztimer.RepeatForever(5, func() {
 	// 	var st, et time.Duration
 	// 	b.Debug.ForEach(func(key int64, row JobDebug) bool {
@@ -104,7 +116,7 @@ func addJob(b *Scheduler[int64], id int64) Job[int64] {
 	job := Job[int64]{
 		ID:        id,
 		DebugName: fmt.Sprint("J", id),
-		Duration:  time.Second*3 + time.Millisecond*200*time.Duration(id),
+		Duration:  time.Second*10 + time.Millisecond*200*time.Duration(id),
 		Cost:      1,
 	}
 	b.AddJobCh <- job

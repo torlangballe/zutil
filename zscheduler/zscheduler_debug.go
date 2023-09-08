@@ -70,9 +70,9 @@ func (b *Scheduler[I]) setDebugState(jobID I, existing, starting, ending, runnin
 
 func intPadded(i int) string {
 	if i == 0 {
-		return "  "
+		return "   "
 	}
-	return fmt.Sprintf("%-2d", i)
+	return fmt.Sprintf("%-3d", i)
 }
 
 func (b *Scheduler[I]) DebugPrintExecutors(run Run[I], s SituationType) {
@@ -94,9 +94,9 @@ func (b *Scheduler[I]) DebugPrintExecutors(run Run[I], s SituationType) {
 	// zlog.Warn("Ending++", endingCount)
 	exes := append(b.executors, Executor[I]{DebugName: "Wrk0"})
 	if debugPrintExecutorRowsPrinted%20 == 0 {
-		fmt.Printf("                   ")
+		fmt.Printf("                    ")
 		for _, e := range exes {
-			fmt.Printf("%-6s  ", e.DebugName)
+			fmt.Printf("%-9s  ", e.DebugName)
 		}
 		fmt.Println(zstr.EscNoColor)
 	}
@@ -111,7 +111,7 @@ func (b *Scheduler[I]) DebugPrintExecutors(run Run[I], s SituationType) {
 	case JobStopped:
 		str = "s"
 	}
-	fmt.Print(time.Now().Format("15:04:05.09: "), str, run.Job.ID, "@", run.ExecutorID, "  ")
+	fmt.Printf("%s: %s%-2v@%v  ", time.Now().Format("15:04:05.09"), str, run.Job.ID, run.ExecutorID)
 	for _, e := range exes {
 		fmt.Printf(zstr.EscYellow + intPadded(startingCount[e.ID]))
 		fmt.Printf(zstr.EscGreen + intPadded(runningCount[e.ID]))
