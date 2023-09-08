@@ -1,31 +1,28 @@
 package zrpc
 
 import (
-	"sync"
-
 	"github.com/torlangballe/zutil/zhttp"
+	"github.com/torlangballe/zutil/zmap"
 )
 
 // This is functionality to set that a named resource has changed.
 // A RPC function can query for changed resources, and its ClientID is stored so as to
 // not report is as changed to that client until updated again.
 var (
-	updatedResourcesSentToClient = map[string]map[string]bool{}
-	updatedResourcesMutex        sync.Mutex
+	updatedResourcesSentToClient = zmap.LockMap[string, map[string]bool]{}
 )
 
 // GetUpdatedResourcesAndSetSent is called from clients (often browsers) to ask for updated resource-ids
 // The client id is stored as it having checked them out for that given update.
 func (RPCCalls) GetUpdatedResourcesAndSetSent(ci ClientInfo, int Unused, reply *[]string) error {
-	updatedResourcesMutex.Lock()
-	defer updatedResourcesMutex.Unlock()
 	*reply = []string{}
-	for res, m := range updatedResourcesSentToClient {
+	updatedResourcesSentToClient.ForEach(func(res string, m map[string]bool) bool {
 		if !m[ci.ClientID] {
 			*reply = append(*reply, res)
 			m[ci.ClientID] = true
 		}
-	}
+		return true
+	})
 	return nil
 }
 
@@ -36,30 +33,26 @@ func SetResourceUpdated(resID, byClientID string) {
 	if byClientID != "" {
 		m[byClientID] = true
 	}
-	updatedResourcesMutex.Lock()
 	// fmt.Println("SetResourceUpdated:", resID, byClientID) //, "\n", zlog.GetCallingStackString())
-	updatedResourcesSentToClient[resID] = m
-	updatedResourcesMutex.Unlock()
+	updatedResourcesSentToClient.Set(resID, m)
 }
 
 // ClearResourceID clears changed status for a resource
 func ClearResourceID(resID string) {
-	updatedResourcesMutex.Lock()
 	// fmt.Println("ClearResourceID:", resID)
-	updatedResourcesSentToClient[resID] = map[string]bool{}
+	updatedResourcesSentToClient.Remove(resID)
 	// fmt.Printf("ClearResourceID DONE: %s %+v\n", resID, updatedResourcesSentToClient)
-	updatedResourcesMutex.Unlock()
 }
 
 // SetClientKnowsResourceUpdated sets that a given client now knows resource updated
 func SetClientKnowsResourceUpdated(resID, clientID string) {
 	// zlog.Info("SetClientKnowsResourceUpdated:", resID, clientID) //, "\n", zlog.GetCallingStackString())
-	updatedResourcesMutex.Lock()
-	if updatedResourcesSentToClient[resID] == nil {
-		updatedResourcesSentToClient[resID] = map[string]bool{}
+	m, _ := updatedResourcesSentToClient.Get(resID)
+	if m == nil {
+		m = map[string]bool{}
 	}
-	updatedResourcesSentToClient[resID][clientID] = true
-	updatedResourcesMutex.Unlock()
+	m[clientID] = true
+	updatedResourcesSentToClient.Set(resID, m)
 }
 
 // SetResourceUpdatedFromClient is called from client to say it knows of update
