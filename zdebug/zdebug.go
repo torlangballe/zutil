@@ -27,3 +27,7 @@ func PrintAllGoroutines() {
 	runtime.Stack(buf, true)
 	fmt.Printf("%s", buf)
 }
+
+func Consume(p ...any) {
+
+}
