@@ -61,7 +61,7 @@ func (p *Profile) End(parts ...interface{}) {
 	for _, l := range p.Lines {
 		if p.MinSecs == 0 || l.Duration > time.Duration(p.MinSecs*float64(time.Second)) {
 			percent := int(float64(l.Duration) / float64(dur) * 100)
-			Info(p.Name+":", l.Text, time.Since(p.Start), "    ", l.Duration, percent, `%`)
+			Info("zprofile", p.Name+":", l.Text, time.Since(p.Start), "    ", l.Duration, percent, `%`)
 		}
 	}
 }
