@@ -139,7 +139,7 @@ func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 					zlog.Error(err, "get status")
 					continue
 				}
-				if strings.Contains(status, "Z") {
+				if zstr.StringsContain(status, "Z") {
 					continue
 				}
 			}
