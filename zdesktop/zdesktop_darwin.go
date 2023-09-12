@@ -168,7 +168,7 @@ func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, s
 	return
 }
 
-func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect) (img *image.NRGBA, pid int64, err error) {
+func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect) (img image.Image, pid int64, err error) {
 	winID, _, _, pid, err := GetIDScaleAndRectForWindowTitle(title, app, oldPID)
 	if err != nil {
 		return nil, 0, zlog.Error(err, "get id scale")
@@ -249,7 +249,7 @@ func createBitmapContext(width int, height int, data *C.uint32_t, bytesPerRow in
 		C.kCGImageAlphaNoneSkipFirst)
 }
 
-func CGImageToGoImage(cgimage C.CGImageRef, insetRect zgeo.Rect) (*image.NRGBA, error) {
+func CGImageToGoImage(cgimage C.CGImageRef, insetRect zgeo.Rect) (image.Image, error) {
 	var cw, ch int
 	iw := int(C.CGImageGetWidth(cgimage))
 	ih := int(C.CGImageGetHeight(cgimage))
@@ -277,7 +277,7 @@ func CGImageToGoImage(cgimage C.CGImageRef, insetRect zgeo.Rect) (*image.NRGBA, 
 	return img, nil
 }
 
-func GetWindowImage(winID string, insetRect zgeo.Rect) (*image.NRGBA, error) {
+func GetWindowImage(winID string, insetRect zgeo.Rect) (image.Image, error) {
 	wid, _ := strconv.ParseInt(winID, 10, 64)
 	if wid == 0 {
 		return nil, zlog.Error(nil, "no valid image id")
