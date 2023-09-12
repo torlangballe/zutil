@@ -2,6 +2,8 @@ package zprocess
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
@@ -92,7 +94,10 @@ func (b *Scheduler[I]) DebugPrintExecutors(run Run[I], s SituationType) {
 		}
 	}
 	// zlog.Warn("Ending++", endingCount)
-	exes := append(b.executors, Executor[I]{DebugName: "Wrk0"})
+	exes := append([]Executor[I]{{DebugName: "Wrk0"}}, b.executors...)
+	sort.Slice(exes, func(i, j int) bool {
+		return strings.Compare(exes[i].DebugName, exes[j].DebugName) > 0
+	})
 	if debugPrintExecutorRowsPrinted%20 == 0 {
 		fmt.Printf("                    ")
 		for _, e := range exes {
