@@ -58,10 +58,18 @@ func (p *Profile) End(parts ...interface{}) {
 		p.Log(parts...)
 	}
 	dur := time.Since(p.Start)
+	var print bool
 	for _, l := range p.Lines {
-		if p.MinSecs == 0 || l.Duration > time.Duration(p.MinSecs*float64(time.Second)) {
-			percent := int(float64(l.Duration) / float64(dur) * 100)
-			Info("zprofile", p.Name+":", l.Text, time.Since(p.Start), "    ", l.Duration, percent, `%`)
+		if l.Duration > time.Duration(p.MinSecs*float64(time.Second)) {
+			print = true
+			break
 		}
+	}
+	if !print {
+		return
+	}
+	for _, l := range p.Lines {
+		percent := int(float64(l.Duration) / float64(dur) * 100)
+		Info("zprofile", p.Name+":", l.Text, "    ", l.Duration, percent, `%`, "total:", time.Since(p.Start))
 	}
 }
