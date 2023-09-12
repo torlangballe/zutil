@@ -32,12 +32,18 @@ func (l *LockMap[K, V]) Has(k K) bool {
 	return ok
 }
 
-func (l *LockMap[K, V]) Get(k K) (v V, ok bool) {
+func (l *LockMap[K, V]) Get(k K) (V, bool) {
 	a, ok := l.Map.Load(k)
 	if ok {
 		return a.(V), true
 	}
-	return
+	var v V
+	return v, false
+}
+
+func (l *LockMap[K, V]) Index(k K) V {
+	v, _ := l.Get(k)
+	return v
 }
 
 func (l *LockMap[K, V]) Pop(k K) (v V, ok bool) {
