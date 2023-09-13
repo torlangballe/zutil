@@ -12,6 +12,7 @@ import (
 
 type Timer struct {
 	timer *time.Timer
+	start time.Time
 	mutex sync.Mutex
 	secs  float64
 }
@@ -45,6 +46,7 @@ func (t *Timer) StartIn(secs float64, perform func()) {
 	}
 	countMutex.Unlock()
 
+	t.start = time.Now()
 	t.timer = time.AfterFunc(secs2Dur(secs), func() {
 		countMutex.Lock()
 		timersCount[secs]--
@@ -53,6 +55,13 @@ func (t *Timer) StartIn(secs float64, perform func()) {
 		defer zlog.HandlePanic(true)
 		perform()
 	})
+}
+
+func (t *Timer) SinceStart() time.Duration {
+	if !t.IsRunning() {
+		return 0
+	}
+	return time.Since(t.start)
 }
 
 func (t *Timer) Stop() {
