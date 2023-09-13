@@ -6,7 +6,6 @@ import (
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
-	"github.com/torlangballe/zutil/ztime"
 )
 
 var (
@@ -54,6 +53,6 @@ func SetFromLine(lines string, linefeed, space string) {
 }
 
 func (info Info) ZUIString() string {
-	str := zstr.Concat(" • ", info.Version, ztime.GetNice(info.At, true), info.CommitHash, info.Branch, info.User, info.Host)
+	str := zstr.Concat(" • ", info.Version, info.At.Format("15:04 02-Jan-07"), info.CommitHash, info.Branch, info.User, info.Host)
 	return str
 }
