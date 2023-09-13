@@ -70,6 +70,6 @@ func (p *Profile) End(parts ...interface{}) {
 	}
 	for _, l := range p.Lines {
 		percent := int(float64(l.Duration) / float64(dur) * 100)
-		Info("zprofile", p.Name+":", l.Text, "    ", l.Duration, percent, `%`, "total:", time.Since(p.Start))
+		Info("zprofile", p.Name+":", l.Text, "    ", l.Duration, percent, `%`)
 	}
 }
