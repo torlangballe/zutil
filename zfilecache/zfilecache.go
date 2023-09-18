@@ -120,6 +120,7 @@ func (c *Cache) CacheFromReader(reader io.Reader, name string) (string, error) {
 // This string return is this name/hash, used to get a path or a url for fetching.
 // This should really call CacheFromReader, not visa versa
 func (c *Cache) CacheFromData(data []byte, name string) (string, error) {
+	prof := zlog.NewProfile(fmt.Sprint("CacheFromData ", name), 2)
 	var err error
 	// zlog.Warn("CacheFromData1:", name)
 	hashName := (name == "" || strings.HasPrefix(name, "."))
@@ -130,6 +131,7 @@ func (c *Cache) CacheFromData(data []byte, name string) (string, error) {
 		name = fmt.Sprintf("%x", hash) + name
 	}
 	path, dir := c.GetPathForName(name)
+	prof.Log("After get path")
 	// zlog.Warn("CacheFromData:", path)
 	err = zfile.MakeDirAllIfNotExists(dir)
 	if err != nil {
@@ -139,16 +141,20 @@ func (c *Cache) CacheFromData(data []byte, name string) (string, error) {
 		err = zfile.SetModified(path, time.Now())
 		return name, err
 	}
+	prof.Log("After set mod")
 	file, err := os.Create(path)
 	if err != nil {
 		return "", zlog.Error(err, "create file", path)
 	}
+	prof.Log("After create")
 	defer file.Close()
 
 	_, err = file.Write(data)
 	if err != nil {
 		return "", zlog.Error(err, "write to file")
 	}
+	prof.Log("After Write:", len(data))
+	prof.End("")
 	return name, nil
 }
 
