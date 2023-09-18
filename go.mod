@@ -43,6 +43,7 @@ require (
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
+	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/torlangballe/gofpdfv2 v0.0.0-20230907135652-77f990d622c9 // indirect
