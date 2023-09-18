@@ -42,7 +42,7 @@ var (
 	lastGoRoutineCount      int
 	lastGoRoutineOutputTime time.Time
 	rateLimiters            zmap.LockMap[LimitID, time.Time]
-	// MemoryStringFunc        func(m int64) string
+	enablerList             zmap.LockMap[string, *Enabler]
 )
 
 func init() {
@@ -439,4 +439,8 @@ func Limit(parts ...any) LimitID {
 
 func Func() {
 	Info(CallingFunctionString(3))
+}
+
+func RegisterEnabler(name string, b *Enabler) {
+	enablerList.Set(name, b)
 }
