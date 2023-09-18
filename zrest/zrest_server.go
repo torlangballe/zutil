@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
@@ -196,7 +197,11 @@ func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, 
 		http.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
 			p := zprocess.PushProcess(30, "AddHandler:"+req.URL.String())
 			CurrentInRequests++
+			start := time.Now()
 			f(w, req)
+			if zhttp.Logger != nil {
+				zhttp.Logger.Add(req.URL.String(), toSecondary(req.RemoteAddr), req.Method, true, time.Since(start))
+			}
 			zprocess.PopProcess(p)
 			CurrentInRequests--
 		})
@@ -214,11 +219,27 @@ func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, 
 		// })
 		p := zprocess.PushProcess(30, "zrest.Handler:"+req.URL.String())
 		CurrentInRequests++
+		start := time.Now()
 		f(w, req)
+		if zhttp.Logger != nil {
+			zhttp.Logger.Add(req.URL.String(), toSecondary(req.RemoteAddr), req.Method, true, time.Since(start))
+		}
 		CurrentInRequests--
 		zprocess.PopProcess(p)
 		// timer.Stop()
 	})
+}
+
+func toSecondary(a string) string {
+	var host string
+	port := zstr.TailUntilWithRest(a, ":", &host)
+	if port != "" {
+		_, err := strconv.Atoi(port)
+		if err == nil {
+			return host
+		}
+	}
+	return a
 }
 
 func Handle(pattern string, handler http.Handler) {
