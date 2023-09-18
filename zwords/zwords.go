@@ -115,7 +115,8 @@ func PluralWordWithCount(word string, count float64, langCode, plural string, si
 	if langCode == "" {
 		langCode = DefaultLanguage
 	}
-	scount := NiceFloat(count, significant) + " "
+	scount := NiceFloat(count, significant)
+	// zlog.Info("Plurlz:", scount, "'"+word+"'")
 	return scount + " " + PluralizeWord(word, count, langCode, plural)
 }
 
