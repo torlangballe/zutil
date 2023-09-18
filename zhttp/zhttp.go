@@ -54,6 +54,12 @@ type Parameters struct {
 
 const DefaultTimeoutSeconds = 15
 
+type RequestLogger interface {
+	Add(surl, secondary, method string, in bool, dur time.Duration)
+}
+
+var Logger RequestLogger
+
 func MakeParameters() Parameters {
 	return Parameters{
 		Headers:     map[string]string{},
@@ -238,6 +244,7 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 	// }()
 	request.Close = true
 	p := zprocess.PushProcess(30, "GetResponseFromReqClient:"+request.URL.String())
+	start := time.Now()
 	resp, err = client.Do(request)
 	zprocess.PopProcess(p)
 	if err == nil && resp == nil {
@@ -245,6 +252,14 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 	}
 	if params.GetErrorFromBody && (resp != nil && (err != nil || resp.StatusCode != 200)) {
 		err = CheckErrorFromBody(resp)
+	}
+	if Logger != nil && resp != nil {
+		var sloc string
+		loc, _ := resp.Location()
+		if loc != nil {
+			sloc = loc.String()
+		}
+		Logger.Add(request.URL.String(), sloc, request.Method, false, time.Since(start))
 	}
 	if err != nil && resp != nil {
 		resp.Body.Close()
@@ -460,7 +475,16 @@ func GetRedirectedURL(surl string) (string, error) {
 		lastUrlQuery = req.URL.String()
 		return nil
 	}
+	start := time.Now()
 	resp, err := client.Do(req)
+	if Logger != nil && err == nil {
+		var sloc string
+		loc, _ := resp.Location()
+		if loc != nil {
+			sloc = loc.String()
+			Logger.Add(surl, sloc, "request.Method", false, time.Since(start))
+		}
+	}
 	if resp != nil && resp.Body != nil {
 		resp.Body.Close()
 	}
