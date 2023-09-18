@@ -20,20 +20,16 @@ import (
 // https://xtermjs.org for web client?
 // https://pkg.go.dev/github.com/gliderlabs/ssh = docs
 
-type hardUser struct {
-	password string
-	tokens   []string
-}
-
 type Terminal struct {
-	port               int
-	startText          string
-	userIDs            map[string]int64
-	sessionPublicKeys  map[string]string // maps sessionID to public key, as it is lost
-	hardcodedUsers     map[string]hardUser
-	PublicKeyStorePath string
-	HandleLine         func(line string, ts *Session) bool
-	HandleNewSession   func(ts *Session) func(line string, pos int, key rune) (newLine string, newPos int, ok bool)
+	port                int
+	startText           string
+	userIDs             map[string]int64
+	sessionPublicKeys   map[string]string   // maps sessionID to public key. First a ssh.PublicKeyAuth comes in before login. Store map of session:public-key. Then in ssh.PasswordAuth read the key via same session, and store that zusers or map (if no auth), to let user thru on next login.
+	hardcodedUsers      map[string]hardUser // hardcodedUsers is a map of users who log right in. Only for development/testing.
+	noUserAuthValidKeys map[string]bool     // Map of public keys to let through when no zuser auth.
+	PublicKeyStorePath  string
+	HandleLine          func(line string, ts *Session) bool
+	HandleNewSession    func(ts *Session) func(line string, pos int, key rune) (newLine string, newPos int, ok bool)
 }
 
 type Session struct {
@@ -41,6 +37,11 @@ type Session struct {
 	goterm   *term.Terminal
 	Terminal *Terminal
 	values   map[string]interface{}
+}
+
+type hardUser struct {
+	password string
+	tokens   []string
 }
 
 func (ts *Session) UserID() int64 {
@@ -88,6 +89,7 @@ func New(startText string) *Terminal {
 	t.userIDs = map[string]int64{}
 	t.sessionPublicKeys = map[string]string{}
 	t.hardcodedUsers = map[string]hardUser{}
+	t.noUserAuthValidKeys = map[string]bool{}
 
 	return t
 }
@@ -123,7 +125,11 @@ func (t *Terminal) ListenForever(port int) {
 			ts.runCommands(com)
 			return
 		}
-		ts.goterm.AutoCompleteCallback = autoComplete
+		ts.goterm.AutoCompleteCallback = func(line string, pos int, key rune) (newLine string, newPos int, ok bool) {
+			newLine, newPos, ok = autoComplete(line, pos, key)
+			// zlog.Info("Auto:", line, newLine, newPos, ok)
+			return newLine, newPos, ok
+		}
 		if t.startText != "" {
 			fmt.Fprintln(ts.session, t.startText)
 		}
@@ -138,25 +144,31 @@ func (t *Terminal) ListenForever(port int) {
 		}
 	})
 	var opts []ssh.Option
-	if t.PublicKeyStorePath != "" && (len(t.hardcodedUsers) != 0 || zusers.MainServer != nil) {
+	if t.PublicKeyStorePath != "" {
 		publicKeyOpt := ssh.PublicKeyAuth(func(ctx ssh.Context, key ssh.PublicKey) bool {
 			skey := "ssh:" + zstr.MD5Hex(key.Marshal())
-			for _, us := range t.hardcodedUsers {
-				if zstr.StringsContain(us.tokens, skey) {
+			if zusers.MainServer == nil {
+				// zlog.Info("ssh.Session has public key?", skey, t.noUserAuthValidKeys)
+				if t.noUserAuthValidKeys[skey] {
+					// zlog.Info("Let in with existing pkey:", skey)
 					return true
 				}
 			}
-			if zusers.MainServer == nil {
-				return false
+			if len(t.hardcodedUsers) != 0 || zusers.MainServer != nil {
+				for _, us := range t.hardcodedUsers {
+					if zstr.StringsContain(us.tokens, skey) {
+						return true
+					}
+				}
+				uid, _ := zusers.MainServer.GetUserIDFromToken(skey)
+				// zlog.Info("SSH Try public key", ctx.User(), skey, uid)
+				if uid != 0 {
+					t.userIDs[ctx.User()] = uid
+					zlog.Info("🟨SSH Connected user", ctx.User(), uid, "with public key")
+					return true
+				}
+				// store the public key for this session, to save it when we fall back to password auth
 			}
-			uid, _ := zusers.MainServer.GetUserIDFromToken(skey)
-			// zlog.Info("SSH Try public key", ctx.User(), skey, uid)
-			if uid != 0 {
-				t.userIDs[ctx.User()] = uid
-				zlog.Info("🟨SSH Connected user", ctx.User(), uid, "with public key")
-				return true
-			}
-			// store the public key for this session, to save it when we fall back to password auth
 			t.sessionPublicKeys[ctx.SessionID()] = skey
 			return false // allow all keys, or use ssh.KeysEqual() to compare against known keys
 		})
@@ -171,7 +183,8 @@ func (t *Terminal) ListenForever(port int) {
 			}
 		}
 		if zusers.MainServer == nil {
-			return len(t.hardcodedUsers) == 0
+			t.noUserAuthValidKeys[t.sessionPublicKeys[ctx.SessionID()]] = true
+			return true
 		}
 		var ci zrpc.ClientInfo
 		ci.Type = "ssh"
@@ -191,8 +204,8 @@ func (t *Terminal) ListenForever(port int) {
 	})
 	opts = append(opts, loginOpt)
 	file := zfile.ExpandTildeInFilepath("~/.ssh/id_rsa")
-	zlog.Info("ssh Hostkeyfile:", file, zfile.Exists(file))
 	if zfile.Exists(file) {
+		zlog.Info("ssh Hostkeyfile:", file, zfile.Exists(file))
 		opts = append(opts, ssh.HostKeyFile(file))
 	}
 	zlog.Info("🟨SSH listening on port", port)
