@@ -34,9 +34,14 @@ type CreateStrIDer interface {
 	CreateStrID()
 }
 
+type KeyValue struct {
+	Key   string
+	Value string
+}
+
 type StrInt struct {
-	String string
-	Int64  int64
+	Str string
+	Int int64
 }
 
 func GetLevenshteinRatio(a, b string) float64 { // returns distance / min length of a or b
@@ -239,8 +244,11 @@ func After(str, after string) string {
 }
 
 func TruncatedFromStart(str string, length int, endString string) string {
-	l := zint.Clamp(length, 0, len(str)-len(endString)) // hack without unicode support
-	return endString + str[l:]
+	slen := len(str)
+	if slen <= length {
+		return str
+	}
+	return endString + str[slen-length:]
 }
 
 // Concatinates parts, adding divider if prev or current added is not empty
