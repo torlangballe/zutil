@@ -5,16 +5,14 @@ package zcommands
 import (
 	"os/user"
 	"reflect"
-	"strconv"
 	"strings"
 
-	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zterm"
-	"github.com/torlangballe/zutil/zwords"
 )
 
 type ArgType string
@@ -107,7 +105,10 @@ func (c *Commander) HandleTerminalLine(line string, ts *zterm.Session) bool {
 func (c *Commander) HandleLine(line string, ts *zterm.Session) {
 	sessionID := ts.ContextSessionID()
 	s := c.sessions[sessionID]
-	s.doCommand(line, CommandExecute)
+	str := s.doCommand(line, CommandExecute)
+	if str != "" {
+		s.TermSession.Writeln(str)
+	}
 }
 
 func (s *Session) doCommand(line string, ctype CommandType) string {
@@ -138,9 +139,9 @@ func (s *Session) autoComplete(line string, pos int, key rune) (newLine string, 
 	if key == 9 {
 		if strings.Contains(line, " ") {
 			str := s.doCommand(line, CommandExpand)
-			if str == "" {
-				return
-			}
+			// if str == "" {
+			// 	return
+			// }
 			ret := line + str
 			return ret, len(ret), true
 		}
@@ -168,7 +169,7 @@ func (s *Session) expandChildren(fileStub, prefix string) (newLine string, newPo
 }
 
 func (s *Session) expandForList(stub string, list []string, prefix string) (newLine string, newPos int, ok bool) {
-	zlog.Info("expandForList", stub, list)
+	zlog.Info("expandForList1", stub, list)
 	var commands []string
 	for _, c := range list {
 		if strings.HasPrefix(c, stub) {
@@ -185,10 +186,13 @@ func (s *Session) expandForList(stub string, list []string, prefix string) (newL
 		return m, len(m), true
 	}
 	s.TermSession.Writeln("\n" + strings.Join(commands, " "))
-	stub = zstr.SliceCommonExtremity(commands, true)
-	if stub != "" {
-		stub = prefix + stub
-		return stub, len(stub), true
+	var add string
+	diff := zstr.SliceCommonExtremity(commands, true)
+	zstr.HasPrefix(diff, stub, &add)
+	if diff != "" {
+		zlog.Info("expandForList:", diff, add, stub, prefix, zlog.CallingStackString())
+		add = prefix + add
+		return add, len(add), true
 	}
 	return
 }
@@ -213,97 +217,53 @@ func (s *Session) updatePrompt() {
 }
 
 func (s *Session) structCommand(structure any, command string, args []string, ctype CommandType) (result string, got bool) {
-	// zlog.Info("structCommand", command, args, ctype)
 	for _, st := range anonStructsAndSelf(structure) {
 		rval := reflect.ValueOf(st)
 		t := rval.Type()
 		for m := 0; m < t.NumMethod(); m++ {
 			method := t.Method(m)
 			mtype := method.Type
-			// zlog.Info("MethNames:", method.Name, mtype.NumIn())
 			if mtype.NumIn() == 1 || mtype.In(1) != commandInfoType {
 				continue
 			}
 			if strings.ToLower(method.Name) == command {
-				return s.structCommandWithMethod(method, rval, args, ctype)
+				return s.structCommandWithMethod(method, rval, args, ctype), true
 			}
 		}
 	}
-	return
+	return "", false
 }
 
-func (s *Session) structCommandWithMethod(method reflect.Method, structVal reflect.Value, args []string, ctype CommandType) (result string, got bool) {
+func (s *Session) structCommandWithMethod(method reflect.Method, structVal reflect.Value, args []string, ctype CommandType) string {
 	mtype := method.Type
-	var needed int
-	c := &CommandInfo{Session: s, Type: ctype}
-	params := []reflect.Value{structVal, reflect.ValueOf(c)}
-	for i := 2; i < mtype.NumIn(); i++ {
-		kind := mtype.In(i).Kind()
-		isPointer := (kind == reflect.Pointer)
-		av := reflect.New(mtype.In(i)).Elem()
-		if isPointer {
-			kind = mtype.In(i).Elem().Kind()
-			av = reflect.New(mtype.In(i).Elem()).Elem()
-		} else {
-		}
-		if len(args) == 0 {
-			if isPointer {
-				av = reflect.New(mtype.In(i)).Elem()
-			} else {
-				needed++
-				continue
-			}
-			params = append(params, av)
-			// zlog.Info("structCommand param", av)
-			continue
-		}
-		if needed != 0 {
-			continue
-		}
-		arg := zstr.ExtractFirstString(&args)
-		k := zreflect.KindFromReflectKindAndType(kind, mtype.In(i))
-		n, err := strconv.ParseFloat(arg, 10)
-		if k == zreflect.KindInt || k == zreflect.KindFloat {
+	sparams := []reflect.Value{structVal}
+	i := 1
+	hasCommand := (mtype.NumIn() > 1 && mtype.In(i) == commandInfoType && mtype.In(i).Kind() == reflect.Pointer)
+	if hasCommand {
+		c := &CommandInfo{Session: s, Type: ctype}
+		sparams = append(sparams, reflect.ValueOf(c))
+		i++
+	}
+	if i < mtype.NumIn() {
+		argStructType := mtype.In(i)
+		argVal := reflect.New(argStructType)
+		// argValPtr := argVal
+		// kind := argStructType.Kind()
+		// if kind == reflect.Pointer {
+		// 	kind = argStructType.Elem().Kind()
+		// 	argVal = reflect.New(argStructType.Elem()).Elem()
+		// }
+		zlog.Info("structCommandWithMethod:", ctype, hasCommand, argStructType, hasCommand, args)
+		if ctype == CommandExecute || ctype == CommandExpand {
+			err := zfields.ParseCommandArgsToStructFields(args, argVal)
 			if err != nil {
-				s.TermSession.Writeln("error parsing '" + arg + "' to number.")
-				return "", true // we return got==true
+				return err.Error()
 			}
 		}
-		switch kind {
-		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
-			av.SetInt(int64(n))
-		case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
-			av.SetUint(uint64(n))
-		case reflect.Float32, reflect.Float64:
-			av.SetFloat(n)
-		case reflect.String:
-			av.SetString(arg)
-		case reflect.Bool:
-			b, err := zbool.FromStringWithError(arg)
-			if err != nil {
-				s.TermSession.Writeln(arg+":", err)
-				return "", true // we return got==true
-			}
-			av.SetBool(b)
-		default:
-			s.TermSession.Writeln("unsupported parameter #:", i, av.Kind())
-			return "", true // we return got==true
-		}
-		if isPointer {
-			av = av.Addr()
-		}
-		params = append(params, av)
+		sparams = append(sparams, argVal.Elem())
 	}
-	if needed > 0 {
-		s.TermSession.Writeln(zwords.Pluralize("argument", needed), "needed")
-		return "", true // we return got==true
-	}
-	if len(args) > 0 {
-		s.TermSession.Writeln("extra arguments unused:", args)
-	}
-	// zlog.Info("Call:", method.Name, len(params), params)
-	vals := method.Func.Call(params)
-	return vals[0].Interface().(string), true
+	vals := method.Func.Call(sparams)
+	return vals[0].Interface().(string)
 }
 
 func anonStructsAndSelf(structure any) []any {
@@ -330,15 +290,8 @@ func (s *Session) methodNames(structure any) []string {
 	// zlog.Info("methodNames:", reflect.TypeOf(structure), t.NumMethod(), rval.Type(), rval.Kind())
 	for m := 0; m < t.NumMethod(); m++ {
 		method := t.Method(m)
-		mtype := method.Type
-		// zlog.Info("MethNames:", method.Name, mtype.NumIn())
-		if mtype.NumIn() == 1 || mtype.In(1) != commandInfoType {
-			// zlog.Info("No Session", method.Name, mtype.NumIn(), mtype.In(1))
-			continue
-		}
 		command := strings.ToLower(method.Name)
 		names = append(names, command)
-		// zlog.Info("command:", method.Name, mtype)
 	}
 	return names
 }
@@ -373,8 +326,8 @@ func (s *Session) addChildNodes(m map[string]any, parent any) {
 
 type Help struct {
 	Method      string
-	Args        string
 	Description string
+	Args        []zstr.KeyValue
 }
 
 func (s *Session) GetAllMethodsHelp(structure any) []Help {
@@ -382,32 +335,42 @@ func (s *Session) GetAllMethodsHelp(structure any) []Help {
 	rval := reflect.ValueOf(structure)
 	t := rval.Type()
 	for m := 0; m < t.NumMethod(); m++ {
+		var h Help
 		method := t.Method(m)
-		mtype := method.Type
-		if mtype.NumIn() == 1 || mtype.In(1) != commandInfoType {
-			// zlog.Info("No Session", method.Name, mtype.NumIn(), mtype.In(1))
+		if zstr.LastByteAsString(method.Name) == "_" {
 			continue
 		}
-		var args []reflect.Value
-		args = append(args, rval)
-		c := &CommandInfo{Session: s, Type: CommandHelp}
-		args = append(args, reflect.ValueOf(c))
-		for i := 2; i < mtype.NumIn(); i++ {
+		mtype := method.Type
+		i := 1
+		hasCommand := (mtype.NumIn() > 1 && mtype.In(1) == commandInfoType)
+		if hasCommand {
+			i++
+			var args []reflect.Value
+			args = append(args, rval)
+			c := &CommandInfo{Session: s, Type: CommandHelp}
+			args = append(args, reflect.ValueOf(c))
+			for i := 2; i < mtype.NumIn(); i++ {
+				atype := mtype.In(i)
+				z := reflect.Zero(atype)
+				args = append(args, z)
+			}
+			rets := method.Func.Call(args)
+			h.Description = rets[0].Interface().(string)
+		}
+		h.Method = strings.ToLower(method.Name)
+		if i < mtype.NumIn() {
 			atype := mtype.In(i)
 			z := reflect.Zero(atype)
-			args = append(args, z)
+			// zlog.Info("Help:", method.Name, i, mtype.NumIn(), hasCommand)
+			h.Args = zfields.GetCommandArgsHelpForStructFields(z.Interface())
 		}
-		rets := method.Func.Call(args)
-		returnString := rets[0].Interface().(string)
-		var h Help
-		h.Method = strings.ToLower(method.Name)
-		zstr.SplitN(returnString, "\t", &h.Args, &h.Description)
 		help = append(help, h)
 	}
 	return help
 }
 
 func (s *Session) changeDirectory(path string) {
+	zlog.Info("changeDirectory:", path)
 	if path == "" {
 		// todo
 		return

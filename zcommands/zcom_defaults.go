@@ -5,11 +5,11 @@ package zcommands
 import (
 	"fmt"
 	"io"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zterm"
@@ -20,7 +20,7 @@ type defaultCommands struct {
 }
 
 type helpGetter interface {
-	GetHelpForNode() string
+	GetHelpForNode_() string
 }
 
 func init() {
@@ -35,34 +35,33 @@ func expandPath(s *Session, path *string) string {
 	return s.ExpandChildren(stub, "")
 }
 
-func (d *defaultCommands) Cd(c *CommandInfo, path *string) string {
+func (d *defaultCommands) Cd(c *CommandInfo, a struct {
+	Path string `zui:"allowempty,desc:sub-directory to change to. Use .. to go to parent. - to go to previous directory."`
+}) string {
 	if c.Type == CommandHelp {
-		return "<path>\tchange directory to path. .. is to parent, - is to previous."
+		return "change directory."
 	}
 	if c.Type == CommandExpand {
-		return expandPath(c.Session, path)
+		return expandPath(c.Session, &a.Path)
 	}
-	dir := ""
-	if path != nil {
-		dir = *path
-	}
-	c.Session.changeDirectory(dir)
+	zlog.Info("CD", a.Path, c.Type)
+	c.Session.changeDirectory(a.Path)
 	return ""
 }
 
 func (d *defaultCommands) Help(c *CommandInfo) string {
 	if c.Type == CommandHelp {
-		return "\tshows this help."
+		return "shows this help."
 	}
 	if c.Type == CommandExpand {
 		return ""
 	}
 	h, _ := c.Session.currentNode().(helpGetter)
 	if h != nil {
-		str := h.GetHelpForNode()
+		str := h.GetHelpForNode_()
 		c.Session.TermSession.Writeln(str)
 	}
-	tabs := tabwriter.NewWriter(c.Session.TermSession.Writer(), 5, 0, 3, ' ', 0)
+	tabs := zstr.NewTabWriter(c.Session.TermSession.Writer())
 	helpForStruct(c.Session, c.Session.currentNode(), tabs)
 	for _, n := range c.Session.commander.GlobalNodes {
 		helpForStruct(c.Session, n, tabs)
@@ -71,30 +70,24 @@ func (d *defaultCommands) Help(c *CommandInfo) string {
 	return ""
 }
 
-func helpForStruct(s *Session, structure any, tabs *tabwriter.Writer) {
+func helpForStruct(s *Session, structure any, tabs *zstr.TabWriter) {
 	for _, h := range s.GetAllMethodsHelp(structure) {
-		fmt.Fprint(tabs, zstr.EscYellow, h.Method, " ")
-		fmt.Fprint(tabs, zstr.EscCyan, h.Args, "\t")
-		parts := strings.Split(h.Description, "\n")
-		if len(parts) == 1 {
-			fmt.Fprint(tabs, zstr.EscNoColor, h.Description, "\n")
-			continue
-		}
-		fmt.Fprint(tabs, zstr.EscNoColor, parts[0], "\n")
-		for _, part := range parts[1:] {
-			fmt.Fprint(tabs, zstr.EscYellow, " ")
-			fmt.Fprint(tabs, zstr.EscCyan, " \t")
-			fmt.Fprint(tabs, zstr.EscNoColor, part, "\n")
+		fmt.Fprint(tabs, zstr.EscYellow, h.Method, "\t")
+		fmt.Fprint(tabs, zstr.EscNoColor, h.Description, zstr.EscNoColor, "\n")
+
+		for _, arg := range h.Args {
+			fmt.Fprint(tabs, zstr.EscCyan, "  ", arg.Key, "\t")
+			fmt.Fprint(tabs, zstr.EscNoColor, arg.Value, zstr.EscNoColor, "\n")
 		}
 	}
 }
 
-func (d *defaultCommands) LS(c *CommandInfo, path *string) string {
+func (d *defaultCommands) LS(c *CommandInfo) string {
 	if c.Type == CommandHelp {
-		return "\tlist children match path, or all in current directory."
+		return "list nodes. Nodes are like directories, but with commands and content."
 	}
 	if c.Type == CommandExpand {
-		return expandPath(c.Session, path)
+		return ""
 	}
 	nodes := c.Session.getChildNodes()
 	for name := range nodes {
@@ -103,9 +96,9 @@ func (d *defaultCommands) LS(c *CommandInfo, path *string) string {
 	return ""
 }
 
-func (d *defaultCommands) PWD(c *CommandInfo, path *string) string {
+func (d *defaultCommands) PWD(c *CommandInfo) string {
 	if c.Type == CommandHelp {
-		return "\tPrint Working Directory, show path to where you are in hierarchy."
+		return "Print Working Directory, show path to where you are in the node hierarchy."
 	}
 	if c.Type == CommandExpand {
 		return ""
@@ -129,9 +122,11 @@ func (c copier) Read(p []byte) (n int, err error) {
 	return max, io.EOF
 }
 
-func (d *defaultCommands) Bash(c *CommandInfo, command string) string {
+func (d *defaultCommands) Bash(c *CommandInfo, a struct {
+	Command string `zui:"desc:text to execute as a bash command line"`
+}) string {
 	if c.Type == CommandHelp {
-		return "<command> \"[arguments]\"\tCall bash shell command on server."
+		return "all bash shell command on server."
 	}
 	if c.Type == CommandExpand {
 		return ""
@@ -140,7 +135,7 @@ func (d *defaultCommands) Bash(c *CommandInfo, command string) string {
 		c.Session.TermSession.Writeln("bash not enabled.")
 		return ""
 	}
-	cmd, outPipe, errPipe, err := zprocess.MakeCommand("/bin/bash", nil, false, nil, []any{"-c", command}...)
+	cmd, outPipe, errPipe, err := zprocess.MakeCommand("/bin/bash", nil, false, nil, []any{"-c", a.Command}...)
 	// fmt.Fprintln(s, "Running via ssh")
 	if err != nil {
 		c.Session.TermSession.Writeln(err)
@@ -160,9 +155,9 @@ func (d *defaultCommands) Bash(c *CommandInfo, command string) string {
 	return ""
 }
 
-func (d *defaultCommands) Net(c *CommandInfo, path *string) string {
+func (d *defaultCommands) Net(c *CommandInfo) string {
 	if c.Type == CommandHelp {
-		return "\tShow i/o network bandwidth per second, and drops/sec and errors/sec."
+		return "Show i/o network bandwidth per second, and drops/sec and errors/sec."
 	}
 	if c.Type == CommandExpand {
 		return ""
