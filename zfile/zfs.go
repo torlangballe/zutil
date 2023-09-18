@@ -77,3 +77,12 @@ func ReaderAtFromFileInFS(f fs.FS, name string) (reader io.ReaderAt, length int6
 	reader = bytes.NewReader(data)
 	return reader, int64(len(data)), nil
 }
+
+func ReaderFromFileInFS(f fs.FS, name string) (reader io.Reader, length int64, err error) {
+	data, err := ReadBytesFromFileInFS(f, name)
+	if err != nil {
+		return nil, 0, err
+	}
+	reader = bytes.NewReader(data)
+	return reader, int64(len(data)), nil
+}
