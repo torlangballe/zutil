@@ -223,7 +223,7 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 			// 	footers += s + "\n"
 			// 	return true
 			// }
-			snew := zstr.ReplaceAllCapturesFunc(linkInterReg, s, func(capture string, index int) string {
+			snew := zstr.ReplaceAllCapturesFunc(linkInterReg, s, 0, func(capture string, index int) string {
 				// zlog.Info("replace inter:", s, capture, index)
 				file, anchor := zstr.SplitInTwo(capture, "#")
 				if file == "" {
@@ -234,7 +234,7 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 				link := "#" + anchorFromFileAndAnchor(file, anchor)
 				return link
 			})
-			snew = zstr.ReplaceAllCapturesFunc(linkFileReg, snew, func(capture string, index int) string {
+			snew = zstr.ReplaceAllCapturesFunc(linkFileReg, snew, 0, func(capture string, index int) string {
 				// if zhttp.HasURLScheme(capture) {
 				// 	return capture
 				// }
@@ -251,7 +251,7 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 				// link := "#" + anchorFromFileAndAnchor(file, anchor)
 				// return link
 			})
-			snew = zstr.ReplaceAllCapturesFunc(headerReg, snew, func(capture string, index int) string {
+			snew = zstr.ReplaceAllCapturesFunc(headerReg, snew, 0, func(capture string, index int) string {
 				// zlog.Info("replace headers:", snew, capture, index)
 				if strings.HasPrefix(capture, "!") {
 					return capture

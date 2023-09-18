@@ -13,21 +13,23 @@ var (
 	DollarArgRegex                = regexp.MustCompile(`\$(\w+)`)
 )
 
+type RegOpts int
+
+const (
+	RegWithoutMatch RegOpts = 1 << iota
+	RegWithOutside
+)
+
 // ReplaceAllCapturesFunc calls replace with contents of the first capture group and index 1, then next and index 2 etc.
 // The returned string replaces the capture group, and the entire surrounding string and new contents is returned.
-func ReplaceAllCapturesFunc(regex *regexp.Regexp, str string, replace func(cap string, index int) string) string {
-	return replaceAllCaptures(regex, str, true, replace)
-}
-
-func ReplaceAllCapturesWithoutMatchFunc(regex *regexp.Regexp, str string, replace func(cap string, index int) string) string {
-	return replaceAllCaptures(regex, str, false, replace)
-}
-
-func replaceAllCaptures(regex *regexp.Regexp, str string, keepMatch bool, replace func(cap string, index int) string) string {
+func ReplaceAllCapturesFunc(regex *regexp.Regexp, str string, opts RegOpts, replace func(cap string, index int) string) string {
 	var out string
+	var outIndex int = -1
+	// fmt.Println("ReplaceAllCapturesFunc:", str)
 	groups := regex.FindAllStringSubmatchIndex(str, -1)
 	if len(groups) == 0 {
-		return str
+		addOutput(&out, str, &outIndex, opts, replace)
+		return out
 	}
 	var last int
 	for _, group := range groups {
@@ -35,10 +37,10 @@ func replaceAllCaptures(regex *regexp.Regexp, str string, keepMatch bool, replac
 		for i := 2; i < glen; i += 2 {
 			s := group[i]
 			e := group[i+1]
-			if !keepMatch {
+			if opts&RegWithoutMatch != 0 {
 				ks := group[i-2]
 				if s-ks > 0 {
-					out += str[last:ks]
+					addOutput(&out, str[last:ks], &outIndex, opts, replace)
 					last = s
 				}
 			}
@@ -46,21 +48,30 @@ func replaceAllCaptures(regex *regexp.Regexp, str string, keepMatch bool, replac
 				// we don't set last, so this whole part is copied in next loop or end
 				continue
 			}
-			out += str[last:s]
+			addOutput(&out, str[last:s], &outIndex, opts, replace)
 			last = e
-			if !keepMatch {
+			if opts&RegWithoutMatch != 0 {
 				last = group[i-1]
 			}
 			out += replace(str[s:e], i/2)
 		}
 	}
-	out += str[last:]
+	addOutput(&out, str[last:], &outIndex, opts, replace)
+	// fmt.Println("ReplaceAllCapturesFunc2:", out)
 	return out
+}
+
+func addOutput(out *string, str string, outIndex *int, opts RegOpts, replace func(cap string, index int) string) {
+	if opts&RegWithOutside != 0 {
+		str = replace(str, *outIndex)
+		(*outIndex)--
+	}
+	*out += str
 }
 
 func GetAllCaptures(regex *regexp.Regexp, str string) []string {
 	var out []string
-	ReplaceAllCapturesFunc(regex, str, func(cap string, index int) string {
+	ReplaceAllCapturesFunc(regex, str, 0, func(cap string, index int) string {
 		out = append(out, cap)
 		return ""
 	})
