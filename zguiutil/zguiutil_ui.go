@@ -65,6 +65,7 @@ func Labelize(view zview.View, prefix string, minWidth float64, alignment zgeo.A
 	label.SetFont(font)
 	label.SetColor(zstyle.DefaultFGColor().WithOpacity(0.7))
 	stack = zcontainer.StackViewHor("$labelize." + prefix) // give it special name so not easy to mis-search for in recursive search
+	stack.SetSpacing(10)
 
 	stack.Add(label, zgeo.CenterLeft).MinSize.W = minWidth
 	marg := zgeo.Size{}
