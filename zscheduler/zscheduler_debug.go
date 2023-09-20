@@ -10,12 +10,19 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
+// This file contains code for debugging collected information for jobs, or
+// outputting information about each executor's state on any change.
+// Neither are used directly in unit tests, but might be helpful.
+
+// JobDebug stores the duration each job is starting, running and ending. It also stores
+// how long it has existed, i.e has also been in the scheduler. Known remembers when it
+// was first added to the scheduler, even after removed.
 type JobDebug struct {
-	Known    time.Time
-	Existing time.Time
-	Starting time.Time
-	Ending   time.Time
-	Running  time.Time
+	known    time.Time
+	existing time.Time
+	starting time.Time
+	ending   time.Time
+	running  time.Time
 
 	Existed time.Duration
 	Started time.Duration
@@ -35,34 +42,34 @@ func (b *Scheduler[I]) setDebugState(jobID I, existing, starting, ending, runnin
 	now := time.Now()
 	d, got := b.Debug.Get(jobID)
 	if !got {
-		d.Known = now
+		d.known = now
 	}
-	if !d.Existing.IsZero() {
-		d.Existed += time.Since(d.Existing)
-		d.Existing = time.Time{}
+	if !d.existing.IsZero() {
+		d.Existed += time.Since(d.existing)
+		d.existing = time.Time{}
 	}
-	if !d.Starting.IsZero() {
-		d.Started += time.Since(d.Starting)
-		d.Starting = time.Time{}
+	if !d.starting.IsZero() {
+		d.Started += time.Since(d.starting)
+		d.starting = time.Time{}
 	}
-	if !d.Ending.IsZero() {
-		d.Ended += time.Since(d.Ending)
-		d.Ending = time.Time{}
+	if !d.ending.IsZero() {
+		d.Ended += time.Since(d.ending)
+		d.ending = time.Time{}
 	}
-	if !d.Running.IsZero() {
-		d.Runned += time.Since(d.Running)
-		d.Running = time.Time{}
+	if !d.running.IsZero() {
+		d.Runned += time.Since(d.running)
+		d.running = time.Time{}
 	}
 	// zlog.Warn("setDebugState:", d.JobName, jobID, existing, starting, running, delta, str)
 	if existing {
-		d.Existing = now
+		d.existing = now
 		d.ExecutorName = ""
 	} else if starting {
-		d.Starting = now
+		d.starting = now
 	} else if running {
-		d.Running = now
+		d.running = now
 	} else if ending {
-		d.Ending = now
+		d.ending = now
 	}
 	if !starting && !running && !ending {
 		d.ExecutorName = ""
@@ -116,13 +123,40 @@ func (b *Scheduler[I]) DebugPrintExecutors(run Run[I], s SituationType) {
 	case JobStopped:
 		str = "s"
 	}
-	fmt.Printf("%s: %s%-2v@%v  ", time.Now().Format("15:04:05.09"), str, run.Job.ID, run.ExecutorID)
+	var mid string
 	for _, e := range exes {
-		fmt.Printf(zstr.EscYellow + intPadded(startingCount[e.ID]))
-		fmt.Printf(zstr.EscGreen + intPadded(runningCount[e.ID]))
-		fmt.Printf(zstr.EscRed + intPadded(endingCount[e.ID]))
-		fmt.Print("  ")
+		mid += zstr.EscYellow + intPadded(startingCount[e.ID])
+		mid += zstr.EscGreen + intPadded(runningCount[e.ID])
+		mid += zstr.EscRed + intPadded(endingCount[e.ID])
+		mid += "  "
 	}
-	fmt.Println(zstr.EscNoColor)
+	zlog.Warn(fmt.Sprintf("%s%-2v@%v  ", str, run.Job.ID, run.ExecutorID), mid, zstr.EscNoColor)
 	debugPrintExecutorRowsPrinted++
+}
+
+func addedTime(d time.Duration, t time.Time) time.Duration {
+	if !t.IsZero() {
+		d += time.Since(t)
+	}
+	return d
+}
+
+func debugRow(row JobDebug) {
+	kn := time.Since(row.known)
+	ex := addedTime(row.Existed, row.existing)
+	st := addedTime(row.Started, row.starting)
+	en := addedTime(row.Ended, row.ending)
+	ru := addedTime(row.Runned, row.running)
+	zlog.Warn(row.JobName, row.ExecutorName, "known:", kn, "existed:", ex, "starting:", st, "ending:", en, "run:", ru, "gone:", kn-ex-st-en-ru)
+}
+
+func (b *Scheduler[I]) PrintDebugRows() {
+	var st, et time.Duration
+	b.Debug.ForEach(func(key I, row JobDebug) bool {
+		st += row.Started
+		et += row.Ended
+		debugRow(row)
+		return true
+	})
+	fmt.Println()
 }

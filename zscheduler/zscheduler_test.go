@@ -11,103 +11,143 @@ import (
 	"github.com/torlangballe/zutil/ztimer"
 )
 
-var startTotal, endTotal time.Duration
-
-func TestAdd(t *testing.T) {
+func makeScheduler(jobs, workers int, jobCost, workerCap float64) *Scheduler[int64] {
 	b := NewScheduler[int64]()
-	b.SimultaneousStarts = 2
-	b.MinDurationBetweenSimultaneousStarts = time.Millisecond * 300
+	b.SimultaneousStarts = 1
 	b.ExecutorAliveDuration = 0
 	b.LoadBalanceIfCostDifference = 2
 	b.KeepJobsBeyondAtEndUntilEnoughSlack = time.Second * 20
 	b.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
-		//		zlog.Warn(jobID, "start:") //, executorID)
-		d := time.Millisecond * 200
-		if run.ExecutorID == int64(5) {
-			d *= 5
-		}
-		time.Sleep(d)
-		startTotal += d
-		//		zlog.Warn(jobID, "start done:") //, executorID)
-		// b.JobIsRunningCh <- run.Job.ID
-		return nil
-	}
-	b.StopJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
-		d := time.Millisecond * 20
-		time.Sleep(d)
-		endTotal += d
+		time.Sleep(time.Millisecond * 20)
 		return nil
 	}
 	b.HandleSituationFastFunc = func(run Run[int64], s SituationType, err error) {
 		if s == JobStarted || s == JobRunning || s == JobStopped || s == JobEnded {
-			b.DebugPrintExecutors(run, s)
+			// b.DebugPrintExecutors(run, s)
 		}
-		// zlog.Warn("situation:", s, err)
+	}
+	b.StopJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
+		time.Sleep(time.Millisecond * 10)
+		return nil
 	}
 	go b.Start()
+	for i := 0; i < jobs; i++ {
+		job := makeJob(b, int64(i+1), time.Second*30, jobCost)
+		b.AddJobCh <- job
+	}
+	for i := 0; i < workers; i++ {
+		b.addExector(makeExecutor(b, int64(i+1), workerCap))
+	}
+	return b
+}
 
+func TestLoadBalance1(t *testing.T) {
+	b := makeScheduler(20, 1, 1, 10)
+	b.LoadBalanceIfCostDifference = 2
+	time.Sleep(time.Second)
+	c1 := b.CountJobs(1)
+	compare(t, "Jobs not 10 on w1", c1, 10)
+	b.addExector(makeExecutor(b, int64(2), 10))
+	time.Sleep(time.Second * 2)
+	c1 = b.CountJobs(1)
+	c2 := b.CountJobs(2)
+	compare(t, "Jobs not spread 10/10", c1, 10, c2, 10)
+}
+
+func TestLoadBalance2(t *testing.T) {
+	b := makeScheduler(20, 1, 1, 20)
+	b.LoadBalanceIfCostDifference = 2
+	time.Sleep(time.Second)
+	c1 := b.CountJobs(1)
+	compare(t, "Jobs not 20 on w1 part 2", c1, 20)
+	b.addExector(makeExecutor(b, int64(2), 10))
+	time.Sleep(time.Second * 2)
+	c1 = b.CountJobs(1)
+	c2 := b.CountJobs(2)
+	compare(t, "Jobs not spread 14/6", c1, 14, c2, 6)
+}
+
+func TestStartingTime(t *testing.T) {
+	b := makeScheduler(10, 1, 1, 20)
+	b.LoadBalanceIfCostDifference = 0
+	c1 := b.CountRunningJobs(1)
+	compare(t, "Jobs not starting at 0:", c1, 0)
+	time.Sleep(time.Millisecond * 20 * 9)
+	c1 = b.CountRunningJobs(1)
+	if c1 == 0 || c1 == 10 {
+		t.Error("Jobs not still 0 or reached 10:", c1, 10, c1, 0)
+	}
+	time.Sleep(time.Millisecond * 20 * 2)
+	c1 = b.CountRunningJobs(1)
+	compare(t, "Jobs not reached 10:", c1, 10)
+}
+
+func compare(t *testing.T, str string, n ...int) {
+	var fail bool
+	for i := 0; i < len(n); i += 2 {
+		c := n[i]
+		val := n[i+1]
+		if c != val {
+			str += fmt.Sprint(" ", c, "!=", val)
+			fail = true
+		}
+	}
+	if fail {
+		t.Error(str)
+	}
+}
+
+func TestPauseWithCapacity(t *testing.T) {
+	b := makeScheduler(20, 2, 1, 10)
+	time.Sleep(time.Second * 2)
+	c1 := b.CountJobs(1)
+	c2 := b.CountJobs(2)
+	compare(t, "Jobs not spread 10/10:", c1, 10, c2, 10)
+	e1, _ := b.FindExecutor(1)
+	e1.Paused = true
+	b.ChangeExecutorCh <- *e1
+	time.Sleep(time.Second)
+	c1 = b.CountJobs(1)
+	c2 = b.CountJobs(2)
+	compare(t, "Jobs not spread 0/10 after pause without capacity beyond 10:", c1, 0, c2, 10)
+	e2, _ := b.FindExecutor(2)
+	e2.CostCapacity = 20
+	b.ChangeExecutorCh <- *e2
+	time.Sleep(time.Second * 2)
+	c1 = b.CountJobs(1)
+	c2 = b.CountJobs(2)
+	compare(t, "Jobs not spread 0/20 after pause now with capacity at 20:", c1, 0, c2, 20)
+}
+
+func TestStartStop(t *testing.T) {
+	b := makeScheduler(0, 0, 0, 0)
 	for i := 0; i < 30; i++ {
-		addJob(b, int64(i+1))
-		// addJobRandomly(b, job)
+		addAndRemoveJobRandomly(b, makeJob(b, int64(i+1), time.Second, 1))
 	}
-	for i := 0; i < 8; i++ {
-		e := makeExecutor(b, int64(i+1))
-		b.addExector(e)
+	for i := 0; i < 10; i++ {
+		addAndRemoveExecutorRandomly(b, makeExecutor(b, int64(i+1), 5))
 	}
-	// for i := 0; i < 8; i++ {
-	// 	e := makeExecutor(b, int64(i+1))
-	// 	if i < 4 {
-	// 		pauseExecutorRandomly(b, e)
-	// 	}
-	// }
-	// ztimer.StartIn(9, func() {
-	// 	w := worker8
-	// 	w.Paused = true
-	// 	b.ChangeExecutorCh <- w
-	// })
-	// ztimer.StartIn(15, func() {
-	// 	b.ChangeExecutorCh <- worker8 // with !paused
-	// })
-
-	ztimer.RepeatForever(5, func() {
-		var st, et time.Duration
-		b.Debug.ForEach(func(key int64, row JobDebug) bool {
-			st += row.Started
-			et += row.Ended
-			debugRow(row)
-			return true
-		})
-		fmt.Println("tstarted:", startTotal, "sum:", st)
-		fmt.Println("tended:", endTotal, "sum:", et)
-		fmt.Println()
-	})
-	select {}
+	time.Sleep(time.Second * 10)
+	return
 }
 
-func addJob(b *Scheduler[int64], id int64) Job[int64] {
-	job := makeJob(b, id)
-	b.AddJobCh <- job
-	return job
-}
-
-func makeJob(b *Scheduler[int64], id int64) Job[int64] {
+func makeJob(b *Scheduler[int64], id int64, dur time.Duration, cost float64) Job[int64] {
 	job := Job[int64]{
 		ID:        id,
 		DebugName: fmt.Sprint("J", id),
-		Duration:  time.Second*30 + time.Millisecond*200*time.Duration(id),
-		Cost:      1,
+		Duration:  dur,
+		Cost:      cost,
 	}
 	return job
 }
 
-func makeExecutor(b *Scheduler[int64], id int64) Executor[int64] {
+func makeExecutor(b *Scheduler[int64], id int64, cap float64) Executor[int64] {
 	e := Executor[int64]{
 		ID:           id,
-		CostCapacity: 10,
+		CostCapacity: cap,
 		KeptAliveAt:  time.Now(),
 		DebugName:    fmt.Sprint("Wrk", id),
 	}
-	zlog.Warn("mkExe:", id)
 	return e
 }
 
@@ -115,20 +155,22 @@ func randDurSecs(min, max float64) float64 {
 	return min + (max-min)*rand.Float64()
 }
 
-func addJobRandomly(b *Scheduler[int64], job Job[int64]) {
-	ztimer.StartIn(randDurSecs(1, 2), func() {
+func addAndRemoveJobRandomly(b *Scheduler[int64], job Job[int64]) *ztimer.Timer {
+	timer := ztimer.TimerNew()
+	timer.StartIn(randDurSecs(1, 2), func() {
 		// zlog.Warn("addJobRandomly", job.DebugName)
 		go func() {
 			b.AddJobCh <- job
 		}()
-		ztimer.StartIn(randDurSecs(3, 2), func() {
+		timer.StartIn(randDurSecs(3, 2), func() {
 			b.RemoveJobCh <- job.ID
-			addJobRandomly(b, job)
+			addAndRemoveJobRandomly(b, job)
 		})
 	})
+	return timer
 }
 
-func addExecutorRandomly(b *Scheduler[int64], e Executor[int64]) {
+func addAndRemoveExecutorRandomly(b *Scheduler[int64], e Executor[int64]) {
 	ztimer.StartIn(randDurSecs(2, 3), func() {
 		// zlog.Warn("addJobRandomly", job.DebugName)
 		go func() {
@@ -136,7 +178,7 @@ func addExecutorRandomly(b *Scheduler[int64], e Executor[int64]) {
 		}()
 		ztimer.StartIn(randDurSecs(8, 12), func() {
 			b.RemoveExecutorCh <- e.ID
-			addExecutorRandomly(b, e)
+			addAndRemoveExecutorRandomly(b, e)
 		})
 	})
 }
@@ -155,26 +197,4 @@ func pauseExecutorRandomly(b *Scheduler[int64], e Executor[int64]) {
 			// b.ChangeExecutorCh <- e
 		})
 	})
-}
-
-func addTime(d time.Duration, t time.Time) time.Duration {
-	if !t.IsZero() {
-		d += time.Since(t)
-	}
-	return d
-}
-
-func debugRow(row JobDebug) {
-	kn := time.Since(row.Known)
-	ex := addTime(row.Existed, row.Existing)
-	st := addTime(row.Started, row.Starting)
-	en := addTime(row.Ended, row.Ending)
-	ru := addTime(row.Runned, row.Running)
-	zlog.Warn(row.JobName, row.ExecutorName, "known:", kn, "existed:", ex, "starting:", st, "ending:", en, "run:", ru, "gone:", kn-ex-st-en-ru)
-}
-
-func TestSimultaneousStarts(t *testing.T) {
-	for i :=0; i < 10; i++ {
-		
-	}
 }

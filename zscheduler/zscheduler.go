@@ -3,6 +3,7 @@ package zprocess
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/torlangballe/zutil/zdebug"
@@ -103,7 +104,6 @@ const (
 )
 
 func NewScheduler[I comparable]() *Scheduler[I] {
-	zlog.Warn("NewScheduler")
 	b := &Scheduler[I]{}
 
 	b.AddJobCh = make(chan Job[I])
@@ -137,7 +137,7 @@ func (b *Scheduler[I]) findRun(jobID I) (*Run[I], int) {
 	return nil, -1
 }
 
-func (b *Scheduler[I]) findExecutor(id I) (*Executor[I], int) {
+func (b *Scheduler[I]) FindExecutor(id I) (*Executor[I], int) {
 	for i, e := range b.executors {
 		if e.ID == id {
 			return &b.executors[i], i
@@ -161,7 +161,7 @@ func (b *Scheduler[I]) stopJob(jobID I, remove, outsideRequest bool) {
 		}
 		return
 	}
-	// zlog.Warn("stopJob", run.Started.IsZero(), "remove:", remove, run.Job.DebugName, run.ExecutorID) //, zlog.CallingStackString())
+	// zlog.Warn("stopJob", run.StartedAt, "remove:", remove, run.Job.DebugName, run.ExecutorID) //, zlog.CallingStackString())
 	b.setDebugState(jobID, false, false, true, false)
 	run.Stopping = true
 	run.StoppedAt = now
@@ -170,13 +170,15 @@ func (b *Scheduler[I]) stopJob(jobID I, remove, outsideRequest bool) {
 	run.StartedAt = time.Time{}
 	r := *run
 	// zlog.Warn("stopJob handleSit:", r.Job.ID, r.ExecutorID)
-	b.HandleSituationFastFunc(r, JobStopped, nil)
+	if b.HandleSituationFastFunc != nil {
+		b.HandleSituationFastFunc(r, JobStopped, nil)
+	}
 	// run.ExecutorID = b.zeroID
 	ctx, _ := context.WithDeadline(context.Background(), now.Add(b.SlowFuncsTimeout))
 	go func() {
 		err := b.StopJobOnExecutorFunc(r, ctx)
 		b.setDebugState(jobID, !remove, false, false, false)
-		if err != nil {
+		if err != nil && b.HandleSituationFastFunc != nil {
 			b.HandleSituationFastFunc(r, RemoveJobFromExecutorFailed, err)
 		}
 		b.endRunCh <- jobID
@@ -228,91 +230,91 @@ func (b *Scheduler[I]) hasUnrunJobs() bool {
 	return false
 }
 
-func (b *Scheduler[I]) maybeStopJobOnPaused(run Run[I], e *Executor[I], jobIsOver, hasUnrunJobs bool) bool {
-	var stop bool
-	if b.hasUnrunJobs() {
-		if e.Paused && b.KeepJobsBeyondAtEndUntilEnoughSlack == 0 || jobIsOver {
-			stop = true
+func (b *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capacity) bool {
+	if e == nil {
+		return true
+	}
+	if !b.isExecutorAlive(e) {
+		return true
+	}
+	var existingCap, unrunCost float64
+	for _, r := range b.runs {
+		if r.Job.ID != run.Job.ID && r.ExecutorID == b.zeroID || r.Stopping || r.Removing || r.StartedAt.IsZero() || r.RanAt.IsZero() {
+			unrunCost += r.Job.Cost
 		}
-	} else if e.Paused || jobIsOver {
-		stop = true
 	}
-	if stop {
-		// zlog.Warn("maybeStopJobOnPaused stop!", jobIsOver, run.Job.ID, run.ExecutorID, time.Since(run.RanAt.Add(run.Job.Duration)), b.hasUnrunJobs())
-		b.stopJob(run.Job.ID, false, false)
+	for id, cap := range caps {
+		if id == e.ID {
+			continue
+		}
+		existingCap += cap.spare()
 	}
-	return stop
-}
+	left := existingCap - unrunCost
+	if e.Paused {
+		// zlog.Warn("shouldStopJob paused:", caps, existingCap, unrunCost, run.Job.ID, b.KeepJobsBeyondAtEndUntilEnoughSlack, left, run.Job.Cost)
+		if b.KeepJobsBeyondAtEndUntilEnoughSlack == 0 || left < run.Job.Cost {
+			return true
+		}
+		if run.RanAt.IsZero() || time.Since(run.RanAt) > b.KeepJobsBeyondAtEndUntilEnoughSlack {
+			return true
+		}
+		return false // we don't do other stuff
+	}
 
-func (b *Scheduler[I]) isJobOverdueToQuit(run Run[I]) (quit, over bool) {
-	if run.Job.Duration == 0 {
-		return false, false
-	}
 	if run.RanAt.IsZero() {
-		return false, false
+		return false
 	}
-	overEnd := time.Since(run.RanAt) - run.Job.Duration
+	if run.Job.Duration == 0 {
+		return false
+	}
+	overEnd := time.Since(run.RanAt) - run.Job.Duration + b.KeepJobsBeyondAtEndUntilEnoughSlack
 	if overEnd < 0 {
-		return false, false
+		return false
 	}
-	if b.KeepJobsBeyondAtEndUntilEnoughSlack == 0 {
-		// zlog.Warn("isJobOverdueToQuit here", run.Job.ID, run.RanAt, overEnd)
-		return true, true
-	}
-	if overEnd < b.KeepJobsBeyondAtEndUntilEnoughSlack {
-		return false, true
-	}
-	// zlog.Warn("isJobOverdueToQuit here2", run.Job.ID)
-	return true, true
+	return true
 }
 
 func (b *Scheduler[I]) startAndStopRuns() {
 	var oldestRun *Run[I]
-	var paused, stopped bool
-
 	var bestBalanceJobID I
 	var bestLeft float64
 	var bestExID I
 	var bestRunTime time.Time
+	var stopped bool
 	capacities := b.calculateLoadOfUsableExecutors()
 	// zlog.Warn("startAndStopRuns")
 	hasUnrun := b.hasUnrunJobs()
 	for i, r := range b.runs {
-		// zlog.Warn("startAndStopRuns", r.Job.ID, r.ExecutorID)
 		if r.ExecutorID != b.zeroID {
-			var quit, over bool
-			e, _ := b.findExecutor(r.ExecutorID)
-			if e != nil {
-				quit, over = b.isJobOverdueToQuit(r)
-			}
-			if e == nil || quit || !b.isExecutorAlive(e) {
-				// zlog.Warn("startAndStopRuns stop:", e == nil, r.Job.ID, quit, b.isExecutorAlive(e))
-				b.stopJob(r.Job.ID, false, false)
+			e, _ := b.FindExecutor(r.ExecutorID)
+			stop := b.shouldStopJob(r, e, capacities)
+			if stop {
 				stopped = true
-				continue
-			}
-			if !paused {
-				paused = b.maybeStopJobOnPaused(r, e, over, hasUnrun)
-				if paused {
-					continue
-				}
+				b.stopJob(r.Job.ID, false, false)
+				break
 			}
 			if hasUnrun || b.LoadBalanceIfCostDifference == 0 || r.RanAt.IsZero() || r.Stopping {
 				continue
 			}
-			runLeft := e.CostCapacity - capacities[r.ExecutorID].load
+			runLeft := capacities[r.ExecutorID].unusedRatio()
+			rDiff := b.LoadBalanceIfCostDifference / capacities[r.ExecutorID].capacity
 			for exID, cap := range capacities {
 				if exID == r.ExecutorID {
 					continue
 				}
-				eLeft := cap.capacity - cap.load
-				if eLeft-runLeft < b.LoadBalanceIfCostDifference {
+				eLeft := cap.unusedRatio()
+				eDiff := b.LoadBalanceIfCostDifference / cap.capacity
+				diff := math.Max(rDiff, eDiff)
+				// zlog.Warn(r.Job.ID, exID, "Diffs:", eLeft, runLeft, cap.spare())
+				// zlog.Warn("startAndStopRuns LB?", capacities[r.ExecutorID].load, r.Job.ID, r.ExecutorID, hasUnrun, runLeft, eLeft, b.LoadBalanceIfCostDifference)
+				if eLeft-runLeft < diff { //b.LoadBalanceIfCostDifference {
 					continue
 				}
-				if eLeft > bestLeft && eLeft >= b.LoadBalanceIfCostDifference {
+				if eLeft > bestLeft && eLeft >= diff { //b.LoadBalanceIfCostDifference {
 					bestLeft = eLeft
 					bestExID = exID
-					if r.Job.Cost < eLeft && (bestRunTime.IsZero() || r.RanAt.Sub(bestRunTime) < 0) {
+					if r.Job.Cost < cap.spare() && (bestRunTime.IsZero() || r.RanAt.Sub(bestRunTime) < 0) {
+						// zlog.Warn("Balance at:", r.Job.ID, eLeft, runLeft)
 						bestBalanceJobID = r.Job.ID
 						bestRunTime = r.RanAt
 					}
@@ -327,7 +329,6 @@ func (b *Scheduler[I]) startAndStopRuns() {
 			}
 		}
 	}
-	// zlog.Warn("startAndStop?:", oldestRun != nil)
 	if oldestRun != nil {
 		b.startJob(oldestRun, capacities)
 		return // we don't need to set a timer if we call startJob
@@ -335,6 +336,7 @@ func (b *Scheduler[I]) startAndStopRuns() {
 	if stopped {
 		return // no timer needed if stopped
 	}
+	// zlog.Warn("bestBalanceJobID:", bestBalanceJobID)
 	if bestBalanceJobID != b.zeroID {
 		zdebug.Consume(bestExID)
 		// zlog.Warn("BalanceLoad:", bestBalanceJobID, bestLeft, "exID:", bestExID, "ranAt:", bestRunTime, capacities)
@@ -355,10 +357,10 @@ func (b *Scheduler[I]) startAndStopRuns() {
 				nextTimerTime = jobEnd
 				if b.KeepJobsBeyondAtEndUntilEnoughSlack != 0 && time.Since(nextTimerTime) > 0 {
 					nextTimerTime = nextTimerTime.Add(b.KeepJobsBeyondAtEndUntilEnoughSlack)
-					d := -time.Since(nextTimerTime)
-					if d > time.Second {
-						zlog.Warn("SetNextTimer for slack:", d)
-					}
+					// d := -time.Since(nextTimerTime)
+					// if d > time.Second {
+					// 	zlog.Warn("SetNextTimer for slack:", d)
+					// }
 				}
 			}
 		}
@@ -379,6 +381,18 @@ type capacity struct {
 	capacity           float64
 	startingCount      int
 	mostRecentStarting time.Time //!!!!!!!!!!!!!! use this to not run 2 jobs on same worker after each other!
+}
+
+func (c capacity) spare() float64 {
+	return c.capacity - c.load
+}
+
+func (c capacity) usedRatio() float64 {
+	return 1 - c.spare()/c.capacity
+}
+
+func (c capacity) unusedRatio() float64 {
+	return 1 - c.usedRatio()
 }
 
 func pushNonBlockingToChannel[T any](ch chan T, val T) {
@@ -433,7 +447,7 @@ func (b *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 	// zlog.Warn("startJob1?:", run.Job.ID, len(m))
 	var str string
 	for exID, cap := range load {
-		e, _ := b.findExecutor(exID)
+		e, _ := b.FindExecutor(exID)
 		// if e == nil {
 		// 	zlog.Warn("Exes:", b.executors)
 		// }
@@ -443,7 +457,7 @@ func (b *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 		if exCap < run.Job.Cost {
 			continue
 		}
-		// zlog.Warn("startJob?:", run.Job.DebugName, exID, zlog.Full(cap), bestStartingCount, b.SimultaneousStarts, b.MinDurationBetweenSimultaneousStarts)
+		// zlog.Warn("startJob?:", cap.startingCount, run.Job.DebugName, exID, zlog.Full(cap), bestStartingCount, b.SimultaneousStarts, b.MinDurationBetweenSimultaneousStarts)
 		if cap.startingCount >= b.SimultaneousStarts {
 			continue
 		}
@@ -476,10 +490,12 @@ func (b *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 		}
 	}
 	if bestExID == b.zeroID {
-		b.HandleSituationFastFunc(*run, NoWorkersToRunJob, zlog.NewError("job:", run.Job.ID))
+		if b.HandleSituationFastFunc != nil {
+			b.HandleSituationFastFunc(*run, NoWorkersToRunJob, zlog.NewError("job:", run.Job.ID))
+		}
 		return
 	}
-	e, _ := b.findExecutor(bestExID)
+	e, _ := b.FindExecutor(bestExID)
 	// zlog.Warn("startJob:", run.Job.DebugName, e.DebugName, str)
 	b.setDebugState(run.Job.ID, false, true, false, false)
 	run.StoppedAt = time.Time{}
@@ -490,7 +506,9 @@ func (b *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 	d, _ := b.Debug.Get(run.Job.ID)
 	d.ExecutorName = e.DebugName
 	b.Debug.Set(run.Job.ID, d)
-	b.HandleSituationFastFunc(*run, JobStarted, nil)
+	if b.HandleSituationFastFunc != nil {
+		b.HandleSituationFastFunc(*run, JobStarted, nil)
+	}
 	ctx, _ := context.WithDeadline(context.Background(), now.Add(b.SlowFuncsTimeout))
 	go func() {
 		err := b.StartJobOnExecutorFunc(*run, ctx)
@@ -499,7 +517,9 @@ func (b *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 		if err != nil {
 			zlog.Warn(r.Job.DebugName, "started end err", err)
 			b.endRunCh <- r.Job.ID
-			b.HandleSituationFastFunc(*run, ErrorStartingJob, err)
+			if b.HandleSituationFastFunc != nil {
+				b.HandleSituationFastFunc(*run, ErrorStartingJob, err)
+			}
 		} else {
 			b.JobIsRunningCh <- jobID
 		}
@@ -511,8 +531,8 @@ func (b *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 }
 
 func (b *Scheduler[I]) changeExecutor(e Executor[I]) {
-	zlog.Warn("changeExecutor")
-	fe, _ := b.findExecutor(e.ID)
+	// zlog.Warn("changeExecutor")
+	fe, _ := b.FindExecutor(e.ID)
 	if fe == nil {
 		b.addExector(*fe)
 		return
@@ -524,8 +544,8 @@ func (b *Scheduler[I]) changeExecutor(e Executor[I]) {
 }
 
 func (b *Scheduler[I]) addExector(e Executor[I]) {
-	zlog.Warn("addExecutor")
-	_, i := b.findExecutor(e.ID)
+	// zlog.Warn("addExecutor")
+	_, i := b.FindExecutor(e.ID)
 	if i != -1 {
 		zlog.Error(nil, "already exists:", e.ID)
 		return
@@ -558,17 +578,19 @@ func (b *Scheduler[I]) Start() {
 			}
 			b.setDebugState(jobID, false, false, false, true)
 			r.RanAt = time.Now()
-			b.HandleSituationFastFunc(*r, JobRunning, nil)
+			if b.HandleSituationFastFunc != nil {
+				b.HandleSituationFastFunc(*r, JobRunning, nil)
+			}
 			b.startAndStopRuns()
 
 		case <-b.ChangeJobCh:
-			zlog.Warn("ChangeJobCh")
+			// zlog.Warn("ChangeJobCh")
 
 		case e := <-b.AddExecutorCh:
 			b.addExector(e)
 
 		case exID := <-b.RemoveExecutorCh:
-			zlog.Warn("RemoveExecutorCh")
+			// zlog.Warn("RemoveExecutorCh")
 			b.removeExecutor(exID)
 
 		case ex := <-b.ChangeExecutorCh:
@@ -576,9 +598,9 @@ func (b *Scheduler[I]) Start() {
 			b.changeExecutor(ex)
 
 		case exID := <-b.SetExecutorIsAliveCh:
-			e, _ := b.findExecutor(exID)
+			e, _ := b.FindExecutor(exID)
 			e.KeptAliveAt = time.Now()
-			zlog.Warn("SetExecutorIsAliveCh!", e.ID)
+			// zlog.Warn("SetExecutorIsAliveCh!", e.ID)
 			b.startAndStopRuns()
 
 		case <-b.refreshCh:
@@ -607,7 +629,7 @@ func (b *Scheduler[I]) removeExecutor(exID I) {
 	// 		i--
 	// 	}
 	// }
-	_, i := b.findExecutor(exID)
+	_, i := b.FindExecutor(exID)
 	if i == -1 {
 		zlog.Error(nil, "remove: no executor with id", exID)
 		return
@@ -617,15 +639,35 @@ func (b *Scheduler[I]) removeExecutor(exID I) {
 }
 
 func (b *Scheduler[I]) removeRun(jobID I) {
-	r, i := b.findRun(jobID)
+	_, i := b.findRun(jobID)
 	if i == -1 {
 		zlog.Error(nil, "removeRun: job not found", jobID)
 		return
 	}
-	zlog.Warn(r.Job.DebugName, "removeRun", jobID)
+	// zlog.Warn(r.Job.DebugName, "removeRun", jobID)
 	if i != -1 {
 		zslice.RemoveAt(&b.runs, i)
 	}
+}
+
+func (b *Scheduler[I]) CountJobs(executorID I) int {
+	var count int
+	for _, r := range b.runs {
+		if r.ExecutorID == executorID {
+			count++
+		}
+	}
+	return count
+}
+
+func (b *Scheduler[I]) CountRunningJobs(executorID I) int {
+	var count int
+	for _, r := range b.runs {
+		if r.ExecutorID == executorID && !r.RanAt.IsZero() {
+			count++
+		}
+	}
+	return count
 }
 
 func (b *Scheduler[I]) endRun(jobID I) {
@@ -637,7 +679,10 @@ func (b *Scheduler[I]) endRun(jobID I) {
 	b.runs[i].ExecutorID = b.zeroID
 	b.runs[i].Removing = false
 	b.runs[i].Stopping = false
-	b.HandleSituationFastFunc(b.runs[i], JobEnded, nil)
+	if b.HandleSituationFastFunc != nil {
+		b.HandleSituationFastFunc(b.runs[i], JobEnded, nil)
+	}
+	b.startAndStopRuns()
 	// b.runs[i].EndedAt = time.Now()
 }
 
