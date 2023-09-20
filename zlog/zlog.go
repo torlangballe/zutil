@@ -196,7 +196,7 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 			lastGoRoutineOutputTime = time.Now()
 		}
 		if PrintDate {
-			str := time.Now().Local().Format("15:04:05.99/02 ")
+			str := time.Now().Local().Format("15:04:05.00/02 ")
 			if UseColor {
 				str = zstr.EscCyan + str + zstr.EscNoColor
 			}
