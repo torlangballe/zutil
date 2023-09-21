@@ -9,8 +9,8 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
-func WasmBrowser() string {
-	return ""
+func WasmBrowser() BrowserType {
+	return BrowserNone
 }
 
 // UUID returns a globally unique, permanent identifier string for the device we are running on.
