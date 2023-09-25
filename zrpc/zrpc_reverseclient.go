@@ -3,6 +3,7 @@ package zrpc
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
@@ -51,15 +52,21 @@ func (RPCCalls) ReversePoll(receiverID string, cp *CallPayload) error {
 		// if findReverseClient(receiverID) != rc {
 		// 	zlog.Info("ReversePoll2", findReverseClient(receiverID) != rc)
 		// }
-		if rc.pendingCallsToSend.Count() != 0 {
-			has = true
-			rc.pendingCallsToSend.ForEach(func(token string, call pendingCall) bool {
-				*cp = call.CallPayload
+		rc.pendingCallsToSend.ForEach(func(token string, call pendingCall) bool {
+			if time.Since(call.Expires) >= 0 {
+				var rp clientReceivePayload
+				rp.TransportError = TransportError(zstr.Spaced("zrpc.ReverseCall timed out before being polled from executor", call.Method, call.Expires))
 				rc.pendingCallsToSend.Remove(token)
+				call.done <- &rp
+				return true
+			} else {
+				has = true
+				*cp = call.CallPayload
 				rc.pendingCallsSent.Set(token, call)
-				return false
-			})
-		}
+			}
+			rc.pendingCallsToSend.Remove(token)
+			return false
+		})
 		if has {
 			// zlog.Info("ReversePoll has:", receiverID, cp.Token)
 			return nil
@@ -94,19 +101,24 @@ func findReverseClient(id string) *ReverseClient {
 // pendingCallsToSend map. It then waits for a timeout or for ReversePoll above to write
 // a result to a channel.
 func (rc *ReverseClient) Call(method string, args, resultPtr any) error {
+	return rc.CallWithTimeout(rc.TimeoutSecs, method, args, resultPtr)
+}
+
+func (rc *ReverseClient) CallWithTimeout(timeoutSecs float64, method string, args, resultPtr any) error {
 	var pc pendingCall
 	pc.CallPayload = CallPayload{Method: method, Args: args}
+	pc.Expires = time.Now().Add(ztime.SecondsDur(timeoutSecs))
 	token := zstr.GenerateRandomHexBytes(16)
 	pc.CallPayload.Token = token
 	pc.done = make(chan *clientReceivePayload, 10)
 	rc.pendingCallsToSend.Set(token, pc)
 	// zlog.Info("CALL:", method, pc.ClientID, token, rc.pendingCallsToSend.Count())
-	ticker := time.NewTicker(ztime.SecondsDur(PollRestartSecs))
+	dur := ztime.SecondsDur(math.Min(timeoutSecs, PollRestartSecs))
+	ticker := time.NewTicker(dur)
 	select {
 	case <-ticker.C:
-		zlog.Info("Call timed out:", method)
 		rc.pendingCallsToSend.Remove(token)
-		return zlog.NewError("zrpc.Call reverse timed out:", method)
+		return zlog.NewError("Reverse zrpc.Call timed out:", method, dur)
 	case r := <-pc.done:
 		if r.Error != "" {
 			return errors.New(r.Error)

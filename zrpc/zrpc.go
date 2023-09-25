@@ -9,6 +9,7 @@
 package zrpc
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"time"
@@ -19,7 +20,8 @@ type CallPayload struct {
 	ClientID string
 	Method   string
 	Args     interface{}
-	Token    string `json:",omitempty"`
+	Token    string    `json:",omitempty"`
+	Expires  time.Time // Used for reverse calls to time out
 }
 
 // callPayloadReceive is what received. It has to have same named fields as callPayload
@@ -28,7 +30,8 @@ type callPayloadReceive struct {
 	ClientID string
 	Method   string
 	Args     json.RawMessage
-	Token    string `json:",omitempty"`
+	Token    string    `json:",omitempty"`
+	Expires  time.Time // Used for reverse calls to time out
 }
 
 // receivePayload is what the result of the call is returned in.
@@ -57,6 +60,7 @@ type ClientInfo struct {
 	UserAgent string    `json:",omitempty"` // From the http request
 	IPAddress string    `json:",omitempty"` // From the http request
 	SendDate  time.Time `json:",omitempty"` // From the http requests Date header
+	Context   context.Context
 }
 
 // TransportError is a specific error type. Any problem with the actual transport of an zrpc call is

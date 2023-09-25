@@ -1,7 +1,6 @@
 package zrpc
 
 import (
-	"context"
 	"encoding/json"
 	"time"
 
@@ -91,15 +90,14 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 		go func() {
 			var ci ClientInfo
 			var rr ReverseResult
-			ctx := context.Background()
 			ci.Type = "zrpc-rev"
 			ci.ClientID = r.client.id
 			ci.Token = r.client.AuthToken
-			receive, err := callMethodName(ctx, ci, cp.Method, cp.Args)
+
+			receive, err := callWithDeadline(ci, cp.Method, cp.Expires, cp.Args)
 			if err != nil {
 				rr.clientReceivePayload.Error = err.Error()
 			}
-			// zlog.Info("call receive:", cp.Method, cp.Token, err, rr.Error)
 			if rr.clientReceivePayload.Error == "" {
 				rr.clientReceivePayload.Error = receive.Error
 			}

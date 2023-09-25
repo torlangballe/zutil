@@ -3,6 +3,7 @@ package zrpc
 import (
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/torlangballe/zutil/zhttp"
@@ -35,6 +36,11 @@ type clientReceivePayload struct {
 	TransportError        TransportError `json:",omitempty"`
 	AuthenticationInvalid bool
 }
+
+const (
+	dateHeaderID    = "X-Date"
+	timeoutHeaderID = "X-Timeout-Secs"
+)
 
 // MainClient is the main, default client. Is set in zapp, and used in zusers.
 var (
@@ -85,7 +91,8 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 	params := zhttp.MakeParameters()
 	params.TimeoutSecs = c.TimeoutSecs
 	params.SkipVerifyCertificate = c.SkipVerifyCertificate
-	params.Headers["X-Date"] = time.Now().UTC().Format(ztime.JavascriptISO)
+	params.Headers[dateHeaderID] = time.Now().UTC().Format(ztime.JavascriptISO)
+	params.Headers[timeoutHeaderID] = strconv.FormatFloat(timeoutSecs, 'f', -1, 64)
 	if c.AuthToken != "" {
 		cp.Token = c.AuthToken
 	}

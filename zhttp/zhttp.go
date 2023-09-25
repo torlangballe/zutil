@@ -50,6 +50,7 @@ type Parameters struct {
 	Body                  []byte
 	Reader                io.Reader
 	GetErrorFromBody      bool
+	Context               context.Context
 }
 
 const DefaultTimeoutSeconds = 15
@@ -216,18 +217,21 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 	if params.Body != nil {
 		reader = bytes.NewReader(params.Body)
 	}
-	req, err := http.NewRequest(params.Method, surl, reader)
+	if params.Context == nil {
+		request, err = http.NewRequest(params.Method, surl, reader)
+	} else {
+		request, err = http.NewRequestWithContext(params.Context, params.Method, surl, reader)
+	}
 	if err != nil {
 		err = zlog.Error(err, "new request")
 		return
 	}
 	if params.Headers != nil {
 		for k, v := range params.Headers {
-			req.Header.Set(k, v)
+			request.Header.Set(k, v)
 		}
 	}
-
-	return req, client, err
+	return request, client, err
 }
 
 var sendCount int64

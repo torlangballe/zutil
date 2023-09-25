@@ -3,9 +3,9 @@
 package zrpc
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -46,7 +46,6 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var rp receivePayload
 	var token string
 
-	// zlog.Info("ServeRPC:", req.Header.Get("X-Date"))
 	zrest.AddCORSHeaders(w, req)
 	defer req.Body.Close()
 	if req.Method == "OPTIONS" {
@@ -79,21 +78,18 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 		if call {
-			ctx := context.Background()
 			var ci ClientInfo
 			ci.Type = "zrpc"
 			ci.ClientID = cp.ClientID
 			ci.Token = token
 			ci.UserAgent = req.UserAgent()
 			ci.IPAddress = req.RemoteAddr
-			sdate := req.Header.Get("X-Date")
+			sdate := req.Header.Get(dateHeaderID)
+			stimeout := req.Header.Get(timeoutHeaderID)
+			timeoutSecs, _ := strconv.ParseFloat(stimeout, 64)
 			ci.SendDate, _ = time.Parse(ztime.JavascriptISO, sdate)
-
-			rp, err = callMethodName(ctx, ci, cp.Method, cp.Args)
-			if err != nil {
-				zlog.Error(err, "call")
-				rp.Error = err.Error()
-			}
+			expires := ci.SendDate.Add(ztime.SecondsDur(timeoutSecs))
+			rp, err = callWithDeadline(ci, cp.Method, expires, cp.Args)
 		}
 	}
 	encoder := json.NewEncoder(w)

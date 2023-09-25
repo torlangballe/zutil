@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 var callMethods = map[string]*methodType{} // stores all registered types/methods
@@ -165,4 +166,26 @@ func callMethodName(ctx context.Context, ci ClientInfo, name string, rawArg json
 		}
 	}
 	return rp, zlog.NewError("no method registered:", name)
+}
+
+func callWithDeadline(ci ClientInfo, method string, expires time.Time, args json.RawMessage) (receivePayload, error) {
+	var rp receivePayload
+	var err error
+	if time.Since(expires) >= 0 {
+		rp.TransportError = TransportError(zstr.Spaced("Call received after timeout. Not called. Expires:", expires))
+	} else {
+		ctx, cancel := context.WithDeadline(context.Background(), expires)
+		defer cancel()
+		ci.Context = ctx
+		rp, err = callMethodName(ctx, ci, method, args)
+		if err != nil {
+			zlog.Error(err, "call")
+			rp.Error = err.Error()
+		}
+		deadline, ok := ctx.Deadline()
+		if ok && time.Since(deadline) >= 0 {
+			zlog.Info("call expired after execute. Handling in client.", method, expires)
+		}
+	}
+	return rp, err
 }
