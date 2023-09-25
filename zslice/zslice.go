@@ -60,14 +60,17 @@ func AddEmptyElementAtEnd(slicePtr interface{}) int {
 	return AddAtEnd(slicePtr, e)
 }
 
-func MakeAnElementOfSliceType(slice any) any {
-	rval := reflect.ValueOf(slice)
+func MakeAnElementOfSliceRValType(rval reflect.Value) reflect.Value {
 	if rval.Kind() == reflect.Pointer {
 		rval = rval.Elem()
 	}
 	// zlog.Info("MakeAnElementOfSliceType:", rval.Type(), rval.Kind())
 	// return reflect.New(rval.Type()).Elem().Interface()
-	return reflect.New(rval.Type().Elem()).Elem().Interface()
+	return reflect.New(rval.Type().Elem()).Elem()
+}
+
+func MakeAnElementOfSliceType(slice any) any {
+	return MakeAnElementOfSliceRValType(reflect.ValueOf(slice)).Interface()
 }
 
 func AddAtEnd(slicePtr interface{}, add interface{}) int {
