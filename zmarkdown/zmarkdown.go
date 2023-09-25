@@ -1,6 +1,7 @@
 package zmarkdown
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -11,6 +12,7 @@ import (
 
 	blackfriday "github.com/torlangballe/blackfridayV2"
 	"github.com/torlangballe/mdtopdf"
+	"github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
@@ -306,4 +308,73 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 	}
 	zrest.AddCORSHeaders(w, req)
 	io.WriteString(w, html)
+}
+
+func outputValue(empty bool, k, v string) string {
+	if !empty || v != "" {
+		return v
+	}
+	return "<" + k + ">"
+}
+
+func MakeCURLMarkdownDescriptor(empty bool, title string, restURL, path, method string, headers, args map[string]string, body, resultPtr any, err error) string {
+	var md string
+	if empty {
+		headers["Content-Type"] = "application/json"
+	}
+	md += title + "\n"
+	md += "```\n"
+	md += "curl -X " + method + " \\\n"
+	for k, v := range headers {
+		md += "  -H \"" + k + ": " + outputValue(empty, k, v) + "\" \\\n"
+	}
+	if restURL == "" {
+		restURL = "<rest-url>"
+	}
+	surl := restURL + path
+	if len(args) != 0 {
+		surl += "?"
+		if empty {
+			nargs := map[string]string{}
+			for k, v := range args {
+				nargs[k] = outputValue(empty, k, v)
+			}
+			surl += zstr.ArgsToString(nargs, "&", "=", "")
+		} else {
+			surl += zstr.GetArgsAsURLParameters(args)
+		}
+	}
+	md += `  "` + surl + "\"\n"
+	if body != nil {
+		if empty {
+			md += "-D '\\\n"
+			str := zfields.OutputJsonStructDescription(body, "")
+			str = strings.Replace(str, "\n", " \\\n", -1)
+			md += str
+			md += "'\\\n"
+		} else {
+			bdata, _ := json.Marshal(body)
+			md += "-D '" + string(bdata) + "'\n"
+		}
+	}
+	md += "```\n"
+	if err != nil {
+		md += "gave error:\n"
+		md += err.Error()
+		return md
+	}
+	if resultPtr == nil {
+		return md
+	}
+
+	md += "returning:\n"
+	md += "```\n"
+	if empty {
+		md += zfields.OutputJsonStructDescription(resultPtr, "")
+	} else {
+		bdata, _ := json.MarshalIndent(resultPtr, "", "  ")
+		md += string(bdata) + "\n"
+	}
+	md += "```\n"
+	return md
 }
