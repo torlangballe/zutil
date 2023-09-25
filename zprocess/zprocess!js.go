@@ -14,7 +14,7 @@ import (
 	"syscall"
 
 	"github.com/mitchellh/go-ps"
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/process"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -134,12 +134,12 @@ func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 					zlog.Error(err, "new proc")
 					continue
 				}
-				status, err := proc.Status()
+				statuses, err := proc.Status()
 				if err != nil {
 					zlog.Error(err, "get status")
 					continue
 				}
-				if strings.Contains(status, "Z") {
+				if zstr.StringsContain(statuses, "Z") {
 					continue
 				}
 			}
