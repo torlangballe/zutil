@@ -42,6 +42,7 @@ func makeScheduler(jobs, workers int, jobCost, workerCap float64) *Scheduler[int
 }
 
 func TestLoadBalance1(t *testing.T) {
+	fmt.Println("TestLoadBalance1")
 	b := makeScheduler(20, 1, 1, 10)
 	b.LoadBalanceIfCostDifference = 2
 	time.Sleep(time.Second)
@@ -55,6 +56,7 @@ func TestLoadBalance1(t *testing.T) {
 }
 
 func TestLoadBalance2(t *testing.T) {
+	fmt.Println("TestLoadBalance2")
 	b := makeScheduler(20, 1, 1, 20)
 	b.LoadBalanceIfCostDifference = 2
 	time.Sleep(time.Second)
@@ -68,6 +70,7 @@ func TestLoadBalance2(t *testing.T) {
 }
 
 func TestStartingTime(t *testing.T) {
+	fmt.Println("TestStartingTime")
 	b := makeScheduler(10, 1, 1, 20)
 	b.LoadBalanceIfCostDifference = 0
 	c1 := b.CountRunningJobs(1)
@@ -98,6 +101,7 @@ func compare(t *testing.T, str string, n ...int) {
 }
 
 func TestPauseWithCapacity(t *testing.T) {
+	fmt.Println("TestPauseWithCapacity")
 	b := makeScheduler(20, 2, 1, 10)
 	time.Sleep(time.Second * 2)
 	c1 := b.CountJobs(1)
@@ -120,6 +124,7 @@ func TestPauseWithCapacity(t *testing.T) {
 }
 
 func TestStartStop(t *testing.T) {
+	fmt.Println("TestStartStop")
 	b := makeScheduler(0, 0, 0, 0)
 	for i := 0; i < 30; i++ {
 		addAndRemoveJobRandomly(b, makeJob(b, int64(i+1), time.Second, 1))

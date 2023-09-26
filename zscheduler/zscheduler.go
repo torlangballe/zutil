@@ -157,7 +157,8 @@ func (b *Scheduler[I]) stopJob(jobID I, remove, outsideRequest bool) {
 	if run.Stopping {
 		// zlog.Warn("Bailing stopJob on stopping already", zlog.Full(run)) //, zlog.CallingStackString())
 		if remove && !run.Removing {
-			zlog.Warn("Upgrading stop to remove from outsite stop+remove", run.Job.DebugName)
+			run.Removing = true
+			// zlog.Warn("Upgrading stop to remove from outside stop+remove", run.Job.DebugName)
 		}
 		return
 	}
@@ -510,15 +511,22 @@ func (b *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 		b.HandleSituationFastFunc(*run, JobStarted, nil)
 	}
 	ctx, _ := context.WithDeadline(context.Background(), now.Add(b.SlowFuncsTimeout))
+	runCopy := *run
 	go func() {
 		err := b.StartJobOnExecutorFunc(*run, ctx)
 		r, _ := b.findRun(jobID)
-		zlog.Assert(r != nil, jobID)
-		if err != nil {
-			zlog.Warn(r.Job.DebugName, "started end err", err)
-			b.endRunCh <- r.Job.ID
+		if r == nil {
 			if b.HandleSituationFastFunc != nil {
-				b.HandleSituationFastFunc(*run, ErrorStartingJob, err)
+				err := zlog.NewError("Job deleted during execute:", jobID, err)
+				b.HandleSituationFastFunc(runCopy, ErrorStartingJob, err)
+			}
+			return
+		}
+		if err != nil {
+			zlog.Warn(jobID, "StartJobOnExecutorFunc done err", err)
+			b.endRunCh <- jobID
+			if b.HandleSituationFastFunc != nil {
+				b.HandleSituationFastFunc(runCopy, ErrorStartingJob, err)
 			}
 		} else {
 			b.JobIsRunningCh <- jobID
@@ -671,19 +679,21 @@ func (b *Scheduler[I]) CountRunningJobs(executorID I) int {
 }
 
 func (b *Scheduler[I]) endRun(jobID I) {
-	_, i := b.findRun(jobID)
+	r, i := b.findRun(jobID)
 	if i == -1 {
-		zlog.Error(nil, "clearRun: job not found", jobID)
+		zlog.Error(nil, "endRun: job not found", jobID, zlog.CallingStackString())
 		return
 	}
-	b.runs[i].ExecutorID = b.zeroID
-	b.runs[i].Removing = false
-	b.runs[i].Stopping = false
+	if r.Removing {
+		b.removeRun(jobID)
+	}
+	r.ExecutorID = b.zeroID
+	r.Removing = false
+	r.Stopping = false
 	if b.HandleSituationFastFunc != nil {
-		b.HandleSituationFastFunc(b.runs[i], JobEnded, nil)
+		b.HandleSituationFastFunc(*r, JobEnded, nil)
 	}
 	b.startAndStopRuns()
-	// b.runs[i].EndedAt = time.Now()
 }
 
 func (b *Scheduler[I]) isExecutorAlive(e *Executor[I]) bool {
