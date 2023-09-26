@@ -27,7 +27,9 @@ var (
 	RunningOnServer      bool
 	LegalCORSOrigins     = map[string]bool{}
 	CurrentInRequests    int
-	StaticFolderPathFunc func(add string) string
+	StaticFolderPathFunc = func(add string) string {
+		return "www"
+	}
 )
 
 // Adds CORS headers to response if appropriate.
