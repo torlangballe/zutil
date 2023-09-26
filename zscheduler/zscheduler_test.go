@@ -41,6 +41,24 @@ func makeScheduler(jobs, workers int, jobCost, workerCap float64) *Scheduler[int
 	return b
 }
 
+func TestChangeExecutor(t *testing.T) {
+	fmt.Println("TestChangeExecutor")
+	b := makeScheduler(20, 2, 1, 10)
+	time.Sleep(time.Second * 2)
+	e := makeExecutor(b, 2, 11)
+	b.ChangeExecutorCh <- e
+	time.Sleep(time.Millisecond * 40)
+	c2 := b.CountJobs(2)
+	if c2 == 10 {
+		t.Error("No reduced jobs shortly after changing executor")
+	}
+	time.Sleep(time.Second)
+	c2 = b.CountJobs(2)
+	if c2 != 10 {
+		t.Error("Jobs not back to 10 a while after changing executor", c2)
+	}
+}
+
 func TestLoadBalance1(t *testing.T) {
 	fmt.Println("TestLoadBalance1")
 	b := makeScheduler(20, 1, 1, 10)

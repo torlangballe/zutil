@@ -58,10 +58,11 @@ type Scheduler[I comparable] struct {
 }
 
 type Job[I comparable] struct {
-	ID        I
-	DebugName string
-	Duration  time.Duration // How long job should run for. 0 is until stopped.
-	Cost      float64       // Cost is how much of executor's CostCapacity job uses.
+	ID           I
+	DebugName    string
+	Duration     time.Duration // How long job should run for. 0 is until stopped.
+	Cost         float64       // Cost is how much of executor's CostCapacity job uses.
+	ChangedCount int           // ChangedCount is an incremented when job changes. Must be flushed then
 }
 
 type Executor[I comparable] struct {
@@ -70,6 +71,8 @@ type Executor[I comparable] struct {
 	CostCapacity float64
 	KeptAliveAt  time.Time
 	DebugName    string
+	SettingsHash int64 // other settings for executor, if changed cause restart
+	ChangedCount int   // ChangedCount is an incremented when executor changes. Must be flushed then
 }
 
 type Run[I comparable] struct {
@@ -83,6 +86,8 @@ type Run[I comparable] struct {
 	// EndedAt    time.Time
 	Removing bool
 	Stopping bool
+
+	executorChangedCount int
 }
 
 type JobsOnExecutor[I comparable] struct {
@@ -233,6 +238,9 @@ func (b *Scheduler[I]) hasUnrunJobs() bool {
 
 func (b *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capacity) bool {
 	if e == nil {
+		return true
+	}
+	if e.ChangedCount != run.executorChangedCount {
 		return true
 	}
 	if !b.isExecutorAlive(e) {
@@ -502,6 +510,7 @@ func (b *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 	run.StoppedAt = time.Time{}
 	run.Removing = false
 	run.StartedAt = now
+	run.executorChangedCount = e.ChangedCount
 	// run.Starting = true
 	run.ExecutorID = bestExID
 	d, _ := b.Debug.Get(run.Job.ID)
@@ -529,7 +538,8 @@ func (b *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 				b.HandleSituationFastFunc(runCopy, ErrorStartingJob, err)
 			}
 		} else {
-			b.JobIsRunningCh <- jobID
+			b.setJobRunning(jobID)
+			return
 		}
 		b.refreshCh <- struct{}{}
 	}()
@@ -539,15 +549,20 @@ func (b *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 }
 
 func (b *Scheduler[I]) changeExecutor(e Executor[I]) {
-	// zlog.Warn("changeExecutor")
 	fe, _ := b.FindExecutor(e.ID)
 	if fe == nil {
 		b.addExector(*fe)
 		return
 	}
+	changed := (fe.CostCapacity != e.CostCapacity || fe.SettingsHash != e.SettingsHash)
 	fe.CostCapacity = e.CostCapacity
 	fe.DebugName = e.DebugName
 	fe.Paused = e.Paused
+	fe.SettingsHash = e.SettingsHash
+	// zlog.Warn("changeExecutor", changed)
+	if changed {
+		fe.ChangedCount++
+	}
 	b.startAndStopRuns()
 }
 
@@ -578,18 +593,7 @@ func (b *Scheduler[I]) Start() {
 			b.stopJob(jobID, false, true)
 
 		case jobID := <-b.JobIsRunningCh:
-			// zlog.Warn("JobIsRunningCh", jobID)
-			r, _ := b.findRun(jobID)
-			if r == nil {
-				zlog.Error(nil, "JobIsRunningCh on non-existing job", jobID)
-				return
-			}
-			b.setDebugState(jobID, false, false, false, true)
-			r.RanAt = time.Now()
-			if b.HandleSituationFastFunc != nil {
-				b.HandleSituationFastFunc(*r, JobRunning, nil)
-			}
-			b.startAndStopRuns()
+			b.setJobRunning(jobID)
 
 		case <-b.ChangeJobCh:
 			// zlog.Warn("ChangeJobCh")
@@ -627,6 +631,20 @@ func (b *Scheduler[I]) Start() {
 			b.startAndStopRuns()
 		}
 	}
+}
+
+func (b *Scheduler[I]) setJobRunning(jobID I) {
+	r, _ := b.findRun(jobID)
+	if r == nil {
+		zlog.Error(nil, "JobIsRunningCh on non-existing job", jobID)
+		return
+	}
+	b.setDebugState(jobID, false, false, false, true)
+	r.RanAt = time.Now()
+	if b.HandleSituationFastFunc != nil {
+		b.HandleSituationFastFunc(*r, JobRunning, nil)
+	}
+	b.startAndStopRuns()
 }
 
 func (b *Scheduler[I]) removeExecutor(exID I) {
