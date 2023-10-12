@@ -148,6 +148,7 @@ func (t *Terminal) ListenForever(port int) {
 		publicKeyOpt := ssh.PublicKeyAuth(func(ctx ssh.Context, key ssh.PublicKey) bool {
 			skey := "ssh:" + zstr.MD5Hex(key.Marshal())
 			if zusers.MainServer == nil {
+				// return true // return true to buypass all
 				// zlog.Info("ssh.Session has public key?", skey, t.noUserAuthValidKeys)
 				if t.noUserAuthValidKeys[skey] {
 					// zlog.Info("Let in with existing pkey:", skey)
