@@ -172,7 +172,7 @@ func callWithDeadline(ci ClientInfo, method string, expires time.Time, args json
 	var rp receivePayload
 	var err error
 	if time.Since(expires) >= 0 {
-		rp.TransportError = TransportError(zstr.Spaced("Call received after timeout. Not called. Expires:", expires))
+		rp.TransportError = TransportError(zstr.Spaced("Call received after timeout.", method, time.Since(expires)))
 	} else {
 		ctx, cancel := context.WithDeadline(context.Background(), expires)
 		defer cancel()
