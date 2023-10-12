@@ -171,5 +171,4 @@ func (b *Scheduler[I]) PrintDebugRows(w io.Writer) {
 		return true
 	})
 	tabWriter.Flush()
-	fmt.Fprintln(w, "")
 }
