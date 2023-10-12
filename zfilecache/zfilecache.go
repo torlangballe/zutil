@@ -79,7 +79,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	zrest.AddSubHandler(router, path, c)
 	// zrest.AddHandler(router, strings.TrimRight(path, "/"), c.ServeHTTP)
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
-		start := time.Now()
+		// start := time.Now()
 		dir := filepath.Join(c.workDir, c.urlPrefix, c.cacheName)
 		if zfile.NotExist(dir) {
 			return true
@@ -91,7 +91,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 		if err != nil {
 			zlog.Error(err, "delete old in cache", c.cacheName)
 		}
-		zlog.Info("Deleted in cache:", dir, time.Since(start))
+		// zlog.Info("Deleted in cache:", dir, time.Since(start))
 		return true
 	})
 	// zlog.Info("zfilecache Init:", c.workDir+cacheName, c.getURL, path)
