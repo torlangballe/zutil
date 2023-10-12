@@ -117,9 +117,11 @@ func (rc *ReverseClient) CallWithTimeout(timeoutSecs float64, method string, arg
 	ticker := time.NewTicker(dur)
 	select {
 	case <-ticker.C:
+		ticker.Stop() // Very important to stop ticker, or memory leak
 		rc.pendingCallsToSend.Remove(token)
 		return zlog.NewError("Reverse zrpc.Call timed out:", method, dur)
 	case r := <-pc.done:
+		ticker.Stop() // Very important to stop ticker, or memory leak
 		if r.Error != "" {
 			return errors.New(r.Error)
 		}
