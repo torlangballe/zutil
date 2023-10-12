@@ -10,7 +10,6 @@ import (
 
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zint"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
@@ -49,7 +48,6 @@ func (d *defaultCommands) Cd(c *CommandInfo, a struct {
 	if c.Type == CommandExpand {
 		return expandPath(c.Session, &a.Path)
 	}
-	zlog.Info("CD", a.Path, c.Type)
 	c.Session.changeDirectory(a.Path)
 	return ""
 }
@@ -79,7 +77,6 @@ func helpForStruct(s *Session, structure any, tabs *zstr.TabWriter) {
 	for _, h := range s.GetAllMethodsHelp(structure) {
 		fmt.Fprint(tabs, zstr.EscYellow, h.Method, "\t")
 		fmt.Fprint(tabs, zstr.EscNoColor, h.Description, zstr.EscNoColor, "\n")
-
 		for _, arg := range h.Args {
 			fmt.Fprint(tabs, zstr.EscCyan, "  ", arg.Key, "\t")
 			fmt.Fprint(tabs, zstr.EscNoColor, arg.Value, zstr.EscNoColor, "\n")
@@ -128,7 +125,7 @@ func (c copier) Read(p []byte) (n int, err error) {
 }
 
 func (d *UtilCommands) Bash(c *CommandInfo, a struct {
-	Command string `zui:"desc:text to execute as a bash command line"`
+	Command string `zui:"desc:text to execute as a bash command line."`
 }) string {
 	if c.Type == CommandHelp {
 		return "all bash shell command on server."

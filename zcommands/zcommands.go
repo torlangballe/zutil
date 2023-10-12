@@ -371,7 +371,7 @@ func (s *Session) GetAllMethodsHelp(structure any) []Help {
 }
 
 func (s *Session) changeDirectory(path string) {
-	zlog.Info("changeDirectory:", path)
+	// zlog.Info("changeDirectory:", path)
 	if path == "" {
 		// todo
 		return
