@@ -5,12 +5,14 @@ package zcommands
 import (
 	"fmt"
 	"io"
+	"runtime/pprof"
 	"text/tabwriter"
 
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
+	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zterm"
 	"github.com/torlangballe/zutil/zwords"
@@ -152,6 +154,32 @@ func (d *defaultCommands) Bash(c *CommandInfo, a struct {
 		c.Session.TermSession.Writeln(err)
 	}
 	// c.Session.TermSession.Terminal.HandleLine = old
+	return ""
+}
+
+func (d *defaultCommands) GOs(c *CommandInfo) string {
+	if c.Type == CommandHelp {
+		return "show all goroutines"
+	}
+	if c.Type == CommandExpand {
+		return ""
+	}
+	pprof.Lookup("goroutine").WriteTo(c.Session.TermSession.Writer(), 1)
+	return ""
+}
+
+func (d *defaultCommands) Debug(c *CommandInfo) string {
+	if c.Type == CommandHelp {
+		return "show commands to profile this programpro"
+	}
+	if c.Type == CommandExpand {
+		return ""
+	}
+	for _, n := range []string{"heap", "profile", "block", "mutex"} {
+		str := fmt.Sprintf("curl http://%s:%d/debug/pprof/%s > ~/%s && go tool pprof -web ~/%s",
+			AddressIP4, zrest.ProfilingPort, n, n, n)
+		c.Session.TermSession.Writeln(str)
+	}
 	return ""
 }
 
