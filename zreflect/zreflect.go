@@ -287,11 +287,15 @@ func ItterateStruct(istruct any, options Options) (item Item, err error) {
 	return itterate(0, "", "", "", false, rval.Elem(), options)
 }
 
-func ForEachField(istruct any, flatten bool, got func(index int, rval reflect.Value, sf reflect.StructField) bool) {
+func ForEachField(istruct any, flatten func(f reflect.StructField) bool, got func(index int, rval reflect.Value, sf reflect.StructField) bool) {
 	forEachField(reflect.ValueOf(istruct), flatten, 0, got)
 }
 
-func forEachField(rval reflect.Value, flatten bool, istart int, got func(index int, fieldRefVal reflect.Value, sf reflect.StructField) bool) (index int, quit bool) {
+func FlattenIfAnonymous(f reflect.StructField) bool {
+	return f.Anonymous
+}
+
+func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, istart int, got func(index int, fieldRefVal reflect.Value, sf reflect.StructField) bool) (index int, quit bool) {
 	if rval.Kind() == reflect.Ptr { // use Ptr instead of Pointer for old go
 		rval = rval.Elem()
 	}
@@ -312,9 +316,9 @@ func forEachField(rval reflect.Value, flatten bool, istart int, got func(index i
 			j++
 			continue
 		}
-		if flatten && f.Anonymous {
+		if flatten != nil && flatten(f) {
 			var quit bool
-			j, quit = forEachField(fv, true, j, got)
+			j, quit = forEachField(fv, flatten, j, got)
 			if quit {
 				return j, true
 			}
@@ -328,7 +332,7 @@ func forEachField(rval reflect.Value, flatten bool, istart int, got func(index i
 	return j, false
 }
 
-func FieldForIndex(istruct any, flatten bool, index int) (fieldRefVal reflect.Value, sf reflect.StructField) {
+func FieldForIndex(istruct any, flatten func(f reflect.StructField) bool, index int) (fieldRefVal reflect.Value, sf reflect.StructField) {
 	ForEachField(istruct, flatten, func(i int, rv reflect.Value, f reflect.StructField) bool {
 		if i == index {
 			fieldRefVal = rv
@@ -340,7 +344,7 @@ func FieldForIndex(istruct any, flatten bool, index int) (fieldRefVal reflect.Va
 	return
 }
 
-func FieldForName(istruct any, flatten bool, name string) (fieldRefVal reflect.Value, sf reflect.StructField, index int) {
+func FieldForName(istruct any, flatten func(f reflect.StructField) bool, name string) (fieldRefVal reflect.Value, sf reflect.StructField, index int) {
 	index = -1
 	ForEachField(istruct, flatten, func(i int, rv reflect.Value, f reflect.StructField) bool {
 		if f.Name == name {

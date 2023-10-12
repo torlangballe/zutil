@@ -154,7 +154,7 @@ func FromStruct(structure interface{}, lowerFirst bool) Dict {
 }
 
 func (d Dict) ToStruct(structPtr any) {
-	zreflect.ForEachField(structPtr, true, func(index int, fval reflect.Value, sf reflect.StructField) bool {
+	zreflect.ForEachField(structPtr, zreflect.FlattenIfAnonymous, func(index int, fval reflect.Value, sf reflect.StructField) bool {
 		dtags := zreflect.GetTagAsMap(string(sf.Tag))["zdict"]
 		name := sf.Name
 		hasTag := (len(dtags) != 0)

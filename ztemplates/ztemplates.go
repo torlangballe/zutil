@@ -109,7 +109,7 @@ func (h *Handler) loadTemplate(name string) error { // https://stackoverflow.com
 	if errio != nil {
 		return zlog.Error(errio, "ReadBytesFromFileInFS", tpath)
 	}
-	zlog.Info("load temps:", tpath)
+	// zlog.Info("load temps:", tpath)
 	t := h.mainTemplate.New(name).Funcs(fmap)
 	t, err := t.Parse(string(data))
 	if err != nil {
