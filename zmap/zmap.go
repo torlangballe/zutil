@@ -110,6 +110,7 @@ func Keys[K comparable, V any](m map[K]V) []K {
 	i := 0
 	for k := range m {
 		keys[i] = k
+		i++
 	}
 	return keys
 }
