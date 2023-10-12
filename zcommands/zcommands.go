@@ -72,6 +72,7 @@ type methodNode struct {
 
 var (
 	AllowBash       bool
+	AddressIP4      string
 	commandInfoType = reflect.TypeOf(&CommandInfo{})
 )
 
@@ -169,7 +170,7 @@ func (s *Session) expandChildren(fileStub, prefix string) (newLine string, newPo
 }
 
 func (s *Session) expandForList(stub string, list []string, prefix string) (newLine string, newPos int, ok bool) {
-	zlog.Info("expandForList1", stub, list)
+	// zlog.Info("expandForList1", stub, list)
 	var commands []string
 	for _, c := range list {
 		if strings.HasPrefix(c, stub) {
@@ -253,7 +254,7 @@ func (s *Session) structCommandWithMethod(method reflect.Method, structVal refle
 		// 	kind = argStructType.Elem().Kind()
 		// 	argVal = reflect.New(argStructType.Elem()).Elem()
 		// }
-		zlog.Info("structCommandWithMethod:", ctype, hasCommand, argStructType, hasCommand, args)
+		// zlog.Info("structCommandWithMethod:", ctype, hasCommand, argStructType, hasCommand, args)
 		if ctype == CommandExecute || ctype == CommandExpand {
 			err := zfields.ParseCommandArgsToStructFields(args, argVal)
 			if err != nil {
@@ -268,7 +269,7 @@ func (s *Session) structCommandWithMethod(method reflect.Method, structVal refle
 
 func anonStructsAndSelf(structure any) []any {
 	anon := []any{structure}
-	zreflect.ForEachField(structure, false, func(index int, v reflect.Value, sf reflect.StructField) bool {
+	zreflect.ForEachField(structure, nil, func(index int, v reflect.Value, sf reflect.StructField) bool {
 		if sf.Anonymous {
 			if v.CanAddr() {
 				v = v.Addr()
@@ -307,7 +308,7 @@ func (s *Session) getChildNodes() map[string]any {
 
 func (s *Session) addChildNodes(m map[string]any, parent any) {
 	// zlog.Info("AddChildNodes:", reflect.TypeOf(parent))
-	zreflect.ForEachField(parent, true, func(index int, v reflect.Value, sf reflect.StructField) bool {
+	zreflect.ForEachField(parent, zreflect.FlattenIfAnonymous, func(index int, v reflect.Value, sf reflect.StructField) bool {
 		if v.Kind() == reflect.Pointer {
 			v = v.Elem()
 		}
