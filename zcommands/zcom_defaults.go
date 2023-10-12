@@ -21,6 +21,9 @@ import (
 type defaultCommands struct {
 }
 
+type UtilCommands struct {
+}
+
 type helpGetter interface {
 	GetHelpForNode_() string
 }
@@ -124,7 +127,7 @@ func (c copier) Read(p []byte) (n int, err error) {
 	return max, io.EOF
 }
 
-func (d *defaultCommands) Bash(c *CommandInfo, a struct {
+func (d *UtilCommands) Bash(c *CommandInfo, a struct {
 	Command string `zui:"desc:text to execute as a bash command line"`
 }) string {
 	if c.Type == CommandHelp {
@@ -157,7 +160,7 @@ func (d *defaultCommands) Bash(c *CommandInfo, a struct {
 	return ""
 }
 
-func (d *defaultCommands) GOs(c *CommandInfo) string {
+func (d *UtilCommands) GOs(c *CommandInfo) string {
 	if c.Type == CommandHelp {
 		return "show all goroutines"
 	}
@@ -168,7 +171,7 @@ func (d *defaultCommands) GOs(c *CommandInfo) string {
 	return ""
 }
 
-func (d *defaultCommands) Debug(c *CommandInfo) string {
+func (d *UtilCommands) Debug(c *CommandInfo) string {
 	if c.Type == CommandHelp {
 		return "show commands to profile this programpro"
 	}
@@ -183,7 +186,7 @@ func (d *defaultCommands) Debug(c *CommandInfo) string {
 	return ""
 }
 
-func (d *defaultCommands) Net(c *CommandInfo) string {
+func (d *UtilCommands) Net(c *CommandInfo) string {
 	if c.Type == CommandHelp {
 		return "Show i/o network bandwidth per second, and drops/sec and errors/sec."
 	}
