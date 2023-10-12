@@ -30,6 +30,7 @@ type JobDebug struct {
 	Ended   time.Duration
 	Runned  time.Duration
 
+	Count        int
 	JobName      string
 	ExecutorName string
 }
@@ -66,6 +67,7 @@ func (b *Scheduler[I]) setDebugState(jobID I, existing, starting, ending, runnin
 		d.existing = now
 		d.ExecutorName = ""
 	} else if starting {
+		d.Count++
 		d.starting = now
 	} else if running {
 		d.running = now
@@ -151,16 +153,23 @@ func debugRow(row JobDebug, w io.Writer) {
 	st := addedTime(row.Started, row.starting)
 	en := addedTime(row.Ended, row.ending)
 	ru := addedTime(row.Runned, row.running)
-	fmt.Fprintln(w, row.JobName, row.ExecutorName, "known:", kn, "existed:", ex, "starting:", st, "ending:", en, "run:", ru, "gone:", kn-ex-st-en-ru)
+	fmt.Fprint(w, row.JobName, "\t", row.ExecutorName, "\t", kn, "\t", ex, "\t", st, "\t", en, "\t", ru, "\t", kn-ex-st-en-ru, "\t", row.Count, "\n")
 }
 
 func (b *Scheduler[I]) PrintDebugRows(w io.Writer) {
 	var st, et time.Duration
+	if b.Debug.Count() == 0 {
+		fmt.Fprintln(w, "No Debug Job Rows")
+		return
+	}
+	tabWriter := zstr.NewTabWriter(w)
+	fmt.Fprint(tabWriter, zstr.EscGreen, "job\texcutor\tknown\tunused\tstarting\tending\trun\tgone\tcount", zstr.EscNoColor, "\n")
 	b.Debug.ForEach(func(key I, row JobDebug) bool {
 		st += row.Started
 		et += row.Ended
-		debugRow(row, w)
+		debugRow(row, tabWriter)
 		return true
 	})
-	fmt.Println()
+	tabWriter.Flush()
+	fmt.Fprintln(w, "")
 }

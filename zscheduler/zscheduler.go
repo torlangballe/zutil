@@ -838,7 +838,6 @@ func (s *Scheduler[I]) changeJob(job Job[I]) {
 }
 
 func (s *Scheduler[I]) purgeJobsNotInList(jobsOnExe JobsOnExecutor[I]) {
-	zlog.Warn("purgeJobsNotInList1")
 	for _, r := range s.runs {
 		if r.ExecutorID != jobsOnExe.ExecutorID {
 			continue
@@ -855,7 +854,6 @@ func (s *Scheduler[I]) purgeJobsNotInList(jobsOnExe JobsOnExecutor[I]) {
 			s.stopJob(r.Job.ID, false, false, false, reason)
 		}
 	}
-	zlog.Warn("purgeJobsNotInList2")
 }
 
 func (s *Scheduler[I]) setJobRunning(jobID I) {
