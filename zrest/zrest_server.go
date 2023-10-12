@@ -27,6 +27,7 @@ var (
 	RunningOnServer      bool
 	LegalCORSOrigins     = map[string]bool{}
 	CurrentInRequests    int
+	ProfilingPort        int
 	StaticFolderPathFunc = func(add string) string {
 		return "www"
 	}
@@ -45,7 +46,7 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 		u.Host = u.Hostname()
 		find = u.String()
 	}
-	// zlog.Info("AddCorsHeaders:", o, find, req.URL.String(), "allowed:", LegalCORSOrigins[find])
+	// zlog.Info("AddCorsHeaders:", o, find, req.URL.String(), "allowed:", LegalCORSOrigins, LegalCORSOrigins[find])
 	if LegalCORSOrigins[find] {
 		// zlog.Info("AddCorsHeaders2:", o, "allowed:", LegalCORSOrigins)
 		w.Header().Set("Access-Control-Allow-Origin", o)
@@ -259,6 +260,7 @@ func SetProfilingHandle(port int) {
 	if port == 0 {
 		port = 6060
 	}
+	ProfilingPort = port
 	router := mux.NewRouter()
 
 	// http.Handle("/debug/pprof/", pprof.Index)
