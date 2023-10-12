@@ -2,6 +2,7 @@ package zscheduler
 
 import (
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"time"
@@ -85,6 +86,9 @@ func intPadded(i int) string {
 }
 
 func (b *Scheduler[I]) DebugPrintExecutors(run Run[I], s SituationType) {
+	// if s == JobEnded {
+	// 	zlog.Warn("DebugPrintExecutors", run.Job.ID, s)
+	// }
 	runningCount := map[I]int{}
 	startingCount := map[I]int{}
 	endingCount := map[I]int{}
@@ -141,21 +145,21 @@ func addedTime(d time.Duration, t time.Time) time.Duration {
 	return d
 }
 
-func debugRow(row JobDebug) {
+func debugRow(row JobDebug, w io.Writer) {
 	kn := time.Since(row.known)
 	ex := addedTime(row.Existed, row.existing)
 	st := addedTime(row.Started, row.starting)
 	en := addedTime(row.Ended, row.ending)
 	ru := addedTime(row.Runned, row.running)
-	zlog.Warn(row.JobName, row.ExecutorName, "known:", kn, "existed:", ex, "starting:", st, "ending:", en, "run:", ru, "gone:", kn-ex-st-en-ru)
+	fmt.Fprintln(w, row.JobName, row.ExecutorName, "known:", kn, "existed:", ex, "starting:", st, "ending:", en, "run:", ru, "gone:", kn-ex-st-en-ru)
 }
 
-func (b *Scheduler[I]) PrintDebugRows() {
+func (b *Scheduler[I]) PrintDebugRows(w io.Writer) {
 	var st, et time.Duration
 	b.Debug.ForEach(func(key I, row JobDebug) bool {
 		st += row.Started
 		et += row.Ended
-		debugRow(row)
+		debugRow(row, w)
 		return true
 	})
 	fmt.Println()
