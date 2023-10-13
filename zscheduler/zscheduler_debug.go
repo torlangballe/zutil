@@ -40,9 +40,9 @@ var (
 	debugPrintExecutorRowsPrinted int
 )
 
-func (b *Scheduler[I]) setDebugState(jobID I, existing, starting, ending, running bool) {
+func (s *Scheduler[I]) setDebugState(jobID I, existing, starting, ending, running bool) {
 	now := time.Now()
-	d, got := b.Debug.Get(jobID)
+	d, got := s.Debug.Get(jobID)
 	if !got {
 		d.known = now
 	}
@@ -77,7 +77,7 @@ func (b *Scheduler[I]) setDebugState(jobID I, existing, starting, ending, runnin
 	if !starting && !running && !ending {
 		d.ExecutorName = ""
 	}
-	b.Debug.Set(jobID, d)
+	s.Debug.Set(jobID, d)
 }
 
 func intPadded(i int) string {
@@ -87,14 +87,14 @@ func intPadded(i int) string {
 	return fmt.Sprintf("%-3d", i)
 }
 
-func (b *Scheduler[I]) DebugPrintExecutors(run Run[I], s SituationType) {
+func (s *Scheduler[I]) DebugPrintExecutors(run Run[I], sit SituationType) {
 	// if s == JobEnded {
 	// 	zlog.Warn("DebugPrintExecutors", run.Job.ID, s)
 	// }
 	runningCount := map[I]int{}
 	startingCount := map[I]int{}
 	endingCount := map[I]int{}
-	for _, r := range b.runs {
+	for _, r := range s.runs {
 		if r.Job.ID == run.Job.ID {
 			r = run
 		}
@@ -107,7 +107,7 @@ func (b *Scheduler[I]) DebugPrintExecutors(run Run[I], s SituationType) {
 		}
 	}
 	// zlog.Warn("Ending++", endingCount)
-	exes := append([]Executor[I]{{DebugName: "Wrk0"}}, b.executors...)
+	exes := append([]Executor[I]{{DebugName: "Wrk0"}}, s.executors...)
 	sort.Slice(exes, func(i, j int) bool {
 		return strings.Compare(exes[i].DebugName, exes[j].DebugName) > 0
 	})
@@ -119,7 +119,7 @@ func (b *Scheduler[I]) DebugPrintExecutors(run Run[I], s SituationType) {
 		fmt.Println(zstr.EscNoColor)
 	}
 	var str string
-	switch s {
+	switch sit {
 	case JobStarted:
 		str = "S"
 	case JobEnded:
@@ -156,15 +156,15 @@ func debugRow(row JobDebug, w io.Writer) {
 	fmt.Fprint(w, row.JobName, "\t", row.ExecutorName, "\t", kn, "\t", ex, "\t", st, "\t", en, "\t", ru, "\t", kn-ex-st-en-ru, "\t", row.Count, "\n")
 }
 
-func (b *Scheduler[I]) PrintDebugRows(w io.Writer) {
+func (s *Scheduler[I]) PrintDebugRows(w io.Writer) {
 	var st, et time.Duration
-	if b.Debug.Count() == 0 {
+	if s.Debug.Count() == 0 {
 		fmt.Fprintln(w, "No Debug Job Rows")
 		return
 	}
 	tabWriter := zstr.NewTabWriter(w)
 	fmt.Fprint(tabWriter, zstr.EscGreen, "job\texcutor\tknown\tunused\tstarting\tending\trun\tgone\tcount", zstr.EscNoColor, "\n")
-	b.Debug.ForEach(func(key I, row JobDebug) bool {
+	s.Debug.ForEach(func(key I, row JobDebug) bool {
 		st += row.Started
 		et += row.Ended
 		debugRow(row, tabWriter)

@@ -240,6 +240,7 @@ func (s *Scheduler[I]) selectLoop() {
 			s.startAndStopRuns()
 
 		case <-s.timer.C:
+			// zlog.Warn("tick")
 			s.timerOn = false
 			s.startAndStopRuns()
 		}
@@ -295,7 +296,9 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 		zlog.Assert(outsideRequest)
 		return
 	}
-	zlog.Warn("stopJob", run.Job.DebugName, refresh, remove, outsideRequest, reason) //, zlog.CallingStackString())
+	// if s.stopped {
+	// zlog.Warn("stopJob", run.Job.DebugName, run.ExecutorID, refresh, remove, outsideRequest, "reason:", reason, run) //, zlog.CallingStackString())
+	// }
 	defer func() {
 		// if s.stopped {
 		// zlog.Warn("stopJob refresh?", jobID, refresh)
@@ -390,12 +393,16 @@ func (s *Scheduler[I]) hasUnrunJobs() bool {
 }
 
 func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capacity) (stop bool, reason string) {
-	// if s.stopped {
-	// zlog.Warn("shouldStopJob", run.Job.ID, run.Stopping, e == nil, run.StartedAt.IsZero(), run.RanAt.IsZero())
+	// zlog.Warn("shouldStopJob", run.Job.ID, "@", run.ExecutorID, run.Stopping, e == nil, run.StartedAt.IsZero(), run.RanAt.IsZero())
 	// }
 	if run.Stopping {
 		// zlog.Warn("Hear1")
 		return false, "stopping already"
+	}
+	alive := s.isExecutorAlive(e)
+	if !alive {
+		// s.setup.HandleSituationFastFunc(run, ExecutorHasExpired, "")
+		return true, "not alive executor"
 	}
 	if e == nil {
 		// zlog.Warn("Hear2", run.Stopping, run.StartedAt.IsZero(), run.RanAt)
@@ -405,16 +412,19 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		if !run.RanAt.IsZero() {
 			return true, "No executor, and RanAt is not zero"
 		}
+		if !alive {
+			return true, "No executor, and not alive"
+		}
 		return false, "No executor, no need to stop job"
+	}
+	if !alive {
+		return true, "Not alive"
 	}
 	if e.changedCount != run.executorChangedCount {
 		// zlog.Warn("shouldStopJob changed:", e.changedCount, run.executorChangedCount)
-		return true, zstr.Spaced("changeCount changed:", e.changedCount, run.executorChangedCount)
+		return true, zstr.Spaced("executor changeCount changed:", e.changedCount, run.executorChangedCount)
 	}
-	if !s.isExecutorAlive(e) {
-		s.setup.HandleSituationFastFunc(run, ExecutorHasExpired, "")
-		return true, "not alive executor"
-	}
+	// zlog.Warn("shouldStopJob2", run.Job.ID, "@", run.ExecutorID, s.isExecutorAlive(e), run.Stopping, e == nil, run.StartedAt.IsZero(), run.RanAt.IsZero())
 	var existingCap, unrunCost float64
 	for _, r := range s.runs {
 		if r.Job.ID != run.Job.ID && r.ExecutorID == s.zeroID || r.Stopping || r.Removing || r.StartedAt.IsZero() || r.RanAt.IsZero() {
@@ -425,16 +435,22 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		// if id == e.ID {
 		// 	continue
 		// }
+		// zlog.Warn("Cap:", eID, cap.capacity, cap.load)
 		existingCap += cap.spare()
 	}
 	left := existingCap - unrunCost
 	if e.Paused {
-		// zlog.Warn("shouldStopJob paused:", caps, existingCap, unrunCost, run.Job.ID, s.KeepJobsBeyondAtEndUntilEnoughSlack, left, run.Job.Cost)
+		// zlog.Warn("shouldStopJob paused:", caps, existingCap, unrunCost, run.Job.ID, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack, left, run.Job.Cost)
 		if s.setup.KeepJobsBeyondAtEndUntilEnoughSlack == 0 {
 			return true, "paused and no KeepJobsBeyondAtEndUntilEnoughSlack"
 		}
-		if left < run.Job.Cost {
-			return true, zstr.Spaced("paused, and left < cost", left, run.Job.Cost)
+		// zlog.Warn("Stop???", run.Job.ID, run.ExecutorID, left, run.Job.Cost, unrunCost)
+		if unrunCost == 0 {
+			// if left >= run.Job.Cost && unrunCost == 0 {
+			return true, zstr.Spaced("paused, and left > cost", left, run.Job.Cost)
+		}
+		if left <= 0 {
+			return true, zstr.Spaced("paused, and left <= 0", left, run.Job.Cost)
 		}
 		if run.RanAt.IsZero() {
 			return true, "paused, and RanAt is zero"
@@ -591,15 +607,21 @@ func (s *Scheduler[I]) startAndStopRuns() {
 	if s.setup.ExecutorAliveDuration != 0 {
 		for _, e := range s.executors {
 			expires := e.KeptAliveAt.Add(s.setup.ExecutorAliveDuration)
-			if time.Since(expires) < 0 && (nextTimerTime.IsZero() || expires.Before(nextTimerTime)) {
+			if nextTimerTime.IsZero() || expires.Before(nextTimerTime) {
 				nextTimerTime = expires
 			}
 		}
 	}
 	s.timer.Stop()
 	if nextTimerTime.IsZero() {
-		if !s.timerOn && (len(s.executors) != 0 || len(s.runs) != 0) {
-			zlog.Error(nil, "No timer, yet we have runs or executors:", len(s.runs), len(s.executors))
+		starting := 0
+		for _, r := range s.runs {
+			if !r.StartedAt.IsZero() {
+				starting++
+			}
+		}
+		if !s.stopped && !s.timerOn && (len(s.executors) != 0 && len(s.runs) != 0) && starting == 0 {
+			zlog.Error(nil, "No timer, yet we have runs or executors:", len(s.runs), len(s.executors), s.CountJobs(s.zeroID), s.CountRunningJobs(s.zeroID), "starting:", starting, s.setup.ExecutorAliveDuration)
 		}
 		s.timerOn = false
 		return
@@ -613,7 +635,6 @@ func (s *Scheduler[I]) startAndStopRuns() {
 	// zlog.Warn("SetTimer:", time.Now().Add(d))
 	s.timerOn = true
 	s.timer.Reset(d)
-
 }
 
 type capacity struct {
@@ -797,11 +818,13 @@ func (s *Scheduler[I]) changeExecutor(e Executor[I]) {
 		return
 	}
 	changed := (fe.CostCapacity != e.CostCapacity || fe.SettingsHash != e.SettingsHash)
+	// if changed {
+	// 	zlog.Warn("changeExecutor", fe.CostCapacity, e.CostCapacity, fe.SettingsHash, e.SettingsHash, (fe.CostCapacity != e.CostCapacity || fe.SettingsHash != e.SettingsHash))
+	// }
 	fe.CostCapacity = e.CostCapacity
 	fe.DebugName = e.DebugName
 	fe.Paused = e.Paused
 	fe.SettingsHash = e.SettingsHash
-	// zlog.Warn("changeExecutor", changed)
 	if changed {
 		fe.changedCount++
 	}
@@ -891,7 +914,7 @@ func (s *Scheduler[I]) removeRun(jobID I) {
 		zlog.Error(nil, "removeRun: job not found", jobID)
 		return
 	}
-	// zlog.Warn(r.Job.DebugName, "removeRun", jobID)
+	// zlog.Warn(r.Job.DebugName, "removeRun", jobID, len(s.runs))
 	if i != -1 {
 		zslice.RemoveAt(&s.runs, i)
 	}
@@ -957,10 +980,12 @@ func (s *Scheduler[I]) endRun(jobID I) {
 	defer s.startAndStopRuns()
 	r, i := s.findRun(jobID)
 	if i == -1 {
-		zlog.Error(nil, "endRun: job not found", jobID, zlog.CallingStackString())
+		if !s.stopped {
+			zlog.Error(nil, "endRun: job not found", jobID, len(s.runs))
+		}
 		return
 	}
-	// zlog.Warn("endRun:", jobID, r.Stopping, r.Removing, len(s.runs), zlog.CallingStackString())
+	// zlog.Warn("endRun:", jobID, r.Stopping, r.Removing, len(s.runs), r.Removing, s.stopped)
 	rc := *r
 	if r.Removing || s.stopped {
 		s.removeRun(jobID)
@@ -979,7 +1004,7 @@ func (s *Scheduler[I]) endRun(jobID I) {
 
 func (s *Scheduler[I]) isExecutorAlive(e *Executor[I]) bool {
 	if e == nil {
-		return false
+		return true // it is alive if it doesn't exist, how else will it become alive?
 	}
 	if s.setup.ExecutorAliveDuration == 0 {
 		return true
@@ -1003,6 +1028,14 @@ func (s *Scheduler[I]) Executors() []Executor[I] {
 func (s *Scheduler[I]) Stop() {
 	s.stopped = true
 	s.executors = []Executor[I]{}
+	for i := 0; i < len(s.runs); i++ {
+		r := s.runs[i]
+		if !r.RanAt.IsZero() || r.Stopping {
+			continue
+		}
+		zslice.RemoveAt(&s.runs, i)
+		i--
+	}
 	s.startAndStopRuns()
 }
 
