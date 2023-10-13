@@ -2,7 +2,6 @@ package zstr
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -90,7 +89,6 @@ func (t *TabWriter) outputLine(sline string, widths []int) {
 	for j := 0; ; j++ {
 		var has bool
 		row := make([]string, len(cells))
-		fmt.Println("Row1:", len(row))
 		for i, c := range cells {
 			parts := strings.Split(c, "\r")
 			if len(parts) > j {
