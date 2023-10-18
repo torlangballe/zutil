@@ -394,7 +394,6 @@ func (s *Scheduler[I]) hasUnrunJobs() bool {
 
 func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capacity) (stop bool, reason string) {
 	// zlog.Warn("shouldStopJob", run.Job.ID, "@", run.ExecutorID, run.Stopping, e == nil, run.StartedAt.IsZero(), run.RanAt.IsZero())
-	// }
 	if run.Stopping {
 		// zlog.Warn("Hear1")
 		return false, "stopping already"
@@ -426,9 +425,11 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 	}
 	// zlog.Warn("shouldStopJob2", run.Job.ID, "@", run.ExecutorID, s.isExecutorAlive(e), run.Stopping, e == nil, run.StartedAt.IsZero(), run.RanAt.IsZero())
 	var existingCap, unrunCost float64
+	var unrunName string
 	for _, r := range s.runs {
 		if r.Job.ID != run.Job.ID && r.ExecutorID == s.zeroID || r.Stopping || r.Removing || r.StartedAt.IsZero() || r.RanAt.IsZero() {
 			unrunCost += r.Job.Cost
+			unrunName = r.Job.DebugName
 		}
 	}
 	for _, cap := range caps {
@@ -455,8 +456,8 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		if run.RanAt.IsZero() {
 			return true, "paused, and RanAt is zero"
 		}
-		if time.Since(run.RanAt) > s.setup.KeepJobsBeyondAtEndUntilEnoughSlack {
-			return true, zstr.Spaced("paused, and since RanAt > KeepJobsBeyondAtEndUntilEnoughSlack", time.Since(run.RanAt), ">", s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
+		if time.Since(run.RanAt.Add(run.Job.Duration)) > s.setup.KeepJobsBeyondAtEndUntilEnoughSlack {
+			return true, zstr.Spaced("paused, and since RanAt+dur > KeepJobsBeyondAtEndUntilEnoughSlack", time.Since(run.RanAt), ">", s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
 		}
 		return false, "" // we don't do other stuff
 	}
@@ -478,7 +479,9 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		if sinceRun > run.Job.Duration+s.setup.KeepJobsBeyondAtEndUntilEnoughSlack {
 			return true, zstr.Spaced("job duration with slack and not enough capacity over, stopping anyway", unrunCost, time.Since(run.RanAt), run.Job.Duration, "left:", left, "rcost:", run.Job.Cost, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
 		}
-		return false, zstr.Spaced("job duration with slack and not enough capacity still has slack, not stopping yet", time.Since(run.RanAt), run.Job.Duration, left, run.Job.Cost, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
+		str := zstr.Spaced("job duration with slack and not enough capacity still has slack, not stopping yet", time.Since(run.RanAt), run.Job.Duration, "left:", left, "cost:", run.Job.Cost, "unrun:", unrunCost, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack, "urn:", unrunName)
+		zlog.Info("Job not stopped:", run.Job.DebugName, "@", e.DebugName, str)
+		return false, str
 	}
 	// zlog.Warn("Here!", run.Job.DebugName, time.Since(run.RanAt))
 	return false, "No reason to stop"

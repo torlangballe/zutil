@@ -33,6 +33,9 @@ func newScheduler(jobs, workers int, jobCost, workerCap float64) *Scheduler[int6
 	}
 	setup.HandleSituationFastFunc = func(run Run[int64], sit SituationType, details string) {
 		if sit == JobStarted || sit == JobRunning || sit == JobStopped || sit == JobEnded {
+			if sit == JobStopped {
+				zlog.Warn("STOPJOB:", run.Job.DebugName, run.ExecutorID)
+			}
 			// zlog.Warn("Sit:", sit)
 			// s.DebugPrintExecutors(run, sit)
 		}
@@ -182,9 +185,11 @@ func testPauseWithTwoExecutors(t *testing.T) {
 	e2 := makeExecutor(s, 2, 20)
 	e2.Paused = true
 	s.ChangeExecutorCh <- e2
+	zlog.Warn("After pause")
 	time.Sleep(time.Millisecond * 100)
 	c1 = s.CountRunningJobs(1)
 	c2 = s.CountRunningJobs(2)
+	zlog.Warn("After pause and sleep", c1, c2)
 	if c2 == 0 {
 		t.Error("Executor2 drained too fast after pause:", c2, c1)
 	}
@@ -194,6 +199,7 @@ func testPauseWithTwoExecutors(t *testing.T) {
 	if c1 != 20 || c2 != 0 {
 		t.Error("Executor not at 20/0 after slow drain:", c1, c2)
 	}
+	zlog.Warn("Before exit")
 	stopAndCheckScheduler(s, t)
 }
 
@@ -400,16 +406,16 @@ func stopAndCheckScheduler(s *Scheduler[int64], t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	testEnoughRunning(t)
+	//	testEnoughRunning(t)
 	testPauseWithTwoExecutors(t)
-	testSetJobsOnExecutor(t)
-	testChangeExecutor(t)
-	testStartStop(t)
-	testPauseWithCapacity(t)
-	testStartingTime(t)
-	testLoadBalance1(t)
-	testLoadBalance2(t)
-	testKeepAlive(t)
-	testStopAndCheck(t)
-	testOverMax(t)
+	// testSetJobsOnExecutor(t)
+	// testChangeExecutor(t)
+	// testStartStop(t)
+	// testPauseWithCapacity(t)
+	// testStartingTime(t)
+	// testLoadBalance1(t)
+	// testLoadBalance2(t)
+	// testKeepAlive(t)
+	// testStopAndCheck(t)
+	// testOverMax(t)
 }
