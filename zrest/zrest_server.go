@@ -4,6 +4,7 @@ package zrest
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
@@ -61,10 +62,11 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 }
 
 // Returns HTTP error code and error messages in JSON representation, with string made of args and, printed
-func ReturnAndPrintError(w http.ResponseWriter, req *http.Request, errorCode int, a ...interface{}) {
+func ReturnAndPrintError(w http.ResponseWriter, req *http.Request, errorCode int, a ...interface{}) error {
 	str := fmt.Sprintln(a...)
 	zlog.ErrorAtStack(nil, 5, a...)
 	ReturnError(w, req, str, errorCode)
+	return errors.New(str)
 }
 
 // Returns HTTP error code and error messages in JSON representation.
