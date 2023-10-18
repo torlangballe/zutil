@@ -97,7 +97,7 @@ func (h *Handler) loadTemplate(name string) error { // https://stackoverflow.com
 	if filepath.Ext(name) != ".gohtml" {
 		return zlog.NewError("not template:", name)
 	}
-	loaded, _ := h.templateLoaded.Get(name)
+	_, loaded := h.templateLoaded.GetSet(name, true)
 	if loaded {
 		return nil
 	}
@@ -114,15 +114,14 @@ func (h *Handler) loadTemplate(name string) error { // https://stackoverflow.com
 	}
 	// zlog.Info("load temps:", tpath)
 	t := h.mainTemplate.New(name).Funcs(fmap)
-	t, err := t.Parse(string(data))
+	_, err := t.Parse(string(data))
 	if err != nil {
-		return zlog.Error(err, "parse")
+		return zlog.Error(err, "(parse)")
 	}
-	h.templateLoaded.Set(name, true)
 	return nil
 }
 
-func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump bool, v interface{}) bool {
+func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump bool, v interface{}) error {
 	var out io.Writer
 	out = w
 	if dump {
@@ -131,7 +130,7 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 		zrest.AddCORSHeaders(w, req)
 	}
 	if req.Method == "OPTIONS" {
-		return true
+		return nil
 	}
 	path := req.URL.Path
 	//	name := req.URL.Path[1:] + ".gohtml"
@@ -140,13 +139,11 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 	// zlog.Info("ExecuteTemplate:", name)
 	err := h.loadTemplate(name)
 	if err != nil {
-		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "templates get error:", req.URL.Path, err)
-		return false
+		return zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "templates load error:", req.URL.Path, err)
 	}
 	err = h.mainTemplate.ExecuteTemplate(out, name, v)
 	if err != nil {
-		zlog.Warn(err, "exe error:", name)
-		return false
+		return zlog.Error(err, "exe error:", name)
 	}
-	return true
+	return nil
 }
