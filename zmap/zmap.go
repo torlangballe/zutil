@@ -32,6 +32,12 @@ func (l *LockMap[K, V]) Has(k K) bool {
 	return ok
 }
 
+// If k exists in l, GetSet returns it and true, otherwise k is set with def and def, false is returned
+func (l *LockMap[K, V]) GetSet(k K, def V) (V, bool) {
+	a, loaded := l.Map.LoadOrStore(k, def)
+	return a.(V), loaded
+}
+
 func (l *LockMap[K, V]) Get(k K) (V, bool) {
 	a, ok := l.Map.Load(k)
 	if ok {
