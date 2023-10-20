@@ -223,7 +223,7 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 		request, err = http.NewRequestWithContext(params.Context, params.Method, surl, reader)
 	}
 	if err != nil {
-		err = zlog.Error(err, "new request")
+		err = zlog.Error(err, "new request", params.Context != nil)
 		return
 	}
 	if params.Headers != nil {
