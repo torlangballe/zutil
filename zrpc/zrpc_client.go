@@ -1,8 +1,10 @@
 package zrpc
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -139,12 +141,27 @@ func (c *Client) CallWithTimeout(timeoutSecs float64, method string, input, resu
 	return err
 }
 
+var testReader = bytes.NewReader([]byte{5, 2, 2})
+var testCount int
+
+func testRequests() {
+	testCount++
+	_, err := http.NewRequest("POST", "http://10.150.0.176/qtt/zrpc?method=RPCCalls.Banana", testReader)
+	if err != nil {
+		zlog.Error(err, "updateResources err:", testCount)
+	}
+	if testCount%100 == 99 {
+		zlog.Info("testRequests:", testCount*2)
+	}
+}
+
 func (c *Client) PollForUpdatedResources(got func(resID string)) {
 	for _, r := range registeredResources {
 		got(r)
 	}
-	ztimer.RepeatForever(1, func() {
+	ztimer.RepeatForever(0.5, func() {
 		var resIDs []string
+		testRequests()
 		err := c.Call("RPCCalls.GetUpdatedResourcesAndSetSent", nil, &resIDs)
 		if err != nil {
 			zlog.Error(err, "updateResources err:")
