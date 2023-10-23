@@ -1,11 +1,13 @@
 package zupload
 
 const (
-	Drop           = "drop"
-	URL            = "url"
-	SCP            = "scp" // https://pkg.go.dev/github.com/lkbhargav/go-scp#section-readme
-	Upload         = "upload"
-	ShowMessageKey = "show-message"
+	Drop                    = "drop"
+	URL                     = "url"
+	SCP                     = "scp" // https://pkg.go.dev/github.com/lkbhargav/go-scp#section-readme
+	Select                  = "select"
+	ShowMessageKey          = "zshow-message"
+	UploadedTempFilePathKey = "zup-temp-filepath"
+	UploadIDKey             = "zup-id"
 )
 
 type UploadPayload struct {

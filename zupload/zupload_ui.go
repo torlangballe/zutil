@@ -32,7 +32,6 @@ import (
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zkeyvalue"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -46,14 +45,14 @@ type UploadView struct {
 	mainText                    *ztext.TextView
 	password                    *ztext.TextView
 	button                      *zbutton.Button
-	upload                      *zbutton.Button
+	selectButton                *zbutton.Button
 	DropWell                    *zwidgets.DropWell
 	actionMenu                  *zmenu.MenuView
 	activity                    *zwidgets.ActivityView
 }
 
 var (
-	allTypes       = []string{Drop, URL, SCP, Upload}
+	allTypes       = []string{Drop, URL, SCP, Select}
 	storeKeyPrefix = "zwidgets.UploadView."
 	AuthTokenFunc  func() string // AuthTokenFunc is set in ui and server, and sent from ui in CallHTTUpload, and checked in server's handleUpload
 )
@@ -62,13 +61,13 @@ func Init(authTokenGetter func() string) {
 	AuthTokenFunc = authTokenGetter
 }
 
-func NewUploadView(storeName string, allow []string) *UploadView {
+func NewUploadView(storeName string, allow []string, storeKey string) *UploadView {
 	v := &UploadView{}
-	v.Init(v, storeName, allow)
+	v.Init(v, storeName, allow, storeKey)
 	return v
 }
 
-func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string) {
+func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string, storeKey string) {
 	v.StackView.Init(v, false, storeName)
 	v.SetMinSize(zgeo.Size{0, 22})
 	var items zdict.Items
@@ -77,15 +76,9 @@ func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string
 			items = append(items, zdict.Item{a, a})
 		}
 	}
-	actionKey := storeKeyPrefix + "Action"
-	set, _ := zkeyvalue.DefaultStore.GetString(actionKey)
-	if set == "" {
-		set = Upload
-	}
-	v.actionMenu = zmenu.NewView("allow", items, set)
+	v.actionMenu = zmenu.NewView("allow", items, storeKey)
+	v.actionMenu.SetStoreKey(storeKey)
 	v.actionMenu.SetSelectedHandler(func() {
-		set := v.actionMenu.CurrentValue().(string)
-		zkeyvalue.DefaultStore.SetString(set, actionKey, true)
 		v.updateWidgets()
 	})
 	v.Add(v.actionMenu, zgeo.BottomLeft)
@@ -148,7 +141,6 @@ func (v *UploadView) checkExtensions(name string) bool {
 }
 
 func (v *UploadView) callFileReadyToSendHandler(up UploadPayload, data []byte) {
-	zlog.Info("callFileReadyToSendHandler:", v != nil)
 	v.activity.Start()
 	v.FileReadyToSendHandler(up, data)
 	v.activity.Stop()
@@ -199,15 +191,15 @@ func (v *UploadView) updateWidgets() {
 		ci := strings.Index(str, ":")
 		plen := len(v.password.Text())
 		busable = (len(str) > 10 && ai > 1 && ci > ai && plen >= 2)
-	case Upload:
-		if v.upload == nil {
+	case Select:
+		if v.selectButton == nil {
 			v.addUploadButton()
 		}
 		ctext, cpass, cbutton, cdrop, cactivity = true, true, true, true, false
 	}
-	if action != Upload && v.upload != nil {
-		v.RemoveChild(v.upload)
-		v.upload = nil
+	if action != Select && v.selectButton != nil {
+		v.RemoveChild(v.selectButton)
+		v.selectButton = nil
 	}
 	v.button.SetUsable(busable)
 	v.button.SetText(tbutton)
@@ -220,11 +212,11 @@ func (v *UploadView) updateWidgets() {
 }
 
 func (v *UploadView) addUploadButton() {
-	v.upload = zbutton.New("choose file")
-	v.upload.SetMinWidth(100)
+	v.selectButton = zbutton.New("choose file")
+	v.selectButton.SetMinWidth(100)
 	len := v.CountChildren()
-	v.AddAdvanced(v.upload, zgeo.CenterLeft, zgeo.Size{}, zgeo.Size{}, len-1, false)
-	v.upload.SetUploader(v.handleGivenFile, v.checkExtensions, nil)
+	v.AddAdvanced(v.selectButton, zgeo.CenterLeft, zgeo.Size{}, zgeo.Size{}, len-1, false)
+	v.selectButton.SetUploader(v.handleGivenFile, v.checkExtensions, nil)
 }
 
 func (v *UploadView) CallHTTUpload(up UploadPayload, data []byte) {
@@ -240,7 +232,7 @@ func (v *UploadView) CallHTTUpload(up UploadPayload, data []byte) {
 	if AuthTokenFunc != nil {
 		params.Headers["X-Token"] = AuthTokenFunc()
 	}
-	zlog.Info("CallHTTUpload:", AuthTokenFunc != nil, params.Headers["X-Token"])
+	// zlog.Info("CallHTTUpload:", AuthTokenFunc != nil, params.Headers["X-Token"])
 	params.TimeoutSecs = float64(UploadTimeoutMinutes) * 60
 	// params.PrintBody = true
 	surl := zapp.DownloadPathPrefix + "zupload"

@@ -17,6 +17,7 @@ import (
 	"github.com/bramvdbogaerde/go-scp/auth"
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
@@ -131,5 +132,20 @@ func handleUpload(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		result = zdict.Dict{"error": err.Error()}
 	}
+	result[UploadIDKey] = up.HandleID
 	zrest.ReturnDict(w, req, result)
+}
+
+func CopyToTempFile(name string, reader io.ReadCloser) (zdict.Dict, error) {
+	defer reader.Close()
+	file, path, err := zfile.CreateTempFile(name)
+	if err != nil {
+		return nil, zlog.Error(err, name, "create file")
+	}
+	_, err = io.Copy(file, reader)
+	if err != nil {
+		return nil, zlog.Error(err, "copy", path)
+	}
+	dict := zdict.Dict{UploadedTempFilePathKey: path}
+	return dict, nil
 }

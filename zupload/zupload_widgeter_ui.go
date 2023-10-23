@@ -7,6 +7,7 @@ import (
 
 	"github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zui/zview"
+	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -14,7 +15,8 @@ import (
 type UploadWidgeter struct{}
 
 var (
-	widgeterHandlers = map[string]func(up UploadPayload, data []byte){}
+	widgeterUploadHandlers   = map[string]func(up UploadPayload, data []byte){}
+	widgeterUploadedHandlers = map[string]func(result zdict.Dict, err error){}
 )
 
 func RegisterWidget() {
@@ -33,7 +35,7 @@ func (a UploadWidgeter) Create(f *zfields.Field) zview.View {
 			allow = append(allow, a)
 		}
 	}
-	v := NewUploadView(f.ValueStoreKey, allow)
+	v := NewUploadView(f.ValueStoreKey, allow, f.ValueStoreKey)
 	v.DropWell.SetPlaceholder(f.Placeholder)
 	sext := f.CustomFields["ext"]
 	if sext != "" {
@@ -42,7 +44,8 @@ func (a UploadWidgeter) Create(f *zfields.Field) zview.View {
 	v.HandleID = f.CustomFields["handleid"]
 	zlog.Assert(len(v.HandleID) > 0)
 	zlog.Assert(v.HandleID != "")
-	v.FileReadyToSendHandler = widgeterHandlers[v.HandleID]
+	v.FileReadyToSendHandler = widgeterUploadHandlers[v.HandleID]
+	v.FileUploadedToServerHandler = widgeterUploadedHandlers[v.HandleID]
 	if f.Styling.FGColor.Valid {
 		col := f.Styling.FGColor
 		if col.Valid {
@@ -56,6 +59,10 @@ func (a UploadWidgeter) SetupField(f *zfields.Field) {
 	f.Flags |= zfields.FlagIsStatic
 }
 
-func SetWidgeterFileHandler(id string, handler func(up UploadPayload, data []byte)) {
-	widgeterHandlers[id] = handler
+func SetWidgeterFileUploadHandler(id string, handler func(up UploadPayload, data []byte)) {
+	widgeterUploadHandlers[id] = handler
+}
+
+func SetWidgeterFileUploadedHandler(id string, handler func(result zdict.Dict, err error)) {
+	widgeterUploadedHandlers[id] = handler
 }
