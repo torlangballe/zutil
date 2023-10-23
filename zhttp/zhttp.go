@@ -340,56 +340,23 @@ func processResponse(surl string, resp *http.Response, printBody bool, receive i
 	return resp, nil
 }
 
-/*
-// TODO: Remove, old:
+var testReader = bytes.NewReader([]byte{5, 2, 2})
+var testCount int
 
-	func UnmarshalFromJSONFromURL(surl string, v interface{}, print bool, authorization, authKey string) (resp *http.Response, err error) {
-		client := http.DefaultClient
-		req, err := http.NewRequest("GET", surl, nil)
-		if err != nil {
-			return
-		}
-		if authKey == "" {
-			authKey = "Authorization"
-		}
-		if authorization != "" {
-			//		zlog.Info("UnmarshalFromJSONFromUrlWithBody: auth:", authKey, authorization)
-			req.Header.Set(authKey, authorization)
-		}
-		resp, err = client.Do(req)
-		if err != nil {
-			if resp != nil {
-				err = MakeHTTPError(err, resp.StatusCode, "get")
-			}
-			return
-		}
-		if print {
-			sbody := GetCopyOfResponseBodyAsString(resp)
-			zlog.Info("UnmarshalFromJSONFromUrlWithBody:\n", sbody)
-		}
-		defer resp.Body.Close()
-		defer io.Copy(ioutil.Discard, resp.Body)
-		ecode := resp.StatusCode
-		if ecode >= 300 {
-			err = MakeHTTPError(nil, ecode, "get")
-			return
-		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return
-		}
-		if print {
-			zlog.Info("UnmarshalFromJSONFromURL:", surl, ":\n", string(body))
-		}
-		err = json.Unmarshal(body, v)
-
-		if err != nil {
-			zlog.Info("UnmarshalFromJSONFromURL unmarshal Error:\n", err, surl, zstr.Head(string(body), 2000))
-			return
-		}
+func testRequests(surl string) {
+	if runtime.GOOS != "js" {
 		return
 	}
-*/
+	testCount++
+	_, err := http.NewRequest("POST", "http://167.235.250.2/qtt/zrpc?method=RPCCalls.Banana", testReader)
+	if err != nil {
+		zlog.Error(err, "updateResources err:", testCount)
+	}
+	if testCount%100 == 99 {
+		zlog.Info("testRequests:", testCount*2)
+	}
+}
+
 func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Response, code int, err error) {
 	// zlog.Assert(len(params.Body) != 0 || params.Reader != nil, surl)
 	zlog.Assert(params.ContentType != "")
@@ -404,6 +371,7 @@ func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Respo
 		}
 
 	}
+	testRequests(surl)
 	req, client, err := MakeRequest(surl, params)
 	if err != nil {
 		return
