@@ -1,10 +1,13 @@
 package zgeo
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zlog"
@@ -248,12 +251,25 @@ func (s *Size) ZUISetFromString(str string) {
 	*s, _ = SizeFromString(str)
 }
 
-/*
 func (s *Size) UnmarshalJSON(b []byte) error {
+	var js struct {
+		W float64 `json:"w"`
+		H float64 `json:"h"`
+	}
+	// zlog.Info("Size.UnmarshalJSON")
+	if bytes.ContainsAny(b, "{") {
+		err := json.Unmarshal(b, &js)
+		if err != nil {
+			return err
+		}
+		*s = js
+		return nil
+	}
 	str := string(b)
 	str = strings.Trim(str, `"`)
-	err := s.FromString(str)
-	fmt.Println("UNMARSHAL SIZE:", str, s)
+	var err error
+	*s, err = SizeFromString(str)
+	// fmt.Println("UNMARSHAL SIZE:", str, s)
 	return err
 }
 
@@ -261,7 +277,6 @@ func (s *Size) MarshalJSON() ([]byte, error) {
 	str := `"` + s.String() + `"`
 	return []byte(str), nil
 }
-*/
 
 func (s Sizes) GetItems() (items zdict.Items) {
 	for _, size := range s {
