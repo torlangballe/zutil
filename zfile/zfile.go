@@ -290,7 +290,7 @@ func Walk(folder, wildcards string, opts WalkOptions, got func(fpath string, inf
 			if opts&WalkOptionRecursive != 0 {
 				return nil
 			}
-			return nil
+			return filepath.SkipDir
 		}
 		return got(rpath, info)
 	})
