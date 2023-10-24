@@ -104,6 +104,8 @@ github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286 h1:CHDS4msR
 github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286/go.mod h1:hHOQC9P9McoXtf/QQ7r2HomHZW+Q3G8ZyS1rJSAGNsU=
 github.com/torlangballe/zui v0.0.0-20230912113911-a3887c9b66b0 h1:AZqAOIuVC67ETP0RscRsRZ2zFcu9f2QqOz99cbn9KVc=
 github.com/torlangballe/zui v0.0.0-20230912113911-a3887c9b66b0/go.mod h1:/M0EbbLHegd/EyOPxp8fVjo41FMFFge6vo10AxnYLIA=
+github.com/torlangballe/zui v0.0.0-20231023134221-403d249ecbf6 h1:rVBmTTd7iYfs3ipY6kS++v/fDlABDqxaCGuEPzMbYsw=
+github.com/torlangballe/zui v0.0.0-20231023134221-403d249ecbf6/go.mod h1:/M0EbbLHegd/EyOPxp8fVjo41FMFFge6vo10AxnYLIA=
 github.com/yusufpapurcu/wmi v1.2.3 h1:E1ctvB7uKFMOJw3fdOW32DwGE9I7t++CRUEMKvFoFiw=
 github.com/yusufpapurcu/wmi v1.2.3/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a/go.mod h1:P+XmwS30IXTQdn5tA2iutPOUgjI07+tq3H3K9MVA1s8=
