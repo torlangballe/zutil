@@ -1,7 +1,8 @@
+//go:build server && !js
+
 package zgrapher
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -16,28 +17,24 @@ import (
 	"github.com/torlangballe/zutil/ztimer"
 )
 
-type Job struct {
-	ID                string
-	WindowHours       int
-	PixelHeight       int
-	MinutesPerPixel   int
-	Draw              func(canvas *zcanvas.Canvas, jon *Job, start, end time.Time)
+type JobServer struct {
+	Job
+	Draw              func(canvas *zcanvas.Canvas, job *JobServer, start, end time.Time)
 	AlwaysDrawnPixelY int // alwaysDrawnPixelY is a pixel if clear on a column, hasn't been drawn yet
 
-	timer           *ztimer.Repeater
-	canvas          *zcanvas.Canvas
-	drawnUntil      time.Time
-	canvasStartTime time.Time
+	timer      *ztimer.Repeater
+	canvas     *zcanvas.Canvas
+	drawnUntil time.Time
 }
 
 type Grapher struct {
-	jobs  []Job
+	jobs  []JobServer
 	cache *zfilecache.Cache
 }
 
-func NewGrapher(router *mux.Router, deleteDays int, id, folderPath string) *Grapher {
+func NewGrapher(router *mux.Router, deleteDays int, grapherName, folderPath string) *Grapher {
 	g := &Grapher{}
-	g.cache = zfilecache.Init(router, folderPath, "caches/", id+"Cache/")
+	g.cache = zfilecache.Init(router, folderPath, "caches/", grapherName+CachePostfix)
 	g.cache.DeleteAfter = ztime.Day * time.Duration(deleteDays)
 	g.cache.ServeEmptyImage = true
 	g.cache.DeleteRatio = 0.1
@@ -45,7 +42,7 @@ func NewGrapher(router *mux.Router, deleteDays int, id, folderPath string) *Grap
 	return g
 }
 
-func (g *Grapher) findJobFromImage(job *Job) bool {
+func (g *Grapher) findJobFromImage(job *JobServer) bool {
 	fpath, _ := g.cache.GetPathForName(job.storageName())
 	if zfile.Exists(fpath) {
 		img, _, err := zimage.GoImageFromFile(fpath)
@@ -69,22 +66,25 @@ func (g *Grapher) findJobFromImage(job *Job) bool {
 	return false
 }
 
-func (g *Grapher) AddJob(job Job) *Job {
+func (g *Grapher) AddJob(job JobServer) *JobServer {
 	zlog.Assert(job.ID != "")
-	zlog.Assert(job.WindowHours != 0)
+	zlog.Assert(job.WindowMinutes != 0)
 	zlog.Assert(job.PixelHeight != 0)
 	zlog.Assert(job.Draw != nil)
-	if job.WindowHours <= 24 {
-		zlog.Assert(24%job.WindowHours == 0, job.WindowHours)
+	if job.WindowMinutes <= 60 {
+		zlog.Assert(60%job.WindowMinutes == 0, job.WindowMinutes)
+	} else if job.WindowMinutes <= 24*60 {
+		zlog.Assert(24%(job.WindowMinutes/60) == 0, job.WindowMinutes)
 	} else {
-		zlog.Assert(job.WindowHours%24 == 0, job.WindowHours)
+		zlog.Assert(job.WindowMinutes/60%24 == 0, job.WindowMinutes)
 	}
-	if job.MinutesPerPixel > 60 {
-		zlog.Assert(job.MinutesPerPixel%60 == 0, job.MinutesPerPixel)
+	if job.SecondsPerPixel > 60 {
+		zlog.Assert(job.SecondsPerPixel%60 == 0, job.SecondsPerPixel)
 	} else {
-		zlog.Assert(60%job.MinutesPerPixel == 0, job.MinutesPerPixel)
+		zlog.Assert(60%job.SecondsPerPixel == 0, job.SecondsPerPixel)
 	}
 	now := time.Now()
+	// zlog.Warn("JOB:", job.WindowMinutes)
 	job.canvasStartTime = job.calculateWindowStart(now)
 	job.drawnUntil = job.canvasStartTime
 
@@ -94,7 +94,7 @@ func (g *Grapher) AddJob(job Job) *Job {
 		job.canvas = zcanvas.New()
 		job.canvas.SetSize(job.PixelSize())
 	}
-	job.timer = ztimer.RepeatForeverNow(float64(job.MinutesPerPixel)*60, func() {
+	job.timer = ztimer.RepeatForeverNow(float64(job.SecondsPerPixel), func() {
 		zlog.Warn("Repeat", job.canvasStartTime)
 		job.update(g)
 	})
@@ -103,54 +103,25 @@ func (g *Grapher) AddJob(job Job) *Job {
 	return j
 }
 
-func (j *Job) IDString() string {
-	return fmt.Sprint(j.ID, "_", j.MinutesPerPixel)
-}
-
-func (j *Job) PixelWidth() int {
-	return j.WindowHours * 60 / j.MinutesPerPixel
-}
-
-func (j *Job) PixelSize() zgeo.Size {
-	return zgeo.Size{
-		W: float64(j.PixelWidth()),
-		H: float64(j.PixelHeight),
-	}
-}
-
-func (j *Job) storageName() string {
-	year, month, day := j.canvasStartTime.Date()
-	hour := j.canvasStartTime.Hour()
-	return fmt.Sprintf("%s@%02d-%02d-%02dT%02d.png", j.IDString(), year, int(month), day, hour)
-}
-
-func (j *Job) clampTimeToPixels(t time.Time) time.Time {
+func (j *JobServer) clampTimeToPixels(t time.Time) time.Time {
 	year, month, day := t.Date()
-	hour, min, _ := t.Clock()
-	min = zmath.RoundToMod(min, j.MinutesPerPixel%60)
-	if j.MinutesPerPixel > 60 {
-		hour = zmath.RoundToMod(hour, j.MinutesPerPixel/60)
+	hour, min, sec := t.Clock()
+	if j.SecondsPerPixel < 60 {
+		sec = zmath.RoundToMod(sec, j.SecondsPerPixel%60)
+	} else if j.SecondsPerPixel < 3600 {
+		min = zmath.RoundToMod(min, (j.SecondsPerPixel/60)%60)
+	} else {
+		hour = zmath.RoundToMod(hour, j.SecondsPerPixel/3600)
 	}
-	return time.Date(year, month, day, hour, min, 0, 0, t.Location())
+	// zlog.Warn("CLAMP:", hour, min, sec)
+	return time.Date(year, month, day, hour, min, sec, 0, t.Location())
 }
 
-func (j *Job) calculateWindowStart(t time.Time) time.Time {
-	if j.WindowHours <= 24 {
-		midnight := ztime.GetStartOfDay(t)
-		hour := zmath.RoundToMod(t.Hour(), j.WindowHours)
-		return midnight.Add(time.Hour * time.Duration(hour))
-	}
-	windowDays := j.WindowHours / 24
-	days := ztime.DaysSince2000FromTime(t)
-	days = int(zmath.RoundToMod(days, windowDays))
-	return ztime.TimeOfDaysSince2000(days, t.Location())
-}
-
-func (j *Job) update(g *Grapher) {
+func (j *JobServer) update(g *Grapher) {
 	now := time.Now()
 	cstart := j.calculateWindowStart(now)
 	if cstart != j.canvasStartTime {
-		zlog.Info("NewCanvas", cstart)
+		zlog.Info("update", cstart)
 		j.canvasStartTime = cstart
 		j.canvas.Clear()
 	}
@@ -160,28 +131,24 @@ func (j *Job) update(g *Grapher) {
 	j.drawnUntil = end
 }
 
-func (j *Job) saveCanvas(g *Grapher) {
+func (j *JobServer) saveCanvas(g *Grapher) {
 	img := j.canvas.GoImage(zgeo.Rect{})
 	data, err := zimage.GoImagePNGData(img)
 	if zlog.OnError(err) {
 		return
 	}
-	_, err = g.cache.CacheFromData(data, j.storageName())
+	name := j.storageName()
+	_, err = g.cache.CacheFromData(data, name)
 	zlog.OnError(err)
-	zlog.Warn("saveCanvas")
+	zlog.Warn("saveCanvas", img.Bounds().Size(), j.canvas.Size(), g.cache.GetURLForName(name))
 }
 
-func (j *Job) XForTime(t time.Time) int {
-	x := int(t.Sub(j.canvasStartTime) / time.Minute / time.Duration(j.MinutesPerPixel))
-	return j.PixelWidth() - x - 1
-}
-
-func (j *Job) TimeForX(x int) time.Time {
+func (j *JobServer) TimeForX(x int) time.Time {
 	x = j.PixelWidth() - x
-	t := j.canvasStartTime.Add(time.Duration(j.MinutesPerPixel*x) * time.Minute)
+	t := j.canvasStartTime.Add(time.Duration(j.SecondsPerPixel*x) * time.Second)
 	return t
 }
 
-func (job *Job) DrawHours(canvas *zcanvas.Canvas, y, height int, black bool, at time.Time) {
+func (job *JobServer) DrawHours(canvas *zcanvas.Canvas, y, height int, black bool, at time.Time) {
 
 }
