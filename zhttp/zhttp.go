@@ -348,12 +348,12 @@ func testRequests(surl string) {
 		return
 	}
 	testCount++
-	_, err := http.NewRequest("POST", "http://167.235.250.2/qtt/zrpc?method=RPCCalls.Banana", testReader)
+	_, err := http.NewRequest("POST", "http://167.235.250.44/qtt/zrpc?method=RPCCalls.Banana", testReader)
 	if err != nil {
 		zlog.Error(err, "updateResources err:", testCount)
 	}
 	if testCount%100 == 99 {
-		zlog.Info("testRequests:", testCount*2)
+		zlog.Info("testRequests:", testCount*2, err)
 	}
 }
 

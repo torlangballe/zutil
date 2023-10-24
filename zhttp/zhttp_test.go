@@ -10,6 +10,7 @@ import (
 )
 
 // Needs: https://github.com/agnivade/wasmbrowsertest
+// 
 func TestNewRequest(t *testing.T) {
 	start := time.Now()
 	reader := bytes.NewReader([]byte{5, 2, 2})
