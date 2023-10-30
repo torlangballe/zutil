@@ -19,6 +19,7 @@ import (
 
 // pendingCall is a payload waiting to be gotten by the asking client
 type pendingCall struct {
+	placed time.Time
 	CallPayload
 	done chan *clientReceivePayload // the done channel has a reieveiPayLoad written to it when received.
 }
@@ -61,6 +62,9 @@ func (RPCCalls) ReversePoll(receiverID string, cp *CallPayload) error {
 				return true
 			} else {
 				has = true
+				if time.Since(call.placed) > time.Millisecond*100 {
+					zlog.Info("PendingCallPolled:", call.Method, "placed:", time.Since(call.placed))
+				}
 				*cp = call.CallPayload
 				rc.pendingCallsSent.Set(token, call)
 			}
@@ -107,6 +111,7 @@ func (rc *ReverseClient) Call(method string, args, resultPtr any) error {
 func (rc *ReverseClient) CallWithTimeout(timeoutSecs float64, method string, args, resultPtr any) error {
 	var pc pendingCall
 	pc.CallPayload = CallPayload{Method: method, Args: args}
+	pc.placed = time.Now()
 	pc.Expires = time.Now().Add(ztime.SecondsDur(timeoutSecs))
 	token := zstr.GenerateRandomHexBytes(16)
 	pc.CallPayload.Token = token
