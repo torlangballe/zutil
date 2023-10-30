@@ -126,14 +126,6 @@ func RatioOfIntRandomRounded(ratio float32, count int) int {
 	return i
 }
 
-func RoundDownWithRandom(c float32) int {
-	i := int(c)
-	if rand.Float32() <= c-float32(i) {
-		i++
-	}
-	return i
-}
-
 // InterpolatedArrayRatioAtT returns what index in an array t (0-1) is.
 // ratio is how much (0-1) of index value should be used and vs rest in next index value
 func InterpolatedArrayRatioAtT(arrayLength int, t float64) (ratio float64, index int) {
@@ -219,6 +211,7 @@ func IndexOfMostFrequent(length int, compare func(i, j int) bool) int {
 
 // LengthIntoDividePoints finds the point that splits len in 2, then 2 points that split in 3, 4, etc, skipping ones already used.
 // Final pass adds all not used yet.
+// This can be used to do a binary search. First in slice is middle, then either side of it etc.
 func LengthIntoDividePoints(len int) (points []int) {
 	start := time.Now()
 	ln := len - 1
