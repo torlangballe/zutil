@@ -112,7 +112,7 @@ func (h *Handler) loadTemplate(name string) error { // https://stackoverflow.com
 	if len(data) == 0 {
 		return zlog.Error(errio, "ReadBytesFromFileInFS data size 0", tpath)
 	}
-	// zlog.Info("load temps:", tpath)
+	zlog.Info("load template:", tpath, len(data))
 	t := h.mainTemplate.New(name).Funcs(fmap)
 	_, err := t.Parse(string(data))
 	if err != nil {
@@ -143,7 +143,7 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 	}
 	err = h.mainTemplate.ExecuteTemplate(out, name, v)
 	if err != nil {
-		return zlog.Error(err, "exe error:", name)
+		return zlog.Error(err, "exe error:", name, zlog.Full(v))
 	}
 	return nil
 }
