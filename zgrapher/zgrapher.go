@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -14,60 +13,47 @@ type Job struct {
 	ID              string
 	WindowMinutes   int
 	PixelHeight     int
+	CanvasStartTime time.Time
+}
+
+type GrapherBase struct {
 	SecondsPerPixel int
-	canvasStartTime time.Time
 }
 
-const CachePostfix = "ZGrapherCache/"
-
-func (j *Job) calculateWindowStart(t time.Time) time.Time {
-	zlog.Warn("Calc2", j.WindowMinutes)
-	if j.WindowMinutes <= 24*60 {
-
-		midnight := ztime.GetStartOfDay(t)
-		div := j.WindowMinutes / 60
-		hour := t.Hour()
-		var min int
-		if div != 0 {
-			hour = zmath.RoundToMod(hour, div)
-		}
-		out := midnight.Add(time.Hour * time.Duration(hour))
-		if j.WindowMinutes < 60 {
-			zlog.Warn("ROUND", j.WindowMinutes)
-			min = zmath.RoundToMod(t.Minute(), j.WindowMinutes)
-			out = out.Add(time.Minute * time.Duration(min))
-		}
-		zlog.Warn("calc:", hour, min)
-		return out
-	}
-	windowDays := j.WindowMinutes / 24 / 60
-	days := ztime.DaysSince2000FromTime(t)
-	days = int(zmath.RoundToMod(days, windowDays))
-	return ztime.TimeOfDaysSince2000(days, t.Location())
-}
+const CachePostfix = "ZGrapherCache"
 
 func (j *Job) IDString() string {
-	return fmt.Sprint(j.ID, "_", j.SecondsPerPixel)
+	return fmt.Sprintf("%s_%d", j.ID, j.WindowMinutes)
 }
 
-func (j *Job) PixelWidth() int {
-	return j.WindowMinutes * 60 / j.SecondsPerPixel
+func (j *Job) PixelWidth(base *GrapherBase) int {
+	if base.SecondsPerPixel == 0 {
+		return 0
+	}
+	return j.WindowMinutes * 60 / base.SecondsPerPixel
 }
 
-func (j *Job) PixelSize() zgeo.Size {
+func (j *Job) PixelSize(base *GrapherBase) zgeo.Size {
 	return zgeo.Size{
-		W: float64(j.PixelWidth()),
+		W: float64(j.PixelWidth(base)),
 		H: float64(j.PixelHeight),
 	}
 }
 
-func (j *Job) XForTime(t time.Time) int {
-	x := int(t.Sub(j.canvasStartTime) / time.Second / time.Duration(j.SecondsPerPixel))
-	return j.PixelWidth() - x - 1
+func (j *Job) XForTime(base *GrapherBase, t time.Time) int {
+	// w := j.PixelWidth()
+	x := int(t.Sub(j.CanvasStartTime) / time.Second / time.Duration(base.SecondsPerPixel))
+	return x
+}
+
+func (j *Job) TimeForX(base *GrapherBase, x int) time.Time {
+	x = j.PixelWidth(base) - x
+	t := j.CanvasStartTime.Add(time.Duration(base.SecondsPerPixel*x) * time.Second)
+	return t
 }
 
 func (j *Job) storageName() string {
-	return j.storageNameForTime(j.canvasStartTime)
+	return j.storageNameForTime(j.CanvasStartTime)
 }
 
 func (j *Job) storageNameForTime(t time.Time) string {
@@ -75,4 +61,33 @@ func (j *Job) storageNameForTime(t time.Time) string {
 	hour := t.Hour()
 	min := t.Minute()
 	return fmt.Sprintf("%s@%02d-%02d-%02dT%02d%02d.png", j.IDString(), year, int(month), day, hour, min)
+}
+
+func makeCacheFoldername(secondsPerPixel int, grapherName string) string {
+	return fmt.Sprintf("%s-%d-%s", CachePostfix, secondsPerPixel, grapherName)
+}
+
+func calculateWindowStart(t time.Time, windowMinutes int) time.Time {
+	if windowMinutes <= 24*60 {
+		midnight := ztime.GetStartOfDay(t)
+		div := windowMinutes / 60
+		hour := t.Hour()
+		var min int
+		if div != 0 {
+			hour = zmath.RoundToMod(hour, div)
+		}
+		out := midnight.Add(time.Hour * time.Duration(hour))
+		// zlog.Info("calculateWindowStart:", t, windowMinutes, out, hour, div)
+		if windowMinutes < 60 {
+			// zlog.Warn("ROUND", windowMinutes)
+			min = zmath.RoundToMod(t.Minute(), windowMinutes)
+			out = out.Add(time.Minute * time.Duration(min))
+		}
+		// zlog.Warn("calc:", hour, min)
+		return out
+	}
+	windowDays := windowMinutes / 24 / 60
+	days := ztime.DaysSince2000FromTime(t)
+	days = int(zmath.RoundToMod(days, windowDays))
+	return ztime.TimeOfDaysSince2000(days, t.Location())
 }
