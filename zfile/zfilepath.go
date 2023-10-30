@@ -112,3 +112,7 @@ func MimeToExtension(smime string) string {
 	}
 	return ext
 }
+
+func JoinPathParts(parts ...any) string {
+	return zstr.Concat("/", parts...)
+}

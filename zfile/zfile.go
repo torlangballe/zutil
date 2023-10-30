@@ -42,14 +42,14 @@ func CreateTempFile(name string) (file *os.File, fpath string, err error) {
 
 func CreateTempFilePath(name string) string {
 	sdate := time.Now().Format("2006-01-02/")
-	sfold := filepath.Join(os.TempDir(), sdate)
+	sfold := JoinPathParts(os.TempDir(), sdate)
 	err := os.MkdirAll(sfold, 0775|os.ModeDir)
 	if err != nil {
 		fmt.Println("zfile.CreateTempFolder:", err)
 		return ""
 	}
 	stime := time.Now().Format("150405_999999")
-	stemp := filepath.Join(sfold, SanitizeStringForFilePath(stime+"_"+name))
+	stemp := JoinPathParts(sfold, SanitizeStringForFilePath(stime+"_"+name))
 	return stemp
 }
 
@@ -369,7 +369,7 @@ func RemoveContents(dir string) error {
 		return err
 	}
 	for _, name := range names {
-		err = os.RemoveAll(filepath.Join(dir, name))
+		err = os.RemoveAll(JoinPathParts(dir, name))
 		if err != nil {
 			return err
 		}
