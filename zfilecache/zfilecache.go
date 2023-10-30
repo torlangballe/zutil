@@ -25,15 +25,16 @@ import (
 )
 
 type Cache struct {
-	workDir           string
-	cacheName         string
-	getURL            string
-	urlPrefix         string
-	ServeEmptyImage   bool
-	DeleteAfter       time.Duration // Delete files when modified more than this long ago
-	UseToken          bool          // Not implemented
-	DeleteRatio       float32       // When deleting files, only do some of sub-folders (randomly) each time 0.1 is do 10% of them at random
-	NestInHashFolders bool
+	workDir            string
+	cacheName          string
+	getURL             string
+	urlPrefix          string
+	ServeEmptyImage    bool
+	DeleteAfter        time.Duration // Delete files when modified more than this long ago
+	UseToken           bool          // Not implemented
+	DeleteRatio        float32       // When deleting files, only do some of sub-folders (randomly) each time 0.1 is do 10% of them at random
+	NestInHashFolders  bool
+	InterceptServeFunc func(w http.ResponseWriter, req *http.Request, file string) bool // return true if handled
 }
 
 func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -45,13 +46,17 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if c.NestInHashFolders {
 		post = file[:3] + "/" + file[3:]
 	}
-	file = filepath.Join(dir, post)
-	// zlog.Info("FileCache serve:", file, spath, zfile.Exists(file))
+	file = zfile.JoinPathParts(dir, post)
+	if c.InterceptServeFunc != nil && c.InterceptServeFunc(w, req, file) {
+		return
+	}
 	if c.ServeEmptyImage && !zfile.Exists(file) {
 		zlog.Info("Serve empty cached image:", file)
 		file = zrest.StaticFolderPathFunc("/images/empty.png")
 	}
+	zrest.AddCORSHeaders(w, req)
 	// zlog.Info("Serve cached image:", req.URL.Path, file)
+	// zlog.Warn("FileCache serve:", file, spath, zfile.Exists(file), zfile.Size(file))
 	http.ServeFile(w, req, file)
 }
 
@@ -80,7 +85,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	// zrest.AddHandler(router, strings.TrimRight(path, "/"), c.ServeHTTP)
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
 		// start := time.Now()
-		dir := filepath.Join(c.workDir, c.urlPrefix, c.cacheName)
+		dir := zfile.JoinPathParts(c.workDir, c.urlPrefix, c.cacheName)
 		if zfile.NotExist(dir) {
 			return true
 		}
@@ -166,7 +171,7 @@ func (c *Cache) GetPathForName(name string) (path, dir string) {
 		lastDir = "/" + name[:3]
 		end = "/" + name[3:]
 	}
-	dir = filepath.Join(c.workDir, c.urlPrefix, c.cacheName, dir) + lastDir
+	dir = zfile.JoinPathParts(c.workDir, c.urlPrefix, c.cacheName, dir) + lastDir
 	path = dir + "/" + end
 	// zlog.Info("GetPathForName:", c.workDir, c.urlPrefix, c.cacheName, name, path)
 	return
