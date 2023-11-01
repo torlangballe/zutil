@@ -232,7 +232,7 @@ func (d Dict) URL(prefix string) string {
 }
 
 func (d Dict) Dump() {
-	zlog.Debug("zdict dump")
+	zlog.Info("zdict dump")
 	for k, v := range d {
 		fmt.Print(k, ": '", v, "' ", reflect.ValueOf(v).Kind(), reflect.ValueOf(v).Type(), "\n")
 	}
