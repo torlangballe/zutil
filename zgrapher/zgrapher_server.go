@@ -84,7 +84,10 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 	}
 	var job SJob
 	if tid == 0 {
-		zlog.Assert(g.jobs.Count() != 0)
+		if g.jobs.Count() == 0 {
+			zlog.Error(nil, "serving tid=0 zgraph")
+			return false
+		}
 		job = *g.jobs.Index(g.jobs.AnyKey())
 		job.ID = "0"
 	} else {
@@ -246,7 +249,8 @@ func (g *Grapher) updateAll(now time.Time) {
 		if cstart != job.CanvasStartTime {
 			job.CanvasStartTime = cstart
 		}
-		g.Draw(job.image, job, job.drawnUntil, now, first)
+		onePixBack := -time.Duration(g.SecondsPerPixel) * time.Second
+		g.Draw(job.image, job, job.drawnUntil.Add(onePixBack), now, first)
 		first = false
 		job.saveToCache(g)
 		job.drawnUntil = now

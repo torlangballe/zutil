@@ -41,13 +41,14 @@ func (j *Job) PixelSize(base *GrapherBase) zgeo.Size {
 }
 
 func (j *Job) XForTime(base *GrapherBase, t time.Time) int {
-	// w := j.PixelWidth()
+	// w := j.PixelWidth(base)
 	x := int(t.Sub(j.CanvasStartTime) / time.Second / time.Duration(base.SecondsPerPixel))
+	// zlog.Info("XForTime:", t, j.CanvasStartTime, base.SecondsPerPixel, x)
 	return x
 }
 
 func (j *Job) TimeForX(base *GrapherBase, x int) time.Time {
-	x = j.PixelWidth(base) - x
+	// x = j.PixelWidth(base) - x
 	t := j.CanvasStartTime.Add(time.Duration(base.SecondsPerPixel*x) * time.Second)
 	return t
 }

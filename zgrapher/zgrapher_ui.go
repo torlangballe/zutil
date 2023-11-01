@@ -164,25 +164,23 @@ func (v *GraphView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View
 	if !v.On || v.Job.WindowMinutes == 0 {
 		return
 	}
-	// zlog.Info("draw", v.SecondsPerPixel, v.Job.ID, rect)
+	// zlog.Info("draw", v.SecondsPerPixel, v.Job.ID, rect, zlog.CallingStackString())
 	i := 0
 	offset := v.forEachPart(func(name string, r zgeo.Rect, first bool) {
 		img := v.drawn[name]
 		// zlog.Info("GraphView Draw:", img != nil, name, r)
-
 		// canvas.SetColor(zgeo.ColorRandom())
 		// canvas.FillRect(r)
-
 		if img != nil {
 			canvas.DrawImage(img, false, r, 1, zgeo.Rect{Size: img.Size()})
 		}
 		i++
 	})
 	if !v.ShowMarkerAt.IsZero() {
-		x := v.Job.XForTime(&v.GrapherBase, v.ShowMarkerAt)
+		x := v.xForTime(v.ShowMarkerAt)
 		drawMarker(float64(x), rect, canvas, zgeo.ColorRed)
 		if !v.EndMarkerAt.IsZero() {
-			x2 := v.Job.XForTime(&v.GrapherBase, v.ShowMarkerAt)
+			x2 := v.xForTime(v.ShowMarkerAt)
 			drawMarker(float64(x2), rect, canvas, zgeo.ColorDarkGreen)
 		}
 	}
@@ -201,6 +199,12 @@ func (v *GraphView) xForTime(t time.Time) float64 {
 	w := v.LocalRect().Size.W
 	d := time.Since(t) / time.Second / time.Duration(v.SecondsPerPixel)
 	return w - float64(d)
+}
+
+func (v *GraphView) TimeForX(x int) time.Time {
+	w := int(v.LocalRect().Size.W)
+	d := time.Duration((w-x)*v.SecondsPerPixel) * time.Second
+	return time.Now().Add(-d)
 }
 
 func getTimeInt(t time.Time, span time.Duration) (n, n2 int, important bool) {
