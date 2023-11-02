@@ -9,7 +9,7 @@ require (
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/gomodule/redigo v1.8.9
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/lib/pq v1.10.9
@@ -23,7 +23,7 @@ require (
 	github.com/torlangballe/mdtopdf v0.0.0-20230912121500-0f15befadda9
 	github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
-	github.com/torlangballe/zui v0.0.0-20231023134221-403d249ecbf6
+	github.com/torlangballe/zui v0.0.0-20231030113812-27bb8cf37957
 	golang.org/x/crypto v0.13.0
 	golang.org/x/net v0.15.0
 	golang.org/x/sys v0.12.0
