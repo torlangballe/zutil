@@ -52,7 +52,7 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/torlangballe/gofpdfv2 v0.0.0-20230907135652-77f990d622c9 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
+	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/term v0.12.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
