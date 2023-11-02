@@ -24,9 +24,9 @@ require (
 	github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
 	github.com/torlangballe/zui v0.0.0-20231030113812-27bb8cf37957
-	golang.org/x/crypto v0.13.0
-	golang.org/x/net v0.15.0
-	golang.org/x/sys v0.12.0
+	golang.org/x/crypto v0.14.0
+	golang.org/x/net v0.17.0
+	golang.org/x/sys v0.13.0
 	golang.org/x/text v0.13.0
 	modernc.org/sqlite v1.25.0
 )
@@ -54,7 +54,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/term v0.12.0 // indirect
+	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	lukechampine.com/uint128 v1.2.0 // indirect
 	modernc.org/cc/v3 v3.40.0 // indirect
