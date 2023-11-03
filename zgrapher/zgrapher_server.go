@@ -110,7 +110,7 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 	mod := zfile.Modified(file)
 	end := t.Add(time.Duration(job.WindowMinutes) * time.Minute)
 	if !mod.IsZero() && !mod.Before(end) {
-		// zlog.Info("zgrapher: Has old rendered non-current part with new modified date:", fullName, end, "mod:", mod)
+		zlog.Info("zgrapher: Has old rendered non-current part with new modified date:", fullName, end, "mod:", mod)
 		return false // it has a file and it's modified after end-time
 	}
 	// zlog.Info("zgrapher: Should render old requested part:", fullName, date, "end:", end, mod.IsZero())

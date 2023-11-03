@@ -164,6 +164,10 @@ func (v *GraphView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View
 	if !v.On || v.Job.WindowMinutes == 0 {
 		return
 	}
+	r := rect
+	r.Size.W -= float64(v.Job.PixelWidth(&v.GrapherBase))
+	canvas.SetColor(zgeo.ColorNewGray(0, 0.05))
+	canvas.FillRect(r)
 	// zlog.Info("draw", v.SecondsPerPixel, v.Job.ID, rect, zlog.CallingStackString())
 	i := 0
 	offset := v.forEachPart(func(name string, r zgeo.Rect, first bool) {
@@ -224,13 +228,22 @@ func getTimeInt(t time.Time, span time.Duration) (n, n2 int, important bool) {
 func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 	canvas.SetColor(v.TickColor)
 	end := time.Now()
-	span := time.Duration(int(v.LocalRect().Size.W-1)*v.SecondsPerPixel) * time.Second
+	w := int(v.LocalRect().Size.W)
+	pixWidth := v.Job.PixelWidth(&v.GrapherBase)
+	span := time.Duration(w*v.SecondsPerPixel) * time.Second
+	shortSpan := time.Duration(pixWidth*v.SecondsPerPixel) * time.Second
 	start := end.Add(-span)
-	inc, begin := ztime.GetNiceIncsOf(start, end, v.Ticks)
-	// zlog.Warn("drawHours1:", v.Job.ID, start, end, span, inc, v.SecondsPerPixel)
+	ticks := v.Ticks * (w / pixWidth)
+	if ticks == 0 {
+		return
+	}
+	inc, begin := ztime.GetNiceIncsOf(start, end, ticks)
+	// zlog.Warn("drawHours1:", v.Job.ID, start, end, span, inc, ticks, v.SecondsPerPixel)
+	// zlog.Warn("drawHours1:", v.Job.ID, ticks, v.Ticks, w, v.Job.PixelWidth(&v.GrapherBase), begin, end)
 	for t := begin; t.Before(end); t = t.Add(inc) {
+		// zlog.Warn("drawHours:", t)
 		x := float64(v.xForTime(t))
-		n, n2, doText := getTimeInt(t, span)
+		n, n2, doText := getTimeInt(t, shortSpan)
 		canvas.SetColor(v.TickColor.WithOpacity(0.5))
 		canvas.StrokeVertical(x, v.TickYRange.Min, v.TickYRange.Max, 1, zgeo.PathLineButt)
 		if doText {
