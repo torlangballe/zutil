@@ -1,5 +1,4 @@
-// +build !js
-// +build !windows
+//go:build !js && !windows
 
 package zlog
 

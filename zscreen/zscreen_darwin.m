@@ -1,4 +1,4 @@
-// +build !js
+//go:build !js
 
 #import <AppKit/AppKit.h>
 

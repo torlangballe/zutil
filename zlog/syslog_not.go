@@ -1,4 +1,4 @@
-// +build js windows
+//go:build js
 
 package zlog
 
