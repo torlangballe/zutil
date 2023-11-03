@@ -1,3 +1,8 @@
+// zgrapher is a package for rendering and displaying horizontal bar-graphs.
+//
+// They are rendered into png's on the backend, and stored/served using zfilecache.
+// They are displayed using GraphView on frontend.
+
 package zgrapher
 
 import (
@@ -22,10 +27,6 @@ type GrapherBase struct {
 
 const CachePostfix = "ZGrapherCache"
 
-func (j *Job) IDString() string {
-	return fmt.Sprintf("%s_%d", j.ID, j.WindowMinutes)
-}
-
 func (j *Job) PixelWidth(base *GrapherBase) int {
 	if base.SecondsPerPixel == 0 {
 		return 0
@@ -41,14 +42,11 @@ func (j *Job) PixelSize(base *GrapherBase) zgeo.Size {
 }
 
 func (j *Job) XForTime(base *GrapherBase, t time.Time) int {
-	// w := j.PixelWidth(base)
 	x := int(t.Sub(j.CanvasStartTime) / time.Second / time.Duration(base.SecondsPerPixel))
-	// zlog.Info("XForTime:", t, j.CanvasStartTime, base.SecondsPerPixel, x)
 	return x
 }
 
 func (j *Job) TimeForX(base *GrapherBase, x int) time.Time {
-	// x = j.PixelWidth(base) - x
 	t := j.CanvasStartTime.Add(time.Duration(base.SecondsPerPixel*x) * time.Second)
 	return t
 }
@@ -61,7 +59,7 @@ func (j *Job) storageNameForTime(t time.Time) string {
 	year, month, day := t.Date()
 	hour := t.Hour()
 	min := t.Minute()
-	return fmt.Sprintf("%s@%02d-%02d-%02dT%02d%02d.png", j.IDString(), year, int(month), day, hour, min)
+	return fmt.Sprintf("%s_%d@%02d-%02d-%02dT%02d%02d.png", j.ID, j.WindowMinutes, year, int(month), day, hour, min)
 }
 
 func makeCacheFoldername(secondsPerPixel int, grapherName string) string {
@@ -78,13 +76,10 @@ func calculateWindowStart(t time.Time, windowMinutes int) time.Time {
 			hour = zmath.RoundToMod(hour, div)
 		}
 		out := midnight.Add(time.Hour * time.Duration(hour))
-		// zlog.Info("calculateWindowStart:", t, windowMinutes, out, hour, div)
 		if windowMinutes < 60 {
-			// zlog.Warn("ROUND", windowMinutes)
 			min = zmath.RoundToMod(t.Minute(), windowMinutes)
 			out = out.Add(time.Minute * time.Duration(min))
 		}
-		// zlog.Warn("calc:", hour, min)
 		return out
 	}
 	windowDays := windowMinutes / 24 / 60
