@@ -213,12 +213,12 @@ func Since(t time.Time) float64 {
 	return DurSeconds(time.Since(t))
 }
 
-func GetSecsAsHMSString(dur float64, sec bool, subdigits int) string {
+func GetDurationAsHMSString(duration time.Duration, hours, mins, secs bool, subdigits int) string {
 	var parts []string
-
-	h := int(dur) / 3600
-	m := (int(dur) / 60)
-	if h != 0 {
+	durSecs := DurSeconds(duration)
+	h := int(durSecs) / 3600
+	m := (int(durSecs) / 60)
+	if hours && h != 0 {
 		parts = append(parts, fmt.Sprint(h))
 	}
 	if h != 0 {
@@ -228,18 +228,19 @@ func GetSecsAsHMSString(dur float64, sec bool, subdigits int) string {
 	if h != 0 {
 		format = "%02d"
 	}
-	parts = append(parts, fmt.Sprintf(format, m))
-	if sec {
-		s := dur
+	if mins {
+		parts = append(parts, fmt.Sprintf(format, m))
+	}
+	if secs {
+		s := durSecs
 		if h != 0 || m != 0 {
 			s = math.Mod(s, 60)
 		}
 		format := "%02"
 		format += fmt.Sprintf(".%df", subdigits)
 		parts = append(parts, fmt.Sprintf(format, s))
-		// zlog.Info("GetSecsAsHMSString:", dur, subdigits, format, parts, h, m)
+		// zlog.Info("GetSecsAsHMSString:", durSecs, subdigits, format, parts, h, m)
 	}
-
 	return strings.Join(parts, ":")
 }
 
@@ -553,7 +554,7 @@ func DaysSince2000FromTime(t time.Time) int {
 	year, month, day := t.Date()
 	years := year - 2000
 	days := years * 365
-	leaps := (years + 3) / 4 // 2000 is leap year. Don't count day's year's leap year. Good until 2100. 
+	leaps := (years + 3) / 4 // 2000 is leap year. Don't count day's year's leap year. Good until 2100.
 	days += leaps
 	var mdays int
 	for m := time.January; m < month; m++ {
