@@ -42,7 +42,7 @@ var (
 	lastGoRoutineCount      int
 	lastGoRoutineOutputTime time.Time
 	rateLimiters            zmap.LockMap[LimitID, time.Time]
-	enablerList             zmap.LockMap[string, *Enabler]
+	EnablerList             zmap.LockMap[string, *Enabler]
 )
 
 func init() {
@@ -143,14 +143,15 @@ func NewError(parts ...interface{}) error {
 	return err
 }
 
-func baseLog(err error, priority Priority, pos int, parts ...interface{}) error {
+func baseLog(err error, priority Priority, pos int, parts ...any) error {
 	if priority < PrintPriority {
 		return nil
 	}
 	if priority < WarningLevel && IsInTests {
 		return nil
 	}
-	for i, p := range parts {
+	for i := 0; i < len(parts); i++ {
+		p := parts[i]
 		n, got := p.(StackAdjust)
 		if got {
 			parts = append(parts[:i], parts[i+1:]...)
@@ -162,7 +163,8 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 		}
 		rl, got := p.(LimitID)
 		if got {
-			parts = append(parts[:i], parts[i+1:]...)
+			parts = append(parts[:i], parts[i+1:]...) // can't use zslice as it would create cyclical import
+			i--
 			t, _ := rateLimiters.Get(rl)
 			if time.Since(t) < time.Second {
 				return nil
@@ -170,8 +172,12 @@ func baseLog(err error, priority Priority, pos int, parts ...interface{}) error 
 			rateLimiters.Set(rl, time.Now())
 		}
 		enable, got := p.(Enabler)
-		if got && !bool(enable) {
-			return nil
+		if got {
+			if !bool(enable) {
+				return nil
+			}
+			parts = append(parts[:i], parts[i+1:]...) // can't use zslice as it would create cyclical import
+			i--
 		}
 	}
 	col := ""
@@ -442,5 +448,5 @@ func Func() {
 }
 
 func RegisterEnabler(name string, b *Enabler) {
-	enablerList.Set(name, b)
+	EnablerList.Set(name, b)
 }
