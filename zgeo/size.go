@@ -28,6 +28,11 @@ func SizeF(w, h float32) Size {
 	return Size{float64(w), float64(h)}
 }
 
+// SizeF creates a Size from float64 w and h
+func SizeD(w, h float64) Size {
+	return Size{w, h}
+}
+
 // SizeI creates a Size from integer w and h
 func SizeI(w, h int) Size {
 	return Size{float64(w), float64(h)}
