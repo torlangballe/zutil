@@ -172,12 +172,14 @@ func callWithDeadline(ci ClientInfo, method string, expires time.Time, args json
 	var rp receivePayload
 	var err error
 	if time.Since(expires) >= 0 {
+		zlog.Error(nil, "zrpc ReverseExecutor: callWithDeadline expired:", expires)
 		rp.TransportError = TransportError(zstr.Spaced("Call received after timeout.", method, time.Since(expires)))
 	} else {
 		ctx, cancel := context.WithDeadline(context.Background(), expires)
 		defer cancel()
 		ci.Context = ctx
 		rp, err = callMethodName(ctx, ci, method, args)
+		zlog.Info(EnableLogExecutor, "zrpc callWithDeadline: callMethod done:", err, method)
 		if err != nil {
 			zlog.Error(err, "call")
 			rp.Error = err.Error()

@@ -33,9 +33,14 @@ type ReverseResult struct {
 
 // reverseResults stores results from executed methods, waiting to be sent on next poll
 var (
-	reverseResults    []ReverseResult
-	debugReverseCalls bool
+	reverseResults  []ReverseResult
+	EnableLogExecutor zlog.Enabler
 )
+
+func init() {
+	zlog.RegisterEnabler("zrpc.EnableLogReverseExe", &EnableLogExecutor)
+	EnableLogExecutor = false
+}
 
 func (r *ReverseExecutor) Remove() {
 	r.stop = true // should use a channel
@@ -59,13 +64,13 @@ func NewReverseExecutor(pollClient *Client, id string) *ReverseExecutor {
 }
 
 func startCallingPollForReverseCalls(r *ReverseExecutor) {
-	// zlog.Info("startCallingPollForReverseCalls", r.client.id)
+	zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls", r.client.id)
 	for {
 		if r.stop {
 			return
 		}
 		if !r.on {
-			// zlog.Info("startCallingPollForReverseCalls off", zlog.Pointer(r), r.client.id)
+			// zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls off", zlog.Pointer(r), r.client.id)
 			time.Sleep(time.Millisecond * 50)
 			continue
 		}
@@ -73,19 +78,15 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 		var cp callPayloadReceive
 		err := r.client.Call("RPCCalls.ReversePoll", r.client.id, &cp)
 		if err != nil {
-			if debugReverseCalls {
-				zlog.Info("Call RPCCalls.ReversePoll, error! cp.Token:", err, cp.Token)
-			}
+			zlog.Info(EnableLogExecutor, "Call RPCCalls.ReversePoll, error! cp.Token:", err, cp.Token)
 			time.Sleep(time.Millisecond * 50) // lets not go nuts
 			continue
 		}
 		if cp.Method == "" { // we got a dummy callPayloadReceive, because we sent a receivePayload, but did't have anything
-			if debugReverseCalls {
-				zlog.Info("Call RPCCalls.ReversePoll, reveived dummy:")
-			}
+			zlog.Info(EnableLogExecutor, "Call RPCCalls.ReversePoll, reveived dummy:")
 			continue
 		}
-		// zlog.Info("Call RPCCalls.ReversePoll, ok cp.Token:", err, cp.Token)
+		zlog.Info(EnableLogExecutor, "Call RPCCalls.ReversePoll, ok cp.Token:", err, cp.Token, cp.Method)
 		// zlog.Info("execute method:", cp.Method, cp.Token)
 		go func() {
 			var ci ClientInfo
@@ -95,6 +96,7 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 			ci.Token = r.client.AuthToken
 
 			receive, err := callWithDeadline(ci, cp.Method, cp.Expires, cp.Args)
+			zlog.Info(EnableLogExecutor, "zrpc rev exe: callMethod:", cp.Method, err)
 			if err != nil {
 				rr.clientReceivePayload.Error = err.Error()
 			}
