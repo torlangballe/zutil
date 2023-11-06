@@ -42,6 +42,12 @@ type Grapher struct {
 	renderingOldParts zmap.LockMap[Job, bool]
 }
 
+var EnableLog zlog.Enabler
+
+func Init() {
+	zlog.RegisterEnabler("zgrapher.Log", &EnableLog)
+}
+
 func NewGrapher(router *mux.Router, deleteDays int, grapherName, folderPath string, secondsPerPixel int) *Grapher {
 	g := &Grapher{}
 	folderName := makeCacheFoldername(secondsPerPixel, grapherName)
@@ -110,7 +116,7 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 	mod := zfile.Modified(file)
 	end := t.Add(time.Duration(job.WindowMinutes) * time.Minute)
 	if !mod.IsZero() && !mod.Before(end) {
-		zlog.Info("zgrapher: Has old rendered non-current part with new modified date:", fullName, end, "mod:", mod)
+		zlog.Info(EnableLog, "zgrapher: Has old rendered non-current part with new modified date:", fullName, end, "mod:", mod)
 		return false // it has a file and it's modified after end-time
 	}
 	// zlog.Info("zgrapher: Should render old requested part:", fullName, date, "end:", end, mod.IsZero())
