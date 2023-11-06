@@ -38,6 +38,11 @@ type ReverseClient struct {
 	pendingCallsSent   zmap.LockMap[string, pendingCall] // pendingCallsSent have been fetched, but are awaiting results
 }
 
+func init() {
+	zlog.RegisterEnabler("zrpc.EnableLogReverseClient", &EnableLogClient)
+	EnableLogClient = false
+}
+
 // ReversePoll is called by clients, asking for calls. It first finds the correct ReverseClient using rp.ReverseReceiverID.
 // If the caller has an existing result (rp.Token set), the pendingCall is found in pendingCallsSent using rp.Token, and
 // the call is finished by writing the result to the pendingCall's done channel.
@@ -65,6 +70,7 @@ func (RPCCalls) ReversePoll(receiverID string, cp *CallPayload) error {
 				if time.Since(call.placed) > time.Millisecond*100 {
 					zlog.Info("PendingCallPolled:", call.Method, "placed:", time.Since(call.placed))
 				}
+				zlog.Info(EnableLogClient, "zrpc.ReversePoll added call:", call.Method)
 				*cp = call.CallPayload
 				rc.pendingCallsSent.Set(token, call)
 			}
@@ -85,6 +91,7 @@ func (RPCCalls) ReversePushResult(rp ReverseResult) error {
 	// zlog.Info("ReversePushResult:", rp.Token, rp.Error)
 	rc := findReverseClient(rp.ReverseReceiverID)
 	pendingCall, got := rc.pendingCallsSent.Pop(rp.Token)
+	zlog.Info(EnableLogClient, "zrpc.PushResult:", pendingCall.Method, got)
 	if !got {
 		zlog.Error(nil, "No call for result with token:", rp.Token, "in", rp.ReverseReceiverID, rc.pendingCallsSent.Count()) // make some kind of transport error
 		return NoCallForTokenErr
@@ -109,6 +116,7 @@ func (rc *ReverseClient) Call(method string, args, resultPtr any) error {
 }
 
 func (rc *ReverseClient) CallWithTimeout(timeoutSecs float64, method string, args, resultPtr any) error {
+	zlog.Info(EnableLogClient, "zrpc.RevCall:", method)
 	var pc pendingCall
 	pc.CallPayload = CallPayload{Method: method, Args: args}
 	pc.placed = time.Now()

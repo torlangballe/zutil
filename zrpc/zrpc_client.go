@@ -46,6 +46,7 @@ const (
 var (
 	MainClient          *Client
 	registeredResources []string
+	EnableLogClient zlog.Enabler
 )
 
 // NewClient creates a client with a url prefix, adding zrest.AppURLPrefix
