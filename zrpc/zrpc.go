@@ -20,8 +20,8 @@ type CallPayload struct {
 	ClientID string
 	Method   string
 	Args     interface{}
-	Token    string    `json:",omitempty"`
-	Expires  time.Time // Used for reverse calls to time out
+	Token    string `json:",omitempty"`
+	Expires  time.Time
 }
 
 // callPayloadReceive is what received. It has to have same named fields as callPayload
