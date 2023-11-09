@@ -14,6 +14,9 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
+// https://github.com/go-webauthn/webauthn -- for passwordless  Web Authentication public key login
+// https://css-tricks.com/passkeys-what-the-heck-and-why/
+
 type UsersCalls zrpc.CallsBase
 
 type Session struct {
@@ -37,6 +40,9 @@ var (
 	NoTokenError             = fmt.Errorf("no token for user: %w", AuthFailedError)
 	NoUserError              = fmt.Errorf("no user: %w", AuthFailedError)
 	ForgotPassword           = ForgotPasswordData{ProductName: "This service"}
+
+	DefaultEmail    = "user@example.com"
+	DefaultPassword = "admin"
 )
 
 func setupWithSQLServer(s *SQLServer) {
@@ -65,6 +71,7 @@ func (*UsersCalls) GetUserForToken(token string, user *User) error {
 		return nil
 	}
 	u, err := MainServer.GetUserForToken(token)
+	zlog.Info("GetUserForToken:", err, token)
 	if err != nil {
 		zlog.Error(err, "GetUserForToken", token)
 		return err
@@ -73,14 +80,15 @@ func (*UsersCalls) GetUserForToken(token string, user *User) error {
 	return nil
 }
 
-func (*UsersCalls) Logout(ci zrpc.ClientInfo, username string, reply *zrpc.Unused) error {
+func (*UsersCalls) Logout(ci *zrpc.ClientInfo, username string, reply *zrpc.Unused) error {
 	if MainServer == nil {
 		return nil
 	}
 	return MainServer.UnauthenticateToken(ci.Token)
 }
 
-func (*UsersCalls) Authenticate(ci zrpc.ClientInfo, a Authentication, ui *ClientUserInfo) error {
+func (*UsersCalls) Authenticate(ci *zrpc.ClientInfo, a Authentication, ui *ClientUserInfo) error {
+	zlog.Info("UC.Authenticate:", ui)
 	if MainServer == nil {
 		return nil
 	}
@@ -104,7 +112,7 @@ func (*UsersCalls) Authenticate(ci zrpc.ClientInfo, a Authentication, ui *Client
 	} else {
 		ci.Token = "" // clear any old token already stored, so Login generates a new one
 		*ui, err = MainServer.Login(ci, a.UserName, a.Password)
-		// zlog.Info("Login:", r.UserID, r.Token, err)
+		zlog.Info("Login:", ui, err)
 	}
 	if err != nil {
 		zlog.Error(err, "authenticate", a, a.IsRegister)
@@ -136,7 +144,7 @@ func (*UsersCalls) SendForgotPasswordPasswordMail(email string, r *zrpc.Unused) 
 	return err
 }
 
-func (uc *UsersCalls) SetNewPasswordFromForgotPassword(ci zrpc.ClientInfo, reset ResetPassword, token *string) error {
+func (uc *UsersCalls) SetNewPasswordFromForgotPassword(ci *zrpc.ClientInfo, reset ResetPassword, token *string) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -159,7 +167,7 @@ func (uc *UsersCalls) SetNewPasswordFromForgotPassword(ci zrpc.ClientInfo, reset
 	return err
 }
 
-func (*UsersCalls) ChangePasswordForSelf(ci zrpc.ClientInfo, change ChangeInfo, token *string) error {
+func (*UsersCalls) ChangePasswordForSelf(ci *zrpc.ClientInfo, change ChangeInfo, token *string) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -168,7 +176,7 @@ func (*UsersCalls) ChangePasswordForSelf(ci zrpc.ClientInfo, change ChangeInfo, 
 	return err
 }
 
-func (*UsersCalls) ChangeUserNameForSelf(ci zrpc.ClientInfo, change ChangeInfo) error {
+func (*UsersCalls) ChangeUserNameForSelf(ci *zrpc.ClientInfo, change ChangeInfo) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -191,7 +199,7 @@ func (s *UsersCalls) DeleteUserForID(id int64) error {
 	return MainServer.DeleteUserForID(id)
 }
 
-func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci zrpc.ClientInfo, change ClientUserInfo) error {
+func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change ClientUserInfo) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -219,7 +227,7 @@ func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci zrpc.ClientInfo, change 
 	return nil
 }
 
-func (*UsersCalls) UnauthenticateUser(ci zrpc.ClientInfo, userID int64) error {
+func (*UsersCalls) UnauthenticateUser(ci *zrpc.ClientInfo, userID int64) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -236,4 +244,13 @@ func (*UsersCalls) UnauthenticateUser(ci zrpc.ClientInfo, userID int64) error {
 		zlog.Error(err, "UnauthenticateUser")
 	}
 	return nil
+}
+
+func RegisterDefaultAdminUserIfNone() {
+	var us []AllUserInfo
+	err := Calls.GetAllUsers(nil, &us)
+	if err == nil && len(us) == 0 {
+		userID, _, _ := MainServer.Register(nil, DefaultEmail, DefaultPassword, false)
+		MainServer.SetAdminForUser(userID, true)
+	}
 }

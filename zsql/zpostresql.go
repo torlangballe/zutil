@@ -353,7 +353,7 @@ func SetupPostgres(userName, dbName, address string) (db *sql.DB, err error) {
 	)
 
 	db, err = sql.Open("postgres", pqStr)
-	zlog.Info("OPENPSQL:", pqStr, err)
+	zlog.Info("OPEN POSTGRES:", pqStr, err)
 	if err != nil {
 		zlog.Info("setup db err:", err)
 		return

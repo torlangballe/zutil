@@ -108,7 +108,6 @@ func (s *SQLServer) IsTokenValid(token string) bool {
 	squery = s.customizeQuery(squery)
 	row := s.DB.QueryRow(squery, token)
 	row.Scan(&exists)
-	// zlog.Info("SQLServer.IsTokenValid s:", err, exists, token)
 	return exists
 }
 
@@ -184,7 +183,7 @@ func (s *SQLServer) ChangeUserNameForUser(id int64, username string) error {
 	return err
 }
 
-func (s *SQLServer) ChangePasswordForUser(ci zrpc.ClientInfo, id int64, password string) (token string, err error) {
+func (s *SQLServer) ChangePasswordForUser(ci *zrpc.ClientInfo, id int64, password string) (token string, err error) {
 	var salt, hash string
 
 	squery := "UPDATE zusers SET passwordhash=$1, salt=$2, login=$NOW WHERE id=$3"
@@ -198,7 +197,7 @@ func (s *SQLServer) ChangePasswordForUser(ci zrpc.ClientInfo, id int64, password
 			zlog.Error(err, "unauhth user", id)
 		}
 		var session Session
-		session.ClientInfo = ci
+		session.ClientInfo = *ci
 		session.UserID = id
 		session.Token = zstr.Concat(".", ci.Type, token)
 		err = s.AddNewSession(session)
@@ -290,7 +289,7 @@ func (s *SQLServer) AddNewUser(username, password, hash, salt string, perm []str
 	return
 }
 
-func (s *SQLServer) Login(ci zrpc.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
+func (s *SQLServer) Login(ci *zrpc.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
 	//	zlog.Info("Login:", username)
 	u, err := s.GetUserForUserName(username)
 	if err != nil {
@@ -304,7 +303,7 @@ func (s *SQLServer) Login(ci zrpc.ClientInfo, username, password string) (ui Cli
 	}
 
 	var session Session
-	session.ClientInfo = ci
+	session.ClientInfo = *ci
 	if session.Token == "" {
 		session.Token = zstr.Concat(".", ci.Type, zstr.GenerateUUID())
 	}
@@ -323,7 +322,7 @@ func (s *SQLServer) Login(ci zrpc.ClientInfo, username, password string) (ui Cli
 	return
 }
 
-func (s *SQLServer) Register(ci zrpc.ClientInfo, username, password string, makeToken bool) (id int64, token string, err error) {
+func (s *SQLServer) Register(ci *zrpc.ClientInfo, username, password string, makeToken bool) (id int64, token string, err error) {
 	_, err = s.GetUserForUserName(username)
 	if err == nil {
 		err = errors.New("user already exists: " + username)
@@ -334,7 +333,7 @@ func (s *SQLServer) Register(ci zrpc.ClientInfo, username, password string, make
 	id, err = s.AddNewUser(username, password, hash, salt, perm)
 	if makeToken {
 		var session Session
-		session.ClientInfo = ci
+		session.ClientInfo = *ci
 		session.Token = zstr.Concat(".", ci.Type, token)
 		session.UserID = id
 		err = s.AddNewSession(session)
@@ -346,7 +345,7 @@ func (s *SQLServer) Register(ci zrpc.ClientInfo, username, password string, make
 	return
 }
 
-func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci zrpc.ClientInfo, change ClientUserInfo) error {
+func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change ClientUserInfo) error {
 	squery := "UPDATE zusers SET username=$1, permissions=$2 WHERE id=$3"
 	squery = s.customizeQuery(squery)
 	_, err := s.DB.Exec(squery, change.UserName, pq.Array(change.Permissions), change.UserID)

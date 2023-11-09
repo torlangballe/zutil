@@ -4,7 +4,6 @@ package zusers
 
 import (
 	"fmt"
-	"net/url"
 
 	"github.com/torlangballe/zui/zalert"
 	"github.com/torlangballe/zui/zapp"
@@ -45,7 +44,6 @@ var (
 
 func Init() {
 	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
-	// zlog.Info("checkAndDoAuth:", token)
 	if token != "" {
 		zrpc.MainClient.AuthToken = token
 	}
@@ -329,7 +327,7 @@ func callResetPassword(reset ResetPassword) {
 		return
 	}
 	zkeyvalue.DefaultStore.SetString(token, tokenKey, true)
-	u, _ := url.Parse(zapp.URL())
+	u := zapp.URL()
 	q := u.Query()
 	q.Del("reset")
 	q.Del("email")
