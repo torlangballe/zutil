@@ -13,6 +13,14 @@ type Pos struct {
 	Y float64 `json:"y"`
 }
 
+func PosF(x, y float32) Pos {
+	return PosD(float64(x), float64(y))
+}
+
+func PosD(x, y float64) Pos {
+	return Pos{X: x, Y: y}
+}
+
 func (p Pos) String() string {
 	return fmt.Sprintf("%g,%g", p.X, p.Y)
 }
