@@ -3,6 +3,7 @@
 package zdevice
 
 import (
+	"os"
 	"strings"
 
 	"github.com/denisbrodbeck/machineid"
@@ -33,4 +34,12 @@ func UUID() string {
 
 func OS() OSType {
 	return Platform()
+}
+
+func Name() string {
+	name, err := os.Hostname()
+	if err != nil {
+		return ""
+	}
+	return name
 }
