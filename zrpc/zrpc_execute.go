@@ -18,7 +18,11 @@ func Register(callers ...interface{}) {
 	for _, c := range callers {
 		methods := suitableMethods(c)
 		for n, m := range methods {
-			// zlog.Info("Reg:", n, m.Method)
+			_, got := callMethods[n]
+			if got {
+				zlog.Error(nil, "Registering existing call object:", n)
+				break
+			}
 			callMethods[n] = m
 		}
 	}
@@ -45,7 +49,7 @@ func suitableMethods(c interface{}) map[string]*methodType {
 		}
 		i := 1
 		if mtype.NumIn() > 2 {
-			hasClientInfo = reflect.TypeOf(ClientInfo{}) == mtype.In(i)
+			hasClientInfo = reflect.TypeOf(ClientInfo{}) == mtype.In(i) || reflect.TypeOf(&ClientInfo{}) == mtype.In(i)
 			if hasClientInfo {
 				i++
 			}
@@ -128,7 +132,7 @@ func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg js
 	}
 	args := []reflect.Value{mtype.Receiver}
 	if mtype.hasClientInfo {
-		args = append(args, reflect.ValueOf(ci))
+		args = append(args, reflect.ValueOf(&ci))
 	}
 	args = append(args, argv)
 	hasReply := mtype.ReplyType != nil
@@ -185,8 +189,9 @@ func callWithDeadline(ci ClientInfo, method string, expires time.Time, args json
 			rp.Error = err.Error()
 		}
 		deadline, ok := ctx.Deadline()
+		// zlog.Warn("callWithDeadline:", expires, deadline, ok)
 		if ok && time.Since(deadline) >= 0 {
-			zlog.Info("call expired after execute. Handling in client.", method, expires)
+			rp.TransportError = ExecuteTimedOutError
 		}
 	}
 	return rp, err

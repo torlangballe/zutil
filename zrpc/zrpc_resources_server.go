@@ -15,7 +15,7 @@ var (
 
 // GetUpdatedResourcesAndSetSent is called from clients (often browsers) to ask for updated resource-ids
 // The client id is stored as it having checked them out for that given update.
-func (RPCCalls) GetUpdatedResourcesAndSetSent(ci ClientInfo, int Unused, reply *[]string) error {
+func (RPCCalls) GetUpdatedResourcesAndSetSent(ci *ClientInfo, int Unused, reply *[]string) error {
 	*reply = []string{}
 	updatedResourcesSentToClient.ForEach(func(res string, c []string) bool {
 		if !zstr.StringsContain(c, ci.ClientID) {
@@ -54,7 +54,7 @@ func SetClientKnowsResourceUpdated(resID, clientID string) {
 }
 
 // SetResourceUpdatedFromClient is called from client to say it knows of update
-func (RPCCalls) SetResourceUpdatedFromClient(ci ClientInfo, resID string) error {
+func (RPCCalls) SetResourceUpdatedFromClient(ci *ClientInfo, resID string) error {
 	// fmt.Println("SetResourceUpdatedFromClient:", *resID)
 	SetResourceUpdated(resID, ci.ClientID)
 	return nil

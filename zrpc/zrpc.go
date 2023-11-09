@@ -71,6 +71,8 @@ type CallsBase struct{} // CallsBase is just a dummy type one can derive from wh
 type RPCCalls CallsBase // RPCCalls is the type with zrpc's own build-in methods.
 type Unused struct{}    // Any is used in function definition args/result when argument is not used
 
+var ExecuteTimedOutError = TransportError("Execution timed out")
+
 func (t TransportError) Error() string {
 	return string(t)
 }

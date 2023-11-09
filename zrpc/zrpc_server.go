@@ -88,7 +88,7 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 			stimeout := req.Header.Get(timeoutHeaderID)
 			timeoutSecs, _ := strconv.ParseFloat(stimeout, 64)
 			ci.SendDate, _ = time.Parse(ztime.JavascriptISO, sdate)
-			expires := ci.SendDate.Add(ztime.SecondsDur(timeoutSecs))
+			expires := time.Now().Add(ztime.SecondsDur(timeoutSecs))
 			rp, err = callWithDeadline(ci, cp.Method, expires, cp.Args)
 		}
 	}
