@@ -5,6 +5,7 @@ import (
 	"runtime"
 
 	"github.com/torlangballe/zutil/zprocess"
+	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zwords"
 )
 
@@ -30,4 +31,13 @@ func PrintAllGoroutines() {
 
 func Consume(p ...any) {
 
+}
+
+func GetProfileCommandLineGetters(addressIP4 string) []string {
+	var out []string
+	for _, n := range []string{"heap", "profile", "block", "mutex"} {
+		str := fmt.Sprintf("curl http://%s:%d/debug/pprof/%s > ~/%s && go tool pprof -web ~/%s", addressIP4, zrest.ProfilingPort, n, n, n)
+		out = append(out, str)
+	}
+	return out
 }
