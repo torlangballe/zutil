@@ -193,7 +193,7 @@ func (t *Terminal) ListenForever(port int) {
 		ci.UserAgent = ctx.ClientVersion()
 		ci.Token = t.sessionPublicKeys[ctx.SessionID()]
 		userName := ctx.User()
-		cui, err := zusers.MainServer.Login(ci, userName, pass) // call login with read-made token to store in session
+		cui, err := zusers.MainServer.Login(&ci, userName, pass) // call login with read-made token to store in session
 		zlog.Info("TermLogin:", userName, pass, err)
 		if err != nil {
 			zlog.Info("Login error:", err, userName)
