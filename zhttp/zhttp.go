@@ -718,6 +718,16 @@ func ValsFromURL(surl string) url.Values {
 	return url.Values{}
 }
 
+// ArgsFromURL gets Query arguments from a url.
+// It can only store k/v of first unqiue key
+func ArgsFromURL(u *url.URL) map[string]string {
+	m := map[string]string{}
+	for k, vs := range u.Query() {
+		m[k] = vs[0]
+	}
+	return m
+}
+
 func MakeDataURL(data []byte, mime string) string {
 	if mime == "" {
 		mime = "text/html"
