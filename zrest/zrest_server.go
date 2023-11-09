@@ -28,7 +28,6 @@ var (
 	RunningOnServer      bool
 	LegalCORSOrigins     = map[string]bool{}
 	CurrentInRequests    int
-	ProfilingPort        int
 	StaticFolderPathFunc = func(add string) string {
 		return "www"
 	}
@@ -148,18 +147,12 @@ func GetFloatVal(vals url.Values, name string, def float64) float64 {
 func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Route {
 	pattern = strings.TrimRight(AppURLPrefix+pattern, "/")
 	defer zlog.HandlePanic(false)
-	p := zprocess.PushProcess(30, "AddSubHandler:"+pattern)
-	CurrentInRequests++
 	if router == nil {
 		http.Handle(pattern, h)
-		CurrentInRequests--
-		zprocess.PopProcess(p)
 		return nil
 	}
 	route := router.PathPrefix(pattern)
 	r := route.Handler(h)
-	zprocess.PopProcess(p)
-	CurrentInRequests--
 	return r
 }
 
@@ -259,10 +252,9 @@ func Handle(pattern string, handler http.Handler) {
 }
 
 func SetProfilingHandle(port int) {
-	if port == 0 {
-		port = 6060
+	if port != 0 {
+		ProfilingPort = port
 	}
-	ProfilingPort = port
 	router := mux.NewRouter()
 
 	// http.Handle("/debug/pprof/", pprof.Index)

@@ -1,3 +1,6 @@
 package zrest
 
-var AppURLPrefix = "/"
+var (
+	AppURLPrefix  = "/"
+	ProfilingPort = 6060
+)
