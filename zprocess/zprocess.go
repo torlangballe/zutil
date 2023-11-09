@@ -146,7 +146,7 @@ func PushProcess(timeoutSecs float64, info string) *proc {
 	var p proc
 	p.start = time.Now()
 	p.id = rand.Int63()
-	p.stack = zlog.CallingStackStringAt(3)
+	p.stack = zlog.CallingStackStringAt(2)
 	p.info = info
 	procs.Set(p.id, &p)
 	p.timer = ztimer.StartIn(timeoutSecs, func() {
