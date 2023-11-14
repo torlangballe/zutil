@@ -609,9 +609,11 @@ func (s *Scheduler[I]) startAndStopRuns() {
 	}
 	if s.setup.ExecutorAliveDuration != 0 {
 		for _, e := range s.executors {
-			expires := e.KeptAliveAt.Add(s.setup.ExecutorAliveDuration)
-			if nextTimerTime.IsZero() || expires.Before(nextTimerTime) {
-				nextTimerTime = expires
+			if !e.KeptAliveAt.IsZero() {
+				expires := e.KeptAliveAt.Add(s.setup.ExecutorAliveDuration)
+				if nextTimerTime.IsZero() || expires.Before(nextTimerTime) {
+					nextTimerTime = expires
+				}
 			}
 		}
 	}
@@ -943,7 +945,7 @@ func (s *Scheduler[I]) CountRunningJobs(executorID I) int {
 	return count
 }
 
-// GetActiveJobIDs gets ids of jobs that are running or started for exID or all if it's 0
+// GetActiveJobIDs gets map of job-ids-to-executor-id of jobs that are running or started for exID or all if it's 0
 func (s *Scheduler[I]) GetActiveJobIDs(exID I) map[I]I {
 	m := map[I]I{}
 	for _, r := range s.runs {
