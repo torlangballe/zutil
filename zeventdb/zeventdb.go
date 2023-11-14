@@ -48,20 +48,14 @@ var (
 	storeLock    sync.Mutex
 )
 
-// CreateDB creates (if *filepath* doesn't exist) a file and a sqlite DB pointer opened to it.
+// CreateDB creates (if *relPath* doesn't exist) a file and a sqlite DB pointer opened to it.
 // It creates a table *tableName* using the structure istruct as it's column names.
 // The field with db:",primary" set, is the primary key.
 // If there is more than one time.Time type, set db:",eventtime" tag to make it the event's time.
-func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays, deleteFreqSecs float64, indexFields []string) (db *Database, err error) {
-	if !zfile.Exists(filepath) {
-		file, err := os.Create(filepath) // Create SQLite file
-		if err != nil {
-			return nil, zlog.Error(err, "os.create")
-		}
-		file.Close()
-	}
+func CreateDB(relPath string, tableName string, istruct interface{}, deleteDays, deleteFreqSecs float64, indexFields []string) (db *Database, err error) {
+	absPath := zfile.WorkingDirPathToAbsolute(relPath)
 	db = &Database{}
-	db.DB, err = sql.Open("sqlite", filepath)
+	db.DB, err = sql.Open("sqlite", absPath)
 	db.TableName = tableName
 	db.StructType = reflect.TypeOf(reflect.Indirect(reflect.ValueOf(istruct)).Interface())
 	if err != nil {
@@ -69,13 +63,12 @@ func CreateDB(filepath string, tableName string, istruct interface{}, deleteDays
 	}
 	var query string
 	query, db.FieldInfos = zsql.CreateSQLite3TableCreateStatementFromStruct(istruct, tableName)
-	// zlog.Info("ZEDB CREATE:", query)
 	_, err = db.DB.Exec(query)
 	if err != nil {
 		e, _ := err.(*sqlite.Error)
 		if e != nil && e.Code() == 13 { // Corrupt
-			zlog.Info("CORRUPT!")
-			os.Remove(filepath)
+			zlog.Error(e, "CORRUPT!")
+			os.Remove(absPath)
 			_, err = db.DB.Exec(query)
 		}
 		if err != nil {
