@@ -11,19 +11,35 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
-var callMethods = map[string]*methodType{} // stores all registered types/methods
+type TokenAuthenticator interface {
+	IsTokenValid(token string) bool
+}
+
+type Executor struct {
+	authenticator      TokenAuthenticator     // used to authenticate a token in a RPC call
+	callMethods        map[string]*methodType // stores all registered types/methods
+	IPAddressWhitelist map[string]bool        // if non-empty, only ip-addresses in map are allowed to be called from
+}
+
+func NewExecutor() *Executor {
+	e := &Executor{}
+	e.callMethods = map[string]*methodType{}
+	e.IPAddressWhitelist = map[string]bool{}
+	return e
+}
+
 // Register registers instances of types that have methods in them suitable for being an rpc call.
 // func (t type) Method(<ci ClientInfo>, input, <*result>) error
-func Register(callers ...interface{}) {
+func (e *Executor) Register(callers ...interface{}) {
 	for _, c := range callers {
 		methods := suitableMethods(c)
 		for n, m := range methods {
-			_, got := callMethods[n]
+			_, got := e.callMethods[n]
 			if got {
 				zlog.Error(nil, "Registering existing call object:", n)
 				break
 			}
-			callMethods[n] = m
+			e.callMethods[n] = m
 		}
 	}
 }
@@ -97,8 +113,8 @@ func isExportedOrBuiltinType(t reflect.Type) bool {
 	return token.IsExported(t.Name()) || t.PkgPath() == "" // PkgPath will be non-empty even for an exported type, so we need to check the type name as well.
 }
 
-func methodNeedsAuth(name string) bool {
-	m, got := callMethods[name]
+func (e *Executor) methodNeedsAuth(name string) bool {
+	m, got := e.callMethods[name]
 	if !got {
 		zlog.Error(nil, "methodNeedsAuth on unknown:", name)
 		return true
@@ -106,7 +122,7 @@ func methodNeedsAuth(name string) bool {
 	return !m.AuthNotNeeded
 }
 
-func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg json.RawMessage) (rp receivePayload, err error) {
+func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg json.RawMessage) (rp receivePayload, err error) {
 	// zlog.Info("callMethod:", mtype.Method.Name)
 	start := time.Now()
 	defer func() {
@@ -163,16 +179,16 @@ func callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg js
 	return rp, nil
 }
 
-func callMethodName(ctx context.Context, ci ClientInfo, name string, rawArg json.RawMessage) (rp receivePayload, err error) {
-	for n, m := range callMethods {
+func (e *Executor) callMethodName(ctx context.Context, ci ClientInfo, name string, rawArg json.RawMessage) (rp receivePayload, err error) {
+	for n, m := range e.callMethods {
 		if n == name {
-			return callMethod(ctx, ci, m, rawArg)
+			return e.callMethod(ctx, ci, m, rawArg)
 		}
 	}
 	return rp, zlog.NewError("no method registered:", name)
 }
 
-func callWithDeadline(ci ClientInfo, method string, expires time.Time, args json.RawMessage) (receivePayload, error) {
+func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.Time, args json.RawMessage) (receivePayload, error) {
 	var rp receivePayload
 	var err error
 	if time.Since(expires) >= 0 {
@@ -182,14 +198,14 @@ func callWithDeadline(ci ClientInfo, method string, expires time.Time, args json
 		ctx, cancel := context.WithDeadline(context.Background(), expires)
 		defer cancel()
 		ci.Context = ctx
-		rp, err = callMethodName(ctx, ci, method, args)
-		zlog.Info(EnableLogExecutor, "zrpc callWithDeadline: callMethod done:", err, method)
+		rp, err = e.callMethodName(ctx, ci, method, args)
+		// zlog.Info(EnableLogExecutor, "zrpc callWithDeadline: callMethod done:", method, err, method)
 		if err != nil {
 			zlog.Error(err, "call")
 			rp.Error = err.Error()
 		}
 		deadline, ok := ctx.Deadline()
-		// zlog.Warn("callWithDeadline:", expires, deadline, ok)
+		// zlog.Warn("callWithDeadline:", method, expires, deadline, ok)
 		if ok && time.Since(deadline) >= 0 {
 			rp.TransportError = ExecuteTimedOutError
 		}

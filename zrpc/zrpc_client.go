@@ -46,7 +46,7 @@ const (
 var (
 	MainClient          *Client
 	registeredResources []string
-	EnableLogClient zlog.Enabler
+	EnableLogClient     zlog.Enabler
 )
 
 // NewClient creates a client with a url prefix, adding zrest.AppURLPrefix
@@ -62,18 +62,18 @@ func NewClient(prefixURL string, id string) *Client {
 	return c
 }
 
-// Copy makes a copy of a client, to alter timeout or other fields.
-// Avoid copying the struct instead, as it contains mutexes and rate limiters not meant to be used in two places.
-func (c *Client) Copy() *Client {
-	var n Client
-	n.callURL = c.callURL
-	n.id = c.id
-	n.AuthToken = c.AuthToken
-	n.TimeoutSecs = c.TimeoutSecs
-	n.KeepTokenOnAuthenticationInvalid = c.KeepTokenOnAuthenticationInvalid
-	n.SkipVerifyCertificate = c.SkipVerifyCertificate
-	return &n
-}
+// // Copy makes a copy of a client, to alter timeout or other fields.
+// // Avoid copying the struct instead, as it contains mutexes and rate limiters not meant to be used in two places.
+// func (c *Client) Copy() *Client {
+// 	var n Client
+// 	n.callURL = c.callURL
+// 	n.id = c.id
+// 	n.AuthToken = c.AuthToken
+// 	n.TimeoutSecs = c.TimeoutSecs
+// 	n.KeepTokenOnAuthenticationInvalid = c.KeepTokenOnAuthenticationInvalid
+// 	n.SkipVerifyCertificate = c.SkipVerifyCertificate
+// 	return &n
+// }
 
 // Call is used to execute a remote call. method is Type.MethodName
 // input can be nil if not used, and result can be nil if not used/not in method.
@@ -101,12 +101,13 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 		"method": method,
 	}
 	surl, _ := zhttp.MakeURLWithArgs(c.callURL, urlArgs)
+	// zlog.Warn("CALL:", surl)
 	_, err = zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
 		return nil, zlog.NewError(err, "post")
 	}
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also
-		zlog.Info("zprc AuthenticationInvalid:", method, c.AuthToken)
+		zlog.Info("zprc AuthenticationInvalid:", method, c.AuthToken, c.KeepTokenOnAuthenticationInvalid)
 		if !c.KeepTokenOnAuthenticationInvalid {
 			c.AuthToken = ""
 		}
@@ -146,7 +147,7 @@ func (c *Client) PollForUpdatedResources(got func(resID string)) {
 	}
 	ztimer.RepeatForever(1, func() {
 		var resIDs []string
-		err := c.Call("RPCCalls.GetUpdatedResourcesAndSetSent", nil, &resIDs)
+		err := c.Call("ResourceCalls.GetUpdatedResourcesAndSetSent", nil, &resIDs)
 		if err != nil {
 			zlog.Error(err, "updateResources err:")
 			return

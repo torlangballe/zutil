@@ -23,16 +23,16 @@ type SQLServer struct {
 	zsql.Base
 }
 
-func NewSQLServer(db *sql.DB, btype zsql.BaseType) (*SQLServer, error) {
+func NewSQLServer(db *sql.DB, btype zsql.BaseType, executor *zrpc.Executor) (*SQLServer, error) {
 	if db == nil {
-		setupWithSQLServer(nil)
+		setupWithSQLServer(nil, executor)
 		return nil, nil
 	}
 	s := &SQLServer{}
 	s.DB = db
 	s.Type = btype
 	err := s.setup()
-	setupWithSQLServer(s)
+	setupWithSQLServer(s, executor)
 	return s, err
 }
 
@@ -322,7 +322,7 @@ func (s *SQLServer) Login(ci *zrpc.ClientInfo, username, password string) (ui Cl
 	return
 }
 
-func (s *SQLServer) Register(ci *zrpc.ClientInfo, username, password string, makeToken bool) (id int64, token string, err error) {
+func (s *SQLServer) RegisterUser(ci *zrpc.ClientInfo, username, password string, makeToken bool) (id int64, token string, err error) {
 	_, err = s.GetUserForUserName(username)
 	if err == nil {
 		err = errors.New("user already exists: " + username)

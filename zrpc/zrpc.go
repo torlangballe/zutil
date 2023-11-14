@@ -68,8 +68,8 @@ type ClientInfo struct {
 type TransportError string
 
 type CallsBase struct{} // CallsBase is just a dummy type one can derive from when defining a type to add methods to for registation. You don't need to use it.
-type RPCCalls CallsBase // RPCCalls is the type with zrpc's own build-in methods.
-type Unused struct{}    // Any is used in function definition args/result when argument is not used
+// type RPCCalls CallsBase // RPCCalls is the type with zrpc's own build-in methods.
+type Unused struct{} // Any is used in function definition args/result when argument is not used
 
 var ExecuteTimedOutError = TransportError("Execution timed out")
 

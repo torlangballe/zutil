@@ -15,37 +15,33 @@ import (
 )
 
 // TokenAuthenticator is used to authenticate a token in ClientInfo, can be zuser doing it, or whatever.
-type TokenAuthenticator interface {
-	IsTokenValid(token string) bool
-}
-
-var (
-	IPAddressWhitelist = map[string]bool{} // if non-empty, only ip-addresses in map are allowed to be called from
-	authenticator      TokenAuthenticator  // used to authenticate a token in a RPC call
-)
-
 // InitServer initializes a rpc server with an authenticator, and registers RPCCalls,
 // which has the build-in rpc methods for resources and reverse-calls.
-func InitServer(router *mux.Router, a TokenAuthenticator) {
-	authenticator = a
-	zrest.AddHandler(router, "zrpc", doServeHTTP).Methods("POST", "OPTIONS")
-	Register(RPCCalls{})
+func NewServer(router *mux.Router, a TokenAuthenticator) *Executor {
+	e := NewExecutor()
+	e.authenticator = a
+	zrest.AddHandler(router, "zrpc", e.doServeHTTP).Methods("POST", "OPTIONS")
+	//!!! e.Register(e)
+	return e
 }
 
 // SetAuthNotNeededForMethod is used to exclude methods from needing authentication.
 // Login methods that create a token for example.
-func SetAuthNotNeededForMethod(name string) {
-	callMethods[name].AuthNotNeeded = true
+func (e *Executor) SetAuthNotNeededForMethod(name string) {
+	zlog.Info("SetAuthNotNeededForMethod:", e != nil, name)
+	e.callMethods[name].AuthNotNeeded = true
 }
 
 // doServeHTTP responds to a /zrpc request. It gets the method and arguments by parsing the json body.
 // Note that the method name in url is only for debugging.
 // The method is found in callMethods, called, and results/errors returned in the response to the request.
-func doServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var cp callPayloadReceive
 	var rp receivePayload
 	var token string
 
+	// zlog.Warn("zrpc.doServeHTTP:", req.URL.String(), zlog.Pointer(e))
+	// defer zlog.Info("zrpc.doServeHTTP DONE:", req.URL.Path, req.URL.Query())
 	zrest.AddCORSHeaders(w, req)
 	defer req.Body.Close()
 	if req.Method == "OPTIONS" {
@@ -60,17 +56,17 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		call = false
 	} else {
 		token = cp.Token
-		if authenticator != nil && methodNeedsAuth(cp.Method) {
-			if !authenticator.IsTokenValid(token) {
+		if e.authenticator != nil && e.methodNeedsAuth(cp.Method) {
+			if !e.authenticator.IsTokenValid(token) {
 				zlog.Error(nil, "token not valid: '"+token+"'", req.RemoteAddr, req.URL.Path, req.URL.Query())
 				rp.TransportError = "authentication error"
 				rp.AuthenticationInvalid = true
 				call = false
 			}
 		}
-		if call && len(IPAddressWhitelist) > 0 {
-			if !IPAddressWhitelist[req.RemoteAddr] {
-				err := zlog.NewError("zrpc.Call", cp.Method, "calling ip not in whitelist", req.RemoteAddr, IPAddressWhitelist)
+		if call && len(e.IPAddressWhitelist) > 0 {
+			if !e.IPAddressWhitelist[req.RemoteAddr] {
+				err := zlog.NewError("zrpc.Call", cp.Method, "calling ip not in whitelist", req.RemoteAddr, e.IPAddressWhitelist)
 				rp.TransportError = TransportError(err.Error())
 				rp.AuthenticationInvalid = true
 				zlog.Error(err)
@@ -89,7 +85,7 @@ func doServeHTTP(w http.ResponseWriter, req *http.Request) {
 			timeoutSecs, _ := strconv.ParseFloat(stimeout, 64)
 			ci.SendDate, _ = time.Parse(ztime.JavascriptISO, sdate)
 			expires := time.Now().Add(ztime.SecondsDur(timeoutSecs))
-			rp, err = callWithDeadline(ci, cp.Method, expires, cp.Args)
+			rp, err = e.callWithDeadline(ci, cp.Method, expires, cp.Args)
 		}
 	}
 	encoder := json.NewEncoder(w)

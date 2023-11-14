@@ -45,12 +45,12 @@ var (
 	DefaultPassword = "admin"
 )
 
-func setupWithSQLServer(s *SQLServer) {
+func setupWithSQLServer(s *SQLServer, executor *zrpc.Executor) {
 	MainServer = s
-	zrpc.Register(Calls)
-	zrpc.SetAuthNotNeededForMethod("UsersCalls.Authenticate")
-	zrpc.SetAuthNotNeededForMethod("UsersCalls.SendForgotPasswordPasswordMail")
-	zrpc.SetAuthNotNeededForMethod("UsersCalls.SetNewPasswordFromForgotPassword")
+	executor.Register(Calls)
+	executor.SetAuthNotNeededForMethod("UsersCalls.Authenticate")
+	executor.SetAuthNotNeededForMethod("UsersCalls.SendForgotPasswordPasswordMail")
+	executor.SetAuthNotNeededForMethod("UsersCalls.SetNewPasswordFromForgotPassword")
 }
 
 func makeHash(str, salt string) string {
@@ -106,7 +106,7 @@ func (*UsersCalls) Authenticate(ci *zrpc.ClientInfo, a Authentication, ui *Clien
 			}
 			makeToken = false
 		}
-		ui.UserID, ui.Token, err = MainServer.Register(ci, a.UserName, a.Password, makeToken)
+		ui.UserID, ui.Token, err = MainServer.RegisterUser(ci, a.UserName, a.Password, makeToken)
 		ui.UserName = a.UserName
 		ui.Permissions = []string{} // nothing yet, we just registered
 	} else {
@@ -250,7 +250,7 @@ func RegisterDefaultAdminUserIfNone() {
 	var us []AllUserInfo
 	err := Calls.GetAllUsers(nil, &us)
 	if err == nil && len(us) == 0 {
-		userID, _, _ := MainServer.Register(nil, DefaultEmail, DefaultPassword, false)
+		userID, _, _ := MainServer.RegisterUser(nil, DefaultEmail, DefaultPassword, false)
 		MainServer.SetAdminForUser(userID, true)
 	}
 }
