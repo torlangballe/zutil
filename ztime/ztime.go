@@ -546,6 +546,45 @@ func DaysInMonth(month time.Month, year int) int {
 	return t.Day()
 }
 
+// ChangedPartsOfTime changes the hour, minute second or nanosecond part of a time
+// Only non -1 parts changed.
+func ChangedPartsOfTime(t time.Time, h, m, s, ns int) time.Time {
+	ch, cm, cs := t.Clock()
+	cns := t.Nanosecond()
+	if h != -1 {
+		ch = h
+	}
+	if m != -1 {
+		cm = m
+	}
+	if s != -1 {
+		cs = s
+	}
+	if ns != -1 {
+		cns = ns
+	}
+	y, month, d := t.Date()
+	return time.Date(y, month, d, ch, cm, cs, cns, t.Location())
+}
+
+// ChangedPartsOfDate changes the year, month or day part of a time
+// Only non -1 parts changed.
+func ChangedPartsOfDate(t time.Time, y int, m time.Month, d int) time.Time {
+	cy, cm, cd := t.Date()
+	if y != -1 {
+		cy = y
+	}
+	if m != -1 {
+		cm = m
+	}
+	if d != -1 {
+		cd = d
+	}
+	h, min, s := t.Clock()
+	ns := t.Nanosecond()
+	return time.Date(cy, cm, cd, h, min, s, ns, t.Location())
+}
+
 func OnTheNextHour(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 60, 0, 0, t.Location())
 }
