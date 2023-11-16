@@ -1,6 +1,6 @@
 //go:build zui
 
-package zdebug
+package zguiutil
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zpresent"
 	"github.com/torlangballe/zui/zview"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zhttp"
@@ -58,7 +59,7 @@ func NewDebugView(urlStub string) *DebugView {
 	v.SetMarginS(zgeo.Size{10, 10})
 	v.Init(v, true, "debug-view")
 	addProfileRow(&v.StackView, "heap", "")
-	for _, p := range GetProfileCommandLineGetters(urlStub) {
+	for _, p := range zdebug.GetProfileCommandLineGetters(urlStub) {
 		label := zlabel.New(p)
 		v.Add(label, zgeo.CenterLeft)
 	}

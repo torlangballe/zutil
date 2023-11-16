@@ -15,6 +15,7 @@ import (
 
 	"github.com/mitchellh/go-ps"
 	"github.com/shirou/gopsutil/v3/process"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -22,6 +23,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func init() {
+	zdebug.GetOpenFileCountFunc = GetOpenFileCount
+}
 func RunBashCommand(command string, timeoutSecs float64) (string, error) {
 	return RunCommand("/bin/bash", timeoutSecs, []any{"-c", command}...)
 }

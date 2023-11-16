@@ -36,17 +36,17 @@ var (
 	outputHooks             = map[string]func(s string){}
 	UseColor                = false
 	PanicHandler            func(reason string, exit bool)
-	IsInTests               bool
 	PrintGoRoutines         = false
 	PrintDate               = true
 	lastGoRoutineCount      int
 	lastGoRoutineOutputTime time.Time
 	rateLimiters            zmap.LockMap[LimitID, time.Time]
 	EnablerList             zmap.LockMap[string, *Enabler]
+
+	isInTests = (strings.HasSuffix(os.Args[0], ".test"))
 )
 
 func init() {
-	IsInTests = (strings.HasSuffix(os.Args[0], ".test"))
 	PanicHandler = func(reason string, exit bool) {
 		Error(nil, "panic handler:", reason)
 		if exit {
@@ -147,7 +147,7 @@ func baseLog(err error, priority Priority, pos int, parts ...any) error {
 	if priority < PrintPriority {
 		return nil
 	}
-	if priority < WarningLevel && IsInTests {
+	if priority < WarningLevel && isInTests {
 		return nil
 	}
 	for i := 0; i < len(parts); i++ {

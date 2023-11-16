@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
@@ -134,7 +135,7 @@ func (s Store) postfixKey(key *string) {
 	if (*key)[0] != '/' && s.KeyPostfix != "" {
 		*key = *key + s.KeyPostfix
 	}
-	if zlog.IsInTests {
+	if zdebug.IsInTests {
 		*key += "_test"
 	}
 	*key = *key + GlobalKeyPostfix
