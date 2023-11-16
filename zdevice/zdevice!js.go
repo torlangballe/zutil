@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/denisbrodbeck/machineid"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -18,8 +19,8 @@ func WasmBrowser() BrowserType {
 // Returns a fixed, dummy id if running during tests.
 // Format will always be in UUID 8-4-4-4-12 hex chars.
 func UUID() string {
-	if zlog.IsInTests {
-		return "01234567-89AB-CDEF-0123-456789ABCDEF"
+	if zdebug.IsInTests {
+		return TestDeviceUUID
 	}
 	str, err := machineid.ID()
 	if err != nil {
