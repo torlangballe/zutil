@@ -122,7 +122,8 @@ func NewServer(prefix, certFilesSuffix string, port int, ping bool, got func(s *
 		req.Body.Close()
 	})
 
-	znet.ServeHTTPInBackground(port, certFilesSuffix, nil)
+	addr := fmt.Sprintf(":%d", port)
+	znet.ServeHTTPInBackground(addr, certFilesSuffix, nil)
 	return server
 }
 
