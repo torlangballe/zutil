@@ -54,6 +54,13 @@ var (
 // If there is more than one time.Time type, set db:",eventtime" tag to make it the event's time.
 func CreateDB(relPath string, tableName string, istruct interface{}, deleteDays, deleteFreqSecs float64, indexFields []string) (db *Database, err error) {
 	absPath := zfile.WorkingDirPathToAbsolute(relPath)
+	// if !zfile.Exists(absPath) {
+	// 	file, err := os.Create(absPath) // Create SQLite file
+	// 	if err != nil {
+	// 		return nil, zlog.Error(err, "os.create")
+	// 	}
+	// 	file.Close()
+	// }
 	db = &Database{}
 	db.DB, err = sql.Open("sqlite", absPath)
 	db.TableName = tableName
