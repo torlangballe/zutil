@@ -393,7 +393,7 @@ func Distance(meters float64, metric bool, langCode string, round bool) string {
 		if d >= 1760 {
 			dtype = mile
 			d /= 1760
-			distance = fmt.Sprintf("%.1lf", d)
+			distance = fmt.Sprintf("%.1f", d)
 		} else {
 			dtype = yard
 			d = math.Floor(d)
@@ -419,7 +419,7 @@ func Distance(meters float64, metric bool, langCode string, round bool) string {
 	} else if round && d > 50 {
 		distance = fmt.Sprintf("%d", int(d))
 	} else {
-		distance = fmt.Sprintf("%.1lf", d)
+		distance = fmt.Sprintf("%.1f", d)
 	}
 	return distance + " " + word
 }
