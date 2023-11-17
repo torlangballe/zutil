@@ -4,9 +4,9 @@ package zgrapher
 
 import (
 	"image"
+	"image/color"
 	"net/http"
 	"path"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -17,6 +17,7 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zmath"
+	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
@@ -50,6 +51,7 @@ func Init() {
 
 func NewGrapher(router *mux.Router, deleteDays int, grapherName, folderPath string, secondsPerPixel int) *Grapher {
 	g := &Grapher{}
+	g.SecondsPerPixel = secondsPerPixel
 	folderName := makeCacheFoldername(secondsPerPixel, grapherName)
 	g.cache = zfilecache.Init(router, folderPath, "caches/", folderName)
 	g.cache.InterceptServeFunc = func(w http.ResponseWriter, req *http.Request, file string) bool {
@@ -84,14 +86,10 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 	if sid == "" {
 		return false
 	}
-	tid, err := strconv.ParseInt(sid, 10, 64)
-	if zlog.OnError(err, date) {
-		return false
-	}
 	var job SJob
-	if tid == 0 {
+	if sid == "0" {
 		if g.jobs.Count() == 0 {
-			zlog.Error(nil, "serving tid=0 zgraph")
+			zlog.Error(nil, "serving sid='0' zgraph")
 			return false
 		}
 		job = *g.jobs.Index(g.jobs.AnyKey())
@@ -242,9 +240,12 @@ func (g *Grapher) renderOldPart(job SJob, t time.Time) {
 	// zlog.Info("renderOldPart:", g.SecondsPerPixel, job.ID, t)
 	s := job.PixelSize(&g.GrapherBase)
 	img := image.NewNRGBA(zgeo.Rect{Size: s}.GoRect())
-	g.Draw(img, &job, t, t.Add(time.Duration(job.WindowMinutes)*time.Minute), true)
-	job.saveToCacheAtTime(g, img, t)
-	g.renderingOldParts.Remove(job.Job) // we remove from rending map, it has a file now.
+
+	zprocess.RunFuncUntilTimeoutSecs(2, func() {
+		g.Draw(img, &job, t, t.Add(time.Duration(job.WindowMinutes)*time.Minute), true)
+		job.saveToCacheAtTime(g, img, t)
+		g.renderingOldParts.Remove(job.Job) // we remove from rending map, it has a file now.
+	})
 	// zlog.Info("renderOldPartDone:", g.SecondsPerPixel, job.ID, t, job.storageName())
 }
 
@@ -256,6 +257,7 @@ func (g *Grapher) updateAll(now time.Time) {
 			job.CanvasStartTime = cstart
 		}
 		onePixBack := -time.Duration(g.SecondsPerPixel) * time.Second
+		onePixBack = 0
 		g.Draw(job.image, job, job.drawnUntil.Add(onePixBack), now, first)
 		first = false
 		job.saveToCache(g)
@@ -278,4 +280,15 @@ func (j *SJob) saveToCacheAtTime(g *Grapher, img *image.NRGBA, t time.Time) {
 
 func (j *SJob) saveToCache(g *Grapher) {
 	j.saveToCacheAtTime(g, j.image, j.CanvasStartTime)
+}
+
+func StrokeAndClearVertInImage(img zimage.SetableImage, x, y1, y2 int, col color.Color) {
+	h := int(img.Bounds().Dy())
+	clear := zgeo.ColorClear.GoColor()
+	for y := 0; y <= h; y++ {
+		img.Set(x, y, clear)
+	}
+	for y := y1; y <= y2; y++ {
+		img.Set(x, y, col)
+	}
 }

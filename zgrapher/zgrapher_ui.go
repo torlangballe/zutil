@@ -194,9 +194,9 @@ func (v *GraphView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View
 func drawMarker(x float64, rect zgeo.Rect, canvas *zcanvas.Canvas, color zgeo.Color) {
 	canvas.SetColor(zgeo.ColorBlack)
 	y := rect.Max().Y
-	canvas.StrokeVertical(x, y-5, y, 3, zgeo.PathLineButt)
+	canvas.StrokeVertical(x, y-3, y, 3, zgeo.PathLineButt)
 	canvas.SetColor(color)
-	canvas.StrokeVertical(x, y-12, y-2, 1, zgeo.PathLineButt)
+	canvas.StrokeVertical(x, y-6, y-2, 1, zgeo.PathLineButt)
 }
 
 func (v *GraphView) xForTime(t time.Time) float64 {
