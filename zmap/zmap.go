@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -140,4 +141,24 @@ func SortedValues[K comparable, V any](m map[K]V, less func(a, b V) bool) []V {
 		vals[i] = m[k]
 	}
 	return vals
+}
+
+// For each /-separated name in m, GetValueInRecursiveMap, if not at end or a map, will recursivly gets next part in that map.
+func GetValueInRecursiveMap(m map[string]any, slashPath string) (any, error) {
+	for i, part := range strings.Split(slashPath, "/") {
+		v, got := m[part]
+		if !got {
+			return nil, errors.New("part not found")
+		}
+		if i == len(slashPath)-1 { // if no more path left, return the map as value
+			return v, nil
+		}
+		m2 := v.(map[string]any)
+		if m2 != nil {
+			m = m2
+			continue
+		}
+		return v, fmt.Errorf("not at end, but not a map: %d %s %+v", i, part, v)
+	}
+	return nil, nil // can't get here
 }
