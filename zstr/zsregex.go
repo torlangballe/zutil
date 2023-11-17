@@ -101,7 +101,7 @@ func WildcardAsteriskToRegExCapture(str string) (*regexp.Regexp, error) {
 }
 
 // A WildCardTransformer takes has a from: Big* and a to: Medium* which need the same amount of '*'s.
-// Each * in from replaces the next * in to. BigDog -> MediumDog etc
+// Each * in wildFrom replaces the next * in wildTo.
 // Big* to: *Medium would yield: BigDog -> DogMedium
 type WildCardTransformer struct {
 	regEx         *regexp.Regexp
@@ -115,7 +115,7 @@ func NewWildCardTransformer(wildFrom, wildTo string) (*WildCardTransformer, erro
 	cf := strings.Count(wildFrom, "*")
 	ct := strings.Count(wildTo, "*")
 	if cf != ct {
-		return nil, fmt.Errorf("Mismatch in number of wildcard asterisks: %s != %s", cf, ct)
+		return nil, fmt.Errorf("Mismatch in number of wildcard asterisks: %d != %d", cf, ct)
 	}
 	w := &WildCardTransformer{}
 	w.asteriskCount = cf
