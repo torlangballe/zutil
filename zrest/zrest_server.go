@@ -17,6 +17,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
@@ -28,6 +29,7 @@ var (
 	RunningOnServer      bool
 	LegalCORSOrigins     = map[string]bool{}
 	CurrentInRequests    int
+	ProfilingPort        int
 	StaticFolderPathFunc = func(add string) string {
 		return "www"
 	}
@@ -251,18 +253,20 @@ func Handle(pattern string, handler http.Handler) {
 	CurrentInRequests--
 }
 
-func SetProfilingHandle(port int) {
-	if port != 0 {
-		ProfilingPort = port
-	}
-	router := mux.NewRouter()
+func SetProfilingPort(port int) {
+	ProfilingPort = port
+	zdebug.ProfilingPort = port
+}
 
+func SetProfilingHandler() {
+	zlog.Assert(ProfilingPort != 0)
+	router := mux.NewRouter()
 	// http.Handle("/debug/pprof/", pprof.Index)
 	spath := "/debug/pprof"
 	router.PathPrefix(spath).Handler(http.DefaultServeMux)
 	router.HandleFunc(spath+"/", pprof.Index)
 
-	zlog.Info("SetProfilingHandle:", spath, port)
+	zlog.Info("SetProfilingHandle:", spath, ProfilingPort)
 	//	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	//
 	// r.HandleFunc("/debug/pprof/profile", pprof.Index)
@@ -270,5 +274,5 @@ func SetProfilingHandle(port int) {
 	//
 	//	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	//	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	go http.ListenAndServe(fmt.Sprint(":", port), router)
+	go http.ListenAndServe(fmt.Sprint(":", ProfilingPort), router)
 }
