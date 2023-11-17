@@ -16,7 +16,7 @@ type TokenAuthenticator interface {
 }
 
 type Executor struct {
-	authenticator      TokenAuthenticator     // used to authenticate a token in a RPC call
+	Authenticator      TokenAuthenticator     // used to authenticate a token in a RPC call
 	callMethods        map[string]*methodType // stores all registered types/methods
 	IPAddressWhitelist map[string]bool        // if non-empty, only ip-addresses in map are allowed to be called from
 }
@@ -191,6 +191,7 @@ func (e *Executor) callMethodName(ctx context.Context, ci ClientInfo, name strin
 func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.Time, args json.RawMessage) (receivePayload, error) {
 	var rp receivePayload
 	var err error
+	// zlog.Info("zrpc callWithDeadline:", method, zlog.Pointer(e))
 	if time.Since(expires) >= 0 {
 		zlog.Error(nil, "zrpc ReverseExecutor: callWithDeadline expired:", expires)
 		rp.TransportError = TransportError(zstr.Spaced("Call received after timeout.", method, time.Since(expires)))
@@ -199,7 +200,7 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 		defer cancel()
 		ci.Context = ctx
 		rp, err = e.callMethodName(ctx, ci, method, args)
-		// zlog.Info(EnableLogExecutor, "zrpc callWithDeadline: callMethod done:", method, err, method)
+		// zlog.Info("zrpc callWithDeadline: callMethod done:", method, err, method, zlog.Pointer(e))
 		if err != nil {
 			zlog.Error(err, "call")
 			rp.Error = err.Error()

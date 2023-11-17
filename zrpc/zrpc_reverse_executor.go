@@ -84,19 +84,19 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 		// we loop forever calling RPCCalls.ReversePoll. No need to sleep between, as it waits on other end for a call to be ready
 		var cp callPayloadReceive
 		maxTimeout := math.Max(PollRestartSecs, r.client.TimeoutSecs)
-		err := r.client.CallWithTimeout(maxTimeout, "ReverseClient.ReversePoll", r.client.id, &cp)
-		zlog.Info(EnableLogExecutor, "Call ReverseClient.ReversePoll:", maxTimeout, err, time.Since(start))
+		err := r.client.CallWithTimeout(maxTimeout, "ReverseClienter.ReversePoll", r.client.id, &cp)
+		zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll:", maxTimeout, err, time.Since(start))
 		if err != nil {
-			zlog.Info(EnableLogExecutor, "Call ReverseClient.ReversePoll, error! cp.Token:", err, cp.Token)
+			zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll, error! cp.Token:", err, cp.Token)
 			time.Sleep(time.Millisecond * 50) // lets not go nuts
 			continue
 		}
 		if cp.Method == "" { // we got a dummy callPayloadReceive, because we sent a receivePayload, but did't have anything
-			zlog.Info(EnableLogExecutor, "Call ReverseClient.ReversePoll, reveived dummy:")
+			zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll, reveived dummy:")
 			continue
 		}
-		zlog.Info(EnableLogExecutor, "Call ReverseClient.ReversePoll, ok cp.Token:", err, cp.Token, cp.Method)
-		// zlog.Info("execute method:", cp.Method, cp.Token)
+		zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll, ok cp.Token:", err, cp.Token, cp.Method)
+		// zlog.Warn("rev execute method:", cp.Method, cp.Token)
 		go func() {
 			var ci ClientInfo
 			var rr ReverseResult
@@ -119,7 +119,7 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 			rr.Token = cp.Token
 			rr.ReverseReceiverID = r.client.id
 			maxTimeout := math.Max(PollRestartSecs, r.client.TimeoutSecs)
-			cerr := r.client.CallWithTimeout(maxTimeout, "ReverseClient.ReversePushResult", rr, nil)
+			cerr := r.client.CallWithTimeout(maxTimeout, "ReverseClienter.ReversePushResult", rr, nil)
 			// zlog.Info("zrpc.RevExe RevPushResult:", cp.Method, rr.Error, maxTimeout, cerr, time.Since(start))
 			if cerr != nil {
 				zlog.Error(cerr, "call push result", rr.Token)

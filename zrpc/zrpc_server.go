@@ -19,7 +19,8 @@ import (
 // which has the build-in rpc methods for resources and reverse-calls.
 func NewServer(router *mux.Router, a TokenAuthenticator) *Executor {
 	e := NewExecutor()
-	e.authenticator = a
+	// zlog.Info("zrpc.NewServer e:", zlog.Pointer(e))
+	e.Authenticator = a
 	zrest.AddHandler(router, "zrpc", e.doServeHTTP).Methods("POST", "OPTIONS")
 	//!!! e.Register(e)
 	return e
@@ -28,7 +29,7 @@ func NewServer(router *mux.Router, a TokenAuthenticator) *Executor {
 // SetAuthNotNeededForMethod is used to exclude methods from needing authentication.
 // Login methods that create a token for example.
 func (e *Executor) SetAuthNotNeededForMethod(name string) {
-	zlog.Info("SetAuthNotNeededForMethod:", e != nil, name)
+	// zlog.Info("SetAuthNotNeededForMethod:", e != nil, name)
 	e.callMethods[name].AuthNotNeeded = true
 }
 
@@ -56,8 +57,8 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		call = false
 	} else {
 		token = cp.Token
-		if e.authenticator != nil && e.methodNeedsAuth(cp.Method) {
-			if !e.authenticator.IsTokenValid(token) {
+		if e.Authenticator != nil && e.methodNeedsAuth(cp.Method) {
+			if !e.Authenticator.IsTokenValid(token) {
 				zlog.Error(nil, "token not valid: '"+token+"'", req.RemoteAddr, req.URL.Path, req.URL.Query())
 				rp.TransportError = "authentication error"
 				rp.AuthenticationInvalid = true

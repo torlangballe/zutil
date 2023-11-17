@@ -10,17 +10,24 @@ import (
 // A RPC function can query for changed resources, and its ClientID is stored so as to
 // not report is as changed to that client until updated again.
 
-type ResourceCalls struct {
+type Resources struct {
 	updatedResourcesSentToClient zmap.LockMap[string, []string]
 }
 
-var MainResources = new(ResourceCalls)
+type ResourceCalls struct {
+	Resources *Resources
+}
+
+var (
+	MainResources     = new(Resources)
+	MainResourceCalls = &ResourceCalls{Resources: MainResources}
+)
 
 // GetUpdatedResourcesAndSetSent is called from clients (often browsers) to ask for updated resource-ids
 // The client id is stored as it having checked them out for that given update.
 func (rc *ResourceCalls) GetUpdatedResourcesAndSetSent(ci *ClientInfo, int Unused, reply *[]string) error {
 	*reply = []string{}
-	rc.updatedResourcesSentToClient.ForEach(func(res string, c []string) bool {
+	rc.Resources.updatedResourcesSentToClient.ForEach(func(res string, c []string) bool {
 		if !zstr.StringsContain(c, ci.ClientID) {
 			*reply = append(*reply, res)
 			c = append(c, ci.ClientID)
@@ -30,13 +37,13 @@ func (rc *ResourceCalls) GetUpdatedResourcesAndSetSent(ci *ClientInfo, int Unuse
 	return nil
 }
 
-func (rc *ResourceCalls) SetResourceUpdated(resID, byClientID string) {
+func (r *Resources) SetResourceUpdated(resID, byClientID string) {
 	var c []string
 	if byClientID != "" {
 		c = []string{byClientID}
 	}
 	// fmt.Println("SetResourceUpdated:", resID, byClientID) //, "\n", zlog.GetCallingStackString())
-	rc.updatedResourcesSentToClient.Set(resID, c)
+	r.updatedResourcesSentToClient.Set(resID, c)
 }
 
 // SetResourceUpdatedmarks a given resource as changed. If a client id is given, that client is NOT
@@ -46,22 +53,22 @@ func SetResourceUpdated(resID, byClientID string) {
 }
 
 // ClearResourceID clears changed status for a resource
-func (rc *ResourceCalls) ClearResourceID(resID string) {
-	rc.updatedResourcesSentToClient.Remove(resID)
+func (r *Resources) ClearResourceID(resID string) {
+	r.updatedResourcesSentToClient.Remove(resID)
 }
 
 // SetClientKnowsResourceUpdated sets that a given client now knows resource updated
-func (rc *ResourceCalls) SetClientKnowsResourceUpdated(resID, clientID string) {
+func (r *Resources) SetClientKnowsResourceUpdated(resID, clientID string) {
 	// zlog.Info("SetClientKnowsResourceUpdated:", resID, clientID) //, "\n", zlog.GetCallingStackString())
-	c, _ := rc.updatedResourcesSentToClient.Get(resID)
+	c, _ := r.updatedResourcesSentToClient.Get(resID)
 	zstr.AddToSet(&c, clientID)
-	rc.updatedResourcesSentToClient.Set(resID, c)
+	r.updatedResourcesSentToClient.Set(resID, c)
 }
 
 // SetResourceUpdatedFromClient is called from client to say it knows of update
-func (*ResourceCalls) SetResourceUpdatedFromClient(ci *ClientInfo, resID string) error {
+func (r *ResourceCalls) SetResourceUpdatedFromClient(ci *ClientInfo, resID string) error {
 	// fmt.Println("SetResourceUpdatedFromClient:", *resID)
-	SetResourceUpdated(resID, ci.ClientID)
+	r.Resources.SetResourceUpdated(resID, ci.ClientID)
 	return nil
 }
 

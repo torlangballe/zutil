@@ -104,7 +104,7 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 	// zlog.Warn("CALL:", surl)
 	_, err = zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
-		return nil, zlog.NewError(err, "post")
+		return nil, zlog.Error(err, "post", surl)
 	}
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also
 		zlog.Info("zprc AuthenticationInvalid:", method, c.AuthToken, c.KeepTokenOnAuthenticationInvalid)
