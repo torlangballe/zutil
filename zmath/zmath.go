@@ -293,3 +293,9 @@ func GetClosestTo(n float64, to []float64) float64 {
 	}
 	return to[best]
 }
+
+func Swap[N any](a, b *N) {
+	t := *a
+	*a = *b
+	*b = t
+}
