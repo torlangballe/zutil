@@ -12,11 +12,15 @@ import (
 	"github.com/torlangballe/zutil/ztimer"
 )
 
+// RunFuncUntilTimeoutSecs uses RunFuncUntilContextDone to wait secs for a function to finish,
+// or returns while it's still running in a goroutine.
 func RunFuncUntilTimeoutSecs(secs float64, do func()) (completed bool) {
 	ctx, _ := context.WithTimeout(context.Background(), ztime.SecondsDur(secs))
 	return RunFuncUntilContextDone(ctx, do)
 }
 
+// RunFuncUntilContextDone waits for do() to finish or the context to be done
+// If it finishes it returns completed = true, otherwise the goroutine continues, but it returns with false.
 func RunFuncUntilContextDone(ctx context.Context, do func()) (completed bool) {
 	doneChannel := make(chan struct{}, 2)
 	go func() {
