@@ -22,8 +22,21 @@ import (
 type ReverseClienter struct {
 	HandleNewReverseReceiverFunc func(id string, rc *ReverseClient, ci *ClientInfo)
 	executor                     *Executor
-	allReverseClients            zmap.LockMap[string, *ReverseClient] // allReverseClients stores all clients who have called ReversePoll with a unique ReverseReceiverID. Removed if no poll for a while.
+	allReverseClients            zmap.LockMap[string, *ReverseClient] // id/rc allReverseClients stores all clients who have called ReversePoll with a unique ReverseReceiverID. Removed if no poll for a while.
 	multiWaiting                 zmap.LockMap[string, bool]
+}
+
+// The ReverseClient is actually on a device running a zrpc.Executor.
+// It gets polled be zrpc.ReverseExecutors for jobs to run with ReversePoll and then ReversePushResult with it's result.
+
+// It has a ReverseReceiverID, and is used to call to a specific (reverse) client.
+type ReverseClient struct {
+	ClientUserToken    string
+	TimeoutSecs        float64 // TimeoutSecs is time from a reverse call is initiated, until it times out if no result/error returned yet
+	LastPolled         time.Time
+	pendingCallsToSend zmap.LockMap[string, pendingCall] // pendingCallsToSend is map of pending calls waiting to be fetched by a poll, keyed by token used to identify the call
+	pendingCallsSent   zmap.LockMap[string, pendingCall] // pendingCallsSent have been fetched, but are awaiting results
+	permanent          bool
 }
 
 // pendingCall is a payload waiting to be gotten by the asking client
@@ -39,44 +52,40 @@ var (
 	MainReverseClienter    *ReverseClienter
 )
 
-// The ReverseClient is actually on a device running a zrpc.Executor.
-// It gets polled be zrpc.ReverseExecutors for jobs to run with ReversePoll and then ReversePushResult with it's result.
-
-// It has a ReverseReceiverID, and is used to call to a specific (reverse) client.
-type ReverseClient struct {
-	ClientUserToken    string
-	TimeoutSecs        float64 // TimeoutSecs is time from a reverse call is initiated, until it times out if no result/error returned yet
-	LastPolled         time.Time
-	pendingCallsToSend zmap.LockMap[string, pendingCall] // pendingCallsToSend is map of pending calls waiting to be fetched by a poll, keyed by token used to identify the call
-	pendingCallsSent   zmap.LockMap[string, pendingCall] // pendingCallsSent have been fetched, but are awaiting results
-}
-
 func NewReverseClienter(executor *Executor) *ReverseClienter {
 	r := &ReverseClienter{}
 	r.executor = executor
 	executor.Register(r)
 	zlog.RegisterEnabler("zrpc.EnableLogReverseClient", &EnableLogReverseClient)
 	EnableLogReverseClient = false
+	ztimer.RepeatForever(PollRestartSecs+5, func() {
+		r.allReverseClients.ForAll(func(cid string, c *ReverseClient) {
+			if time.Since(c.LastPolled) > ztime.SecondsDur(PollRestartSecs+5) {
+				var str string
+				zlog.Info("zrpc: Unresponsive client1 from allReverseClients", c.permanent, cid, r.allReverseClients.Count())
+				if !c.permanent {
+					str = "removed"
+					RemoveReverseClient(r, cid)
+				}
+				zlog.Info("zrpc: Unresponsive client from allReverseClients", c.permanent, cid, c.LastPolled, str, r.allReverseClients.Count())
+			}
+		})
+	})
 	return r
 }
 
 var revCount int
 
 // NewReverseClient adds a ReverseClient to allReverseClients.
-// When overriding HandleNewReceiverFunc, you probably call this anyway, but use the ReverseClient.
-func NewReverseClient(r *ReverseClienter, receiverID string, userAuthToken string) *ReverseClient {
+// When overriding HandleNewReverseReceiverFunc, you probably call this anyway, but use the ReverseClient.
+func NewReverseClient(r *ReverseClienter, receiverID string, userAuthToken string, permanent bool) *ReverseClient {
 	c := &ReverseClient{}
 	c.TimeoutSecs = 100
 	c.LastPolled = time.Now()
 	c.ClientUserToken = userAuthToken
+	c.permanent = permanent
+	zlog.Info("NewReverseClient", receiverID)
 	r.allReverseClients.Set(receiverID, c)
-	ztimer.RepeatForever(PollRestartSecs+5, func() {
-		if time.Since(c.LastPolled) > ztime.SecondsDur(PollRestartSecs+5) {
-			zlog.Info("zrpc: Unresponsive client from allReverseClients", receiverID, c.LastPolled)
-			// allReverseClients.Remove(receiverID)
-			// HandleNewReceiverFunc(receiverID, true)
-		}
-	})
 	return c
 }
 
@@ -144,13 +153,14 @@ func (r *ReverseClienter) ReversePushResult(rp ReverseResult) error {
 }
 
 func (r *ReverseClienter) findOrAddReverseClient(id string, ci *ClientInfo) *ReverseClient {
+	zlog.Info("RC findOrAddReverseClient:", id)
 	rc, _ := r.allReverseClients.Get(id)
 	if rc == nil {
 		if ci == nil { // if ci is nil, it's from ReversePoll, don't add otherwise
 			zlog.Error(nil, "findOrAddReverseClient ci=nil: no reverse client for id:", id)
 			return nil
 		}
-		rc = NewReverseClient(r, id, ci.Token)
+		rc = NewReverseClient(r, id, ci.Token, false)
 		if r.HandleNewReverseReceiverFunc != nil {
 			r.HandleNewReverseReceiverFunc(id, rc, ci)
 		}

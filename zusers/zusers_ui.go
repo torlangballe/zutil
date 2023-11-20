@@ -230,7 +230,7 @@ func checkAndDoAuth() {
 	var user User
 
 	err := zrpc.MainClient.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
-	// zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken, err)
+	// zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken)
 	if err == nil {
 		CurrentUser.UserID = user.ID
 		CurrentUser.UserName = user.UserName
