@@ -35,7 +35,7 @@ func doProfiling(ptype string) []byte {
 
 func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zlabel.Label) {
 	v := zcontainer.StackViewHor(name + "-stack")
-	button := zbutton.New(name)
+	button := zbutton.New("download " + name)
 	v.Add(button, zgeo.CenterLeft)
 	down := "<download-folder>"
 	if zdevice.WasmBrowser() == zdevice.Safari {
@@ -63,25 +63,48 @@ func addGUIProfileRow(in *zcontainer.StackView, name, ptype string) {
 	})
 }
 
-func addDownloadRow(in *zcontainer.StackView, name, ptype string) {
+func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 	button, _ := addRow(in, name, ptype)
-	surl := zapp.URLStub() + zrest.AppURLPrefix + "debug/pprofile/" + name // must be here and not in closure below!
+	surl := zapp.URLStub()
+	if ip != "" {
+		u := zapp.URL()
+		u.Path = ""
+		u.RawQuery = ""
+		u.Host = ip
+		surl = u.String()
+	}
+	surl += zrest.AppURLPrefix + "debug/pprofile/" + name // must be here and not in closure below!
+	button.SetToolTip(surl)
 	button.SetPressedHandler(func() {
 		zview.DownloadURI(surl, name)
 	})
 }
 
-func NewDebugView(urlStub string) *DebugView {
+func makeFrame(in *zcontainer.StackView, name string) *zcontainer.StackView {
+	frame := zcontainer.StackViewVert("other")
+	MakeStackATitledFrame(frame, name, false, DefaultFrameStyling, DefaultFrameTitleStyling)
+	in.Add(frame, zgeo.CenterLeft|zgeo.HorExpand)
+	return frame
+}
+
+func NewDebugView(urlStub string, otherIPs map[string]string) *DebugView {
 	v := &DebugView{}
 	v.SetMarginS(zgeo.Size{10, 10})
 	v.Init(v, true, "debug-view")
-	addGUIProfileRow(&v.StackView, "gui-heap", "heap")
+	frame := makeFrame(&v.StackView, "gui")
+	addGUIProfileRow(frame, "gui-heap", "heap")
+	frame = makeFrame(&v.StackView, "manager")
 	for _, name := range zdebug.AllProfileTypes {
-		addDownloadRow(&v.StackView, name, name)
+		addDownloadRow(&v.StackView, "", name, name)
 	}
+	for name, ip := range otherIPs {
+		frame = makeFrame(&v.StackView, name)
+		addDownloadRow(frame, ip, "heap", "heap")
+	}
+	frame = makeFrame(&v.StackView, "Enable GUI named log sections")
 	zlog.EnablerList.ForEach(func(name string, e *zlog.Enabler) bool {
 		check, _, stack := zcheckbox.NewWithLabel(false, name, name+".zlog.Enabler")
-		v.Add(stack, zgeo.CenterLeft)
+		frame.Add(stack, zgeo.CenterLeft)
 		check.SetValueHandler(func() {
 			*e = zlog.Enabler(check.On())
 		})
@@ -91,8 +114,8 @@ func NewDebugView(urlStub string) *DebugView {
 	return v
 }
 
-func PresentDebugView(urlStub string) {
-	v := NewDebugView(urlStub)
+func PresentDebugView(urlStub string, otherIPs map[string]string) {
+	v := NewDebugView(urlStub, otherIPs)
 	att := zpresent.AttributesNew()
 	att.Modal = true
 	att.ModalCloseOnOutsidePress = true

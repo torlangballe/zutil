@@ -33,6 +33,14 @@ func GetHostAndPort(u *url.URL) (host string, port int) {
 	return
 }
 
+func HostAndPortToAddress(host string, port int) string {
+	str := host
+	if port != 0 {
+		str += fmt.Sprint(":", port)
+	}
+	return str
+}
+
 func GetCurrentLocalIP4Address(skipLocal bool, netInterface string) (ip4 string, err error) {
 	all, err := GetCurrentLocalIP4Addresses(skipLocal)
 	if err != nil {
