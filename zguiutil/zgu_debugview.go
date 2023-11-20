@@ -6,17 +6,20 @@ import (
 	"bytes"
 	"runtime/pprof"
 
+	"github.com/torlangballe/zui/zapp"
 	"github.com/torlangballe/zui/zbutton"
 	"github.com/torlangballe/zui/zcheckbox"
 	"github.com/torlangballe/zui/zcontainer"
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zpresent"
+	"github.com/torlangballe/zui/ztext"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zrest"
 )
 
 type DebugView struct {
@@ -30,38 +33,51 @@ func doProfiling(ptype string) []byte {
 	return out.Bytes()
 }
 
-func addProfileRow(in *zcontainer.StackView, name, ptype string) *zcontainer.StackView {
+func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zlabel.Label) {
+	v := zcontainer.StackViewHor(name + "-stack")
+	button := zbutton.New(name)
+	v.Add(button, zgeo.CenterLeft)
+	down := "<download-folder>"
+	if zdevice.WasmBrowser() == zdevice.Safari {
+		down = "~/Downloads"
+	}
+	then := zlabel.New("then")
+	then.SetFont(zgeo.FontDefault().NewWithStyle(zgeo.FontStyleBold))
+	v.Add(then, zgeo.CenterLeft)
+	label := zlabel.New("go tool pprof -web " + down + "/" + ptype + ".gz")
+	ztext.MakeViewPressToClipboard(label)
+	v.Add(label, zgeo.CenterLeft)
+	in.Add(v, zgeo.CenterLeft|zgeo.HorExpand)
+	return button, label
+}
+
+func addGUIProfileRow(in *zcontainer.StackView, name, ptype string) {
+	button, _ := addRow(in, name, ptype)
 	if ptype == "" {
 		ptype = name
 	}
-	v := zcontainer.StackViewHor(name + "-stack")
-	button := zbutton.New(name)
 	button.SetPressedHandler(func() {
 		data := doProfiling(ptype)
 		uri := zhttp.MakeDataURL(data, "application/octet-stream")
 		zview.DownloadURI(uri, name)
 	})
-	v.Add(button, zgeo.CenterLeft)
+}
 
-	down := "<download-folder>"
-	if zdevice.WasmBrowser() == zdevice.Safari {
-		down = "~/Downloads"
-	}
-	label := zlabel.New("go tool pprof -web " + down + "/" + name + ".gz")
-	v.Add(label, zgeo.CenterLeft)
-
-	in.Add(v, zgeo.CenterLeft)
-	return v
+func addDownloadRow(in *zcontainer.StackView, name, ptype string) {
+	button, _ := addRow(in, name, ptype)
+	surl := zapp.URLStub() + zrest.AppURLPrefix + "debug/pprofile/" + name // must be here and not in closure below!
+	button.SetPressedHandler(func() {
+		zview.DownloadURI(surl, name)
+	})
 }
 
 func NewDebugView(urlStub string) *DebugView {
 	v := &DebugView{}
 	v.SetMarginS(zgeo.Size{10, 10})
 	v.Init(v, true, "debug-view")
-	addProfileRow(&v.StackView, "heap", "")
-	for _, p := range zdebug.GetProfileCommandLineGetters(urlStub) {
-		label := zlabel.New(p)
-		v.Add(label, zgeo.CenterLeft)
+	addGUIProfileRow(&v.StackView, "gui-heap", "heap")
+	for _, name := range zdebug.AllProfileTypes {
+		addDownloadRow(&v.StackView, name, name)
 	}
 	zlog.EnablerList.ForEach(func(name string, e *zlog.Enabler) bool {
 		check, _, stack := zcheckbox.NewWithLabel(false, name, name+".zlog.Enabler")

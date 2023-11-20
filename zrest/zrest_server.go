@@ -29,7 +29,6 @@ var (
 	RunningOnServer      bool
 	LegalCORSOrigins     = map[string]bool{}
 	CurrentInRequests    int
-	ProfilingPort        int
 	StaticFolderPathFunc = func(add string) string {
 		return "www"
 	}
@@ -253,26 +252,10 @@ func Handle(pattern string, handler http.Handler) {
 	CurrentInRequests--
 }
 
-func SetProfilingPort(port int) {
-	ProfilingPort = port
-	zdebug.ProfilingPort = port
-}
-
-func SetProfilingHandler() {
-	zlog.Assert(ProfilingPort != 0)
-	router := mux.NewRouter()
-	// http.Handle("/debug/pprof/", pprof.Index)
-	spath := "/debug/pprof"
-	router.PathPrefix(spath).Handler(http.DefaultServeMux)
-	router.HandleFunc(spath+"/", pprof.Index)
-
-	zlog.Info("SetProfilingHandle:", spath, ProfilingPort)
-	//	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	//
-	// r.HandleFunc("/debug/pprof/profile", pprof.Index)
-	// router.HandleFunc("/qtt/debug/pprof/heap", pprof.Index)
-	//
-	//	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	//	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	go http.ListenAndServe(fmt.Sprint(":", ProfilingPort), router)
+func SetProfilingHandler(router *mux.Router) {
+	dir := "debug/pprof/"
+	for _, name := range zdebug.AllProfileTypes {
+		path := dir + name
+		AddSubHandler(router, path, pprof.Handler(name))
+	}
 }

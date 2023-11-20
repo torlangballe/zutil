@@ -11,8 +11,8 @@ import (
 
 var (
 	IsInTests            = (strings.HasSuffix(os.Args[0], ".test"))
-	ProfilingPort        int
 	GetOpenFileCountFunc func() int
+	AllProfileTypes      = []string{"heap", "profile", "block", "mutex"}
 )
 
 func memStr(m uint64) string {
@@ -39,13 +39,4 @@ func PrintAllGoroutines() {
 
 func Consume(p ...any) {
 
-}
-
-func GetProfileCommandLineGetters(addressIP4 string) []string {
-	var out []string
-	for _, n := range []string{"heap", "profile", "block", "mutex"} {
-		str := fmt.Sprintf("curl http://%s:%d/debug/pprof/%s > ~/%s && go tool pprof -web ~/%s", addressIP4, ProfilingPort, n, n, n)
-		out = append(out, str)
-	}
-	return out
 }

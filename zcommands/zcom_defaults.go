@@ -8,7 +8,6 @@ import (
 	"runtime/pprof"
 	"text/tabwriter"
 
-	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zprocess"
@@ -175,9 +174,9 @@ func (d *UtilCommands) Debug(c *CommandInfo) string {
 	if c.Type == CommandExpand {
 		return ""
 	}
-	for _, line := range zdebug.GetProfileCommandLineGetters(AddressIP4) {
-		c.Session.TermSession.Writeln(line)
-	}
+	// for _, line := range zdebug.GetProfileCommandLineGetters(AddressIP4) {
+	// 	c.Session.TermSession.Writeln(line)
+	// }
 	return ""
 }
 
