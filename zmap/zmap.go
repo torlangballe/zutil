@@ -68,6 +68,13 @@ func (l *LockMap[K, V]) ForEach(f func(key K, value V) bool) {
 	})
 }
 
+func (l *LockMap[K, V]) ForAll(f func(key K, value V)) {
+	l.Map.Range(func(k, v any) bool {
+		f(k.(K), v.(V))
+		return true
+	})
+}
+
 func (l *LockMap[K, V]) AnyKey() K {
 	var key K
 	l.ForEach(func(k K, v V) bool {
