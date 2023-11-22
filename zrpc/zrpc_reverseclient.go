@@ -153,7 +153,7 @@ func (r *ReverseClienter) ReversePushResult(rp ReverseResult) error {
 }
 
 func (r *ReverseClienter) findOrAddReverseClient(id string, ci *ClientInfo) *ReverseClient {
-	zlog.Info("RC findOrAddReverseClient:", id)
+	// zlog.Info("RC findOrAddReverseClient:", id)
 	rc, _ := r.allReverseClients.Get(id)
 	if rc == nil {
 		if ci == nil { // if ci is nil, it's from ReversePoll, don't add otherwise
