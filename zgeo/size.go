@@ -93,9 +93,15 @@ func (s Size) Min() float64 {
 	return math.Min(s.W, s.H)
 }
 
-func (s Size) Maxed(a Size) Size {
+func (s Size) MaxWith(a Size) Size {
 	w := math.Max(s.W, a.W)
 	h := math.Max(s.H, a.H)
+	return Size{w, h}
+}
+
+func (s Size) MinWith(a Size) Size {
+	w := math.Min(s.W, a.W)
+	h := math.Min(s.H, a.H)
 	return Size{w, h}
 }
 
@@ -301,6 +307,11 @@ func (s *Sizes) IndexOf(size Size) int {
 
 func (s Size) Swapped() Size {
 	return Size{s.H, s.W}
+}
+
+func (s Size) ShunkToFill(in Size) Size {
+	ns := Rect{Size: s}.Align(s, Shrink|Center|Out, Size{}).Size
+	return ns.MinWith(s)
 }
 
 type ISize struct {

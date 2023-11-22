@@ -165,27 +165,6 @@ func (r Rect) Expanded(s Size) Rect {
 	return r2
 }
 
-// AlignmentTransform moves right if Left, left if Right, or shrinks in Center
-func (r Rect) AlignmentTransform(s Size, a Alignment) Rect {
-	if a&Left != 0 {
-		r.Pos.X += s.W
-	} else if a&Right != 0 {
-		r.Pos.X -= s.W
-	} else if a&HorCenter != 0 {
-		r.SetMinX(r.Min().X + s.W)
-		r.SetMaxX(r.Max().X - s.W)
-	}
-	if a&Top != 0 {
-		r.Pos.Y += s.H
-	} else if a&Bottom != 0 {
-		r.Pos.Y -= s.H
-	} else if a&VertCenter != 0 {
-		r.SetMinY(r.Min().Y + s.H)
-		r.SetMaxY(r.Max().Y - s.H)
-	}
-	return r
-}
-
 func (r Rect) Overlaps(rect Rect) bool {
 	min := r.Min()
 	max := r.Max()
@@ -472,3 +451,4 @@ func (r Rect) ExpandedToInt() Rect {
 func (r Rect) Swapped() Rect {
 	return Rect{Pos: r.Pos.Swapped(), Size: r.Size.Swapped()}
 }
+
