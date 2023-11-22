@@ -90,6 +90,14 @@ func (s *SQLServer) setup() error {
 	return nil
 }
 
+func (s *SQLServer) GetNewestTokenForUserID(userID int64) (token string, err error) {
+	squery := "SELECT token FROM zuser_sessions WHERE userid=$1 ORDER BY used DESC LIMIT 1"
+	squery = s.customizeQuery(squery)
+	row := s.DB.QueryRow(squery, userID)
+	err = row.Scan(&token)
+	return token, err
+}
+
 func (s *SQLServer) GetUserForToken(token string) (user User, err error) {
 	id, err := s.GetUserIDFromToken(token)
 	if err != nil {
