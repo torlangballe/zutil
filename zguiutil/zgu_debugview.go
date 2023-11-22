@@ -95,7 +95,7 @@ func NewDebugView(urlStub string, otherIPs map[string]string) *DebugView {
 	addGUIProfileRow(frame, "gui-heap", "heap")
 	frame = makeFrame(&v.StackView, "manager")
 	for _, name := range zdebug.AllProfileTypes {
-		addDownloadRow(&v.StackView, "", name, name)
+		addDownloadRow(frame, "", name, name)
 	}
 	for name, ip := range otherIPs {
 		frame = makeFrame(&v.StackView, name)
