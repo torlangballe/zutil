@@ -184,8 +184,7 @@ func AddFileHandler(router *mux.Router, pattern, dir string, override func(w htt
 		}
 		zlog.Error(nil, "no correct dir for serving:", req.URL.Path, dir, pattern)
 	}
-	thandler := router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, handlerFunc))
-	return AddSubHandler(router, pattern, thandler.GetHandler())
+	return AddSubHandler(router, pattern, ztelemetry.WrapHandler(pattern, handlerFunc))
 }
 
 func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
