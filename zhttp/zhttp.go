@@ -100,20 +100,20 @@ func MakeHTTPError(err error, code int, message string) error {
 }
 
 // Post calls SendBody with method == Post
-func Post(surl string, params Parameters, send, receive interface{}) (resp *http.Response, err error) {
+func Post(surl string, params Parameters, send, receive any) (resp *http.Response, err error) {
 	params.Method = http.MethodPost
 	return SendBody(surl, params, send, receive)
 }
 
 // Put calls SendBody with method == Put
-func Put(surl string, params Parameters, send, receive interface{}) (resp *http.Response, err error) {
+func Put(surl string, params Parameters, send, receive any) (resp *http.Response, err error) {
 	params.Method = http.MethodPut
 	return SendBody(surl, params, send, receive)
 }
 
 // SendBody uses send as []byte, map[string]string (to url parameters, or unmarshals to use as body)
 // receive can be []byte, string or a struct to unmarashal to
-func SendBody(surl string, params Parameters, send, receive interface{}) (*http.Response, error) {
+func SendBody(surl string, params Parameters, send, receive any) (*http.Response, error) {
 	// start := time.Now()
 	var err error
 	bout, got := send.([]byte)
@@ -226,6 +226,10 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 		err = zlog.Error(err, "new request", params.Context != nil)
 		return
 	}
+	if params.ContentType != "" {
+		// zlog.Info("ContentType:", params.ContentType)
+		params.Headers["Content-Type"] = params.ContentType
+	}
 	if params.Headers != nil {
 		for k, v := range params.Headers {
 			request.Header.Set(k, v)
@@ -278,7 +282,7 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 }
 
 func GetResponse(surl string, params Parameters) (resp *http.Response, err error) {
-	zlog.Assert(params.Method != "", params, surl)
+	zlog.Assert(params.Method != "", params.Method, surl)
 	req, client, err := MakeRequest(surl, params)
 	// zlog.Info("GetResponse:", err, req != nil, client != nil)
 	if err != nil {
@@ -287,13 +291,13 @@ func GetResponse(surl string, params Parameters) (resp *http.Response, err error
 	return GetResponseFromReqClient(params, req, client)
 }
 
-func Get(surl string, params Parameters, receive interface{}) (resp *http.Response, err error) {
+func Get(surl string, params Parameters, receive any) (resp *http.Response, err error) {
 	params.Method = http.MethodGet
 	resp, err = GetResponse(surl, params)
 	return processResponse(surl, resp, params.PrintBody, receive, err)
 }
 
-func processResponse(surl string, resp *http.Response, printBody bool, receive interface{}, err error) (*http.Response, error) {
+func processResponse(surl string, resp *http.Response, printBody bool, receive any, err error) (*http.Response, error) {
 	if resp == nil {
 		return nil, err
 	}
@@ -362,7 +366,6 @@ func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Respo
 	zlog.Assert(params.ContentType != "")
 	zlog.Assert(params.Method != "")
 	// params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
-	params.Headers["Content-Type"] = params.ContentType
 	// zlog.Info("SendBytesSetContentLength:", params.Method, surl)
 	if params.PrintBody {
 		zlog.Info("dump output:", surl, "\n", string(params.Body))
