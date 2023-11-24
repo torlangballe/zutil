@@ -19,10 +19,10 @@ import (
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdict"
-	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztelemetry"
 )
 
 var (
@@ -149,9 +149,12 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 	pattern = strings.TrimRight(AppURLPrefix+pattern, "/")
 	defer zlog.HandlePanic(false)
 	if router == nil {
-		http.Handle(pattern, h)
+		// zlog.Info("AddSubHandler no router:", pattern)
+		thandler := router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, h.ServeHTTP))
+		http.Handle(pattern, thandler.GetHandler())
 		return nil
 	}
+	// TODO: Add Telemetry!!!
 	route := router.PathPrefix(pattern)
 	r := route.Handler(h)
 	return r
@@ -162,11 +165,9 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 // It calls preprocess (if != nil) before serving the file, this can manipulate the corresponding filepath,
 // or just be used for observing perposes.
 func AddFileHandler(router *mux.Router, pattern, dir string, override func(w http.ResponseWriter, filepath *string, urlpath string, req *http.Request) bool) *mux.Route {
-	return AddSubHandler(router, pattern, FuncHandler(func(w http.ResponseWriter, req *http.Request) {
+	handlerFunc := func(w http.ResponseWriter, req *http.Request) {
 		var path string
 		if zstr.HasPrefix(req.URL.Path, AppURLPrefix+pattern, &path) {
-			p := zprocess.PushProcess(30, "AddFileHandler:"+path)
-			CurrentInRequests++
 			filepath := filepath.Join(dir, path)
 			// zlog.Info("AddFileHandler:", path, filepath)
 			// str, err := zfile.ReadStringFromFile(filepath)
@@ -175,58 +176,50 @@ func AddFileHandler(router *mux.Router, pattern, dir string, override func(w htt
 			// zlog.Info("Serve Manifest:", err, path, str)
 			if override != nil {
 				if override(w, &filepath, path, req) {
-					zprocess.PopProcess(p)
-					CurrentInRequests--
 					return
 				}
 			}
 			http.ServeFile(w, req, filepath)
-			zprocess.PopProcess(p)
-			CurrentInRequests--
 			return
 		}
 		zlog.Error(nil, "no correct dir for serving:", req.URL.Path, dir, pattern)
-	}))
+	}
+	thandler := router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, handlerFunc))
+	return AddSubHandler(router, pattern, thandler.GetHandler())
 }
 
 func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	pattern = AppURLPrefix + pattern
+	// zlog.Info("AddHandler:", pattern)
 	defer zlog.HandlePanic(false)
 	if router == nil {
 		http.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
-			p := zprocess.PushProcess(30, "AddHandler:"+req.URL.String())
-			CurrentInRequests++
-			start := time.Now()
-			f(w, req)
-			if zhttp.Logger != nil {
-				zhttp.Logger.Add(req.URL.String(), toSecondary(req.RemoteAddr), req.Method, true, time.Since(start))
-			}
-			zprocess.PopProcess(p)
-			CurrentInRequests--
+			router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, f))
 		})
 		return nil
 	}
-	return router.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
-		// zlog.Info("Handler:", pattern, req.URL)
-		// timer := ztimer.StartIn(10, func() {
-		// 	surl := req.URL.String()
-		// 	zlog.Info("Request timed out after 10 seconds:", surl)
-		// 	if surl == "/rpc" {
-		// 		zlog.Info("RequestBody:", zhttp.GetCopyOfRequestBodyAsString(req))
-		// 	}
-		// 	ReturnError(w, req, "timeout out handling", http.StatusGatewayTimeout)
-		// })
-		p := zprocess.PushProcess(30, "zrest.Handler:"+req.URL.String())
-		CurrentInRequests++
-		start := time.Now()
-		f(w, req)
-		if zhttp.Logger != nil {
-			zhttp.Logger.Add(req.URL.String(), toSecondary(req.RemoteAddr), req.Method, true, time.Since(start))
-		}
-		CurrentInRequests--
-		zprocess.PopProcess(p)
-		// timer.Stop()
-	})
+	return router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, f))
+	// return router.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
+	// 	// zlog.Info("Handler:", pattern, req.URL)
+	// 	// timer := ztimer.StartIn(10, func() {
+	// 	// 	surl := req.URL.String()
+	// 	// 	zlog.Info("Request timed out after 10 seconds:", surl)
+	// 	// 	if surl == "/rpc" {
+	// 	// 		zlog.Info("RequestBody:", zhttp.GetCopyOfRequestBodyAsString(req))
+	// 	// 	}
+	// 	// 	ReturnError(w, req, "timeout out handling", http.StatusGatewayTimeout)
+	// 	// })
+	// 	p := zprocess.PushProcess(30, "zrest.Handler:"+req.URL.String())
+	// 	CurrentInRequests++
+	// 	start := time.Now()
+	// 	f(w, req)
+	// 	if zhttp.Logger != nil {
+	// 		zhttp.Logger.Add(req.URL.String(), toSecondary(req.RemoteAddr), req.Method, true, time.Since(start))
+	// 	}
+	// 	CurrentInRequests--
+	// 	zprocess.PopProcess(p)
+	// 	// timer.Stop()
+	// })
 }
 
 func toSecondary(a string) string {
