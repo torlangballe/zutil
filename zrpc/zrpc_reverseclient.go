@@ -224,36 +224,17 @@ type MultiCallResult[R any] struct {
 }
 
 func CallAll[R any](r *ReverseClienter, timeoutSecs float64, method, receiveIDWildcard string, args any) []MultiCallResult[R] {
-	if r == nil {
-		r = MainReverseClienter
-	}
 	var out []MultiCallResult[R]
-	var wg sync.WaitGroup
-	r.allReverseClients.ForEach(func(id string, rc *ReverseClient) bool {
-		zlog.Info("CALL-ALL:", id)
-		if receiveIDWildcard == "*" || zstr.MatchWildcard(receiveIDWildcard, id) {
-			sid := id + ":" + method
-			if r.multiWaiting.Has(sid) {
-				return true
-			}
-			r.multiWaiting.Set(sid, true)
-			wg.Add(1)
-			go func() {
-				var result R
-				ts := timeoutSecs
-				if ts == 0 {
-					ts = rc.TimeoutSecs
-				}
-				err := rc.CallWithTimeout(ts, method, args, &result)
-				m := MultiCallResult[R]{result, id, err}
-				out = append(out, m)
-				r.multiWaiting.Remove(sid)
-				wg.Done()
-			}()
+	r.FuncForAll(receiveIDWildcard, method, func(receiverID string, rc *ReverseClient) {
+		var result R
+		ts := timeoutSecs
+		if ts == 0 {
+			ts = rc.TimeoutSecs
 		}
-		return true
+		err := rc.CallWithTimeout(ts, method, args, &result)
+		m := MultiCallResult[R]{result, receiverID, err}
+		out = append(out, m)
 	})
-	wg.Wait()
 	return out
 }
 
@@ -265,4 +246,29 @@ func CallAllSimple(timeoutSecs float64, method, receiveIDWildcard string, args a
 		errs = append(errs, e)
 	}
 	return errs
+}
+
+func (r *ReverseClienter) FuncForAll(receiveIDWildcard, callID string, do func(receiverID string, rc *ReverseClient)) {
+	if r == nil {
+		r = MainReverseClienter
+	}
+	var wg sync.WaitGroup
+	r.allReverseClients.ForEach(func(id string, rc *ReverseClient) bool {
+		zlog.Info("CALL-ALL:", id)
+		if receiveIDWildcard == "*" || zstr.MatchWildcard(receiveIDWildcard, id) {
+			sid := id + ":" + callID
+			if r.multiWaiting.Has(id) {
+				return true
+			}
+			r.multiWaiting.Set(sid, true)
+			wg.Add(1)
+			go func() {
+				do(id, rc)
+				r.multiWaiting.Remove(sid)
+				wg.Done()
+			}()
+		}
+		return true
+	})
+	wg.Wait()
 }
