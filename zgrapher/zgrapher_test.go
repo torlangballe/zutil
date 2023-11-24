@@ -71,7 +71,7 @@ func checkImageForTime(t *testing.T, at time.Time, job SJob, g Grapher) bool {
 	surl := zfile.JoinPathParts(imagePathPrefix, "caches", folderName, name)
 	surl += "?tick=" + zstr.GenerateRandomHexBytes(12)
 	// zlog.Info("Request:", r, surl)
-	img, err := zimage.GoImageFromURL(surl)
+	img, _, err := zimage.GoImageFromURL(surl)
 	if err != nil || img == nil {
 		t.Error("get image", err)
 		return false
