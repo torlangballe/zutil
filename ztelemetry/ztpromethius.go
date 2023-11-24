@@ -20,7 +20,7 @@ var (
 	httpBuckets []float64 = prometheus.ExponentialBuckets(0.1, 1.5, 5)
 )
 
-func IsRunningPromethius() bool {
+func IsRunning() bool {
 	return registry != nil
 }
 
