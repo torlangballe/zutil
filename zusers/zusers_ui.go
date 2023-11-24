@@ -235,6 +235,7 @@ func checkAndDoAuth() {
 		CurrentUser.UserID = user.ID
 		CurrentUser.UserName = user.UserName
 		CurrentUser.Permissions = user.Permissions
+		CurrentUser.Token = zrpc.MainClient.AuthToken
 		if AuthenticatedFunc != nil {
 			AuthenticatedFunc()
 		}
