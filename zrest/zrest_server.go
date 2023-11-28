@@ -150,12 +150,17 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 	defer zlog.HandlePanic(false)
 	if router == nil {
 		// zlog.Info("AddSubHandler no router:", pattern)
-		thandler := router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, h.ServeHTTP))
-		http.Handle(pattern, thandler.GetHandler())
+		if ztelemetry.IsRunning() {
+			thandler := router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, h.ServeHTTP))
+			http.Handle(pattern, thandler.GetHandler())
+		} else {
+			http.Handle(pattern, h)
+		}
 		return nil
 	}
 	// TODO: Add Telemetry!!!
 	route := router.PathPrefix(pattern)
+	zlog.Info("zrest.AddSubHandler:", pattern)
 	r := route.Handler(h)
 	return r
 }
@@ -169,11 +174,6 @@ func AddFileHandler(router *mux.Router, pattern, dir string, override func(w htt
 		var path string
 		if zstr.HasPrefix(req.URL.Path, AppURLPrefix+pattern, &path) {
 			filepath := filepath.Join(dir, path)
-			// zlog.Info("AddFileHandler:", path, filepath)
-			// str, err := zfile.ReadStringFromFile(filepath)
-			// zlog.OnError(err, path, filepath)
-			// str = strings.Replace(str, "\n", "•", -1)
-			// zlog.Info("Serve Manifest:", err, path, str)
 			if override != nil {
 				if override(w, &filepath, path, req) {
 					return
@@ -184,53 +184,30 @@ func AddFileHandler(router *mux.Router, pattern, dir string, override func(w htt
 		}
 		zlog.Error(nil, "no correct dir for serving:", req.URL.Path, dir, pattern)
 	}
-	return AddSubHandler(router, pattern, ztelemetry.WrapHandler(pattern, handlerFunc))
+	if ztelemetry.IsRunning() {
+		return AddSubHandler(router, pattern, ztelemetry.WrapHandler(pattern, handlerFunc))
+	}
+	return AddSubHandler(router, pattern, FuncHandler(handlerFunc))
 }
 
 func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	pattern = AppURLPrefix + pattern
 	// zlog.Info("AddHandler:", pattern)
 	defer zlog.HandlePanic(false)
-	if router == nil {
-		http.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
-			router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, f))
-		})
-		return nil
-	}
-	return router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, f))
-	// return router.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
-	// 	// zlog.Info("Handler:", pattern, req.URL)
-	// 	// timer := ztimer.StartIn(10, func() {
-	// 	// 	surl := req.URL.String()
-	// 	// 	zlog.Info("Request timed out after 10 seconds:", surl)
-	// 	// 	if surl == "/rpc" {
-	// 	// 		zlog.Info("RequestBody:", zhttp.GetCopyOfRequestBodyAsString(req))
-	// 	// 	}
-	// 	// 	ReturnError(w, req, "timeout out handling", http.StatusGatewayTimeout)
-	// 	// })
-	// 	p := zprocess.PushProcess(30, "zrest.Handler:"+req.URL.String())
-	// 	CurrentInRequests++
-	// 	start := time.Now()
-	// 	f(w, req)
-	// 	if zhttp.Logger != nil {
-	// 		zhttp.Logger.Add(req.URL.String(), toSecondary(req.RemoteAddr), req.Method, true, time.Since(start))
+	// if router == nil {
+	// 	if ztelemetry.IsRunning() {
+	// 		http.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
+	// 			router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, f)) // router is zero!!??
+	// 		})
+	// 	} else {
+	// 		router.HandleFunc(pattern, f)
 	// 	}
-	// 	CurrentInRequests--
-	// 	zprocess.PopProcess(p)
-	// 	// timer.Stop()
-	// })
-}
-
-func toSecondary(a string) string {
-	var host string
-	port := zstr.TailUntilWithRest(a, ":", &host)
-	if port != "" {
-		_, err := strconv.Atoi(port)
-		if err == nil {
-			return host
-		}
+	// 	return nil
+	// }
+	if ztelemetry.IsRunning() {
+		return router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, f))
 	}
-	return a
+	return router.HandleFunc(pattern, f)
 }
 
 func Handle(pattern string, handler http.Handler) {
