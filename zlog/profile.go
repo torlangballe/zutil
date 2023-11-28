@@ -68,6 +68,7 @@ func (p *Profile) End(parts ...interface{}) {
 	if !print {
 		return
 	}
+	Info("zprofile", p.Name, "dump:", p.Start)
 	for _, l := range p.Lines {
 		percent := int(float64(l.Duration) / float64(dur) * 100)
 		Info("zprofile", p.Name+":", l.Text, "    ", l.Duration, percent, `%`)
