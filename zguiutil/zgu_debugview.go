@@ -9,7 +9,9 @@ import (
 	"github.com/torlangballe/zui/zapp"
 	"github.com/torlangballe/zui/zbutton"
 	"github.com/torlangballe/zui/zcheckbox"
+	"github.com/torlangballe/zui/zclipboard"
 	"github.com/torlangballe/zui/zcontainer"
+	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zpresent"
 	"github.com/torlangballe/zui/ztext"
@@ -44,7 +46,7 @@ func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zla
 	then := zlabel.New("then")
 	then.SetFont(zgeo.FontDefault().NewWithStyle(zgeo.FontStyleBold))
 	v.Add(then, zgeo.CenterLeft)
-	label := zlabel.New("go tool pprof -web " + down + "/" + ptype + ".gz")
+	label := zlabel.New("go tool pprof -web " + down + "/" + ptype)
 	ztext.MakeViewPressToClipboard(label)
 	v.Add(label, zgeo.CenterLeft)
 	in.Add(v, zgeo.CenterLeft|zgeo.HorExpand)
@@ -67,7 +69,7 @@ func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 	button, _ := addRow(in, name, ptype)
 	surl := zapp.URLStub()
 	if ip != "" {
-		u := zapp.URL()
+		u := zapp.URL() // for scheme+port
 		u.Path = ""
 		u.RawQuery = ""
 		u.Host = ip
@@ -76,6 +78,12 @@ func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 	surl += zrest.AppURLPrefix + zdebug.ProfilingURLPrefix + name // must be here and not in closure below!
 	button.SetToolTip(surl)
 	button.SetPressedHandler(func() {
+		zlog.Info("SetPressedHandler", zkeyboard.ModifiersAtPress)
+		if zkeyboard.ModifiersAtPress == zkeyboard.ModifierAlt {
+			str := "curl " + surl + " > " + name + " && go tool pprof -web " + name
+			zclipboard.SetString(str)
+			return
+		}
 		zview.DownloadURI(surl, name)
 	})
 }
