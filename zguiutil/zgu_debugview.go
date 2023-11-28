@@ -73,7 +73,7 @@ func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 		u.Host = ip
 		surl = u.String()
 	}
-	surl += zrest.AppURLPrefix + "debug/pprofile/" + name // must be here and not in closure below!
+	surl += zrest.AppURLPrefix + zdebug.ProfilingURLPrefix + name // must be here and not in closure below!
 	button.SetToolTip(surl)
 	button.SetPressedHandler(func() {
 		zview.DownloadURI(surl, name)

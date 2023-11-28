@@ -245,9 +245,8 @@ func Handle(pattern string, handler http.Handler) {
 }
 
 func SetProfilingHandler(router *mux.Router) {
-	dir := "debug/pprof/"
 	for _, name := range zdebug.AllProfileTypes {
-		path := dir + name
+		path := zdebug.ProfilingURLPrefix + name
 		AddSubHandler(router, path, pprof.Handler(name))
 	}
 }

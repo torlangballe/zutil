@@ -9,6 +9,8 @@ import (
 	"github.com/torlangballe/zutil/zwords"
 )
 
+const ProfilingURLPrefix = "debug/pprof/"
+
 var (
 	IsInTests            = (strings.HasSuffix(os.Args[0], ".test"))
 	GetOpenFileCountFunc func() int
