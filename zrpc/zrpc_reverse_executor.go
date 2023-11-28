@@ -85,14 +85,14 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 		var cp callPayloadReceive
 		maxTimeout := math.Max(PollRestartSecs, r.client.TimeoutSecs)
 		err := r.client.CallWithTimeout(maxTimeout, "ReverseClienter.ReversePoll", r.client.id, &cp)
-		zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll:", maxTimeout, err, time.Since(start))
+		zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll:", maxTimeout, err, time.Since(start)) // EnableLogExecutor,
 		if err != nil {
 			zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll, error! cp.Token:", err, cp.Token)
 			time.Sleep(time.Millisecond * 50) // lets not go nuts
 			continue
 		}
 		if cp.Method == "" { // we got a dummy callPayloadReceive, because we sent a receivePayload, but did't have anything
-			zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll, reveived dummy:")
+			zlog.Info("Call ReverseClienter.ReversePoll, reveived dummy:")
 			continue
 		}
 		zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll, ok cp.Token:", err, cp.Token, cp.Method)

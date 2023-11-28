@@ -39,6 +39,7 @@ func (e *Executor) Register(callers ...interface{}) {
 				zlog.Error(nil, "Registering existing call object:", n)
 				break
 			}
+			// zlog.Info("REG:", n, m.Method, zlog.Pointer(e))
 			e.callMethods[n] = m
 		}
 	}
@@ -181,6 +182,7 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 
 func (e *Executor) callMethodName(ctx context.Context, ci ClientInfo, name string, rawArg json.RawMessage) (rp receivePayload, err error) {
 	for n, m := range e.callMethods {
+		// zlog.Info("callMethName:", n, name, n == name)
 		if n == name {
 			return e.callMethod(ctx, ci, m, rawArg)
 		}
@@ -202,7 +204,7 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 		rp, err = e.callMethodName(ctx, ci, method, args)
 		// zlog.Info("zrpc callWithDeadline: callMethod done:", method, err, method, zlog.Pointer(e))
 		if err != nil {
-			zlog.Error(err, "call")
+			zlog.Error(err, "call", zlog.Pointer(e))
 			rp.Error = err.Error()
 		}
 		deadline, ok := ctx.Deadline()
