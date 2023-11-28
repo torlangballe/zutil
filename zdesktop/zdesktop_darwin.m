@@ -15,18 +15,18 @@ struct WinInfo {
 };
 
 void removeNonASCIIAndTruncate(NSString **str) {
+    NSRange range = [*str rangeOfString:@" - "];
+    if (range.length != 0) {
+        NSMutableString *sub = (NSMutableString *)[*str substringToIndex:range.location];
+        CFRelease(*str);
+        *str = sub;
+    }
     NSMutableString *s = [NSMutableString stringWithCapacity:(*str).length];
     for (NSUInteger i = 0; i < (*str).length; ++i) {
         unichar c = [*str characterAtIndex:i];
         if (c >= 32 && c <= 127) {
             [s appendFormat:@"%C", c];
         }
-    }
-    NSRange range = [s rangeOfString:@" - "];
-    if (range.length != 0) {
-        NSMutableString *sub = (NSMutableString *)[s substringToIndex:range.location];
-        CFRelease(s);
-        s = sub;
     }
     *str = [NSString stringWithString:s];
     CFRelease(s);
