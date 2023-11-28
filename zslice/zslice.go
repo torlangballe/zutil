@@ -147,3 +147,13 @@ func Swap[A any](slice []A, i, j int) {
 func Add[T any](s *[]T, a T) {
 	*s = append(*s, a)
 }
+
+func Reduced[A any](slice []A, keep func(a A) bool) []A {
+	var snew []A
+	for i, s := range slice {
+		if keep(slice[i]) {
+			snew = append(snew, s)
+		}
+	}
+	return snew
+}
