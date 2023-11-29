@@ -148,7 +148,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 		go callAuthenticate(v1, a, got)
 	})
 	if canCancel {
-		cancel := zshape.ImageButtonViewNewSimple("Cancel", "")
+		cancel := zshape.ImageButtonViewSimpleInsets("Cancel", "")
 		h1.Add(cancel, zgeo.CenterLeft)
 		cancel.SetPressedHandler(func() {
 			zpresent.Close(v1, true, nil)
