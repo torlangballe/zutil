@@ -14,7 +14,7 @@ import (
 type Counter = prometheus.Counter
 type Gauge = prometheus.Gauge
 type GaugeVec = prometheus.GaugeVec
-type Histogram 
+type Histogram = prometheus.Histogram
 
 var (
 	registry    prometheus.Registerer
@@ -82,13 +82,14 @@ func NewGaugeVec(name, help string, labelNames ...string) *GaugeVec {
 	return g
 }
 
-func NewHistogram(name, help string, labelNames ...string) *Histogram {
-	h = prometheus.NewHistogram(
-	prometheus.HistogramOpts{
-		Namespace: "zui",
-		Name:      name,
-		Help:      help,
-	}).With(labels)
+func NewHistogram(name, help string, buckets []float64, labelNames ...string) Histogram {
+	h := prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Namespace: "zui",
+			Name:      name,
+			Buckets:   buckets,
+			Help:      help,
+		}) //.With(labels)
 	return h
 }
 
