@@ -316,22 +316,20 @@ func GetDurationHourMinSec(d time.Duration) (hours int, mins int, secs int, frac
 }
 
 func GetDurNice(d time.Duration, fractDigits int) string {
-	var parts []string
+	var str string
 	h, m, s, f := GetDurationHourMinSec(d)
 	if h != 0 {
-		parts = append(parts, fmt.Sprintf("%dh", h))
+		str += fmt.Sprintf("%dh ", h)
 	}
 	if m != 0 {
-		parts = append(parts, fmt.Sprintf("%dm", m))
+		str += fmt.Sprintf("%dm ", m)
 	}
-	if s != 0 {
-		if fractDigits == 0 {
-			parts = append(parts, fmt.Sprintf("%ds", s))
-		} else {
-			parts = append(parts, zwords.NiceFloat(float64(s)+f, fractDigits))
-		}
+	str += fmt.Sprintf("%d", s)
+	if fractDigits != 0 {
+		s := fmt.Sprintf(".%f", f)[2 : 3+fractDigits]
+		str += s
 	}
-	return strings.Join(parts, " ")
+	return str
 }
 
 func GetDurationString(d time.Duration, secs, mins, hours bool, subDigits int) (str string, overflow bool) {
