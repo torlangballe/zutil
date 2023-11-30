@@ -14,22 +14,17 @@ struct WinInfo {
     int scale;
 };
 
-void removeNonASCIIAndTruncate(NSString **str) {
-    NSRange range = [*str rangeOfString:@" - "];
+NSString *removedNonASCIIAndTruncate(NSString *str) {
+    NSRange range = [str rangeOfString:@" - "];
     if (range.length != 0) {
-        NSMutableString *sub = (NSMutableString *)[*str substringToIndex:range.location];
-        CFRelease(*str);
-        *str = sub;
+        range.length = range.location;
+        range.location = 0;
+        NSString *ns = [str substringWithRange: range];
+        str = ns;
     }
-    NSMutableString *s = [NSMutableString stringWithCapacity:(*str).length];
-    for (NSUInteger i = 0; i < (*str).length; ++i) {
-        unichar c = [*str characterAtIndex:i];
-        if (c >= 32 && c <= 127) {
-            [s appendFormat:@"%C", c];
-        }
-    }
-    *str = [NSString stringWithString:s];
-    CFRelease(s);
+    NSData *data = [str dataUsingEncoding:NSASCIIStringEncoding allowLossyConversion:NO];
+    str = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    return str;
 }
 
 int canControlComputer(int prompt) {
@@ -126,11 +121,13 @@ void CloseWindowsForPIDIfNotInTitles(int pid, char *stitles) {
         NSString *title = nil;
         AXUIElementRef w = (AXUIElementRef) CFArrayGetValueAtIndex(windows, i);
         AXUIElementCopyAttributeValue(w, kAXTitleAttribute, (CFTypeRef *)&title);
-        removeNonASCIIAndTruncate(&title);
-        if (![titles containsObject:title]) {
-            NSLog(@"############## Close window without playback: %@\n", title);
+        NSString *cleanTitle = removedNonASCIIAndTruncate(title);
+        CFRelease(title);
+        if (![titles containsObject:cleanTitle]) {
+            NSLog(@"############## Close window without playback: %@\n", cleanTitle);
             CloseWindowForWindowRef(w);
         }
+        CFRelease(cleanTitle);
     }
 }
 
@@ -156,8 +153,8 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
     for (NSMutableDictionary* entry in (__bridge NSArray*)windowList)
     {
         struct WinInfo w;
-        w.title = [entry objectForKey:(id)kCGWindowName];
-        removeNonASCIIAndTruncate(&w.title);
+        NSString *title = [entry objectForKey:(id)kCGWindowName];
+        w.title = removedNonASCIIAndTruncate(title);
         w.pid = (long)[[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
         w.wid = (long)[[entry objectForKey:(id)kCGWindowNumber] integerValue];
         if (debug) {
@@ -203,9 +200,9 @@ const char *getAllWindowTitlesTabSeparated() {
 }
 
 BOOL findTitle(struct WinInfo *find, struct WinInfo w) {
+    // NSLog(@"findTitle:%@ == %@\n", w.title, find->title);
     if ([w.title compare: find->title] == NSOrderedSame) {
         *find = w;
-        // NSLog(@"scale:%d bounds: %f,%f %fx%f\n", find->scale, bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height);
         return YES;
     }
     return NO;
@@ -257,33 +254,35 @@ AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL de
     }
     AXUIElementRef matchingWinRef = nil;
     CFIndex nItems = CFArrayGetCount(windowArray);
-    // NSLog(@"getAXElementOfWindowForTitle: %s %p %d\n", title, windowArray, (int)nItems);
-    removeNonASCIIAndTruncate(&nsTitle);
+    NSString *cleanTitle = removedNonASCIIAndTruncate(nsTitle);
+    CFRelease(nsTitle);
     for (int i = 0; i < nItems; i++) {
         AXUIElementRef winRef = (AXUIElementRef) CFArrayGetValueAtIndex(windowArray, i);
         NSString *winTitle = nil;
         AXUIElementCopyAttributeValue(winRef, kAXTitleAttribute, (CFTypeRef *)&winTitle);
         if (winTitle == nil) {
-            //!!! NSLog(@"Win: <nil-title> # %@\n", nsTitle);
+            //!!! NSLog(@"Win: <nil-title> # %@\n", cleanTitle);
             continue;
         }
-        removeNonASCIIAndTruncate(&winTitle);
+        NSString *winTitleClean = removedNonASCIIAndTruncate(winTitle);
+        CFRelease(winTitle);
         if (debug) {
-            NSLog(@"Win1: '%@' %d\n", winTitle, (int)[winTitle length]);
-            // NSLog(@"Win2: '%@' %d %lu\n", nsTitle, (int)[nsTitle length], strlen(title));
+            NSLog(@"Win1: '%@' %d\n", winTitleClean, (int)[winTitleClean length]);
+            // NSLog(@"Win2: '%@' %d %lu\n", cleanTitle, (int)[cleanTitle length], strlen(title));
         }
-        if ([winTitle compare:nsTitle] == NSOrderedSame) {
-        //    NSLog(@"Win1: '%@' '%@' %d\n", winTitle, nsTitle, [winTitle compare:nsTitle] == NSOrderedSame);
+        // NSLog(@"Win1: '%@' '%@' %d\n", winTitleClean, cleanTitle, [winTitleClean compare:cleanTitle] == NSOrderedSame);
+        if ([winTitleClean compare:cleanTitle] == NSOrderedSame) {
+        //    NSLog(@"Win1: '%@' '%@' %d\n", winTitleClean, cleanTitle, [winTitleClean compare:cleanTitle] == NSOrderedSame);
             matchingWinRef = winRef;
             CFRetain(matchingWinRef);
-            CFRelease(winTitle);
+            CFRelease(winTitleClean);
             break;
         }
-        CFRelease(winTitle);
+        CFRelease(winTitleClean);
     }
     CFRelease(appElementRef);
     CFRelease(windowArray);
-    CFRelease(nsTitle);
+    CFRelease(cleanTitle);
     return matchingWinRef;
 }
 
@@ -325,7 +324,7 @@ int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int 
     // NSLog(@"*******PlaceWindowForTitle %s %ld\n", title, pid);
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, NO);
     if (winRef == nil) {
-        // NSLog(@"PlaceWindowForTitle no window for %s %ld\n", title, pid);
+        NSLog(@"SetWindowRectForTitle no window for %s %ld\n", title, pid);
         return 0;
     }
     NSSize winSize;

@@ -150,7 +150,7 @@ func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, s
 	// pid, _ := GetCachedPIDForAppName(app)
 	// fmt.Println("SetWindowRectForTitle:", title, app, pids)
 	for _, pid := range pids {
-		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
+		fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
 		ctitle := C.CString(title)
 		w := C.WindowGetIDScaleAndRectForTitle(ctitle, C.long(pid))
 		C.free(unsafe.Pointer(ctitle))
