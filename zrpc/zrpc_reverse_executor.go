@@ -92,7 +92,7 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 			continue
 		}
 		if cp.Method == "" { // we got a dummy callPayloadReceive, because we sent a receivePayload, but did't have anything
-			zlog.Info("Call ReverseClienter.ReversePoll, reveived dummy:")
+			zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll, reveived dummy:")
 			continue
 		}
 		zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll, ok cp.Token:", err, cp.Token, cp.Method)
