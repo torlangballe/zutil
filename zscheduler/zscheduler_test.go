@@ -459,22 +459,51 @@ func testPurgeFromSlowStarting(t *testing.T) {
 	r2, _ = s.GetRunForID(2)
 	startMS = startMSDefault
 	compare(t, "RunCount not finaly 2 for job1:", r2.Count, 2) // run count for job 2 should now be 2
+	count = s.CountStartedJobs(0)
+	compare(t, "Jobs not at 4 again:", count, 4) // All 4 jobs running again
+	startMS = 1800
+	time.Sleep(time.Second * 1)
+
+	s.AddJobCh <- makeJob(s, 5, time.Second*10, 1)
+	time.Sleep(time.Millisecond * 500)
+	count = s.CountStartedJobs(0)
+	compare(t, "Jobs count not 5 after add:", count, 5)
+	r5, _ := s.GetRunForID(5)
+	compare(t, "Job 5 Run-Count not 1:", r5.Count, 1)
+	j.JobIDs = []int64{1, 2, 3, 4} // We don't set job 5
+	s.setup.GracePeriodForJobsOnExecutorCh = time.Second * 5
+	s.SetJobsOnExecutorCh <- j
+	time.Sleep(time.Millisecond * 500) // 1 sec total
+	r5, _ = s.GetRunForID(5)
+	compare(t, "Job 5 Run-Count not still 1 since purge doesn't happen while starting:", r5.Count, 1)
+	time.Sleep(time.Second * 2) // 3 total
+	s.SetJobsOnExecutorCh <- j
+	time.Sleep(time.Millisecond * 100)
+	r5, _ = s.GetRunForID(5)
+	compare(t, "Job 5 Run-Count not still 1 since purge doesn't happen while grace not up:", r5.Count, 1)
+
+	time.Sleep(time.Second * 2) // 5+ total
+	s.SetJobsOnExecutorCh <- j
+	time.Sleep(time.Millisecond * 100)
+	r5, _ = s.GetRunForID(5)
+	compare(t, "Job 5 Run-Count not 2 after purge finally happens:", r5.Count, 2)
+
 	stopAndCheckScheduler(s, t)
 }
 
 func TestAll(t *testing.T) {
-	// testEnoughRunning(t)
-	// testPauseWithTwoExecutors(t)
-	// testSetJobsOnExecutor(t)
-	// testChangeExecutor(t)
-	// testStartStop(t)
-	// testPauseWithCapacity(t)
-	// testStartingTime(t)
-	// testLoadBalance1(t)
-	// testLoadBalance2(t)
-	// testKeepAlive(t)
-	// testStopAndCheck(t)
-	// testOverMax(t)
+	testEnoughRunning(t)
+	testPauseWithTwoExecutors(t)
+	testSetJobsOnExecutor(t)
+	testChangeExecutor(t)
+	testStartStop(t)
+	testPauseWithCapacity(t)
+	testStartingTime(t)
+	testLoadBalance1(t)
+	testLoadBalance2(t)
+	testKeepAlive(t)
+	testStopAndCheck(t)
+	testOverMax(t)
 	testPurgeFromRunningList(t)
 	testPurgeFromSlowStarting(t)
 }

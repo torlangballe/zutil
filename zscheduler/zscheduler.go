@@ -25,13 +25,14 @@ type Setup[I comparable] struct {
 	TotalMaxJobCount                     int                                               // The scheduler wont start another job if active jobs >= TotalMaxJobCount.
 	JobIsRunningOnSuccessfullStart       bool                                              // Set JobIsRunningOnSuccessfullStart to set a job as running once it's start function completes successfully. Otherwise use the JobIsRunningCh channel.
 	ChangingJobRestartsIt                bool                                              // If ChangingJobRestartsIt is set, jobs are restarted when changed with ChangeExecutorCh.
+	GracePeriodForJobsOnExecutorCh       time.Duration                                     // GracePeriodForJobsOnExecutorCh is amount of slack from start to not stop jobs not reported in executor yet.
 	StartJobOnExecutorFunc               func(run Run[I], ctx context.Context) error       `zui:"-"` // StartJobOnExecutorFunc is called to start a job. It is done on a goroutine and is assumed to take a while or time out.
 	StopJobOnExecutorFunc                func(run Run[I], ctx context.Context) error       `zui:"-"` // Like StartJobOnExecutorFunc but for stopping.
 	HandleSituationFastFunc              func(run Run[I], s SituationType, details string) `zui:"-"` // This function is for handling start/stop/errors and more. Must very quickly do something or spawn a go routine
 	MinimumTimeBetweenSpecificJobStarts  time.Duration
 }
 
-// A *Scheduler* starts *Job*s on *Executor*s, trying to balance the workloadololololhelloih
+// A *Scheduler* starts *Job*s on *Executor*s, trying to balance the workload
 // Each Job has a *Cost*, and each executor a *CostCapacity*.
 // Jobs can have a Duration or go until stopped.
 // The scheduler assumes jobs take a considerable time to start and end,
@@ -887,8 +888,18 @@ func (s *Scheduler[I]) purgeStartedJobsNotInList(jobsOnExe JobsOnExecutor[I]) {
 				break
 			}
 		}
-		if !has && (r.StartedAt.IsZero() || !r.starting) {
+		// zlog.Warn("Purge?:", r.Job.ID, has, r.StartedAt, r.starting)
+		if !has {
+			if !r.StartedAt.IsZero() && r.starting {
+				// zlog.Warn("Not purging job cause starting", r.Job.ID, time.Since(r.StartedAt))
+				continue
+			}
+			if s.setup.GracePeriodForJobsOnExecutorCh != 0 && !r.StartedAt.IsZero() && time.Since(r.StartedAt) < s.setup.GracePeriodForJobsOnExecutorCh {
+				// zlog.Warn("Not purging job cause < grace")
+				continue
+			}
 			reason := zstr.Spaced("purgeJob NotInList:", r.Job.DebugName, r.Job.ID, jobsOnExe)
+			// zlog.Warn("PurgeJob:", r.Job.ID)
 			s.stopJob(r.Job.ID, false, false, false, reason)
 		}
 	}
@@ -939,6 +950,16 @@ func (s *Scheduler[I]) CountJobs(executorID I) int {
 	var count int
 	for _, r := range s.runs {
 		if executorID == s.zeroID || r.ExecutorID == executorID {
+			count++
+		}
+	}
+	return count
+}
+
+func (s *Scheduler[I]) CountStartedJobs(executorID I) int {
+	var count int
+	for _, r := range s.runs {
+		if r.ExecutorID != s.zeroID && (executorID == s.zeroID || r.ExecutorID == executorID) && !r.StartedAt.IsZero() {
 			count++
 		}
 	}
