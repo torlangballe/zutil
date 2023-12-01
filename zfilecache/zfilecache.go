@@ -82,11 +82,11 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	// }
 	zrest.AddSubHandler(router, path, c)
 	// zrest.AddHandler(router, strings.TrimRight(path, "/"), c.ServeHTTP)
-	if c.DeleteAfter == 0 {
-		return c
-	}
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
 		// start := time.Now()
+		if c.DeleteAfter == 0 {
+			return false
+		}
 		dir := zfile.JoinPathParts(c.workDir, c.urlPrefix, c.cacheName)
 		if zfile.NotExist(dir) {
 			return true
