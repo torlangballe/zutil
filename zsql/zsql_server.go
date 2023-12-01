@@ -16,7 +16,6 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zreflect"
-	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -25,12 +24,11 @@ type Base struct {
 	Type BaseType
 }
 
-type SQLCalls zrpc.CallsBase
+type SQLCalls struct{}
 type SQLDictSlice []zdict.Dict
 
 var (
-	Calls = new(SQLCalls)
-	Main  Base
+	Main Base
 )
 
 func InitMainSQLite(filePath string) error {
@@ -342,7 +340,7 @@ func addTo(i *int, params *[]any, set *[]string, fieldName string, value any, fi
 	return true
 }
 
-func (sc *SQLCalls) UpdateRows(info UpsertInfo) error {
+func (SQLCalls) UpdateRows(info UpsertInfo) error {
 	var params []any
 	var sets, wheres []string
 
@@ -367,7 +365,7 @@ func (sc *SQLCalls) UpdateRows(info UpsertInfo) error {
 }
 
 // InsertRows creates an insert query for all info.Rows
-func (sc *SQLCalls) InsertRows(info UpsertInfo, result *UpsertResult) error {
+func (SQLCalls) InsertRows(info UpsertInfo, result *UpsertResult) error {
 	var params []any
 	var columns []string
 	fields := zmap.GetKeysAsStrings(info.Rows[0])
@@ -412,7 +410,7 @@ func (sc *SQLCalls) InsertRows(info UpsertInfo, result *UpsertResult) error {
 	return nil
 }
 
-func (sc *SQLCalls) ExecuteQuery(query string, rowsAffected *int64) error {
+func (SQLCalls) ExecuteQuery(query string, rowsAffected *int64) error {
 	query = CustomizeQuery(query, Main.Type)
 	result, err := Main.DB.Exec(query)
 	zlog.Info("Exec:", query, err)
@@ -466,6 +464,6 @@ func SelectColumnAsSliceOfAny[A any](base *Base, query string, result *[]A) erro
 	return nil
 }
 
-func (sc *SQLCalls) SelectInt64s(query string, result *[]int64) error {
+func (SQLCalls) SelectInt64s(query string, result *[]int64) error {
 	return SelectColumnAsSliceOfAny(&Main, query, result)
 }
