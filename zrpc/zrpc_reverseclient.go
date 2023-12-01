@@ -116,7 +116,6 @@ func (r *ReverseClienter) ReversePoll(ci *ClientInfo, receiverID string, cp *Cal
 	ticker := time.NewTicker(time.Duration(PollRestartSecs-1) * time.Second)
 	select {
 	case <-ticker.C:
-		ticker.Stop() // Very important to stop ticker, or memory leak
 		// zlog.Info(nil, "zrpc.ReversePoll ended without job, restarting", "runc:", revCount)
 		return nil
 	case call := <-rc.pendingCalls:
@@ -131,6 +130,7 @@ func (r *ReverseClienter) ReversePoll(ci *ClientInfo, receiverID string, cp *Cal
 		// zlog.Warn("ReversePoll.Call:", call.CallPayload.Method, rc.rid, revCount)
 		rc.pendingCallsSent.Set(call.Token, call)
 	}
+	ticker.Stop() // Very important to stop ticker, or memory leak
 	// zlog.Warn("ReversePoll done", revCount)
 	return nil
 }
