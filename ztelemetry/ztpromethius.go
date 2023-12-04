@@ -14,10 +14,12 @@ import (
 type Counter = prometheus.Counter
 type Gauge = prometheus.Gauge
 type GaugeVec = prometheus.GaugeVec
-type Histogram = prometheus.Histogram
+type HistogramVec = prometheus.HistogramVec
+
+const URLBaseLabel = "url_base"
 
 var (
-	registry    prometheus.Registerer
+	registry              = prometheus.NewRegistry()
 	httpBuckets []float64 = prometheus.ExponentialBuckets(0.1, 1.5, 5)
 )
 
@@ -31,17 +33,14 @@ func StartPromethiusHandling(port int) {
 	}
 	router := mux.NewRouter()
 
-	reg := prometheus.NewRegistry()
-	registry = reg
-
 	// Add go runtime metrics and process collectors.
-	reg.MustRegister(
+	registry.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 
 	// Expose /metrics HTTP endpoint using the created custom registry.
-	router.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
+	router.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{Registry: registry}))
 
 	// registry = prometheus.NewRegistry()
 
@@ -82,14 +81,15 @@ func NewGaugeVec(name, help string, labelNames ...string) *GaugeVec {
 	return g
 }
 
-func NewHistogram(name, help string, buckets []float64, labelNames ...string) Histogram {
-	h := prometheus.NewHistogram(
+func NewHistogramVec(name string, buckets []float64, help string, labelNames ...string) *HistogramVec {
+	h := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Namespace: "zui",
-			Name:      name,
-			Buckets:   buckets,
-			Help:      help,
-		}) //.With(labels)
+			// Namespace: "zui",
+			Name:    name,
+			Buckets: buckets,
+			Help:    help,
+		}, labelNames)
+	registry.MustRegister(h)
 	return h
 }
 
