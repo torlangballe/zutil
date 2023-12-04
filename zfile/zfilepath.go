@@ -103,9 +103,6 @@ func MakePathRelativeTo(path, rel string) string {
 }
 
 func MimeToExtension(smime string) string {
-	if smime == "audio/mp4" { // this is better than what is picked
-		return ".m4a"
-	}
 	var ext string
 	es, _ := mime.ExtensionsByType(smime)
 	for _, s := range es {
