@@ -24,8 +24,10 @@ import (
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztelemetry"
 	"github.com/torlangballe/zutil/ztime"
 )
 
@@ -55,11 +57,9 @@ type Parameters struct {
 
 const DefaultTimeoutSeconds = 15
 
-type RequestLogger interface {
-	Add(surl, secondary, method string, in bool, dur time.Duration)
-}
+// var redirectSecsTelemetry = ztelemetry.NewHistogramVec("http_redirect_seconds", []float64{0.05, 0.2, 2}, "Seconds a redirect took", ztelemetry.URLBaseLabel)
 
-var Logger RequestLogger
+var redirectSecsTelemetry = ztelemetry.NewGaugeVec("http_redirect_seconds", "Seconds a redirect took", ztelemetry.URLBaseLabel)
 
 func MakeParameters() Parameters {
 	return Parameters{
@@ -252,7 +252,6 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 	// }()
 	request.Close = true
 	p := zprocess.PushProcess(30, "GetResponseFromReqClient:"+request.URL.String())
-	start := time.Now()
 	resp, err = client.Do(request)
 	zprocess.PopProcess(p)
 	if err == nil && resp == nil {
@@ -260,14 +259,6 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 	}
 	if params.GetErrorFromBody && (resp != nil && (err != nil || resp.StatusCode != 200)) {
 		err = CheckErrorFromBody(resp)
-	}
-	if Logger != nil && resp != nil {
-		var sloc string
-		loc, _ := resp.Location()
-		if loc != nil {
-			sloc = loc.String()
-		}
-		Logger.Add(request.URL.String(), sloc, request.Method, false, time.Since(start))
 	}
 	if err != nil && resp != nil {
 		resp.Body.Close()
@@ -421,47 +412,31 @@ func MakeURLWithArgs(surl string, args map[string]string) (string, error) {
 	return u.String(), nil
 }
 
-// func GetRedirectedURLOld(surl string) (string, error) {
-// 	params := MakeParameters()
-// 	params.Method = http.MethodGet
-// 	if runtime.GOOS == "js" {
-// 		params.Headers["jsFetchRedirect"] = "follow"
-// 	}
-// 	resp, err := GetResponse(surl, params)
-// 	if err != nil {
-// 		return surl, errors.New(fmt.Sprint("getRedirectedURL: ", surl, " ", err))
-// 	}
-// 	defer resp.Body.Close()
-// 	defer io.Copy(ioutil.Discard, resp.Body)
-// 	return resp.Request.URL.String(), nil
-// }
-
 func GetRedirectedURL(surl string) (string, error) {
+	start := time.Now()
 	req, err := http.NewRequest("GET", surl, nil)
 	if err != nil {
 		return surl, err
 	}
 	client := http.Client{}
+	client.Timeout = time.Second * 5
 	lastUrlQuery := surl
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) > 10 {
-			return errors.New("too many redirects")
+			return zlog.Error(nil, "too many redirects")
 		}
 		lastUrlQuery = req.URL.String()
 		return nil
 	}
-	start := time.Now()
 	resp, err := client.Do(req)
-	if Logger != nil && err == nil {
-		var sloc string
-		loc, _ := resp.Location()
-		if loc != nil {
-			sloc = loc.String()
-			Logger.Add(surl, sloc, "request.Method", false, time.Since(start))
-		}
-	}
 	if resp != nil && resp.Body != nil {
 		resp.Body.Close()
+	}
+	if err == nil && ztelemetry.IsRunning() {
+		base := znet.StripQueryAndFragment(surl)
+		labels := map[string]string{ztelemetry.URLBaseLabel: base}
+		// redirectSecsTelemetry.WithLabelValues(base).Observe(ztime.Since(start))
+		redirectSecsTelemetry.With(labels).Set(ztime.Since(start))
 	}
 	return lastUrlQuery, err
 }
