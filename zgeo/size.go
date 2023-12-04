@@ -2,6 +2,7 @@ package zgeo
 
 import (
 	"bytes"
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -287,6 +288,23 @@ func (s *Size) UnmarshalJSON(b []byte) error {
 func (s *Size) MarshalJSON() ([]byte, error) {
 	str := `"` + s.String() + `"`
 	return []byte(str), nil
+}
+
+func (s Size) Value() (driver.Value, error) {
+	return []byte(s.String()), nil
+}
+
+func (s *Size) Scan(value interface{}) error {
+	str, ok := value.(string)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	size, err := SizeFromString(str)
+	if err != nil {
+		return err
+	}
+	*s = size
+	return nil
 }
 
 func (s Sizes) GetItems() (items zdict.Items) {
