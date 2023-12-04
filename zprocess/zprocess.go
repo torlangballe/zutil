@@ -12,6 +12,38 @@ import (
 	"github.com/torlangballe/zutil/ztimer"
 )
 
+// OnceWait is something you call Wait() on and it waits until Done() is called on it. Once.
+// Use to wait for some global data to be inited for example.
+// TODO: Check if a semaphore could be used.
+type OnceWait struct {
+	done   bool
+	inited bool
+	wg     sync.WaitGroup
+}
+
+// PoolWorkOnItems runs jobs with do(), processing all in goroutines,
+// But up to max poolSize at a time.
+func PoolWorkOnItems[T any](all []T, poolSize int, do func(t T)) {
+	length := len(all)
+	jobs := make(chan T, length)
+	results := make(chan struct{}, length)
+	for i := 0; i < poolSize; i++ {
+		go func() {
+			for j := range jobs {
+				do(j)
+				results <- struct{}{}
+			}
+		}()
+	}
+	for _, a := range all {
+		jobs <- a
+	}
+	close(jobs)
+	for range all {
+		<-results
+	}
+}
+
 // RunFuncUntilTimeoutSecs uses RunFuncUntilContextDone to wait secs for a function to finish,
 // or returns while it's still running in a goroutine.
 func RunFuncUntilTimeoutSecs(secs float64, do func()) (completed bool) {
@@ -162,12 +194,6 @@ func PushProcess(timeoutSecs float64, info string) *proc {
 func PopProcess(p *proc) {
 	p.timer.Stop()
 	procs.Remove(p.id)
-}
-
-type OnceWait struct {
-	done   bool
-	inited bool
-	wg     sync.WaitGroup
 }
 
 func (o *OnceWait) Wait() {
