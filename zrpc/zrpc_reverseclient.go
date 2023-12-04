@@ -261,7 +261,7 @@ func FuncForAll(r *ReverseClienter, idWildcard, callID string, do func(receiverI
 			if r.multiWaiting.Has(id) {
 				return true
 			}
-			zlog.Info("FuncForAll3:", id, callID)
+			// zlog.Info("FuncForAll3:", id, callID)
 			r.multiWaiting.Set(sid, true)
 			wg.Add(1)
 			go func(i int, sid string, rc *ReverseClient) {
