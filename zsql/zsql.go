@@ -1,6 +1,7 @@
 package zsql
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"strings"
@@ -157,8 +158,11 @@ func ForEachColumn(s interface{}, skip []string, prefix string, got func(v refle
 			return true
 		}
 		if val.Kind() == reflect.Struct && val.Type() != timeType {
-			ForEachColumn(val.Addr().Interface(), skip, prefix+column, got)
-			return true
+			valuer, _ := val.Interface().(driver.Valuer)
+			if valuer == nil {
+				ForEachColumn(val.Addr().Interface(), skip, prefix+column, got)
+				return true
+			}
 		}
 		primary := zstr.IndexOf("primary", dbTags) > 0
 		got(val, prefix+column, primary)
