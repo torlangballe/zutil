@@ -41,6 +41,16 @@ func HostAndPortToAddress(host string, port int) string {
 	return str
 }
 
+func StripQueryAndFragment(surl string) string {
+	u, err := url.Parse(surl)
+	if zlog.OnError(err) {
+		return surl
+	}
+	u.RawQuery = ""
+	u.RawFragment = ""
+	return u.String()
+}
+
 func GetCurrentLocalIP4Address(skipLocal bool, netInterface string) (ip4 string, err error) {
 	all, err := GetCurrentLocalIP4Addresses(skipLocal)
 	if err != nil {
