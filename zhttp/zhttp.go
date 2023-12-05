@@ -414,12 +414,12 @@ func MakeURLWithArgs(surl string, args map[string]string) (string, error) {
 
 func GetRedirectedURL(surl string) (string, error) {
 	start := time.Now()
-	req, err := http.NewRequest("GET", surl, nil)
+	req, err := http.NewRequest("HEAD", surl, nil)
 	if err != nil {
 		return surl, err
 	}
 	client := http.Client{}
-	client.Timeout = time.Second * 5
+	client.Timeout = time.Second * 50
 	lastUrlQuery := surl
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) > 10 {
