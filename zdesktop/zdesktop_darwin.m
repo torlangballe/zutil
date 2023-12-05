@@ -150,26 +150,28 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
         NSLog(@"[2] getWindowIDs no windows!\n");
         return "";
     }
-    for (NSMutableDictionary* entry in (__bridge NSArray*)windowList)
-    {
-        struct WinInfo w;
-        NSString *title = [entry objectForKey:(id)kCGWindowName];
-        w.title = removedNonASCIIAndTruncate(title);
-        w.pid = (long)[[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
-        w.wid = (long)[[entry objectForKey:(id)kCGWindowNumber] integerValue];
-        if (debug) {
-            NSLog(@"Win: %@ pid:%ld wid:%ld\n", w.title, w.pid, w.wid);
-        }
-
-        NSDictionary *dict = [entry objectForKey:(id)kCGWindowBounds];
-        w.rect.origin.x = (CGFloat)[(NSNumber *)dict[@"X"] floatValue];
-        w.rect.origin.y = (CGFloat)[(NSNumber *)dict[@"Y"] floatValue];
-        w.rect.size.width = (CGFloat)[(NSNumber *)dict[@"Width"] floatValue];
-        w.rect.size.height = (CGFloat)[(NSNumber *)dict[@"Height"] floatValue];
-        // NSLog(@"Size: %@ %g %g %g %g", w.title, (float)w.rect.origin.x, (float)w.rect.origin.y, (float)w.rect.size.width, (float)w.rect.size.height);
-        if (gotWin != NULL && gotWin(find, w)) {
-            CFRelease(windowList);
-            return "";
+    if (gotWin != NULL)  {
+        for (NSMutableDictionary* entry in (__bridge NSArray*)windowList) {
+            struct WinInfo w;
+            NSString *title = [entry objectForKey:(id)kCGWindowName];
+            w.title = removedNonASCIIAndTruncate(title);
+            w.pid = (long)[[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
+            w.wid = (long)[[entry objectForKey:(id)kCGWindowNumber] integerValue];
+            if (debug) {
+                NSLog(@"Win: %@ pid:%ld wid:%ld\n", w.title, w.pid, w.wid);
+            }
+            NSDictionary *dict = [entry objectForKey:(id)kCGWindowBounds];
+            w.rect.origin.x = (CGFloat)[(NSNumber *)dict[@"X"] floatValue];
+            w.rect.origin.y = (CGFloat)[(NSNumber *)dict[@"Y"] floatValue];
+            w.rect.size.width = (CGFloat)[(NSNumber *)dict[@"Width"] floatValue];
+            w.rect.size.height = (CGFloat)[(NSNumber *)dict[@"Height"] floatValue];
+            // NSLog(@"Size: %@ %g %g %g %g", w.title, (float)w.rect.origin.x, (float)w.rect.origin.y, (float)w.rect.size.width, (float)w.rect.size.height);
+            if (gotWin(find, w)) {
+                CFRelease(w.title);
+                CFRelease(windowList);
+                return "";
+            }
+            CFRelease(w.title);
         }
     }
     CFRelease(windowList);
@@ -236,7 +238,7 @@ WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title) {
     got.y = find.rect.origin.y;
     got.w = find.rect.size.width;
     got.h = find.rect.size.height;
-    CFRelease(find.title);
+    // CFRelease(find.title);
     return got;
 }
 
