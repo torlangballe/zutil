@@ -33,13 +33,17 @@ var FontDefaultName = "Helvetica"
 
 func (s FontStyle) String() string {
 	var parts []string
-	switch s {
-	case FontStyleNormal:
+	if s&FontStyleNormal != 0 {
 		parts = append(parts, "normal")
-	case FontStyleBold:
+	}
+	if s&FontStyleBold != 0 {
 		parts = append(parts, "bold")
-	case FontStyleItalic:
+	}
+	if s&FontStyleItalic != 0 {
 		parts = append(parts, "italic")
+	}
+	if len(parts) == 0 {
+		return "normal"
 	}
 	return strings.Join(parts, " ")
 }
