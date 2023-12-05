@@ -228,7 +228,7 @@ func GetDurationAsHMSString(duration time.Duration, hours, mins, secs bool, subd
 	if h != 0 {
 		format = "%02d"
 	}
-	if mins {
+	if mins && h != 0 || m != 0 {
 		parts = append(parts, fmt.Sprintf(format, m))
 	}
 	if secs {
