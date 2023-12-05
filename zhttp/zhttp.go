@@ -59,7 +59,7 @@ const DefaultTimeoutSeconds = 15
 
 var redirectSecsTelemetry *ztelemetry.GaugeVec
 
-func init() {
+func EnableTelemetry() {
 	//	redirectSecsTelemetry = ztelemetry.NewHistogramVec("http_redirect_seconds", []float64{0.05, 0.2, 2}, "Seconds a redirect took", ztelemetry.URLBaseLabel)
 	if ztelemetry.IsRunning() {
 		redirectSecsTelemetry = ztelemetry.NewGaugeVec("http_redirect_seconds", "Seconds a redirect took", ztelemetry.URLBaseLabel)
