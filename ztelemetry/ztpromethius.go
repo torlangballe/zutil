@@ -51,7 +51,7 @@ func StartPromethiusHandling(port int) {
 	// )
 
 	// router.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
-	http.ListenAndServe(fmt.Sprint(":", port), router)
+	go http.ListenAndServe(fmt.Sprint(":", port), router)
 }
 
 func NewCounter(name, help string) Counter {
