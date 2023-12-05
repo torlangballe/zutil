@@ -88,7 +88,7 @@ func (base *Base) CustomizeQuery(query string) string {
 }
 
 func FieldPointersFromStruct(istruct interface{}, skip []string) (pointers []interface{}) {
-	ForEachColumn(istruct, skip, "", func(val reflect.Value, column string, primary bool) {
+	ForEachColumn(istruct, skip, "", func(val reflect.Value, sf reflect.StructField, column string, primary bool) {
 		// zlog.Info("FieldPointersFromStruct", column, val.CanAddr())
 		a := val.Addr()
 		v := a.Interface()
@@ -109,7 +109,7 @@ func FieldPointersFromStruct(istruct interface{}, skip []string) (pointers []int
 func FieldSettingToParametersFromStruct(istruct interface{}, skip []string, prefix string, start int) string {
 	var set string
 	var i int
-	ForEachColumn(istruct, skip, "", func(val reflect.Value, column string, primary bool) {
+	ForEachColumn(istruct, skip, "", func(val reflect.Value, sf reflect.StructField, column string, primary bool) {
 		if i != 0 {
 			set += ","
 		}
@@ -121,7 +121,7 @@ func FieldSettingToParametersFromStruct(istruct interface{}, skip []string, pref
 
 func FieldParametersFromStruct(istruct interface{}, skip []string, start int) (parameters string) {
 	var i int
-	ForEachColumn(istruct, skip, "", func(val reflect.Value, column string, primary bool) {
+	ForEachColumn(istruct, skip, "", func(val reflect.Value, sf reflect.StructField, column string, primary bool) {
 		if i != 0 {
 			parameters += ","
 		}
@@ -173,7 +173,7 @@ type FieldInfo struct {
 }
 
 func FieldValuesFromStruct(istruct interface{}, skip []string) (values []interface{}) {
-	ForEachColumn(istruct, skip, "", func(val reflect.Value, column string, primary bool) {
+	ForEachColumn(istruct, skip, "", func(val reflect.Value, sf reflect.StructField, column string, primary bool) {
 		v := val.Interface()
 		if val.Kind() == reflect.Ptr {
 			v = val.Addr()
@@ -333,6 +333,7 @@ func addTo(i *int, params *[]any, set *[]string, fieldName string, value any, fi
 	s := fmt.Sprint(column, "=$", *i)
 	(*i)++
 	*set = append(*set, s)
+	// zlog.Info("addTo:", fieldName, reflect.ValueOf(value).Kind(), value)
 	if reflect.ValueOf(value).Kind() == reflect.Slice {
 		value = pq.Array(value)
 	}

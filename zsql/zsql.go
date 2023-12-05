@@ -136,13 +136,13 @@ func FieldNamesStringFromStruct(istruct interface{}, skip []string, prefix strin
 }
 
 func FieldNamesFromStruct(s interface{}, skip []string, prefix string) (fields []string) {
-	ForEachColumn(s, skip, prefix, func(v reflect.Value, column string, primary bool) {
+	ForEachColumn(s, skip, prefix, func(v reflect.Value, sf reflect.StructField, column string, primary bool) {
 		fields = append(fields, column)
 	})
 	return
 }
 
-func ForEachColumn(s interface{}, skip []string, prefix string, got func(v reflect.Value, column string, primary bool)) {
+func ForEachColumn(s interface{}, skip []string, prefix string, got func(v reflect.Value, sf reflect.StructField, column string, primary bool)) {
 	zreflect.ForEachField(s, zreflect.FlattenIfAnonymous, func(index int, val reflect.Value, sf reflect.StructField) bool {
 		var column string
 		dbTags := zreflect.GetTagAsMap(string(sf.Tag))["db"]
@@ -165,7 +165,7 @@ func ForEachColumn(s interface{}, skip []string, prefix string, got func(v refle
 			}
 		}
 		primary := zstr.IndexOf("primary", dbTags) > 0
-		got(val, prefix+column, primary)
+		got(val, sf, prefix+column, primary)
 		return true
 	})
 }
