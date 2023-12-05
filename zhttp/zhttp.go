@@ -57,9 +57,14 @@ type Parameters struct {
 
 const DefaultTimeoutSeconds = 15
 
-// var redirectSecsTelemetry = ztelemetry.NewHistogramVec("http_redirect_seconds", []float64{0.05, 0.2, 2}, "Seconds a redirect took", ztelemetry.URLBaseLabel)
+var redirectSecsTelemetry *ztelemetry.GaugeVec
 
-var redirectSecsTelemetry = ztelemetry.NewGaugeVec("http_redirect_seconds", "Seconds a redirect took", ztelemetry.URLBaseLabel)
+func init() {
+	//	redirectSecsTelemetry = ztelemetry.NewHistogramVec("http_redirect_seconds", []float64{0.05, 0.2, 2}, "Seconds a redirect took", ztelemetry.URLBaseLabel)
+	if ztelemetry.IsRunning() {
+		redirectSecsTelemetry = ztelemetry.NewGaugeVec("http_redirect_seconds", "Seconds a redirect took", ztelemetry.URLBaseLabel)
+	}
+}
 
 func MakeParameters() Parameters {
 	return Parameters{
@@ -435,8 +440,10 @@ func GetRedirectedURL(surl string) (string, error) {
 	if err == nil && ztelemetry.IsRunning() {
 		base := znet.StripQueryAndFragment(surl)
 		labels := map[string]string{ztelemetry.URLBaseLabel: base}
-		// redirectSecsTelemetry.WithLabelValues(base).Observe(ztime.Since(start))
-		redirectSecsTelemetry.With(labels).Set(ztime.Since(start))
+		if ztelemetry.IsRunning() {
+			// redirectSecsTelemetry.WithLabelValues(base).Observe(ztime.Since(start))
+			redirectSecsTelemetry.With(labels).Set(ztime.Since(start))
+		}
 	}
 	return lastUrlQuery, err
 }

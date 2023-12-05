@@ -19,7 +19,7 @@ type HistogramVec = prometheus.HistogramVec
 const URLBaseLabel = "url_base"
 
 var (
-	registry              = prometheus.NewRegistry()
+	registry    *prometheus.Registry
 	httpBuckets []float64 = prometheus.ExponentialBuckets(0.1, 1.5, 5)
 )
 
@@ -28,11 +28,11 @@ func IsRunning() bool {
 }
 
 func StartPromethiusHandling(port int) {
+	registry = prometheus.NewRegistry()
 	if port == 0 {
 		port = 9090
 	}
 	router := mux.NewRouter()
-
 	// Add go runtime metrics and process collectors.
 	registry.MustRegister(
 		collectors.NewGoCollector(),
