@@ -24,10 +24,30 @@ type Item struct {
 	Value interface{}
 }
 
+type ItemGetter interface {
+	GetItem() Item
+}
+
 type Items []Item
 
 type ItemsGetter interface {
 	GetItems() Items
+}
+
+func ItemsFromRowGetterSlice(slice any) *Items {
+	sval := reflect.ValueOf(slice)
+	n := reflect.New(sval.Type().Elem())
+	_, got := n.Interface().(ItemGetter)
+	if !got {
+		return nil
+	}
+	var items Items
+	for i := 0; i < sval.Len(); i++ {
+		g := sval.Index(i).Interface().(ItemGetter)
+		item := g.GetItem()
+		items = append(items, item)
+	}
+	return &items
 }
 
 func (item Item) Equal(to Item) bool {
