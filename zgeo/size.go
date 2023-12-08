@@ -242,7 +242,7 @@ func (s Size) String() string { // we don't use String() since we're doing that 
 func SizeFromString(str string) (Size, error) { // we don't use String() since that's special in Go
 	var sw, sh string
 	if !zstr.SplitN(str, "x", &sw, &sh) {
-		return Size{}, errors.New("no x: " + str)
+		return Size{}, errors.New("no x parsing zgeo.Size string: " + str)
 	}
 	w, err := strconv.ParseFloat(sw, 64)
 	if err != nil {
