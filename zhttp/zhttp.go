@@ -424,7 +424,7 @@ func GetRedirectedURL(surl string) (string, error) {
 		return surl, err
 	}
 	client := http.Client{}
-	client.Timeout = time.Second * 50
+	client.Timeout = time.Second * 5
 	lastUrlQuery := surl
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) > 10 {
