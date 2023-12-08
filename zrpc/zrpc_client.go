@@ -125,7 +125,7 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 	if !rp.AuthenticationInvalid && result != nil {
 		err = json.Unmarshal(rp.Result, result)
 		if err != nil {
-			zlog.Error(err, c.AuthToken, "unmarshal", string(rp.Result))
+			zlog.Error(err, c.AuthToken, "unmarshal")
 			return nil, TransportError(err.Error())
 		}
 	}

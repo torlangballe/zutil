@@ -177,7 +177,6 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 	// return "", nil
 	for _, chapter := range m.PartNames {
 		spath := zstr.Concat("/", m.Dir, chapter)
-		// zlog.Info("OPEN", spath)
 		str, err := zfile.ReadStringFromFileInFS(m.FileSystem, spath)
 		if err != nil {
 			zlog.Error(err, spath)
@@ -272,7 +271,7 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 				parts := zstr.GetAllCaptures(headerWithLink, capture)
 				if len(parts) < 3 {
 					nstr := fmt.Sprint(capture, " ", anchorEscaped)
-					zlog.Info("Anchor:", anchorEscaped)
+					// zlog.Info("Anchor:", anchorEscaped)
 					return nstr
 				}
 				var postText string

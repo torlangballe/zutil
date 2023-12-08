@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 type Counter = prometheus.Counter
@@ -39,6 +40,7 @@ func StartPromethiusHandling(port int) {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 
+	zlog.Info("Hosting Prometheus Scraping on port", port)
 	// Expose /metrics HTTP endpoint using the created custom registry.
 	router.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{Registry: registry}))
 
