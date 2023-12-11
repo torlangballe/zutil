@@ -96,12 +96,16 @@ func (t *Templater) Preprocess(m *MarkdownConverter, markdownText, title string)
 		return errToStr(err, title, "template-parse")
 	}
 	for _, name := range m.PartNames {
-		if !strings.HasSuffix(name, "shared.md") {
+		if !strings.HasSuffix(name, SharedPageSuffix) {
 			continue
 		}
-		input, _ := zfile.ReadStringFromFileInFS(m.FileSystem, name)
+		fpath := zfile.JoinPathParts(m.Dir, name)
+		input, _ := zfile.ReadStringFromFileInFS(m.FileSystem, fpath)
 		_, err := template.New(name).Funcs(funcMap).Parse(input)
 		if zlog.OnError(err, name, "parse sub-template") {
+			continue
+		}
+		if zlog.ErrorIf(len(input) == 0, "shared-page zero size", fpath) {
 			continue
 		}
 	}

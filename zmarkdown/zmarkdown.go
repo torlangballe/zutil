@@ -30,6 +30,8 @@ const (
 	OutputPDF  OutputType = "pdf"
 	OutputMD   OutputType = "md"
 	OutputHTML OutputType = "html"
+
+	SharedPageSuffix = ".shared.md"
 )
 
 type MarkdownConverter struct {
@@ -176,6 +178,10 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 	// })
 	// return "", nil
 	for _, chapter := range m.PartNames {
+		zlog.Info("Flatten:", chapter)
+		if strings.HasSuffix(chapter, SharedPageSuffix) {
+			continue
+		}
 		spath := zstr.Concat("/", m.Dir, chapter)
 		str, err := zfile.ReadStringFromFileInFS(m.FileSystem, spath)
 		if err != nil {
@@ -210,6 +216,9 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 		out = getTableOfContents(contents)
 	}
 	for _, chapter := range m.PartNames {
+		if strings.HasSuffix(chapter, SharedPageSuffix) {
+			continue
+		}
 		spath := zstr.Concat("/", m.Dir, chapter)
 		str, err := zfile.ReadStringFromFileInFS(m.FileSystem, spath)
 		if err != nil {
