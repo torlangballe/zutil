@@ -29,7 +29,7 @@ type Setup[I comparable] struct {
 	StartJobOnExecutorFunc               func(run Run[I], ctx context.Context) error       `zui:"-"` // StartJobOnExecutorFunc is called to start a job. It is done on a goroutine and is assumed to take a while or time out.
 	StopJobOnExecutorFunc                func(run Run[I], ctx context.Context) error       `zui:"-"` // Like StartJobOnExecutorFunc but for stopping.
 	HandleSituationFastFunc              func(run Run[I], s SituationType, details string) `zui:"-"` // This function is for handling start/stop/errors and more. Must very quickly do something or spawn a go routine
-	MinimumTimeBetweenSpecificJobStarts  time.Duration
+	// MinimumTimeBetweenSpecificJobStarts  time.Duration
 }
 
 // A *Scheduler* starts *Job*s on *Executor*s, trying to balance the workload
