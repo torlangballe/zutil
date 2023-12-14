@@ -493,7 +493,9 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		}
 		hasSlack := (sinceRun <= run.Job.Duration+s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
 		var needsMilestone bool
+		var extraStr string
 		if hasSlack && s.setup.StopJobIfSinceMilestoneLessThan != 0 {
+			extraStr = ", and near milestone"
 			if run.MilestoneAt.IsZero() || time.Since(run.MilestoneAt) > s.setup.StopJobIfSinceMilestoneLessThan {
 				needsMilestone = true
 			}
@@ -502,7 +504,7 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 			if needsMilestone {
 				zlog.Warn("Ready to stop job with capacity, but waiting for milestone", run.Job.DebugName)
 			} else {
-				return true, zstr.Spaced("job duration with slack over and has capacity", unrunCost, time.Since(run.RanAt), run.Job.Duration, left, run.Job.Cost)
+				return true, zstr.Spaced("job duration with slack over and has capacity"+extraStr, unrunCost, time.Since(run.RanAt), run.Job.Duration, left, run.Job.Cost)
 			}
 		}
 		if !hasSlack {
