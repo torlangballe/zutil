@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/torlangballe/zutil/zdebug"
@@ -29,6 +30,7 @@ type Setup[I comparable] struct {
 	StartJobOnExecutorFunc               func(run Run[I], ctx context.Context) error       `zui:"-"` // StartJobOnExecutorFunc is called to start a job. It is done on a goroutine and is assumed to take a while or time out.
 	StopJobOnExecutorFunc                func(run Run[I], ctx context.Context) error       `zui:"-"` // Like StartJobOnExecutorFunc but for stopping.
 	HandleSituationFastFunc              func(run Run[I], s SituationType, details string) `zui:"-"` // This function is for handling start/stop/errors and more. Must very quickly do something or spawn a go routine
+	StopJobIfSinceMilestoneLessThan      time.Duration                                     // Only stop job if StopJobIfSinceMilestoneLessThan != 0, and time since run.MilestoneAt is less than it, up to KeepJobsBeyondAtEndUntilEnoughSlack (which also must be set)
 	// MinimumTimeBetweenSpecificJobStarts  time.Duration
 }
 
@@ -42,18 +44,19 @@ type Setup[I comparable] struct {
 // All changes to a Scheduler are done through channels
 type Scheduler[I comparable] struct {
 	// The channels are made in NewScheduler()
-	StopJobCh             chan I                 // Write a Job ID to StopJobCh to stop the job.
-	RemoveJobCh           chan I                 // Write a Job ID to RemoveJobCh to stop and remove the job.
-	AddJobCh              chan Job[I]            // Write a Job to AddJobCh to add a job. It will be started when and how possible.
-	ChangeJobCh           chan Job[I]            // Write  a Job with existing ID to ChangeJobCh to change it. It will be restarted if ChangingJobRestartsIt is true.
-	JobIsRunningCh        chan I                 // Write a JobID to JobIsRunningCh to flag it as now running. Not needed if JobIsRunningOnSuccessfullStart true.
-	AddExecutorCh         chan Executor[I]       // Write an Executor to AddExecutorCh to add an executor. Jobs will start/balance onto it as needed.
-	RemoveExecutorCh      chan I                 //  Write an executor ID to RemoveExecutorCh to remove it. Jobs on it will immediately be stopped and restarted.
-	ChangeExecutorCh      chan Executor[I]       // Wriite an executor with existing ID to ChangeExecutorCh to change it. Jobs on it will be restarted if anything but DebugName is changed.
-	FlushExecutorJobsCh   chan I                 // Write an executor ID to FlushExecutorJobsCh to restart all jobs on it.
-	SetExecutorIsAliveCh  chan I                 // Write an executor ID to SetExecutorIsAliveCh to keep it alive at least with frequency ExecutorAliveDuration.
-	SetJobsOnExecutorCh   chan JobsOnExecutor[I] // Write a list of job ids and executor id to SetJobsOnExecutorCh to update what is running on the executor. Since the executor might crash, this keeps jobs in sync.
-	SetTotalMaxJobCountCh chan int               // Change TotalMaxJobCount and refresh scheduler based on that.
+	StopJobCh               chan I                 // Write a Job ID to StopJobCh to stop the job.
+	RemoveJobCh             chan I                 // Write a Job ID to RemoveJobCh to stop and remove the job.
+	AddJobCh                chan Job[I]            // Write a Job to AddJobCh to add a job. It will be started when and how possible.
+	ChangeJobCh             chan Job[I]            // Write  a Job with existing ID to ChangeJobCh to change it. It will be restarted if ChangingJobRestartsIt is true.
+	JobIsRunningCh          chan I                 // Write a JobID to JobIsRunningCh to flag it as now running. Not needed if JobIsRunningOnSuccessfullStart true.
+	AddExecutorCh           chan Executor[I]       // Write an Executor to AddExecutorCh to add an executor. Jobs will start/balance onto it as needed.
+	RemoveExecutorCh        chan I                 //  Write an executor ID to RemoveExecutorCh to remove it. Jobs on it will immediately be stopped and restarted.
+	ChangeExecutorCh        chan Executor[I]       // Wriite an executor with existing ID to ChangeExecutorCh to change it. Jobs on it will be restarted if anything but DebugName is changed.
+	FlushExecutorJobsCh     chan I                 // Write an executor ID to FlushExecutorJobsCh to restart all jobs on it.
+	SetExecutorIsAliveCh    chan I                 // Write an executor ID to SetExecutorIsAliveCh to keep it alive at least with frequency ExecutorAliveDuration.
+	SetJobsOnExecutorCh     chan JobsOnExecutor[I] // Write a list of job ids and executor id to SetJobsOnExecutorCh to update what is running on the executor. Since the executor might crash, this keeps jobs in sync.
+	SetTotalMaxJobCountCh   chan int               // Change TotalMaxJobCount and refresh scheduler based on that.
+	SetJobHasMilestoneNowCh chan I                 // Sets job's run's milestone to now. See StopJobIfSinceMilestoneLessThan.
 
 	setup       Setup[I]
 	refreshCh   chan struct{} // Writing an empty struct to refreshCh calls stopAndStartJobs(), but without recursion (and possible locking).
@@ -89,14 +92,15 @@ type Executor[I comparable] struct {
 }
 
 type Run[I comparable] struct {
-	Job        Job[I]    `zui:"flatten"`
-	ExecutorID I         `zui:"title:ExID"`
-	Count      int       `zui:"allowempty"`
-	StartedAt  time.Time `zui:"allowempty"`
-	RanAt      time.Time `zui:"allowempty"`
-	StoppedAt  time.Time `zui:"allowempty"`
-	Removing   bool      `zui:"allowempty"`
-	Stopping   bool      `zui:"allowempty"`
+	Job         Job[I]    `zui:"flatten"`
+	ExecutorID  I         `zui:"title:ExID"`
+	Count       int       `zui:"allowempty"`
+	StartedAt   time.Time `zui:"allowempty"`
+	RanAt       time.Time `zui:"allowempty"`
+	StoppedAt   time.Time `zui:"allowempty"`
+	Removing    bool      `zui:"allowempty"`
+	Stopping    bool      `zui:"allowempty"`
+	MilestoneAt time.Time `zui:"allowempty"` // MilestoneAt is a time a significant sub-task was achieved. See StopJobIfSinceMilestoneLessThan above.
 
 	starting             bool
 	executorChangedCount int
@@ -124,7 +128,6 @@ const (
 
 func NewScheduler[I comparable]() *Scheduler[I] {
 	s := &Scheduler[I]{}
-
 	s.AddJobCh = make(chan Job[I])
 	s.RemoveJobCh = make(chan I)
 	s.StopJobCh = make(chan I)
@@ -134,14 +137,14 @@ func NewScheduler[I comparable]() *Scheduler[I] {
 	s.SetExecutorIsAliveCh = make(chan I)
 	s.SetJobsOnExecutorCh = make(chan JobsOnExecutor[I])
 	s.SetTotalMaxJobCountCh = make(chan int)
+	s.SetJobHasMilestoneNowCh = make(chan I)
 	s.ChangeExecutorCh = make(chan Executor[I])
 	s.FlushExecutorJobsCh = make(chan I)
 	s.AddExecutorCh = make(chan Executor[I])
 	s.RemoveExecutorCh = make(chan I)
 	s.AddExecutorCh = make(chan Executor[I])
-	s.refreshCh = make(chan struct{})
+	s.refreshCh = make(chan struct{}) // 10
 	s.endRunCh = make(chan I)
-
 	return s
 }
 
@@ -216,6 +219,9 @@ func (s *Scheduler[I]) selectLoop() {
 			s.setup.TotalMaxJobCount = max
 			s.startAndStopRuns()
 
+		case jobID := <-s.SetJobHasMilestoneNowCh:
+			s.setMilestoneForRun(jobID, time.Now())
+
 		case exID := <-s.SetExecutorIsAliveCh:
 			reason = "SetExecutorIsAliveCh"
 			e, _ := s.findExecutor(exID)
@@ -227,6 +233,7 @@ func (s *Scheduler[I]) selectLoop() {
 			}
 
 		case <-s.refreshCh:
+			// zlog.Warn("Refresh")
 			reason = "refreshCh"
 			s.startAndStopRuns()
 
@@ -249,9 +256,19 @@ func (s *Scheduler[I]) selectLoop() {
 	}
 }
 
+func (s *Scheduler[I]) setMilestoneForRun(jobID I, at time.Time) {
+	run, _ := s.findRun(jobID)
+	if run == nil {
+		zlog.Error(nil, "Scheduler setMilestoneForRun, not run with that job id:", jobID)
+		return
+	}
+	run.MilestoneAt = at
+	s.startAndStopRuns()
+}
+
 func (s *Scheduler[I]) Start() {
 	s.started = true
-	s.startAndStopRuns()
+	s.refreshCh <- struct{}{} // important to do this, or we could be running startAndStopRuns() in a different goroutine
 }
 
 func DefaultSetup[I comparable]() Setup[I] {
@@ -294,6 +311,9 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 	now := time.Now()
 	run, _ := s.findRun(jobID)
 	if run == nil {
+		if s.stopped {
+			return
+		}
 		zlog.Error(nil, "Scheduler stop: no run with that id", jobID, "reason to stop was:", reason, zlog.CallingStackString())
 		zlog.Assert(outsideRequest)
 		return
@@ -303,7 +323,7 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 		// zlog.Warn("stopJob refresh?", jobID, refresh)
 		// }
 		if refresh {
-			pushNonBlockingToChannel(s.refreshCh, struct{}{})
+			s.startStopViaChannelNonBlocking() // pushNonBlockingToChannel(s.refreshCh, struct{}{})
 			// if s.stopped {
 			// 	zlog.Warn("stopJob refresh after push", jobID)
 			// }
@@ -346,8 +366,6 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 			s.setup.HandleSituationFastFunc(r, RemoveJobFromExecutorFailed, err.Error())
 		}
 		s.endRunCh <- jobID
-		// s.endRunCh <- jobID
-		// s.refreshCh <- struct{}{}
 	}()
 }
 
@@ -473,11 +491,22 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		if s.setup.KeepJobsBeyondAtEndUntilEnoughSlack == 0 {
 			return true, zstr.Spaced("job duration without slack over", time.Since(run.RanAt), run.Job.Duration)
 		}
-		if left > run.Job.Cost && unrunCost == 0 {
-			return true, zstr.Spaced("job duration with slack over and has capacity", unrunCost, time.Since(run.RanAt), run.Job.Duration, left, run.Job.Cost)
+		hasSlack := (sinceRun <= run.Job.Duration+s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
+		var needsMilestone bool
+		if hasSlack && s.setup.StopJobIfSinceMilestoneLessThan != 0 {
+			if run.MilestoneAt.IsZero() || time.Since(run.MilestoneAt) > s.setup.StopJobIfSinceMilestoneLessThan {
+				needsMilestone = true
+			}
 		}
-		if sinceRun > run.Job.Duration+s.setup.KeepJobsBeyondAtEndUntilEnoughSlack {
-			return true, zstr.Spaced("job duration with slack and not enough capacity over, stopping anyway", unrunCost, time.Since(run.RanAt), run.Job.Duration, "left:", left, "rcost:", run.Job.Cost, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
+		if left > run.Job.Cost && unrunCost == 0 {
+			if needsMilestone {
+				zlog.Warn("Ready to stop job with capacity, but waiting for milestone", run.Job.DebugName)
+			} else {
+				return true, zstr.Spaced("job duration with slack over and has capacity", unrunCost, time.Since(run.RanAt), run.Job.Duration, left, run.Job.Cost)
+			}
+		}
+		if !hasSlack {
+			return true, zstr.Spaced("job duration with slack and not enough capacity over, stopping anyway", unrunCost, time.Since(run.RanAt), run.Job.Duration, "left:", left, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
 		}
 		str := zstr.Spaced("job duration with slack and not enough capacity still has slack, not stopping yet", time.Since(run.RanAt), run.Job.Duration, "left:", left, "cost:", run.Job.Cost, "unrun:", unrunCost, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack, "urn:", unrunName)
 		// zlog.Info("Job not stopped:", run.Job.DebugName, "@", e.DebugName, str)
@@ -487,8 +516,19 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 	return false, "No reason to stop"
 }
 
+var ssLock sync.Mutex
+
+var ssCount int
+
 func (s *Scheduler[I]) startAndStopRuns() {
-	// zlog.Warn("startAndStopRuns")
+	ssCount++
+	// zlog.Warn("startAndStopRuns", ssCount)
+	// defer zlog.Warn("startAndStopRuns END", ssCount)
+	if !ssLock.TryLock() {
+		panic("startAndStopRuns already running!")
+		return
+	}
+	defer ssLock.Unlock()
 	// defer zlog.Warn("startAndStopRuns done")
 	if !s.started {
 		return
@@ -511,7 +551,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			// }
 			stop, stopReason := s.shouldStopJob(r, e, capacities)
 			// if stop {
-			// zlog.Warn("ShouldStop?:", stop, r.Job.ID, r.Stopping, r.ExecutorID, e != nil, capacities)
+			// zlog.Warn("ShouldStop?:", stop, r.Job.ID, r.Stopping, r.ExecutorID, e != nil, capacities, stopReason)
 			// }
 			if stop {
 				jobStopped = true
@@ -527,6 +567,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			// zlog.Warn(i, "loop:", r.Job.ID, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
 			if r.ExecutorID == s.zeroID && !r.Stopping && r.StartedAt.IsZero() {
 				if oldestRun == nil || r.StoppedAt.Sub(oldestRun.StoppedAt) > 0 {
+					// zlog.Warn(i, "set oldestRun:", s.runs[i].Job.ID, ssCount)
 					oldestRun = &s.runs[i]
 				}
 			}
@@ -564,10 +605,15 @@ func (s *Scheduler[I]) startAndStopRuns() {
 		}
 		if !s.stopped {
 			if oldestRun != nil {
+				// zlog.Warn("oldestRun?:", oldestRun != nil, ssCount, s.setup.TotalMaxJobCount, active)
 				if s.setup.TotalMaxJobCount != -1 && active >= s.setup.TotalMaxJobCount {
 					s.setup.HandleSituationFastFunc(*oldestRun, MaximumJobsReached, zstr.Spaced(active, ">", s.setup.TotalMaxJobCount))
 				} else {
-					s.startJob(oldestRun, capacities)
+					// zlog.Warn("StartJob!")
+					if !s.startJob(oldestRun, capacities) {
+						// zlog.Warn("StartJob didn't start, refresh")
+						s.startStopViaChannelNonBlocking() //						pushNonBlockingToChannel(s.refreshCh, struct{}{})
+					}
 					return // we don't need to set a timer if we call startJob
 				}
 			}
@@ -630,7 +676,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			}
 		}
 		if !s.stopped && !s.timerOn && (len(s.executors) != 0 && len(s.runs) != 0) && starting == 0 {
-			zlog.Error(nil, "No timer, yet we have runs or executors:", len(s.runs), len(s.executors), s.CountJobs(s.zeroID), s.CountRunningJobs(s.zeroID), "starting:", starting, s.setup.ExecutorAliveDuration)
+			// zlog.Error(nil, "No timer, yet we have runs or executors:", len(s.runs), len(s.executors), s.CountJobs(s.zeroID), s.CountRunningJobs(s.zeroID), "starting:", starting, s.setup.ExecutorAliveDuration)
 		}
 		s.timerOn = false
 		return
@@ -638,7 +684,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 	d := -time.Since(nextTimerTime)
 	// zlog.Warn("SetNextTimer:", d)
 	// if d < -time.Second {
-	if d <= 9 { //time.Millisecond {
+	if d <= -9*time.Millisecond {
 		limit := zlog.Limit("zsched.NextTime.", timerJob)
 		zlog.Warn(limit, "NextTime set to past:", d, "for:", timerJob, nextReason)
 	}
@@ -666,7 +712,18 @@ func (c capacity) unusedRatio() float64 {
 	return 1 - c.usedRatio()
 }
 
+func (s *Scheduler[I]) startStopViaChannelNonBlocking() {
+	select {
+	case s.refreshCh <- struct{}{}:
+		break
+	default:
+		break
+	}
+}
+
+// pushNonBlockingToChannel pushes a value to a channel without blocking/waiting
 func pushNonBlockingToChannel[T any](ch chan T, val T) {
+	// ch <- val // lets just do it since we made channel
 	select {
 	case ch <- val:
 		break
@@ -674,6 +731,7 @@ func pushNonBlockingToChannel[T any](ch chan T, val T) {
 		break
 	}
 }
+
 func (s *Scheduler[I]) calculateLoadOfUsableExecutors() map[I]capacity {
 	m := map[I]capacity{}
 	runnableEx := s.runnableExecutorIDs()
@@ -709,7 +767,7 @@ func (s *Scheduler[I]) calculateLoadOfUsableExecutors() map[I]capacity {
 	return m
 }
 
-func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
+func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 	jobID := run.Job.ID
 	var bestExID I
 	var bestStartingCount = -1
@@ -772,7 +830,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 	if bestExID == s.zeroID {
 		// zlog.Warn("NoWorkersToRunJob:", run.Job.DebugName, str, "loads:", len(load))
 		s.setup.HandleSituationFastFunc(*run, NoWorkersToRunJob, str)
-		return
+		return false
 	}
 	e, _ := s.findExecutor(bestExID)
 	// stop := s.shouldStopJob(*run, e, load)
@@ -822,8 +880,9 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) {
 		}
 	}()
 	go func() {
-		s.refreshCh <- struct{}{} // let's do this via a channel, or we can get recursive, which looks weird when debugging
+		s.refreshCh <- struct{}{} // Do this via a goroutine or it gets stuck, even with s.startStopViaChannelNonBlocking()
 	}()
+	return true
 }
 
 func (s *Scheduler[I]) changeExecutor(e Executor[I]) {
@@ -1073,7 +1132,7 @@ func (s *Scheduler[I]) Stop() {
 		zslice.RemoveAt(&s.runs, i)
 		i--
 	}
-	s.startAndStopRuns()
+	s.refreshCh <- struct{}{}
 }
 
 func (s *Scheduler[I]) CopyOfSetup() Setup[I] {

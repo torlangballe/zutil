@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
 )
 
@@ -271,7 +273,6 @@ func testPauseWithTwoExecutors(t *testing.T) {
 	e2 := makeExecutor(s, 2, 20)
 	e2.Paused = true
 	s.ChangeExecutorCh <- e2
-	// zlog.Warn("After pause")
 	time.Sleep(time.Millisecond * 100)
 	c1 = s.CountRunningJobs(1)
 	c2 = s.CountRunningJobs(2)
@@ -491,6 +492,115 @@ func testPurgeFromSlowStarting(t *testing.T) {
 	stopAndCheckScheduler(s, t)
 }
 
+func setupTestPlayWithSlackAfterDurationEnd() *Scheduler[int64] {
+	s := newScheduler(0, 1, 1, 10, func(setup *Setup[int64]) {
+		setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
+			if run.Job.ID == 2 {
+				// zlog.Warn("Start slow job")
+				time.Sleep(time.Minute)
+				return nil
+			}
+			time.Sleep(time.Millisecond)
+			return nil
+		}
+	})
+	job := makeJob(s, int64(1), time.Second, 1)
+	s.AddJobCh <- job
+	time.Sleep(time.Millisecond * 10)
+	jobSlow := makeJob(s, 2, time.Second, 1)
+	s.AddJobCh <- jobSlow
+	return s
+}
+
+func testPlayWithSlackLongWait(t *testing.T) {
+	fmt.Println("testPlayWithSlackLongWait")
+	s := setupTestPlayWithSlackAfterDurationEnd()
+	s.setup.KeepJobsBeyondAtEndUntilEnoughSlack = time.Second * 20
+	time.Sleep(time.Millisecond * 100)
+	r1, _ := s.GetRunForID(1)
+	r2, _ := s.GetRunForID(2)
+	compare(t, "Job1 Run count not 1:", r1.Count, 1)
+	compare(t, "Job2 Run count not 1:", r2.Count, 1) // even though not running yet, still has count==1
+	time.Sleep(time.Second * 2)
+	r1, _ = s.GetRunForID(1)
+	compare(t, "Job1 Run count not 1:", r1.Count, 1) // should still be 1, since too too slow to finish playing
+	// zlog.Warn("Done**************************\n\n")
+	stopAndCheckScheduler(s, t)
+}
+
+func testPlayWithSlackShortWait(t *testing.T) {
+	fmt.Println("testPlayWithSlackShortWait")
+	s := setupTestPlayWithSlackAfterDurationEnd()
+	s.setup.KeepJobsBeyondAtEndUntilEnoughSlack = time.Second * 1
+	time.Sleep(time.Millisecond * 100)
+	r1, _ := s.GetRunForID(1)
+	compare(t, "Job1 Run count not 1:", r1.Count, 1)
+	time.Sleep(time.Second * 2)
+	count := s.CountRunningJobs(0)
+	compare(t, "Running jobs not 0:", count, 0) // should be 0, as 1 is blocked by 2 starting, and 2 hasn't started yet
+	// zlog.Warn("Done**************************\n\n")
+	stopAndCheckScheduler(s, t)
+}
+
+func setupTestPlayForMilestone() *Scheduler[int64] {
+	s := newScheduler(0, 1, 1, 10, func(setup *Setup[int64]) {
+		setup.KeepJobsBeyondAtEndUntilEnoughSlack = time.Second * 2
+		setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
+			time.Sleep(time.Millisecond * 10)
+			return nil
+		}
+	})
+	job := makeJob(s, int64(1), time.Second, 1)
+	s.AddJobCh <- job
+	return s
+}
+
+func testPlayWithSlackLongWaitAndMilestone(t *testing.T) {
+	fmt.Println("testPlayWithSlackLongWaitAndMilestone")
+	timings := []float64{
+		1,   // normal 1 second until stop
+		2.5, // we setup StopJobIfSinceMilestoneLessThan before and set SetJobHasMilestoneNowCh at 2.5, so it happens here.
+		3.5, // We turn off StopJobIfSinceMilestoneLessThan, so next stop is a second later
+		6.5, // We turn it on again, but Milestone is so old, it stops when KeepJobsBeyondAtEndUntilEnoughSlack kicks in
+	}
+	start := time.Now()
+	s := setupTestPlayForMilestone()
+	i := 0
+	ztimer.StartIn(1.2, func() {
+		// zlog.Warn("SetMilestoneDur")
+		s.setup.StopJobIfSinceMilestoneLessThan = time.Second
+		s.refreshCh <- struct{}{}
+	})
+	ztimer.StartIn(2.5, func() {
+		s.SetJobHasMilestoneNowCh <- 1 // we set it just had a milestone (thumb in qtt), so should
+	})
+	ztimer.StartIn(2.7, func() {
+		s.setup.StopJobIfSinceMilestoneLessThan = 0
+	})
+	ztimer.StartIn(3.7, func() {
+		s.setup.StopJobIfSinceMilestoneLessThan = time.Second
+	})
+	var done bool
+	s.setup.StopJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
+		if i >= len(timings) {
+			done = true
+			return nil
+		}
+		since := ztime.Since(start)
+		diff := math.Abs(since - timings[i])
+		if diff > 0.1 {
+			t.Error("timing #", i, since, "not near enough to:", timings[i])
+		}
+		// zlog.Warn("Stopped:", since)
+		i++
+		return nil
+	}
+	for !done {
+		time.Sleep(time.Millisecond * 200)
+	}
+	stopAndCheckScheduler(s, t)
+}
+
 func TestAll(t *testing.T) {
 	testEnoughRunning(t)
 	testPauseWithTwoExecutors(t)
@@ -506,4 +616,7 @@ func TestAll(t *testing.T) {
 	testOverMax(t)
 	testPurgeFromRunningList(t)
 	testPurgeFromSlowStarting(t)
+	testPlayWithSlackLongWait(t)
+	testPlayWithSlackShortWait(t)
+	testPlayWithSlackLongWaitAndMilestone(t)
 }
