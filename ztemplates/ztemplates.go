@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -23,6 +24,7 @@ type Handler struct {
 	basePath       string
 	mainTemplate   *template.Template
 	fileSystem     fs.FS
+	lock           sync.Mutex
 }
 
 func NewHandler(base string, fileSystem fs.FS) (h *Handler) {
@@ -97,6 +99,9 @@ func (h *Handler) loadTemplate(name string) error { // https://stackoverflow.com
 	if filepath.Ext(name) != ".gohtml" {
 		return zlog.NewError("not template:", name)
 	}
+
+	h.lock.Lock()
+	defer h.lock.Unlock()
 	_, loaded := h.templateLoaded.GetSet(name, true)
 	if loaded {
 		return nil
