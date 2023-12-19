@@ -17,11 +17,11 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
-type Dict map[string]interface{}
+type Dict map[string]any
 
 type Item struct {
 	Name  string
-	Value interface{}
+	Value any
 }
 
 type ItemGetter interface {
@@ -93,7 +93,7 @@ func (d Dict) Join(equal, sep string) string {
 func (d Dict) Copy() Dict {
 	out := Dict{}
 	for k, v := range d {
-		sub, got := v.(map[string]interface{})
+		sub, got := v.(map[string]any)
 		if got {
 			out[k] = Dict(sub).Copy()
 			continue
@@ -117,8 +117,8 @@ func (d Dict) SortedKeys() (keys []string) {
 	return
 }
 
-func (d Dict) Values() []interface{} {
-	values := make([]interface{}, len(d), len(d))
+func (d Dict) Values() []any {
+	values := make([]any, len(d), len(d))
 	i := 0
 	for _, v := range d {
 		values[i] = v
@@ -156,7 +156,7 @@ func FromString(str, assigner, separator string) Dict {
 	return d
 }
 
-func FromStruct(structure interface{}, lowerFirst bool) Dict {
+func FromStruct(structure any, lowerFirst bool) Dict {
 	d := Dict{}
 	options := zreflect.Options{UnnestAnonymous: true, Recursive: true}
 	rootItems, err := zreflect.ItterateStruct(structure, options)
@@ -266,7 +266,7 @@ func (d Dict) Value() (driver.Value, error) {
 	return json.Marshal(d)
 }
 
-func (d *Dict) Scan(val interface{}) error {
+func (d *Dict) Scan(val any) error {
 	// zlog.Info("JSONStringInterfaceMap scan", val)
 	if val == nil {
 		*d = Dict{}
@@ -294,7 +294,7 @@ func (d Items) FindName(name string) *Item {
 	return nil
 }
 
-func (d Items) FindValue(v interface{}) *Item {
+func (d Items) FindValue(v any) *Item {
 	var empty *Item
 	for i, di := range d {
 		// zlog.Info("FV:", di.Value, "==", v, reflect.DeepEqual(di.Value, v), di.Value == nil, v == nil, reflect.ValueOf(v).Kind(), reflect.ValueOf(v).Type())
@@ -316,16 +316,16 @@ func (d *Items) RemoveAll() {
 	*d = (*d)[:0]
 }
 
-func (d *Items) Add(name string, value interface{}) {
+func (d *Items) Add(name string, value any) {
 	*d = append(*d, Item{name, value})
 }
 
-func (d *Items) AddAtStart(name string, value interface{}) {
+func (d *Items) AddAtStart(name string, value any) {
 	*d = append([]Item{Item{name, value}}, (*d)...)
 }
 
 // GetItem get's an item at index i. Used to be compliant with NamedValues interface
-func (d Items) GetItem(i int) (id, name string, value interface{}) {
+func (d Items) GetItem(i int) (id, name string, value any) {
 	if i >= len(d) {
 		return "", "", nil
 	}
