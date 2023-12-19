@@ -19,9 +19,11 @@ import (
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zgraphana"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
+	"github.com/torlangballe/zutil/ztelemetry"
 )
 
 type DebugView struct {
@@ -118,6 +120,14 @@ func NewDebugView(urlStub string, otherIPs map[string]string) *DebugView {
 		})
 		return true
 	})
+	frame = makeFrame(&v.StackView, "Telemetry")
+	grid := zcontainer.GridViewNew("options", 2)
+	grid.Spacing.H = 0
+	frame.Add(grid, zgeo.TopLeft|zgeo.Expand)
+	AddKVOptionToGrid(grid, zgraphana.APIKey)
+	AddKVOptionToGrid(grid, zgraphana.URLPrefix)
+	AddKVOptionToGrid(grid, zgraphana.DashboardUID)
+	AddKVOptionToGrid(grid, ztelemetry.PrometheusPort)
 	v.SetMinSize(zgeo.SizeF(400, 400))
 	return v
 }
