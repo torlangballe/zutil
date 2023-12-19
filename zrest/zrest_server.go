@@ -22,7 +22,6 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
-	"github.com/torlangballe/zutil/ztelemetry"
 )
 
 var (
@@ -32,6 +31,8 @@ var (
 	StaticFolderPathFunc = func(add string) string {
 		return "www"
 	}
+	HasTelemetryFunc     = func() bool { return false }
+	WrapForTelemetryFunc func(handlerName string, handlerFunc http.HandlerFunc) http.HandlerFunc
 )
 
 // Adds CORS headers to response if appropriate.
@@ -150,8 +151,8 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 	defer zlog.HandlePanic(false)
 	if router == nil {
 		// zlog.Info("AddSubHandler no router:", pattern)
-		if ztelemetry.IsRunning() {
-			thandler := router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, h.ServeHTTP))
+		if HasTelemetryFunc() {
+			thandler := router.HandleFunc(pattern, WrapForTelemetryFunc(pattern, h.ServeHTTP))
 			http.Handle(pattern, thandler.GetHandler())
 		} else {
 			http.Handle(pattern, h)
@@ -184,8 +185,8 @@ func AddFileHandler(router *mux.Router, pattern, dir string, override func(w htt
 		}
 		zlog.Error(nil, "no correct dir for serving:", req.URL.Path, dir, pattern)
 	}
-	if ztelemetry.IsRunning() {
-		return AddSubHandler(router, pattern, ztelemetry.WrapHandler(pattern, handlerFunc))
+	if HasTelemetryFunc() {
+		return AddSubHandler(router, pattern, WrapForTelemetryFunc(pattern, handlerFunc))
 	}
 	return AddSubHandler(router, pattern, FuncHandler(handlerFunc))
 }
@@ -195,17 +196,17 @@ func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, 
 	// zlog.Info("AddHandler:", pattern)
 	defer zlog.HandlePanic(false)
 	// if router == nil {
-	// 	if ztelemetry.IsRunning() {
+	// 	if HasTelemetryFunc() {
 	// 		http.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
-	// 			router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, f)) // router is zero!!??
+	// 			router.HandleFunc(pattern, WrapForTelemetryFunc(pattern, f)) // router is zero!!??
 	// 		})
 	// 	} else {
 	// 		router.HandleFunc(pattern, f)
 	// 	}
 	// 	return nil
 	// }
-	if ztelemetry.IsRunning() {
-		return router.HandleFunc(pattern, ztelemetry.WrapHandler(pattern, f))
+	if HasTelemetryFunc() {
+		return router.HandleFunc(pattern, WrapForTelemetryFunc(pattern, f))
 	}
 	return router.HandleFunc(pattern, f)
 }

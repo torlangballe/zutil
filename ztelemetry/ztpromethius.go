@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/torlangballe/zutil/zkeyvalrpc"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -16,22 +17,25 @@ type Counter = prometheus.Counter
 type Gauge = prometheus.Gauge
 type GaugeVec = prometheus.GaugeVec
 type HistogramVec = prometheus.HistogramVec
+type SummaryVec = prometheus.SummaryVec
 
 const URLBaseLabel = "url_base"
 
 var (
-	registry    *prometheus.Registry
-	httpBuckets []float64 = prometheus.ExponentialBuckets(0.1, 1.5, 5)
+	registry       *prometheus.Registry
+	httpBuckets    []float64 = prometheus.ExponentialBuckets(0.1, 1.5, 5)
+	PrometheusPort           = zkeyvalrpc.NewOption[int]("PrometheusPort", 9090)
 )
 
 func IsRunning() bool {
 	return registry != nil
 }
 
-func StartPromethiusHandling(port int) {
+func StartPrometheusHandling() {
 	registry = prometheus.NewRegistry()
+	port := PrometheusPort.Get()
 	if port == 0 {
-		port = 9090
+		return
 	}
 	router := mux.NewRouter()
 	// Add go runtime metrics and process collectors.
@@ -93,6 +97,17 @@ func NewHistogramVec(name string, buckets []float64, help string, labelNames ...
 		}, labelNames)
 	registry.MustRegister(h)
 	return h
+}
+
+func NewSummaryVec(name string, help string, labelNames ...string) *SummaryVec {
+	s := prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			// Namespace: "zui",
+			Name: name,
+			Help: help,
+		}, labelNames)
+	registry.MustRegister(s)
+	return s
 }
 
 func GaugeVecSetWithLabels(g GaugeVec, val float64, labels map[string]string) {
