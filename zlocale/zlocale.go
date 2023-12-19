@@ -14,11 +14,11 @@ import (
 
 // TODO: Move out of zui?
 var (
-	IsMondayFirstInWeek          = zkeyvalue.Option[bool]{Key: "ztime.IsMondayFirstInWeek", Default: true}
-	IsShowWeekNumbersInCalendars = zkeyvalue.Option[bool]{Key: "ztime.IsShowWeekNumbersInCalendars", Default: true}
-	IsUse24HourClock             = zkeyvalue.Option[bool]{Key: "ztime.IsUse24HourClock", Default: true}
-	IsShowMonthBeforeDay         = zkeyvalue.Option[bool]{Key: "ztime.IsShowMonthBeforeDay", Default: false}
-	DisplayServerTime            = zkeyvalue.Option[bool]{Key: "ztime.DisplayServerTime", Default: false}
+	IsMondayFirstInWeek          = zkeyvalue.NewOption[bool](nil, "ztime.IsMondayFirstInWeek", true)
+	IsShowWeekNumbersInCalendars = zkeyvalue.NewOption[bool](nil, "ztime.IsShowWeekNumbersInCalendars", true)
+	IsUse24HourClock             = zkeyvalue.NewOption[bool](nil, "ztime.IsUse24HourClock", true)
+	IsShowMonthBeforeDay         = zkeyvalue.NewOption[bool](nil, "ztime.IsShowMonthBeforeDay", false)
+	DisplayServerTime            = zkeyvalue.NewOption[bool](nil, "ztime.DisplayServerTime", false)
 )
 
 func GetDeviceLanguageCode() string {
