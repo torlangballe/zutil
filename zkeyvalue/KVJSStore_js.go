@@ -9,40 +9,60 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
-func (k Store) getLocalStorage() js.Value {
+type JSStore struct {
+	Store
+}
+
+type JSRawStore struct {
+	SessionOnly bool // if true, only for while a "session" is open.
+}
+
+var (
+	DefaultStore        *JSStore
+	DefaultSessionStore *JSStore
+)
+
+func NewJSStore(session bool) *JSStore {
+	s := &JSStore{}
+	var jsRaw JSRawStore
+	jsRaw.SessionOnly = session
+	s.Raw = &jsRaw
+	return s
+}
+
+func (k *JSRawStore) getLocalStorage() js.Value {
 	if k.SessionOnly {
 		return js.Global().Get("sessionStorage")
 	}
 	return js.Global().Get("localStorage")
 }
 
-func (s Store) GetItemAsAny(key string) (any, bool) {
+func (s *JSRawStore) RawGetItemAsAny(key string) (any, bool) {
 	var i int64
 	var f float64
 	var b bool
 	var str string
-	got := s.GetItem(key, &i)
+	got := s.RawGetItem(key, &i)
 	if got {
 		return i, true
 	}
-	got = s.GetItem(key, &f)
+	got = s.RawGetItem(key, &f)
 	if got {
 		return f, true
 	}
-	got = s.GetItem(key, &b)
+	got = s.RawGetItem(key, &b)
 	if got {
 		return b, true
 	}
-	got = s.GetItem(key, &str)
+	got = s.RawGetItem(key, &str)
 	if got {
 		return str, true
 	}
 	return nil, false
 }
 
-func (s Store) GetItem(key string, v any) bool {
+func (s *JSRawStore) RawGetItem(key string, v any) bool {
 	var err error
-	s.postfixKey(&key)
 	local := s.getLocalStorage()
 	o := local.Get(key)
 
@@ -95,14 +115,38 @@ func (s Store) GetItem(key string, v any) bool {
 	return false
 }
 
-func (k *Store) SetItem(key string, v any, sync bool) error {
-	k.postfixKey(&key)
+func (k *JSRawStore) RawSetItem(key string, v any, sync bool) error {
 	local := k.getLocalStorage()
 	local.Set(key, v)
 	return nil
 }
 
-func (k Store) RemoveForKey(key string, sync bool) {
-	k.postfixKey(&key)
+func (k JSRawStore) RawRemoveForKey(key string, sync bool) {
 	k.getLocalStorage().Call("removeItem", key)
+}
+
+/////////////
+
+func (s *JSStore) GetItem(key string, v any) bool {
+	s.postfixKey(&key)
+	return s.Raw.RawGetItem(key, v)
+}
+
+func (s *JSStore) GetItemAsAny(key string) (any, bool) {
+	s.postfixKey(&key)
+	return s.Raw.RawGetItemAsAny(key)
+}
+
+func (k *JSStore) SetItem(key string, v any, sync bool) error {
+	k.postfixKey(&key)
+	return k.Raw.RawSetItem(key, v, sync)
+}
+
+func (k JSStore) RemoveForKey(key string, sync bool) {
+	k.postfixKey(&key)
+	k.Raw.RawRemoveForKey(key, sync)
+}
+
+func NewJSOption[V any](store Storer, key string, val V) *Option[V] {
+	return NewOption(DefaultStore, key, val)
 }
