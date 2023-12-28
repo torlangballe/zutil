@@ -116,43 +116,8 @@ func GetHourAndAM(t time.Time) (hour int, am bool) {
 	return
 }
 
-/*
-// GetFloatingHour returns the hour, min, secs as hours with a decimal fraction
-
-	func GetFloatingHour(t, base time.Time) float64 {
-		h := t.Hour()
-		m := t.Minute()
-		s := t.Second()
-		if !base.IsZero() {
-			_, _, tday := t.Date()
-			_, _, bday := base.Date()
-			if tday != bday {
-				if base.After(t) {
-					h -= 24
-				} else {
-					h += 24
-				}
-			}
-		}
-		hour := float64(h) + float64(m)/60.0 + float64(s)/3600.0
-		return hour
-	}
-*/
-
 func IsBigTime(t time.Time) bool {
 	return t.UTC() == BigTime
-}
-
-func GetTimeWithServerLocation(t time.Time) time.Time {
-	if !zlocale.DisplayServerTime.Get() {
-		//		zlog.Info("GetTimeWithServerLocation", t, ServerTimezoneOffsetSecs, t.Location())
-		t = t.Local()
-		return t
-	}
-	// zlog.Info("GetTimeWithServerLocation", t, ServerTimezoneOffsetSecs)
-	name := fmt.Sprintf("UTC%+f", float64(ServerTimezoneOffsetSecs)/3600)
-	loc := time.FixedZone(name, ServerTimezoneOffsetSecs)
-	return t.In(loc)
 }
 
 func GetNice(t time.Time, secs bool) string {
@@ -168,7 +133,7 @@ func GetNice(t time.Time, secs bool) string {
 	if secs {
 		f += ":05"
 	}
-	serverTime := zlocale.DisplayServerTime.Get()
+	serverTime := zlocale.IsDisplayServerTime.Get()
 	if serverTime {
 		f += "-07"
 	}
@@ -246,7 +211,6 @@ func GetDurationAsHMSString(duration time.Duration, hours, mins, secs bool, subd
 
 func GetSecsFromHMSString(str string, hour, min, sec bool) (float64, error) {
 	var secs float64
-
 	parts := strings.Split(str, ":")
 	for _, p := range parts {
 		n, err := strconv.ParseFloat(strings.TrimSpace(p), 32)
