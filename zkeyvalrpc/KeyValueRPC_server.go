@@ -5,7 +5,6 @@ package zkeyvalrpc
 import (
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zkeyvalue"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc"
 )
 
@@ -18,65 +17,42 @@ var (
 
 func Init(storePath string) {
 	rpcStore.Load(storePath)
+	for key, val := range rpcStore.DictRawStore().All() {
+		// zlog.Info("zkeyvalrpc load:", key, val)
+		f, got := externalChangeHandlers.Get(key)
+		if got {
+			f(key, val, false)
+		}
+	}
 }
 
-func NewOption[V any](key string, val V) *zkeyvalue.Option[V] {
-	return zkeyvalue.NewOption[V](rpcStore, key, val)
+func NewOption[V comparable](key string, val V) *zkeyvalue.Option[V] {
+	o := zkeyvalue.NewOption[V](rpcStore, key, val)
+	AddExternalChangedHandler(key, func(key string, value any, isLoad bool) {
+		// zlog.Info("zkeyvalrpc ExtHandler:", key)
+		o.SetAny(value, true)
+	})
+	o.AddChangedHandler(func() {
+		// zlog.Info("keyvalrpc changed:", key)
+		zrpc.SetResourceUpdated(ResourceID, "")
+	})
+	return o
 }
 
-func (KeyValueRPCCalls) ReadStore(ci *zrpc.ClientInfo, in *zrpc.Unused, store *zdict.Dict) error {
-	*store = rpcStore.GetAllForPrefix(ci.Token + "/")
-	zlog.Info("zkeyvalrpc ReadStore:", store)
+func (KeyValueRPCCalls) GetAll(in *zrpc.Unused, store *zdict.Dict) error {
+	drs := rpcStore.DictRawStore()
+	*store = drs.All()
 	return nil
 }
 
 func (KeyValueRPCCalls) SetItem(ci *zrpc.ClientInfo, kv zdict.Item, result *zrpc.Unused) error {
-	rpcStore.SetItem(ci.Token+"/"+kv.Name, kv.Value, true)
+	// zlog.Info("zkeyvalrpc SetItem1:", kv)
+	rpcStore.SetItem(kv.Name, kv.Value, true)
+	f, got := externalChangeHandlers.Get(kv.Name)
+	if got {
+		f(kv.Name, kv.Value, true)
+	}
+	// zlog.Info("zkeyvalrpc SetItem:", rpcStore.DictRawStore().All())
+	rpcStore.Save()
 	return nil
 }
-
-// func (s Store) GetItem(key string, pointer interface{}) bool {
-// 	gval, got := s.GetItemAsAny(key)
-// 	if got {
-// 		reflect.ValueOf(pointer).Elem().Set(reflect.ValueOf(gval))
-// 		return true
-// 	}
-// 	return false
-// }
-
-// func (s Store) GetItemAsAny(key string) (any, bool) {
-// 	s.postfixKey(&key)
-// 	lock.Lock()
-// 	defer lock.Unlock()
-// 	gval, got := dict[key]
-// 	return gval, got
-// }
-
-// func (s *Store) SetItem(key string, v any, sync bool) error {
-// 	s.postfixKey(&key)
-// 	lock.Lock()
-// 	dict[key] = v
-// 	lock.Unlock()
-// 	if sync {
-// 		s.save()
-// 	}
-// 	return nil
-// }
-
-// func (s *Store) save() error {
-// 	lock.Lock()
-// 	err := zjson.MarshalToFile(dict, s.path)
-// 	zlog.OnError(err, "save", s.path)
-// 	lock.Unlock()
-// 	return err
-// }
-
-// func (s *Store) RemoveForKey(key string, sync bool) {
-// 	s.postfixKey(&key)
-// 	lock.Lock()
-// 	delete(dict, key)
-// 	lock.Unlock()
-// 	if sync {
-// 		s.save()
-// 	}
-// }

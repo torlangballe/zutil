@@ -188,7 +188,9 @@ func (s Store) postfixKey(key *string) {
 
 func (s Store) GetItem(key string, v any) bool {
 	s.postfixKey(&key)
-	return s.Raw.RawGetItem(key, v)
+	got := s.Raw.RawGetItem(key, v)
+	// zlog.Info("S.GetItem", key, reflect.ValueOf(v).Elem())
+	return got
 }
 
 func (s Store) GetItemAsAny(key string) (any, bool) {
@@ -198,5 +200,5 @@ func (s Store) GetItemAsAny(key string) (any, bool) {
 
 func (s Store) SetItem(key string, v any, sync bool) error {
 	s.postfixKey(&key)
-	return s.SetItem(key, v, sync)
+	return s.Raw.RawSetItem(key, v, sync)
 }

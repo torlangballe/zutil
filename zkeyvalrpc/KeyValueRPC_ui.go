@@ -7,7 +7,6 @@ import (
 	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc"
-	"github.com/torlangballe/zutil/ztimer"
 )
 
 type RPCStore struct {
@@ -16,25 +15,49 @@ type RPCStore struct {
 
 var rpcStore = newRPCStore()
 
+func Init() {
+	zrpc.RegisterPollGetter(ResourceID, getAll)
+	zrpc.RegisterResources(ResourceID)
+}
+
 func newRPCStore() *RPCStore {
 	s := &RPCStore{}
 	drs := zkeyvalue.NewDictRawStore()
 	s.Store.Raw = drs
-	var getDict zdict.Dict
-	ztimer.StartIn(0.1, func() { // make sure MainClient is set up
-		err := zrpc.MainClient.Call("KeyValueRPCCalls.ReadStore", nil, &getDict)
-		if zlog.OnError(err) {
-			return
-		}
-		drs.Set(getDict)
-	})
 	return s
 }
 
-func NewOption[V any](key string, val V) *zkeyvalue.Option[V] {
+func getAll() {
+	go func() {
+		var dict zdict.Dict
+		err := zrpc.MainClient.Call("KeyValueRPCCalls.GetAll", nil, &dict)
+		if zlog.OnError(err) {
+			return
+		}
+		old := rpcStore.Raw.(*zkeyvalue.DictRawStore).All()
+		for k, v := range dict {
+			oldVal, got := old[k]
+			if !got || oldVal != v {
+				externalChangeHandlers.ForAll(func(key string, f func(key string, value any, isLoad bool)) {
+					f(k, v, true)
+				})
+				old[k] = v
+			}
+		}
+		drs := rpcStore.Raw.(*zkeyvalue.DictRawStore)
+		drs.Set(dict)
+
+	}()
+}
+
+func NewOption[V comparable](key string, val V) *zkeyvalue.Option[V] {
 	o := zkeyvalue.NewOption[V](rpcStore, key, val)
-	o.SetChangedHandler(rpcStore, func() {
-		rpcStore.SetItem(o.Key, o.Get(), true)
+	AddExternalChangedHandler(key, func(inkey string, value any, isLoad bool) {
+		if inkey == key {
+			// zlog.Info("kvrpc got:", inkey, value, o.Get())
+			o.SetAny(value, true)
+			// zlog.Info("kvrpc got2:", inkey, value, o.Get())
+		}
 	})
 	return o
 }
@@ -48,6 +71,7 @@ func (s *RPCStore) GetItemAsAny(key string) (any, bool) {
 }
 
 func (s *RPCStore) SetItem(key string, v any, sync bool) error {
+	// zlog.Info("RPCStore SetItem:", key)
 	var item zdict.Item
 	item.Name = key
 	item.Value = v

@@ -22,6 +22,11 @@ var (
 	DefaultSessionStore *JSStore
 )
 
+func init() {
+	DefaultStore = NewJSStore(false)
+	DefaultSessionStore = NewJSStore(true)
+}
+
 func NewJSStore(session bool) *JSStore {
 	s := &JSStore{}
 	var jsRaw JSRawStore
@@ -128,6 +133,7 @@ func (k JSRawStore) RawRemoveForKey(key string, sync bool) {
 /////////////
 
 func (s *JSStore) GetItem(key string, v any) bool {
+	// zlog.Info("JSStore GetItem:", zlog.Pointer(s), key)
 	s.postfixKey(&key)
 	return s.Raw.RawGetItem(key, v)
 }
@@ -147,6 +153,6 @@ func (k JSStore) RemoveForKey(key string, sync bool) {
 	k.Raw.RawRemoveForKey(key, sync)
 }
 
-func NewJSOption[V any](store Storer, key string, val V) *Option[V] {
+func NewJSOption[V comparable](key string, val V) *Option[V] {
 	return NewOption(DefaultStore, key, val)
 }

@@ -4,6 +4,7 @@ package zguiutil
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
@@ -15,9 +16,7 @@ import (
 	"github.com/torlangballe/zui/ztext"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zbool"
-	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
@@ -31,15 +30,17 @@ func makeText(isPassword bool, val any, cols int) *ztext.TextView {
 		style.KeyboardType = zkeyboard.TypePassword
 	}
 	v := ztext.NewView(str, style, cols, 1)
+	v.UpdateSecs = 4
 	return v
 }
 
-func CreateViewForKVOption[V any](option *zkeyvalue.Option[V]) zview.View {
+func CreateViewForKVOption[V comparable](option *zkeyvalue.Option[V]) zview.View {
 	var view zview.View
 	v := option.Get()
 	rval := reflect.ValueOf(v)
 	kind := zreflect.KindFromReflectKindAndType(rval.Kind(), rval.Type())
-	zlog.Info("CreateViewForKVOption:", option.Key, option.Get())
+	id := rand.Int63()
+	// zlog.Info("CreateViewForKVOption:", option.Key, option.Get(), zlog.Pointer(option))
 	switch kind {
 	case zreflect.KindInt, zreflect.KindFloat:
 		t := makeText(false, v, 10)
@@ -48,15 +49,12 @@ func CreateViewForKVOption[V any](option *zkeyvalue.Option[V]) zview.View {
 			n, err := strconv.ParseFloat(str, 64)
 			zlog.OnError(err, str)
 			if err == nil {
-				var v V
-				rval := reflect.ValueOf(&v)
-				if kind == zreflect.KindFloat {
-					zfloat.SetAny(rval.Interface(), n)
-				} else {
-					zint.SetAny(rval.Interface(), int64(n))
-				}
-				option.Set(v)
+				option.SetAny(n, true)
 			}
+		})
+		zkeyvalue.AddOptionChangedHandler(id, option.Key, func() {
+			zlog.Info("CreateViewForKVOption changed number:", option.Key, option.Get())
+			t.SetText(fmt.Sprint(option.Get()))
 		})
 		view = t
 
@@ -71,12 +69,11 @@ func CreateViewForKVOption[V any](option *zkeyvalue.Option[V]) zview.View {
 		t := makeText(isPass, v, 40)
 		t.SetChangedHandler(func() {
 			text := t.Text()
-			var v V
-			rval := reflect.ValueOf(&v)
-			sptr := rval.Interface().(*string)
-			// zlog.Info("SetString?:", rval.Type(), rval.Kind(), is)
-			*sptr = text
-			option.Set(v)
+			option.SetAny(text, true)
+		})
+		zkeyvalue.AddOptionChangedHandler(id, option.Key, func() {
+			zlog.Info("CreateViewForKVOption changed string:", option.Key, option.Get())
+			t.SetText(fmt.Sprint(option.Get()))
 		})
 		view = t
 
@@ -84,18 +81,19 @@ func CreateViewForKVOption[V any](option *zkeyvalue.Option[V]) zview.View {
 		on := rval.Bool()
 		check := zcheckbox.New(zbool.FromBool(on))
 		check.SetValueHandler(func() {
-			var v V
-			rval := reflect.ValueOf(&v)
-			bptr := rval.Interface().(*bool)
-			*bptr = check.On()
-			option.Set(v)
+			option.SetAny(on, true)
+		})
+		zkeyvalue.AddOptionChangedHandler(id, option.Key, func() {
+			zlog.Info("CreateViewForKVOption changed bool:", option.Key, option.Get())
+			bval := reflect.ValueOf(option.Get())
+			check.SetOn(bval.Bool())
 		})
 		view = check
 	}
 	return view
 }
 
-func AddKVOptionToGrid[V any](grid *zcontainer.GridView, option *zkeyvalue.Option[V]) {
+func AddKVOptionToGrid[V comparable](grid *zcontainer.GridView, option *zkeyvalue.Option[V]) {
 	name := zstr.PadCamelCase(option.Key, " ")
 	label := zlabel.New(name)
 	grid.Add(label, zgeo.CenterRight, zgeo.Size{})

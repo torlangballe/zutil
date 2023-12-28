@@ -26,11 +26,12 @@ func NewFileStore(path string) *FileStore {
 	if path != "" {
 		s.Load(path)
 	}
+	// zlog.Info("NewFileStore:", path, s.Raw, zlog.CallingStackString())
 	return s
 }
 
 func (s *FileStore) Load(path string) error {
-	drs := s.Raw.(*DictRawStore)
+	drs := s.DictRawStore()
 	s.storeFile = zfile.ChangedExtension(path, ".json")
 	err := zjson.UnmarshalFromFile(&drs.dict, s.storeFile, true)
 	if err != nil {
@@ -39,39 +40,42 @@ func (s *FileStore) Load(path string) error {
 	return nil
 }
 
-func (s *FileStore) save() error {
-	fsr := s.Raw.(*DictRawStore)
-	fsr.lock.Lock()
-	err := zjson.MarshalToFile(fsr.dict, s.storeFile)
-	zlog.OnError(err, "save", s.storeFile)
-	fsr.lock.Unlock()
+func (s *FileStore) Save() error {
+	drs := s.DictRawStore()
+	drs.lock.Lock()
+	err := zjson.MarshalToFile(drs.dict, s.storeFile)
+	zlog.OnError(err, "Save", s.storeFile)
+	drs.lock.Unlock()
 	return err
 }
 
 func (s *FileStore) GetAllForPrefix(prefix string) zdict.Dict {
-	fsr := s.Raw.(*DictRawStore)
+	drs := s.DictRawStore()
 	d := zdict.Dict{}
-	fsr.lock.Lock()
-	for k, v := range fsr.dict {
+	drs.lock.Lock()
+	for k, v := range drs.dict {
 		if strings.HasPrefix(k, prefix) {
 			d[k] = v
 		}
 	}
-	fsr.lock.Unlock()
+	drs.lock.Unlock()
 	return d
 }
 
 func (s *FileStore) SetItem(key string, v any, sync bool) error {
-	fsr := s.Raw.(*DictRawStore)
-	err := fsr.RawSetItem(key, v, sync)
+	err := s.DictRawStore().RawSetItem(key, v, sync)
 	if err == nil {
-		s.save()
+		s.Save()
 	}
 	return err
 }
 
 func (s *FileStore) RemoveForKey(key string, sync bool) {
-	fsr := s.Raw.(*DictRawStore)
-	fsr.RawRemoveForKey(key, sync)
-	s.save()
+	drs := s.DictRawStore()
+	drs.RawRemoveForKey(key, sync)
+	s.Save()
+}
+
+func (s *FileStore) DictRawStore() *DictRawStore {
+	return s.Raw.(*DictRawStore)
 }
