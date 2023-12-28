@@ -1007,6 +1007,11 @@ func (s *Scheduler[I]) removeRun(jobID I) {
 	}
 }
 
+func (s *Scheduler[I]) HasExecutor(exID I) bool {
+	e, _ := s.findExecutor(exID)
+	return e != nil
+}
+
 func (s *Scheduler[I]) CountJobs(executorID I) int {
 	var count int
 	for _, r := range s.runs {
