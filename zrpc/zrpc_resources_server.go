@@ -31,6 +31,7 @@ func (rc *ResourceCalls) GetUpdatedResourcesAndSetSent(ci *ClientInfo, int Unuse
 		if !zstr.StringsContain(c, ci.ClientID) {
 			*reply = append(*reply, res)
 			c = append(c, ci.ClientID)
+			rc.Resources.updatedResourcesSentToClient.Set(res, c)
 		}
 		return true
 	})
