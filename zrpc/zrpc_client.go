@@ -46,6 +46,7 @@ const (
 var (
 	MainClient          *Client
 	registeredResources []string
+	pollGetters         zmap.LockMap[string, func()]
 	EnableLogClient     zlog.Enabler
 )
 
@@ -144,6 +145,10 @@ func (c *Client) CallWithTimeout(timeoutSecs float64, method string, input, resu
 func (c *Client) PollForUpdatedResources(got func(resID string)) {
 	for _, r := range registeredResources {
 		got(r)
+		f, got := pollGetters.Get(r)
+		if got {
+			f()
+		}
 	}
 	ztimer.RepeatForever(1, func() {
 		var resIDs []string
@@ -153,12 +158,20 @@ func (c *Client) PollForUpdatedResources(got func(resID string)) {
 			return
 		}
 		for _, s := range resIDs {
+			if !zstr.StringsContain(registeredResources, s) {
+				continue
+			}
 			setting, _ := c.gettingResources.Get(s)
 			if setting {
 				continue
 			}
 			c.gettingResources.Set(s, true)
-			got(s)
+			f, has := pollGetters.Get(s)
+			if has {
+				f()
+			} else {
+				got(s)
+			}
 			c.gettingResources.Set(s, false)
 		}
 	})
@@ -166,4 +179,8 @@ func (c *Client) PollForUpdatedResources(got func(resID string)) {
 
 func RegisterResources(resources ...string) {
 	registeredResources = zstr.UnionStringSet(registeredResources, resources)
+}
+
+func RegisterPollGetter(resID string, get func()) {
+	pollGetters.Set(resID, get)
 }
