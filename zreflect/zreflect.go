@@ -438,3 +438,18 @@ func IsRealSlice(val reflect.Value) bool {
 	var d []float64
 	return val.Type() == reflect.TypeOf(d)
 }
+
+// AnySetWithRelaxedNumbers sets int, float values from->to
+func AnySetWithRelaxedNumbers(to, from reflect.Value) {
+	kfrom := KindFromReflectKindAndType(from.Kind(), from.Type())
+	kto := KindFromReflectKindAndType(to.Kind(), to.Type())
+	if kfrom == KindInt && kto == KindFloat {
+		to.SetFloat(float64(from.Int()))
+		return
+	}
+	if kfrom == KindFloat && kto == KindInt {
+		to.SetInt(int64(from.Float()))
+		return
+	}
+	to.Set(from)
+}
