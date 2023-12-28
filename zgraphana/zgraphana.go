@@ -23,7 +23,7 @@ type Annotation struct {
 
 type GraphanaResult struct {
 	Message string `json:"message"`
-	ID      string `json:"id"`
+	ID      int    `json:"id"`
 }
 
 var (
@@ -36,7 +36,7 @@ func SetAnnotation(graphanaAddress string, a Annotation) {
 	if runtime.GOOS == "darwin" {
 		return
 	}
-	APIKey.Set("eyJrIjoicW5xR2VFaTBHTkZ5ZlV6clhhWTRNM04wSUlRU0dRZTEiLCJuIjoiQW5ub3RhdGlvbiIsImlkIjoxfQ==")
+	APIKey.Set("eyJrIjoicW5xR2VFaTBHTkZ5ZlV6clhhWTRNM04wSUlRU0dRZTEiLCJuIjoiQW5ub3RhdGlvbiIsImlkIjoxfQ==", false)
 	var got GraphanaResult
 	if !a.Time.IsZero() {
 		a.TimeEpocMS = a.Time.UnixMilli()
