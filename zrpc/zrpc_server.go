@@ -59,7 +59,7 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		token = cp.Token
 		if e.Authenticator != nil && e.methodNeedsAuth(cp.Method) {
 			if !e.Authenticator.IsTokenValid(token) {
-				zlog.Error(nil, "token not valid: '"+token+"'", req.RemoteAddr, req.URL.Path, req.URL.Query())
+				zlog.Error(nil, "token not valid: '"+token+"'", zlog.Full(e.Authenticator), req.RemoteAddr, req.URL.Path, req.URL.Query())
 				rp.TransportError = "authentication error"
 				rp.AuthenticationInvalid = true
 				call = false
