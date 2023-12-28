@@ -57,6 +57,7 @@ type Scheduler[I comparable] struct {
 	SetJobsOnExecutorCh     chan JobsOnExecutor[I] // Write a list of job ids and executor id to SetJobsOnExecutorCh to update what is running on the executor. Since the executor might crash, this keeps jobs in sync.
 	SetTotalMaxJobCountCh   chan int               // Change TotalMaxJobCount and refresh scheduler based on that.
 	SetJobHasMilestoneNowCh chan I                 // Sets job's run's milestone to now. See StopJobIfSinceMilestoneLessThan.
+	SetJobHasErrorCh        chan I                 // Sets the run's ErrorAt to now
 
 	setup       Setup[I]
 	refreshCh   chan struct{} // Writing an empty struct to refreshCh calls stopAndStartJobs(), but without recursion (and possible locking).
@@ -101,6 +102,7 @@ type Run[I comparable] struct {
 	Removing    bool      `zui:"allowempty"`
 	Stopping    bool      `zui:"allowempty"`
 	MilestoneAt time.Time `zui:"allowempty"` // MilestoneAt is a time a significant sub-task was achieved. See StopJobIfSinceMilestoneLessThan above.
+	ErrorAt     time.Time `zui:"allowempty"` // ErrorAt is last time an error occured on this job/run. Used to de-prioritize jobs with recent errors when starting new jobs.
 
 	starting             bool
 	executorChangedCount int
@@ -138,6 +140,7 @@ func NewScheduler[I comparable]() *Scheduler[I] {
 	s.SetJobsOnExecutorCh = make(chan JobsOnExecutor[I])
 	s.SetTotalMaxJobCountCh = make(chan int)
 	s.SetJobHasMilestoneNowCh = make(chan I)
+	s.SetJobHasErrorCh = make(chan I)
 	s.ChangeExecutorCh = make(chan Executor[I])
 	s.FlushExecutorJobsCh = make(chan I)
 	s.AddExecutorCh = make(chan Executor[I])
@@ -221,6 +224,10 @@ func (s *Scheduler[I]) selectLoop() {
 
 		case jobID := <-s.SetJobHasMilestoneNowCh:
 			s.setMilestoneForRun(jobID, time.Now())
+
+		case jobID := <-s.SetJobHasErrorCh:
+			run, _ := s.findRun(jobID)
+			run.ErrorAt = time.Now()
 
 		case exID := <-s.SetExecutorIsAliveCh:
 			reason = "SetExecutorIsAliveCh"
@@ -364,6 +371,10 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 		// }
 		if err != nil {
 			s.setup.HandleSituationFastFunc(r, RemoveJobFromExecutorFailed, err.Error())
+			rr, _ := s.findRun(jobID)
+			if rr != nil {
+				rr.ErrorAt = time.Now()
+			}
 		}
 		s.endRunCh <- jobID
 	}()
@@ -518,8 +529,24 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 	return false, "No reason to stop"
 }
 
-var ssLock sync.Mutex
+// isBetterRunCandidate prioritzes being run longest ago, if not having an error and other does, or having error longer ago.
+func isBetterRunCandidate[I comparable](is, other *Run[I]) bool {
+	if !is.ErrorAt.IsZero() && other.ErrorAt.IsZero() {
+		return false
+	}
+	if is.ErrorAt.IsZero() && !other.ErrorAt.IsZero() {
+		return true
+	}
+	if !is.ErrorAt.IsZero() && !other.ErrorAt.IsZero() {
+		return is.ErrorAt.Before(other.ErrorAt)
+	}
+	if is.StoppedAt.Before(other.StoppedAt) {
+		return true
+	}
+	return false
+}
 
+var ssLock sync.Mutex
 var ssCount int
 
 func (s *Scheduler[I]) startAndStopRuns() {
@@ -568,7 +595,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			}
 			// zlog.Warn(i, "loop:", r.Job.ID, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
 			if r.ExecutorID == s.zeroID && !r.Stopping && r.StartedAt.IsZero() {
-				if oldestRun == nil || r.StoppedAt.Sub(oldestRun.StoppedAt) > 0 {
+				if oldestRun == nil || isBetterRunCandidate[I](&r, oldestRun) {
 					// zlog.Warn(i, "set oldestRun:", s.runs[i].Job.ID, ssCount)
 					oldestRun = &s.runs[i]
 				}
@@ -842,6 +869,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 
 	// zlog.Warn("startJob:", run.Job.DebugName, bestExID, e.DebugName, str, e.changedCount)
 	s.setDebugState(run.Job.ID, false, true, false, false)
+	run.ErrorAt = time.Time{}
 	run.StoppedAt = time.Time{}
 	run.Removing = false
 	run.StartedAt = now
@@ -867,6 +895,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 		}
 		if err != nil {
 			r.starting = false
+			r.ErrorAt = time.Now()
 			reason := zstr.Spaced(jobID, "StartJobOnExecutorFunc done err", err)
 			s.setup.HandleSituationFastFunc(runCopy, ErrorStartingJob, reason)
 			s.endRunCh <- jobID
