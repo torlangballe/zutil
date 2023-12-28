@@ -8,6 +8,7 @@ import (
 
 var (
 	InDoubleSquigglyBracketsRegex = regexp.MustCompile(`{{([^}]+)}}`)
+	InSingleSquigglyBracketsRegex = regexp.MustCompile(`{([^}]+)}`)
 	HashRegEx                     = regexp.MustCompile(`#([A-Za-z_]\w+)`) // (\s|\B) at start needed?
 	EmailRegex                    = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 	DollarArgRegex                = regexp.MustCompile(`\$(\w+)`)
