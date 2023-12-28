@@ -27,6 +27,8 @@ const (
 	BrowserNone BrowserType = ""
 )
 
+var OverrideUUID string // used for unit tests and other testing that needs a know uuid
+
 const (
 	CellularUnknown CellularNetworkType = iota
 	CellularWifiMax
@@ -47,8 +49,6 @@ const (
 	AMD64Type            ArchitectureType = "amd64"
 	WASMType             ArchitectureType = "wasm"
 	ArchitectureTypeNone ArchitectureType = ""
-
-	TestDeviceUUID = "8dd115b4-83c2-11ee-b962-0242ac120002"
 )
 
 // Platform is the surface-system we are running on.
