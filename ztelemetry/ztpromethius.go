@@ -13,11 +13,25 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
-type Counter = prometheus.Counter
-type Gauge = prometheus.Gauge
-type GaugeVec = prometheus.GaugeVec
-type HistogramVec = prometheus.HistogramVec
-type SummaryVec = prometheus.SummaryVec
+type CounterVec struct {
+	cv         *prometheus.CounterVec
+	registered bool
+}
+
+type GaugeVec struct {
+	gv         *prometheus.GaugeVec
+	registered bool
+}
+
+type HistogramVec struct {
+	hv         *prometheus.HistogramVec
+	registered bool
+}
+
+type SummaryVec struct {
+	sv         *prometheus.SummaryVec
+	registered bool
+}
 
 const URLBaseLabel = "url_base"
 
@@ -35,6 +49,7 @@ func StartPrometheusHandling() {
 	registry = prometheus.NewRegistry()
 	port := PrometheusPort.Get()
 	if port == 0 {
+		zlog.Info("Prometheus: No port")
 		return
 	}
 	router := mux.NewRouter()
@@ -60,58 +75,78 @@ func StartPrometheusHandling() {
 	go http.ListenAndServe(fmt.Sprint(":", port), router)
 }
 
-func NewCounter(name, help string) Counter {
-	c := promauto.NewCounter(prometheus.CounterOpts{
-		Name: name,
-		Help: help,
-	})
-	registry.MustRegister(c)
-	return c
-}
+func NewCounterVec(name, help string, labelNames ...string) *CounterVec {
+	var c CounterVec
 
-func NewGauge(name, help string) Gauge {
-	g := promauto.NewGauge(prometheus.GaugeOpts{
-		Name: name,
-		Help: help,
-	})
-	registry.MustRegister(g)
-	return g
-}
-
-func NewGaugeVec(name, help string, labelNames ...string) *GaugeVec {
-	g := promauto.NewGaugeVec(prometheus.GaugeOpts{
+	c.cv = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: name,
 		Help: help,
 	}, labelNames)
-	registry.MustRegister(g)
-	return g
+	return &c
+}
+
+func (c *CounterVec) Inc(labels map[string]string) {
+	if !c.registered {
+		c.registered = true
+		registry.MustRegister(c.cv)
+	}
+	c.cv.With(labels).Inc()
+}
+
+func NewGaugeVec(name, help string, labelNames ...string) *GaugeVec {
+	var g GaugeVec
+	g.gv = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: name,
+		Help: help,
+	}, labelNames)
+	return &g
+}
+
+func (g *GaugeVec) Set(val float64, labels map[string]string) {
+	if !g.registered {
+		g.registered = true
+		registry.MustRegister(g.gv)
+	}
+	g.gv.With(labels).Set(val)
 }
 
 func NewHistogramVec(name string, buckets []float64, help string, labelNames ...string) *HistogramVec {
-	h := prometheus.NewHistogramVec(
+	var h HistogramVec
+	h.hv = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			// Namespace: "zui",
 			Name:    name,
 			Buckets: buckets,
 			Help:    help,
 		}, labelNames)
-	registry.MustRegister(h)
-	return h
+	return &h
+}
+
+func (h *HistogramVec) Observe(val float64, labels map[string]string) {
+	if !h.registered {
+		h.registered = true
+		registry.MustRegister(h.hv)
+	}
+	h.hv.With(labels).Observe(val)
 }
 
 func NewSummaryVec(name string, help string, labelNames ...string) *SummaryVec {
-	s := prometheus.NewSummaryVec(
+	var s SummaryVec
+	s.sv = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
 			// Namespace: "zui",
 			Name: name,
 			Help: help,
 		}, labelNames)
-	registry.MustRegister(s)
-	return s
+	return &s
 }
 
-func GaugeVecSetWithLabels(g GaugeVec, val float64, labels map[string]string) {
-	g.With(labels).Set(val)
+func (s *SummaryVec) Observe(val float64, labels map[string]string) {
+	if !s.registered {
+		s.registered = true
+		registry.MustRegister(s.sv)
+	}
+	s.sv.With(labels).Observe(val)
 }
 
 func WrapHandler(handlerName string, handlerFunc http.HandlerFunc) http.HandlerFunc {

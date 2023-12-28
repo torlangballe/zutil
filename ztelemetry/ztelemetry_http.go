@@ -18,16 +18,14 @@ func init() {
 
 func EnableRedictTelemetry() {
 	//	redirectSecsTelemetry = NewHistogramVec("http_redirect_seconds", []float64{0.05, 0.2, 2}, "Seconds a redirect took", URLBaseLabel)
-	if IsRunning() {
-		redirectSecsTelemetry = NewGaugeVec("http_redirect_seconds", "Seconds a redirect took", URLBaseLabel)
-	}
+	redirectSecsTelemetry = NewGaugeVec("http_redirect_seconds", "Seconds a redirect took", URLBaseLabel)
 }
 
 func SetTelemetryForRedirect(surl string, secs float64) {
-	if IsRunning() {
+	if IsRunning() && redirectSecsTelemetry != nil {
 		base := znet.StripQueryAndFragment(surl)
 		labels := map[string]string{URLBaseLabel: base}
 		// redirectSecsTelemetry.WithLabelValues(base).Observe(ztime.Since(start))
-		redirectSecsTelemetry.With(labels).Set(secs)
+		redirectSecsTelemetry.Set(secs, labels)
 	}
 }
