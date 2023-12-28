@@ -18,7 +18,7 @@ var (
 	IsShowWeekNumbersInCalendars = zkeyvalue.NewOption[bool](nil, "ztime.IsShowWeekNumbersInCalendars", true)
 	IsUse24HourClock             = zkeyvalue.NewOption[bool](nil, "ztime.IsUse24HourClock", true)
 	IsShowMonthBeforeDay         = zkeyvalue.NewOption[bool](nil, "ztime.IsShowMonthBeforeDay", false)
-	DisplayServerTime            = zkeyvalue.NewOption[bool](nil, "ztime.DisplayServerTime", false)
+	IsDisplayServerTime          = zkeyvalue.NewOption[bool](nil, "ztime.IsDisplayServerTime", true)
 )
 
 func GetDeviceLanguageCode() string {
