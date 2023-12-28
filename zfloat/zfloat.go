@@ -94,7 +94,6 @@ func GetAny(i interface{}) (float64, error) {
 }
 
 func SetAny(num interface{}, f float64) error {
-	// zlog.Info("SetAnyF:", reflect.ValueOf(y).Type())
 	switch atype := num.(type) {
 	case *float32:
 		*atype = float32(f)
@@ -102,25 +101,25 @@ func SetAny(num interface{}, f float64) error {
 		*num.(*float64) = f
 	case bool:
 		*num.(*bool) = (f != 0)
-	case int:
+	case *int:
 		*num.(*int) = int(f)
-	case int8:
+	case *int8:
 		*num.(*int8) = int8(f)
-	case int16:
+	case *int16:
 		*num.(*int16) = int16(f)
-	case int32:
+	case *int32:
 		*num.(*int32) = int32(f)
-	case int64:
+	case *int64:
 		*num.(*int64) = int64(f)
-	case uint:
+	case *uint:
 		*num.(*uint) = uint(f)
-	case uint8:
+	case *uint8:
 		*num.(*uint8) = uint8(f)
-	case uint16:
+	case *uint16:
 		*num.(*uint16) = uint16(f)
-	case uint32:
+	case *uint32:
 		*num.(*uint32) = uint32(f)
-	case uint64:
+	case *uint64:
 		*num.(*uint64) = uint64(f)
 
 	default:
