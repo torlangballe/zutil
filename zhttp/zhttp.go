@@ -374,28 +374,6 @@ func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Respo
 	return resp, resp.StatusCode, nil
 }
 
-/*
-func PostValuesAsForm(surl string, params Parameters, values url.Values) (data *[]byte, reAuth bool, err error) {
-	var resp *http.Response
-	params.Body = []byte(values.Encode())
-	params.ContentType = "application/x-www-form-urlencoded"
-	params.Method = http.MethodPost
-	resp, _, err = SendBytesSetContentLength(surl, params)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-	defer io.Copy(ioutil.Discard, resp.Body)
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
-	data = &body
-	return
-}
-*/
-
 func MakeURLWithArgs(surl string, args map[string]string) (string, error) {
 	u, err := url.Parse(surl)
 	if err != nil {
@@ -407,6 +385,31 @@ func MakeURLWithArgs(surl string, args map[string]string) (string, error) {
 	}
 	u.RawQuery = q.Encode()
 	return u.String(), nil
+}
+
+func TruncateLongParametersInURL(surl string, onlyIfTotalCharsMoreThan, maxCharsInParameter int) string {
+	if len(surl) <= onlyIfTotalCharsMoreThan {
+		return surl
+	}
+	surl = zstr.ReplaceAllCapturesFunc(zstr.InSingleSquigglyBracketsRegex, surl, 0, func(cap string, index int) string {
+		return "…"
+	})
+	u, err := url.Parse(surl)
+	if zlog.OnError(err, surl) {
+		return surl
+	}
+	var query = url.Values{}
+	for k, vs := range u.Query() {
+		for _, p := range vs {
+			zlog.Info("URLP:", p)
+			if len(p) > maxCharsInParameter {
+				p = "xxx"
+			}
+			query.Set(k, p)
+		}
+	}
+	u.RawQuery = query.Encode()
+	return u.String()
 }
 
 func GetRedirectedURL(surl string) (string, error) {
@@ -429,7 +432,7 @@ func GetRedirectedURL(surl string) (string, error) {
 	if resp != nil && resp.Body != nil {
 		resp.Body.Close()
 	}
-	if err != nil && SetTelemetryForRedirectFunc != nil {
+	if err == nil && SetTelemetryForRedirectFunc != nil {
 		SetTelemetryForRedirectFunc(surl, ztime.Since(start))
 	}
 	return lastUrlQuery, err

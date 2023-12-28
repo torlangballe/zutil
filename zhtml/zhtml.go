@@ -24,8 +24,8 @@ func cleanText(str string) string {
 	return strings.TrimSpace(str)
 }
 
-func ExtractTextFromHTMLString(str string) (text string, err error) {
-	r := strings.NewReader(str)
+func ExtractTextFromHTMLString(shtml string) (text string, err error) {
+	r := strings.NewReader(shtml)
 	d := html.NewTokenizer(r)
 	// FIXME: wtf is this?
 	for {
@@ -64,4 +64,3 @@ func ExtractTextFromHTMLString(str string) (text string, err error) {
 func StringIsHTML(str string) bool {
 	return strings.HasPrefix(str, "<!DOCTYPE HTML ")
 }
-
