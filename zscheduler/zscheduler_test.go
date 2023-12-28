@@ -601,6 +601,54 @@ func testPlayWithSlackLongWaitAndMilestone(t *testing.T) {
 	stopAndCheckScheduler(s, t)
 }
 
+func testErrorAt(t *testing.T) {
+	fmt.Println("testErrorAt")
+	s := newScheduler(0, 1, 1, 10, func(setup *Setup[int64]) {
+		setup.SimultaneousStarts = 0
+		setup.StopJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
+			return nil
+		}
+		setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
+			return nil
+		}
+	})
+	for i := 0; i < 2; i++ {
+		job := makeJob(s, int64(i+1), time.Second, 1)
+		s.AddJobCh <- job
+	}
+	time.Sleep(time.Millisecond * 200)
+	first := true
+	s.setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
+		if first && run.Job.ID != 1 {
+			t.Error("Job1 should start first, not:", run.Job.ID)
+		}
+		first = false
+		return nil
+	}
+	time.Sleep(time.Millisecond * 1000)
+
+	// second run has happened
+	s.SetJobHasErrorCh <- 1
+	time.Sleep(time.Millisecond * 200)
+	e := makeExecutor(s, 1, 0)
+	s.ChangeExecutorCh <- e
+	time.Sleep(time.Millisecond * 100)
+	e = makeExecutor(s, 1, 10)
+	s.ChangeExecutorCh <- e
+	first = true
+	s.setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
+		// zlog.Warn("third startups:", run.Job.DebugName, first, run.ErrorAt)
+		if first && run.Job.ID != 2 {
+			t.Error("Job2 should start first, since 1 got error, not:", run.Job.ID)
+		}
+
+		first = false
+		return nil
+	}
+	time.Sleep(time.Millisecond * 1700)
+	stopAndCheckScheduler(s, t)
+}
+
 func TestAll(t *testing.T) {
 	testEnoughRunning(t)
 	testPauseWithTwoExecutors(t)
@@ -619,4 +667,5 @@ func TestAll(t *testing.T) {
 	testPlayWithSlackLongWait(t)
 	testPlayWithSlackShortWait(t)
 	testPlayWithSlackLongWaitAndMilestone(t)
+	testErrorAt(t)
 }

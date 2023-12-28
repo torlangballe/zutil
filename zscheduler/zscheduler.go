@@ -315,6 +315,7 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 	// if s.stopped {
 	// }
 
+	// zlog.Warn("StopJob:", jobID)
 	now := time.Now()
 	run, _ := s.findRun(jobID)
 	if run == nil {
@@ -513,7 +514,7 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		}
 		if left > run.Job.Cost && unrunCost == 0 {
 			if needsMilestone {
-				zlog.Warn("Ready to stop job with capacity, but waiting for milestone", run.Job.DebugName)
+				// zlog.Warn("Ready to stop job with capacity, but waiting for milestone", run.Job.DebugName)
 			} else {
 				return true, zstr.Spaced("job duration with slack over and has capacity"+extraStr, unrunCost, time.Since(run.RanAt), run.Job.Duration, left, run.Job.Cost)
 			}
@@ -531,6 +532,7 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 
 // isBetterRunCandidate prioritzes being run longest ago, if not having an error and other does, or having error longer ago.
 func isBetterRunCandidate[I comparable](is, other *Run[I]) bool {
+	// zlog.Warn("isBetterRunCandidate:", is.Job.ID, is.ErrorAt, other.Job.ID, other.ErrorAt)
 	if !is.ErrorAt.IsZero() && other.ErrorAt.IsZero() {
 		return false
 	}
@@ -593,10 +595,10 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			if !(r.StartedAt.IsZero() && r.RanAt.IsZero()) {
 				active++
 			}
-			// zlog.Warn(i, "loop:", r.Job.ID, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
+			// zlog.Warn(i, "loop:", r.Job.ID, r.ErrorAt, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
 			if r.ExecutorID == s.zeroID && !r.Stopping && r.StartedAt.IsZero() {
 				if oldestRun == nil || isBetterRunCandidate[I](&r, oldestRun) {
-					// zlog.Warn(i, "set oldestRun:", s.runs[i].Job.ID, ssCount)
+					// zlog.Warn(i, "set oldestRun:", len(s.runs), oldestRun != nil, s.runs[i].Job.ID, ssCount, r.ErrorAt)
 					oldestRun = &s.runs[i]
 				}
 			}
@@ -713,7 +715,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 	d := -time.Since(nextTimerTime)
 	// zlog.Warn("SetNextTimer:", d)
 	// if d < -time.Second {
-	if d <= -9*time.Millisecond {
+	if d <= -20*time.Millisecond {
 		limit := zlog.Limit("zsched.NextTime.", timerJob)
 		zlog.Warn(limit, "NextTime set to past:", d, "for:", timerJob, nextReason)
 	}
