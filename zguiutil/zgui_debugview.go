@@ -18,12 +18,14 @@ import (
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdevice"
+	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zgraphana"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/ztelemetry"
+	"github.com/torlangballe/zutil/ztimer"
 )
 
 type DebugView struct {
@@ -90,28 +92,28 @@ func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 	})
 }
 
-func makeFrame(in *zcontainer.StackView, name string) *zcontainer.StackView {
-	frame := zcontainer.StackViewVert("other")
-	MakeStackATitledFrame(frame, name, false, DefaultFrameStyling, DefaultFrameTitleStyling)
+func makeFrame(in *zcontainer.StackView, name string) (frame, header *zcontainer.StackView) {
+	frame = zcontainer.StackViewVert("other")
+	header = MakeStackATitledFrame(frame, name, false, DefaultFrameStyling, DefaultFrameTitleStyling)
 	in.Add(frame, zgeo.CenterLeft|zgeo.HorExpand)
-	return frame
+	return frame, header
 }
 
-func NewDebugView(urlStub string, otherIPs map[string]string) *DebugView {
+func NewDebugView(urlStub string, otherIPs map[string]string, serverName string) *DebugView {
 	v := &DebugView{}
 	v.SetMarginS(zgeo.Size{10, 10})
 	v.Init(v, true, "debug-view")
-	frame := makeFrame(&v.StackView, "gui")
+	frame, _ := makeFrame(&v.StackView, "gui")
 	addGUIProfileRow(frame, "gui-heap", "heap")
-	frame = makeFrame(&v.StackView, "manager")
+	frame, _ = makeFrame(&v.StackView, "manager")
 	for _, name := range zdebug.AllProfileTypes {
 		addDownloadRow(frame, "", name, name)
 	}
 	for name, ip := range otherIPs {
-		frame = makeFrame(&v.StackView, name)
+		frame, _ = makeFrame(&v.StackView, name)
 		addDownloadRow(frame, ip, "heap", "heap")
 	}
-	frame = makeFrame(&v.StackView, "Enable GUI named log sections")
+	frame, _ = makeFrame(&v.StackView, "Enable GUI named log sections")
 	zlog.EnablerList.ForEach(func(name string, e *zlog.Enabler) bool {
 		check, _, stack := zcheckbox.NewWithLabel(false, name, name+".zlog.Enabler")
 		frame.Add(stack, zgeo.CenterLeft)
@@ -120,7 +122,8 @@ func NewDebugView(urlStub string, otherIPs map[string]string) *DebugView {
 		})
 		return true
 	})
-	frame = makeFrame(&v.StackView, "Telemetry")
+	var header *zcontainer.StackView
+	frame, header = makeFrame(&v.StackView, "Telemetry")
 	grid := zcontainer.GridViewNew("options", 2)
 	grid.Spacing.H = 0
 	frame.Add(grid, zgeo.TopLeft|zgeo.Expand)
@@ -128,12 +131,27 @@ func NewDebugView(urlStub string, otherIPs map[string]string) *DebugView {
 	AddKVOptionToGrid(grid, zgraphana.URLPrefix)
 	AddKVOptionToGrid(grid, zgraphana.DashboardUID)
 	AddKVOptionToGrid(grid, ztelemetry.PrometheusPort)
+	link := zlabel.NewLink("dashboard", "")
+	header.Add(link, zgeo.CenterRight)
+	timer := ztimer.RepeatForeverNow(1, func() {
+		pref := zgraphana.URLPrefix.Get()
+		uid := zgraphana.DashboardUID.Get()
+		var surl string
+		if pref != "" && uid != "" {
+			surl = zfile.JoinPathParts(pref, "D", uid)
+			if serverName != "" {
+				surl += "?var-job=" + serverName
+			}
+		}
+		link.SetURL(surl, true)
+	})
+	link.AddOnRemoveFunc(timer.Stop)
 	v.SetMinSize(zgeo.SizeF(400, 400))
 	return v
 }
 
-func PresentDebugView(urlStub string, otherIPs map[string]string) {
-	v := NewDebugView(urlStub, otherIPs)
+func PresentDebugView(urlStub string, otherIPs map[string]string, serverName string) {
+	v := NewDebugView(urlStub, otherIPs, serverName)
 	att := zpresent.AttributesNew()
 	att.Modal = true
 	att.ModalCloseOnOutsidePress = true

@@ -12,11 +12,9 @@ import (
 	"github.com/torlangballe/zui/zcheckbox"
 	"github.com/torlangballe/zui/zcontainer"
 	"github.com/torlangballe/zui/zkeyboard"
-	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/ztext"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zbool"
-	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
@@ -95,9 +93,6 @@ func CreateViewForKVOption[V comparable](option *zkeyvalue.Option[V]) zview.View
 
 func AddKVOptionToGrid[V comparable](grid *zcontainer.GridView, option *zkeyvalue.Option[V]) {
 	name := zstr.PadCamelCase(option.Key, " ")
-	label := zlabel.New(name)
-	grid.Add(label, zgeo.CenterRight, zgeo.Size{})
-
 	view := CreateViewForKVOption[V](option)
-	grid.Add(view, zgeo.CenterLeft|zgeo.HorExpand, zgeo.Size{})
+	AddLabeledViewToGrid(grid, name, view)
 }

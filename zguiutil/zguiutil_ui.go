@@ -113,3 +113,10 @@ func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFra
 	}
 	return header
 }
+
+func AddLabeledViewToGrid(grid *zcontainer.GridView, title string, view zview.View) {
+	label := zlabel.New(title)
+	grid.Add(label, zgeo.CenterRight, zgeo.Size{})
+
+	grid.Add(view, zgeo.CenterLeft|zgeo.HorExpand, zgeo.Size{})
+}
