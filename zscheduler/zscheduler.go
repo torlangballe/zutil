@@ -875,7 +875,6 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 
 	// zlog.Warn("startJob:", run.Job.DebugName, bestExID, e.DebugName, str, e.changedCount)
 	s.setDebugState(run.Job.ID, false, true, false, false)
-	run.ErrorAt = time.Time{}
 	run.StoppedAt = time.Time{}
 	run.Removing = false
 	run.StartedAt = now
@@ -907,6 +906,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 			s.endRunCh <- jobID
 			return
 		}
+		r.ErrorAt = time.Time{}
 		r.starting = false
 		if s.setup.JobIsRunningOnSuccessfullStart {
 			if !r.StoppedAt.IsZero() || r.Stopping || r.ExecutorID == s.zeroID || r.Removing || s.stopped {
