@@ -349,12 +349,14 @@ func GetNiceIncsOf(start, stop time.Time, incCount int) (inc time.Duration, firs
 	case time.Hour:
 		i = zmath.GetClosestTo(i, []float64{1, 2, 3, 6, 12, 24})
 	}
-	u := start.Unix()
-	ui := int64((time.Duration(i) * part) / time.Second)
-	mod := u % ui
-	n := u + (ui - mod)
-	first = time.Unix(n, 0).In(start.Location())
-	// zlog.Info("best:", i, part, u, mod, n, first)
+	s := ChangedPartsOfTime(start, 0, 0, 0, 0)
+	// u := s.Unix()
+	// ui := int64((time.Duration(i) * part) / time.Second)
+	// mod := u % ui
+	// n := u + (ui - mod)
+	// first = time.Unix(n, 0).In(start.Location())
+	first = s
+	// zlog.Info("best:", i, part, s)
 	inc = time.Duration(i) * part
 	return
 }
