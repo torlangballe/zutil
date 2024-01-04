@@ -1077,6 +1077,18 @@ func (s *Scheduler[I]) CountRunningJobs(executorID I) int {
 	return count
 }
 
+func (s *Scheduler[I]) CountRunningJobsWithMilesones(executorID I) int {
+	var count int
+	for _, r := range s.runs {
+		if (executorID == s.zeroID || r.ExecutorID == executorID) &&
+			!r.RanAt.IsZero() &&
+			(s.setup.StopJobIfSinceMilestoneLessThan == 0 || r.MilestoneAt.IsZero() || time.Since(r.MilestoneAt) < s.setup.StopJobIfSinceMilestoneLessThan) {
+			count++
+		}
+	}
+	return count
+}
+
 // GetActiveJobIDs gets map of job-ids-to-executor-id of jobs that are running or started for exID or all if it's 0
 func (s *Scheduler[I]) GetActiveJobIDs(exID I) map[I]I {
 	m := map[I]I{}
