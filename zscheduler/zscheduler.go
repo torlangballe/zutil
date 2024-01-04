@@ -624,8 +624,12 @@ func (s *Scheduler[I]) startAndStopRuns() {
 					bestExID = exID
 					if r.Job.Cost < cap.spare() && (bestRunTime.IsZero() || r.RanAt.Sub(bestRunTime) < 0) {
 						// zlog.Warn("Balance at:", r.Job.ID, eLeft, runLeft)
-						bestBalanceJobID = r.Job.ID
-						bestRunTime = r.RanAt
+						if s.setup.StopJobIfSinceMilestoneLessThan != 0 && !r.MilestoneAt.IsZero() && time.Since(r.MilestoneAt) > s.setup.StopJobIfSinceMilestoneLessThan {
+							zlog.Info("zscheduler:Not adding job to bestBalance since not near milestone:", r.Job.DebugName, r.MilestoneAt)
+						} else {
+							bestBalanceJobID = r.Job.ID
+							bestRunTime = r.RanAt
+						}
 					}
 				}
 			}
