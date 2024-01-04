@@ -5,6 +5,7 @@ package zgrapher
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/torlangballe/zui/zcanvas"
@@ -245,7 +246,19 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 		x := float64(v.xForTime(t))
 		n, n2, doText := getTimeInt(t, shortSpan)
 		canvas.SetColor(v.TickColor.WithOpacity(0.5))
-		canvas.StrokeVertical(x, v.TickYRange.Min, v.TickYRange.Max, 1, zgeo.PathLineButt)
+		y2 := v.TickYRange.Max
+		var text2 string
+		if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 {
+			if inc < ztime.Day {
+				y2 = v.LocalRect().Size.H
+				text2 = t.Weekday().String()[:3]
+			} else if t.Day() == 1 {
+				y2 = v.LocalRect().Size.H
+				text2 = t.Month().String()[:3]
+			}
+		}
+		canvas.StrokeVertical(x, v.TickYRange.Min, y2, 1, zgeo.PathLineButt)
+
 		if doText {
 			ti := ztextinfo.New()
 			ti.Alignment = zgeo.TopLeft
@@ -256,8 +269,12 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 			}
 			ti.Font = zgeo.FontNice(8, zgeo.FontStyleNormal)
 			ti.Rect = zgeo.RectFromXYWH(x+1, v.TickYRange.Min+2, 20, 10)
-			ti.Draw(canvas)
-			continue
+			ti.Rect.Pos.Y = ti.Draw(canvas).Max().Y
+			if text2 != "" {
+				ti.Text = strings.ToLower(text2)
+				ti.Color = v.TickColor.WithOpacity(0.7)
+				ti.Draw(canvas)
+			}
 		}
 	}
 }
