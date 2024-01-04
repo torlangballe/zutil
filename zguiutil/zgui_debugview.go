@@ -145,7 +145,7 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string)
 		}
 		link.SetURL(surl, true)
 	})
-	link.AddOnRemoveFunc(timer.Stop)
+	v.AddOnRemoveFunc(timer.Stop)
 	v.SetMinSize(zgeo.SizeF(400, 400))
 	return v
 }
