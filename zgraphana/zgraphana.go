@@ -49,7 +49,7 @@ func SetAnnotation(graphanaURLPrefix string, a Annotation) error {
 	zlog.Info("ANNO:", a.Text, a.Time, a.TimeEnd)
 	surl := zfile.JoinPathParts(graphanaURLPrefix, "api/annotations")
 	params := zhttp.MakeParameters()
-	params.PrintBody = true
+	// params.PrintBody = true
 	key := APIKey.Get()
 	if a.TimeEnd.IsZero() && a.Time.IsZero() || a.DashboardUID == "" || graphanaURLPrefix == "" || key == "" {
 		return zlog.Error(nil, "Missing parameters for SetAnnotation", a)
