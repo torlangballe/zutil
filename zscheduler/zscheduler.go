@@ -1077,12 +1077,11 @@ func (s *Scheduler[I]) CountRunningJobs(executorID I) int {
 	return count
 }
 
-func (s *Scheduler[I]) CountRunningJobsWithMilesones(executorID I) int {
+// CountRunningJobsWithAMilestone returns the number of running jobs that have reached a milestone, even if it is long past
+func (s *Scheduler[I]) CountRunningJobsWithAMilestone(executorID I) int {
 	var count int
 	for _, r := range s.runs {
-		if (executorID == s.zeroID || r.ExecutorID == executorID) &&
-			!r.RanAt.IsZero() &&
-			(s.setup.StopJobIfSinceMilestoneLessThan == 0 || r.MilestoneAt.IsZero() || time.Since(r.MilestoneAt) < s.setup.StopJobIfSinceMilestoneLessThan) {
+		if (executorID == s.zeroID || r.ExecutorID == executorID) && !r.RanAt.IsZero() && !r.MilestoneAt.IsZero() {
 			count++
 		}
 	}
@@ -1143,7 +1142,7 @@ func (s *Scheduler[I]) endRun(jobID I) {
 		r.StartedAt = time.Time{}
 		r.RanAt = time.Time{}
 		r.StoppedAt = time.Time{}
-
+		r.MilestoneAt = time.Time{}
 		r.Removing = false
 		r.Stopping = false
 		r.ExecutorID = s.zeroID // do this after so HandleSituationFastFunc has it
