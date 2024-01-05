@@ -16,7 +16,7 @@ type RPCStore struct {
 var rpcStore = newRPCStore()
 
 func Init() {
-	zrpc.RegisterPollGetter(ResourceID, getAll)
+	zrpc.MainClient.RegisterPollGetter(ResourceID, getAll)
 	zrpc.RegisterResources(ResourceID)
 }
 

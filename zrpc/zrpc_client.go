@@ -27,6 +27,7 @@ type Client struct {
 	KeepTokenOnAuthenticationInvalid bool    // if KeepTokenOnAuthenticationInvalid is true, the auth token isn't cleared on failure to authenticate
 	SkipVerifyCertificate            bool    // if true, no certificate checking is done for https calls
 	gettingResources                 zmap.LockMap[string, bool]
+	pollGetters                      zmap.LockMap[string, func()]
 }
 
 // client is structure to store received info from the call
@@ -46,7 +47,6 @@ const (
 var (
 	MainClient          *Client
 	registeredResources []string
-	pollGetters         zmap.LockMap[string, func()]
 	EnableLogClient     zlog.Enabler
 )
 
@@ -143,9 +143,11 @@ func (c *Client) CallWithTimeout(timeoutSecs float64, method string, input, resu
 }
 
 func (c *Client) PollForUpdatedResources(got func(resID string)) {
+	// zlog.Info("PollForUpdatedResources1")
 	for _, r := range registeredResources {
 		got(r)
-		f, got := pollGetters.Get(r)
+		f, got := c.pollGetters.Get(r)
+		// zlog.Info("PollForUpdatedResources", r, got)
 		if got {
 			f()
 		}
@@ -166,7 +168,7 @@ func (c *Client) PollForUpdatedResources(got func(resID string)) {
 				continue
 			}
 			c.gettingResources.Set(s, true)
-			f, has := pollGetters.Get(s)
+			f, has := c.pollGetters.Get(s)
 			if has {
 				f()
 			} else {
@@ -181,6 +183,8 @@ func RegisterResources(resources ...string) {
 	registeredResources = zstr.UnionStringSet(registeredResources, resources)
 }
 
-func RegisterPollGetter(resID string, get func()) {
-	pollGetters.Set(resID, get)
+func (c *Client) RegisterPollGetter(resID string, get func()) {
+	zlog.Info("RegisterPollGetter", resID)
+	RegisterResources(resID)
+	c.pollGetters.Set(resID, get)
 }
