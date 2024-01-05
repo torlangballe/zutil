@@ -84,17 +84,13 @@ func (t *userTable) checkBeforeDeleteItems(ids []string) bool {
 	return true
 }
 
-func storeUser(item AllUserInfo, showErr *bool, last bool) error {
+func storeUser(item AllUserInfo, last bool) error {
 	var changed ClientUserInfo
 	changed.Permissions = item.Permissions
 	changed.UserID = item.ID
 	changed.UserName = item.UserName
 	err := zrpc.MainClient.Call("UsersCalls.ChangeUsersUserNameAndPermissions", changed, nil)
 	// zlog.Info("ChangeUsersUserNameAndPermissions", changed.Permissions, err)
-	if err != nil && *showErr {
-		*showErr = false
-		zalert.ShowError(err, "update user", item.UserName)
-	}
 	return err
 }
 
