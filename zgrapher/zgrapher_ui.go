@@ -39,6 +39,7 @@ type GraphView struct {
 	Ticks           int
 	ShowMarkerAt    time.Time
 	EndMarkerAt     time.Time
+	ShowTicksText   bool
 
 	drawn       map[string]*zimage.Image
 	grapherName string
@@ -71,6 +72,7 @@ func (v *GraphView) Init(view zview.View, id, grapherName string, height int) {
 	v.drawn = map[string]*zimage.Image{}
 	v.repeater = ztimer.RepeaterNew()
 	v.timer = ztimer.TimerNew()
+	v.ShowTicksText = true
 }
 
 func (v *GraphView) Update(secsPerPixel int, windowMinutes int, ticks int, on bool) bool {
@@ -248,13 +250,15 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 		canvas.SetColor(v.TickColor.WithOpacity(0.5))
 		y2 := v.TickYRange.Max
 		var text2 string
-		if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 {
-			if inc < ztime.Day {
-				y2 = v.LocalRect().Size.H
-				text2 = t.Weekday().String()[:3]
-			} else if t.Day() == 1 {
-				y2 = v.LocalRect().Size.H
-				text2 = t.Month().String()[:3]
+		if v.ShowTicksText {
+			if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 {
+				if inc < ztime.Day {
+					y2 = v.LocalRect().Size.H
+					text2 = t.Weekday().String()[:3]
+				} else if t.Day() == 1 {
+					y2 = v.LocalRect().Size.H
+					text2 = t.Month().String()[:3]
+				}
 			}
 		}
 		canvas.StrokeVertical(x, v.TickYRange.Min, y2, 1, zgeo.PathLineButt)
