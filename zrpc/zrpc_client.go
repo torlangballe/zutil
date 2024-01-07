@@ -184,7 +184,7 @@ func RegisterResources(resources ...string) {
 }
 
 func (c *Client) RegisterPollGetter(resID string, get func()) {
-	zlog.Info("RegisterPollGetter", resID)
+	// zlog.Info("RegisterPollGetter", resID)
 	RegisterResources(resID)
 	c.pollGetters.Set(resID, get)
 }

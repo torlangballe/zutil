@@ -220,7 +220,6 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 // any space not used by cells (see jump below), is added between left and center, and center and right.
 func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical bool, spacing float64, outRects []Rect) {
 	// if !vertical {
-	// 	zlog.Info("layoutRectsInBoxes:", debugName)
 	// }
 	sx := r.Min().X
 	x := sx
@@ -269,7 +268,7 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 			a |= VertShrink
 		}
 		vr := box.AlignPro(sc.OriginalSize, a, sc.Margin, sc.MaxSize, sc.MinSize)
-		// 	zlog.Info("layoutRectsInBoxes:", sc.Name, vr, r.Size, a, sc.Margin)
+		// zlog.Info("layoutRectsInBoxes:", box.Size, sc.OriginalSize, sc.Name, sc.Alignment, sc.MaxSize, vr)
 		// zlog.Info("layout:", debugName, "rect:", r, sc.Name, "sc.size:", sc.size, sc.MinSize, "  align:", sc.Alignment, "box:", box, sc.OriginalSize, "=", vr)
 		x = box.Max().X + spacing // was vr.Max!!!
 		if vertical {
@@ -281,7 +280,6 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 
 // LayoutCellsInStack stacks cells horizontally or vertically in rect, returning resulting slice of rects in same slice positions as input cells.
 func LayoutCellsInStack(debugName string, rect Rect, vertical bool, spacing float64, cells []LayoutCell) []Rect {
-	// zlog.Info("LayoutCellsInStack:", rect, vertical, len(cells))
 	// start := time.Now()
 	r := rect
 	if vertical {
