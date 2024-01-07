@@ -134,7 +134,8 @@ func (g *Grapher) startRenderLoop(windowMinutes int) {
 	// zlog.Info("RenderStart:", s, durSecs, addSecs, g.SecondsPerPixel, "@", next)
 }
 
-func (g *Grapher) findJobFromImage(job *SJob) bool {
+func (g *Grapher) findJobFromImagePath(job *SJob) bool {
+	return false
 	fpath, _ := g.cache.GetPathForName(job.storageName())
 	if zfile.Exists(fpath) {
 		img, _, err := zimage.GoImageFromFile(fpath)
@@ -182,7 +183,7 @@ func (g *Grapher) AddJob(job SJob) {
 
 	// zlog.Warn("Time0:", job.TimeForX(0))
 	// zlog.Warn("TimeW:", job.TimeForX(job.PixelWidth()))
-	if !g.findJobFromImage(&job) {
+	if !g.findJobFromImagePath(&job) {
 		s := job.PixelSize(&g.GrapherBase)
 		job.image = image.NewNRGBA(zgeo.Rect{Size: s}.GoRect())
 	}
