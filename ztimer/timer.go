@@ -65,11 +65,12 @@ func (t *Timer) SinceStart() time.Duration {
 }
 
 func (t *Timer) Stop() {
+	old := t.timer
 	if t.timer != nil {
 		countMutex.Lock()
 		timersCount[t.secs]--
 		countMutex.Unlock()
-		t.timer.Stop()
+		old.Stop()
 		t.timer = nil
 	}
 }
