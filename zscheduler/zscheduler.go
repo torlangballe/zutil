@@ -326,6 +326,11 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 		zlog.Assert(outsideRequest)
 		return
 	}
+	if run.ExecutorID == s.zeroID {
+		zlog.Warn("stopJob: not running", jobID)
+		return
+	}
+	// zlog.Warn("stopJob", jobID, run.Stopping, remove, outsideRequest, zlog.CallingStackString())
 	defer func() {
 		// if s.stopped {
 		// zlog.Warn("stopJob refresh?", jobID, refresh)
@@ -1133,7 +1138,7 @@ func (s *Scheduler[I]) endRun(jobID I) {
 		}
 		return
 	}
-	// zlog.Warn("endRun:", jobID, r.Stopping, r.Removing, len(s.runs), r.Removing, s.stopped)
+	// zlog.Warn("endRun:", jobID, r.Stopping, r.Removing, len(s.runs), r.Removing, s.stopped, r.ExecutorID)
 	rc := *r
 	if r.Removing || s.stopped {
 		s.removeRun(jobID)
