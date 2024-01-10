@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/matishsiao/goInfo"
+	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/net"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
@@ -166,9 +167,9 @@ func FreeAndUsedDiskSpace() (free int64, used int64) {
 }
 
 func BootTime() (time.Time, error) {
-	epoc, err := unix.SysctlTimeval("kern.boottime")
+	epoc, err := host.BootTime()
 	if err != nil {
 		return time.Time{}, err
 	}
-	return time.Unix(epoc.Sec, 0), nil
+	return time.Unix(int64(epoc), 0), nil
 }
