@@ -33,6 +33,7 @@ package zdesktop
 //   char *data;
 // } Image;
 // CGImageRef GetWindowImage(long winID);
+//void ShowAlert(char *str);
 import "C"
 
 import (
@@ -333,4 +334,8 @@ func GetAllWindowTitlesForApp(app string) []string {
 	}
 	// zlog.Info("GetAllWindowTitlesForApp", app, str)
 	return strings.Split(str, "\t")
+}
+
+func ShowAlert(str string) {
+	C.ShowAlert(C.CString(str))
 }

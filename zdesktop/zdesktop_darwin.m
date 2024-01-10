@@ -1,4 +1,6 @@
+
 #import <Foundation/Foundation.h>
+#import <CoreFoundation/CoreFoundation.h>
 #import <CoreVideo/CoreVideo.h>
 #import <AppKit/AppKit.h>
 
@@ -375,4 +377,18 @@ CGImageRef GetWindowImage(long winID) {
                             (CGWindowID)winID, 
                             kCGWindowImageBoundsIgnoreFraming|kCGWindowImageNominalResolution|kCGWindowImageShouldBeOpaque);
     return image;
+}
+
+void ShowAlert(char *str) {
+    CFOptionFlags cfRes;
+    CFStringRef cfstr = CFStringCreateWithCString(NULL, str, kCFStringEncodingUTF8);
+
+	CFUserNotificationDisplayAlert(5, kCFUserNotificationNoteAlertLevel,
+				NULL, NULL, NULL,
+				cfstr,
+				NULL,
+				(CFStringRef)@"OK",
+                NULL, NULL, 
+				&cfRes);
+    CFRelease(cfstr);
 }
