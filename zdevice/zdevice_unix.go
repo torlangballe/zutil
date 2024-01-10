@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/matishsiao/goInfo"
 	"github.com/shirou/gopsutil/net"
@@ -162,4 +163,12 @@ func FreeAndUsedDiskSpace() (free int64, used int64) {
 	used = int64(stat.Blocks * uint64(stat.Bsize))
 	zlog.Assert(used != 0)
 	return
+}
+
+func BootTime() (time.Time, error) {
+	epoc, err := unix.SysctlTimeval("kern.boottime")
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(epoc.Sec, 0), nil
 }
