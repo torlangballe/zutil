@@ -92,6 +92,7 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(rp)
 	if err != nil {
+		zlog.Error(err, "encode rpc result", rp)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
