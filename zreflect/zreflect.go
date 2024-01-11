@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
@@ -452,4 +453,10 @@ func AnySetWithRelaxedNumbers(to, from reflect.Value) {
 		return
 	}
 	to.Set(from)
+}
+
+func HashAnyToInt64(a interface{}, add string) int64 {
+	str := fmt.Sprintf("%v", a) + add
+	// fmt.Println("HashAnyToInt64", str)
+	return zint.HashTo64(str)
 }
