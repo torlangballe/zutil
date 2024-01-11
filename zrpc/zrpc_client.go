@@ -19,15 +19,17 @@ import (
 
 // Client is a type used to perform rpc calls
 type Client struct {
-	callURL                          string
-	id                               string
 	AuthToken                        string  // AuthToken is the token sent with the rpc call to authenticate or identify (for reverse calls)
 	HandleAuthenticanFailedFunc      func()  // HandleAuthenticanFailedFunc is called if authentication fails
 	TimeoutSecs                      float64 // A new client with a different timeout can be created. This is total time of comminication to server, execution, and returning the result
 	KeepTokenOnAuthenticationInvalid bool    // if KeepTokenOnAuthenticationInvalid is true, the auth token isn't cleared on failure to authenticate
 	SkipVerifyCertificate            bool    // if true, no certificate checking is done for https calls
-	gettingResources                 zmap.LockMap[string, bool]
-	pollGetters                      zmap.LockMap[string, func()]
+	PrefixURL                        string  // Stores PrefixURL, so easy to compare if it needs changing
+
+	gettingResources zmap.LockMap[string, bool]
+	pollGetters      zmap.LockMap[string, func()]
+	callURL          string
+	id               string
 }
 
 // client is structure to store received info from the call
@@ -54,6 +56,7 @@ var (
 // This is
 func NewClient(prefixURL string, id string) *Client {
 	c := &Client{}
+	c.PrefixURL = prefixURL
 	c.callURL = zstr.Concat("/", prefixURL, zrest.AppURLPrefix, "zrpc")
 	if id == "" {
 		id = zstr.GenerateRandomHexBytes(12)
