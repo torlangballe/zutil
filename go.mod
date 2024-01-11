@@ -20,7 +20,7 @@ require (
 	github.com/riywo/loginshell v0.0.0-20200815045211-7d26008be1ab
 	github.com/sendgrid/sendgrid-go v3.13.0+incompatible
 	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/shirou/gopsutil/v3 v3.23.10
+	github.com/shirou/gopsutil/v3 v3.23.12
 	github.com/torlangballe/blackfridayV2 v0.0.0-20230907135525-adceae2f31a8
 	github.com/torlangballe/mdtopdf v0.0.0-20230912121500-0f15befadda9
 	github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d
