@@ -470,15 +470,29 @@ func DurationFromString(str string) time.Duration {
 }
 
 func Maximize(t *time.Time, with time.Time) {
-	if with.Sub(*t) > 0 {
+	if with.After(*t) {
 		*t = with
 	}
 }
 
 func Minimize(t *time.Time, with time.Time) {
-	if with.Sub(*t) < 0 {
+	if with.Before(*t) {
 		*t = with
 	}
+}
+
+func Max(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
+}
+
+func Min(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+	return b
 }
 
 func XToTime(minX, maxX float64, x float64, start, end time.Time) time.Time {
