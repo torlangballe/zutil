@@ -6,6 +6,7 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 type Range struct {
@@ -191,20 +192,6 @@ func Maximize(a *float64, b float64) bool {
 	return true
 }
 
-func Float64Max(a, b float64) float64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func Float64Min(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // GetItem makes Slice worth with MenuView MenuItems interface
 func (s Slice) GetItem(i int) (id, name string, value interface{}) {
 	if i >= len(s) {
@@ -284,6 +271,44 @@ func MaxKeyOfMap(m map[string]float64) (key string, value float64) {
 			value = v
 			key = k
 		}
+	}
+	return
+}
+
+func Join64(ids []int64, sep string) string {
+	var str string
+	for i, id := range ids {
+		if i != 0 {
+			str += sep
+		}
+		str += strconv.FormatInt(id, 10)
+	}
+	return str
+}
+
+func SplitStringTo64(str string, sep string) []float64 {
+	if len(str) == 0 {
+		return nil
+	}
+	return StringsTo64(strings.Split(str, sep))
+}
+
+func StringsTo64(snums []string) []float64 {
+	var floats []float64
+
+	for _, s := range snums {
+		s = strings.TrimSpace(s)
+		f, err := strconv.ParseFloat(s, 64)
+		if err == nil {
+			floats = append(floats, f)
+		}
+	}
+	return floats
+}
+
+func ToStrings64(floats []float64) (s []string) {
+	for _, n := range floats {
+		s = append(s, strconv.FormatFloat(n, 'f', -1, 64))
 	}
 	return
 }
