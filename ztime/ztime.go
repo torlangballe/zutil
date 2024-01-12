@@ -202,6 +202,9 @@ func GetDurationAsHMSString(duration time.Duration, hours, mins, secs bool, subd
 			s = math.Mod(s, 60)
 		}
 		format := "%02"
+		if len(parts) == 0 {
+			format = `%`
+		}
 		format += fmt.Sprintf(".%df", subdigits)
 		parts = append(parts, fmt.Sprintf(format, s))
 		// zlog.Info("GetSecsAsHMSString:", durSecs, subdigits, format, parts, h, m)
