@@ -72,7 +72,6 @@ func NewReverseClienter(executor *Executor) *ReverseClienter {
 		r.allReverseClients.ForAll(func(cid string, c *ReverseClient) {
 			if time.Since(c.LastPolled) > ztime.SecondsDur(PollRestartSecs+5) {
 				var str string
-				zlog.Info("zrpc: Unresponsive client1 from allReverseClients", c.permanent, cid, r.allReverseClients.Count())
 				if !c.permanent {
 					str = "removed"
 					RemoveReverseClient(r, cid)

@@ -333,23 +333,6 @@ func processResponse(surl string, resp *http.Response, printBody bool, receive a
 	return resp, nil
 }
 
-var testReader = bytes.NewReader([]byte{5, 2, 2})
-var testCount int
-
-func testRequests(surl string) {
-	if runtime.GOOS != "js" {
-		return
-	}
-	testCount++
-	_, err := http.NewRequest("POST", "http://167.235.250.44/qtt/zrpc?method=RPCCalls.Banana", testReader)
-	if err != nil {
-		zlog.Error(err, "updateResources err:", testCount)
-	}
-	if testCount%100 == 99 {
-		zlog.Info("testRequests:", testCount*2, err)
-	}
-}
-
 func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Response, code int, err error) {
 	// zlog.Assert(len(params.Body) != 0 || params.Reader != nil, surl)
 	zlog.Assert(params.ContentType != "")
@@ -362,7 +345,6 @@ func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Respo
 			zlog.Info(h+":", s)
 		}
 	}
-	testRequests(surl)
 	req, client, err := MakeRequest(surl, params)
 	if err != nil {
 		return
