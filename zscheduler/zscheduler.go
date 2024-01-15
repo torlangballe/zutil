@@ -478,10 +478,23 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		existingCap += cap.spare()
 	}
 	left := existingCap - unrunCost
+	var needsMilestone bool
+	var extraStr string
+	sinceRun := time.Since(run.RanAt)
+	hasSlack := (s.setup.KeepJobsBeyondAtEndUntilEnoughSlack != 0 && sinceRun <= run.Job.Duration+s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
+	if hasSlack && s.setup.StopJobIfSinceMilestoneLessThan != 0 {
+		extraStr = ", and near milestone"
+		if run.MilestoneAt.IsZero() || time.Since(run.MilestoneAt) > s.setup.StopJobIfSinceMilestoneLessThan {
+			needsMilestone = true
+		}
+	}
 	if e.Paused {
 		// zlog.Warn("shouldStopJob paused:", caps, existingCap, unrunCost, run.Job.ID, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack, left, run.Job.Cost)
 		if s.setup.KeepJobsBeyondAtEndUntilEnoughSlack == 0 {
 			return true, "paused and no KeepJobsBeyondAtEndUntilEnoughSlack"
+		}
+		if needsMilestone {
+			return false, ""
 		}
 		// zlog.Warn("Stop???", run.Job.ID, run.ExecutorID, left, run.Job.Cost, unrunCost)
 		if unrunCost == 0 {
@@ -506,19 +519,9 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 	if run.Job.Duration == 0 {
 		return false, ""
 	}
-	sinceRun := time.Since(run.RanAt)
 	if sinceRun > run.Job.Duration {
 		if s.setup.KeepJobsBeyondAtEndUntilEnoughSlack == 0 {
 			return true, zstr.Spaced("job duration without slack over", time.Since(run.RanAt), run.Job.Duration)
-		}
-		hasSlack := (sinceRun <= run.Job.Duration+s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
-		var needsMilestone bool
-		var extraStr string
-		if hasSlack && s.setup.StopJobIfSinceMilestoneLessThan != 0 {
-			extraStr = ", and near milestone"
-			if run.MilestoneAt.IsZero() || time.Since(run.MilestoneAt) > s.setup.StopJobIfSinceMilestoneLessThan {
-				needsMilestone = true
-			}
 		}
 		if left > run.Job.Cost && unrunCost == 0 {
 			if needsMilestone {
