@@ -23,6 +23,7 @@ var (
 func NewFileStore(path string) *FileStore {
 	s := &FileStore{}
 	s.Raw = NewDictRawStore()
+	s.storeFile = zfile.ChangedExtension(path, ".json")
 	if path != "" {
 		s.Load(path)
 	}
@@ -32,7 +33,6 @@ func NewFileStore(path string) *FileStore {
 
 func (s *FileStore) Load(path string) error {
 	drs := s.DictRawStore()
-	s.storeFile = zfile.ChangedExtension(path, ".json")
 	err := zjson.UnmarshalFromFile(&drs.dict, s.storeFile, true)
 	if err != nil {
 		return zlog.Error(err, "unmarshal")
@@ -44,7 +44,7 @@ func (s *FileStore) Save() error {
 	drs := s.DictRawStore()
 	drs.lock.Lock()
 	err := zjson.MarshalToFile(drs.dict, s.storeFile)
-	zlog.OnError(err, "Save", s.storeFile)
+	zlog.OnError(err, "Save", s.storeFile, zlog.CallingStackString())
 	drs.lock.Unlock()
 	return err
 }
