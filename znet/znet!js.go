@@ -20,6 +20,7 @@ import (
 
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -332,4 +333,22 @@ func (s *HTTPServer) Shutdown(wait bool) error {
 		<-s.doneChannel
 	}
 	return nil
+}
+
+// SetEtcHostsEntry adds a 1.2.3.4 example.com #comment line to /etc/hosts
+// Any line with the same comment is removed first.
+// If ip or domain are empty, no line is added.
+// It requires the running user to be able to sudo, and run a shell
+func SetEtcHostsEntry(ip, domain, comment, sudoPassword string) error {
+	hpath := "/etc/hosts"
+	sed := fmt.Sprintf(`sed -i .old '/%s/d' %s`, comment, hpath)
+	var echo string
+	if ip != "" && domain != "" {
+		echo = fmt.Sprintf(`echo '%s %s %s' >> %s`, ip, domain, comment, hpath)
+	}
+	str, err := zprocess.RunCommandWithSudo("sh", sudoPassword, "-c", sed+" ; "+echo)
+	if err != nil {
+		return zlog.NewError(err, str)
+	}
+	return err
 }
