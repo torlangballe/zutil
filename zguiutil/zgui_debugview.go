@@ -48,7 +48,7 @@ func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zla
 		down = "~/Downloads"
 	}
 	then := zlabel.New("then")
-	then.SetFont(zgeo.FontDefault().NewWithStyle(zgeo.FontStyleBold))
+	then.SetFont(zgeo.FontDefault(0).NewWithStyle(zgeo.FontStyleBold))
 	v.Add(then, zgeo.CenterLeft)
 	label := zlabel.New("go tool pprof -web " + down + "/" + ptype)
 	ztext.MakeViewPressToClipboard(label)

@@ -67,8 +67,8 @@ func FontNew(name string, size float64, style FontStyle) *Font {
 	return &Font{Name: name, Size: size * scale, Style: style}
 }
 
-func FontDefault() *Font {
-	return FontNew(FontDefaultName, FontDefaultSize, FontStyleNormal)
+func FontDefault(incSize float64) *Font {
+	return FontNew(FontDefaultName, FontDefaultSize+incSize, FontStyleNormal)
 }
 
 func FontNice(size float64, style FontStyle) *Font {
