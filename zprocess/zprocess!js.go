@@ -66,6 +66,17 @@ func RunCommand(command string, timeoutSecs float64, args ...any) (string, error
 	return str, err
 }
 
+// RunCommandWithSudo runs command with args on the shell, using sudo and stdin to 'type' password to sudo.
+func RunCommandWithSudo(command, password string, args ...any) (string, error) {
+	args = append([]any{"-k", "-S", "--", command}, args...)
+	cmd := exec.Command("sudo", zstr.AnySliceToStrings(args)...)
+	cmd.Stdin = strings.NewReader(password) // your password fed directly to sudo's stdin
+	output, err := cmd.CombinedOutput()
+	str := string(output)
+
+	return str, err
+}
+
 func GetAppProgramPath(appName string) string {
 	return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
 }
