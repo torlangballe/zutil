@@ -36,7 +36,7 @@ var (
 	UserNameIsEmail        bool = true
 	CanCancelAuthDialog    bool = false
 	CurrentUser            ClientUserInfo
-	AuthenticatedFunc      func()
+	AuthenticatedFunc      func(err error) bool
 	doingAuth              bool
 	MinimumPasswordLength  = 5
 	AppSpecificPermissions = []string{"root"}
@@ -199,6 +199,10 @@ func validateFields(user, pass *ztext.TextView, login, register *zbutton.Button)
 	register.SetUsable(usable)
 }
 
+func StoreTokenInKeyValueStore(token string) {
+	zkeyvalue.DefaultStore.SetString(token, tokenKey, true)
+}
+
 func callAuthenticate(view zview.View, a Authentication, got func()) {
 	var aret ClientUserInfo
 	zkeyvalue.DefaultStore.SetString(a.UserName, usernameKey, true)
@@ -211,7 +215,7 @@ func callAuthenticate(view zview.View, a Authentication, got func()) {
 	if !(a.IsRegister && !AllowRegistration) {
 		CurrentUser = aret
 		zrpc.MainClient.AuthToken = CurrentUser.Token
-		zkeyvalue.DefaultStore.SetString(CurrentUser.Token, tokenKey, true)
+		StoreTokenInKeyValueStore(CurrentUser.Token)
 	}
 	doingAuth = false
 	zpresent.Close(view, false, func(dismissed bool) {
@@ -222,7 +226,6 @@ func callAuthenticate(view zview.View, a Authentication, got func()) {
 }
 
 func checkAndDoAuth() {
-	// zlog.Info("checkAndDoAuth:", doingAuth)
 	if doingAuth {
 		return
 	}
@@ -230,17 +233,22 @@ func checkAndDoAuth() {
 	var user User
 
 	err := zrpc.MainClient.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
-	// zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken)
+	// zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken, err)
 	if err == nil {
 		CurrentUser.UserID = user.ID
 		CurrentUser.UserName = user.UserName
 		CurrentUser.Permissions = user.Permissions
 		CurrentUser.Token = zrpc.MainClient.AuthToken
 		if AuthenticatedFunc != nil {
-			AuthenticatedFunc()
+			AuthenticatedFunc(nil)
 		}
 		doingAuth = false
 		return
+	}
+	if AuthenticatedFunc != nil {
+		if AuthenticatedFunc(err) {
+			return
+		}
 	}
 	a := zalert.New(err.Error())
 	a.ShowOK(func() {
@@ -250,7 +258,7 @@ func checkAndDoAuth() {
 			}
 			OpenDialog(AllowRegistration, true, CanCancelAuthDialog, func() {
 				if AuthenticatedFunc != nil {
-					AuthenticatedFunc()
+					AuthenticatedFunc(nil)
 				}
 			})
 			return false
@@ -327,7 +335,7 @@ func callResetPassword(reset ResetPassword) {
 		zalert.ShowError(err)
 		return
 	}
-	zkeyvalue.DefaultStore.SetString(token, tokenKey, true)
+	StoreTokenInKeyValueStore(token)
 	u := zapp.URL()
 	q := u.Query()
 	q.Del("reset")
