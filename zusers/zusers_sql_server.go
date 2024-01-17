@@ -362,3 +362,24 @@ func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, chang
 	}
 	return nil
 }
+
+func (s *SQLServer) GetOrCreateSessionForUserIDAndClientID(ci *zrpc.ClientInfo, userID int64, clientID string) (token string, err error) {
+	squery := "SELECT token FROM zuser_sessions us WHERE userid=$1 AND clientid=$2 LIMIT 1"
+	squery = s.customizeQuery(squery)
+	row := s.DB.QueryRow(squery, userID, clientID)
+	err = row.Scan(&token)
+	if err == nil {
+		return token, err
+	}
+	var session Session
+	session.ClientInfo = *ci
+	session.Token = zstr.Concat(".", ci.Type, zstr.GenerateUUID())
+	session.ClientID = clientID
+	session.UserID = userID
+	err = s.AddNewSession(session)
+	if err != nil {
+		zlog.Error(err, "GetOrCreateSessionForUserID")
+		return "", AuthFailedError
+	}
+	return session.Token, nil
+}
