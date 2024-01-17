@@ -28,6 +28,8 @@ func NewExecutor() *Executor {
 	return e
 }
 
+var EnableLogExecute zlog.Enabler
+
 // Register registers instances of types that have methods in them suitable for being an rpc call.
 // func (t type) Method(<ci ClientInfo>, input, <*result>) error
 func (e *Executor) Register(callers ...interface{}) {
@@ -170,7 +172,7 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 	errInter := returnValues[0].Interface()
 	if errInter != nil {
 		err := errInter.(error)
-		zlog.Error(err, "Call Error", mtype.Method.Name)
+		zlog.Error(err, EnableLogExecute, "Call Error", mtype.Method.Name)
 		rp.Error = err.Error()
 		return rp, nil
 	}
