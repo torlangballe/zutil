@@ -59,3 +59,19 @@ func (m *ExpiringMap[K, V]) Get(k K) (V, bool) {
 func (m *ExpiringMap[K, V]) Remove(k K) {
 	m.lockedMap.Remove(k)
 }
+
+func (m *ExpiringMap[K, V]) ForEach(f func(key K, value V) bool) {
+	m.lockedMap.ForEach(func(key K, val struct {
+		value   V
+		touched time.Time
+	}) bool {
+		return f(key, val.value)
+	})
+}
+
+func (m *ExpiringMap[K, V]) ForAll(f func(key K, value V)) {
+	m.ForEach(func(key K, value V) bool {
+		f(key, value)
+		return true
+	})
+}
