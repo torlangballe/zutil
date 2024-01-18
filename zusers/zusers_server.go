@@ -33,7 +33,6 @@ type ForgotPasswordData struct {
 }
 
 var (
-	Calls                    = new(UsersCalls)
 	MainServer               *SQLServer
 	resetCache               = zcache.NewWithExpiry(60*10, false) // cache of reset-token:email
 	StoreAuthenticationError = fmt.Errorf("Store authentication failed: %w", AuthFailedError)
@@ -47,7 +46,8 @@ var (
 
 func setupWithSQLServer(s *SQLServer, executor *zrpc.Executor) {
 	MainServer = s
-	executor.Register(Calls)
+	executor.Register(UsersCalls{})
+	executor.SetAuthNotNeededForMethod("UsersCalls.GetUserForToken")
 	executor.SetAuthNotNeededForMethod("UsersCalls.Authenticate")
 	executor.SetAuthNotNeededForMethod("UsersCalls.SendForgotPasswordPasswordMail")
 	executor.SetAuthNotNeededForMethod("UsersCalls.SetNewPasswordFromForgotPassword")
@@ -66,12 +66,12 @@ func makeSaltyHash(password string) (hash, salt, token string) {
 	return
 }
 
-func (*UsersCalls) GetUserForToken(token string, user *User) error {
+func (UsersCalls) GetUserForToken(token string, user *User) error {
 	if MainServer == nil {
 		return nil
 	}
 	u, err := MainServer.GetUserForToken(token)
-	zlog.Info("GetUserForToken:", err, token)
+	zlog.Info("GetUserForToken:", err, token, zlog.CallingStackString())
 	if err != nil {
 		zlog.Error(err, "GetUserForToken", token)
 		return err
@@ -80,14 +80,14 @@ func (*UsersCalls) GetUserForToken(token string, user *User) error {
 	return nil
 }
 
-func (*UsersCalls) Logout(ci *zrpc.ClientInfo, username string, reply *zrpc.Unused) error {
+func (UsersCalls) Logout(ci *zrpc.ClientInfo, username string, reply *zrpc.Unused) error {
 	if MainServer == nil {
 		return nil
 	}
 	return MainServer.UnauthenticateToken(ci.Token)
 }
 
-func (*UsersCalls) Authenticate(ci *zrpc.ClientInfo, a Authentication, ui *ClientUserInfo) error {
+func (UsersCalls) Authenticate(ci *zrpc.ClientInfo, a Authentication, ui *ClientUserInfo) error {
 	zlog.Info("UC.Authenticate:", ui)
 	if MainServer == nil {
 		return nil
@@ -121,7 +121,7 @@ func (*UsersCalls) Authenticate(ci *zrpc.ClientInfo, a Authentication, ui *Clien
 	return nil
 }
 
-func (*UsersCalls) SendForgotPasswordPasswordMail(email string, r *zrpc.Unused) error {
+func (UsersCalls) SendForgotPasswordPasswordMail(email string, r *zrpc.Unused) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -144,7 +144,7 @@ func (*UsersCalls) SendForgotPasswordPasswordMail(email string, r *zrpc.Unused) 
 	return err
 }
 
-func (uc *UsersCalls) SetNewPasswordFromForgotPassword(ci *zrpc.ClientInfo, reset ResetPassword, token *string) error {
+func (UsersCalls) SetNewPasswordFromForgotPassword(ci *zrpc.ClientInfo, reset ResetPassword, token *string) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -163,11 +163,11 @@ func (uc *UsersCalls) SetNewPasswordFromForgotPassword(ci *zrpc.ClientInfo, rese
 	var change ChangeInfo
 	change.NewString = reset.Password
 	change.UserID = u.ID
-	err = uc.ChangePasswordForSelf(ci, change, token)
+	err = UsersCalls{}.ChangePasswordForSelf(ci, change, token)
 	return err
 }
 
-func (*UsersCalls) ChangePasswordForSelf(ci *zrpc.ClientInfo, change ChangeInfo, token *string) error {
+func (UsersCalls) ChangePasswordForSelf(ci *zrpc.ClientInfo, change ChangeInfo, token *string) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -176,14 +176,14 @@ func (*UsersCalls) ChangePasswordForSelf(ci *zrpc.ClientInfo, change ChangeInfo,
 	return err
 }
 
-func (*UsersCalls) ChangeUserNameForSelf(ci *zrpc.ClientInfo, change ChangeInfo) error {
+func (UsersCalls) ChangeUserNameForSelf(ci *zrpc.ClientInfo, change ChangeInfo) error {
 	if MainServer == nil {
 		return nil
 	}
 	return MainServer.ChangeUserNameForUser(change.UserID, change.NewString)
 }
 
-func (s *UsersCalls) GetAllUsers(in *zrpc.Unused, us *[]AllUserInfo) error {
+func (UsersCalls) GetAllUsers(in *zrpc.Unused, us *[]AllUserInfo) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -192,14 +192,14 @@ func (s *UsersCalls) GetAllUsers(in *zrpc.Unused, us *[]AllUserInfo) error {
 	return err
 }
 
-func (s *UsersCalls) DeleteUserForID(id int64) error {
+func (UsersCalls) DeleteUserForID(id int64) error {
 	if MainServer == nil {
 		return nil
 	}
 	return MainServer.DeleteUserForID(id)
 }
 
-func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change ClientUserInfo) error {
+func (UsersCalls) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change ClientUserInfo) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -227,7 +227,7 @@ func (*UsersCalls) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change
 	return nil
 }
 
-func (*UsersCalls) UnauthenticateUser(ci *zrpc.ClientInfo, userID int64) error {
+func (UsersCalls) UnauthenticateUser(ci *zrpc.ClientInfo, userID int64) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -248,7 +248,7 @@ func (*UsersCalls) UnauthenticateUser(ci *zrpc.ClientInfo, userID int64) error {
 
 func RegisterDefaultAdminUserIfNone() {
 	var us []AllUserInfo
-	err := Calls.GetAllUsers(nil, &us)
+	err := UsersCalls{}.GetAllUsers(nil, &us)
 	if err == nil && len(us) == 0 {
 		userID, _, _ := MainServer.RegisterUser(nil, DefaultEmail, DefaultPassword, false)
 		MainServer.SetAdminForUser(userID, true)
