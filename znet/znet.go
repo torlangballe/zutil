@@ -14,6 +14,22 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
+type SSLCertificateOwner struct {
+	Organization  string
+	Country       string
+	Province      string
+	Locality      string
+	StreetAddress string
+	PostalCode    string
+}
+
+type SSLCertificateInfo struct {
+	SSLCertificateOwner
+	YearsUntilExpiry int
+	CertificatePath  string `zui:"-"`
+	PrivateKeyPath   string `zui:"-"`
+}
+
 func GetHostAndPort(u *url.URL) (host string, port int) {
 	var err error
 	var sport string

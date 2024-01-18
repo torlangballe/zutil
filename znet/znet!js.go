@@ -5,6 +5,7 @@ package znet
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,6 +24,8 @@ import (
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 )
+
+type ZNetCalls struct{}
 
 const osxCmd = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
 const osxArgs = "-I"
@@ -271,7 +274,7 @@ type HTTPServer struct {
 	doneChannel chan bool
 }
 
-func ServeHTTPInBackground(address string, certificatesPath string, handler http.Handler) *HTTPServer {
+func ServeHTTPInBackground(address string, certificatesPath string, handler http.Handler) (server *HTTPServer, certificateExpires time.Time) {
 	// https://ap.www.namecheap.com/Domains/DomainControlPanel/etheros.online/advancedns
 	// https://github.com/denji/golang-tls
 	//
@@ -301,14 +304,23 @@ func ServeHTTPInBackground(address string, certificatesPath string, handler http
 	s.Server.WriteTimeout = 60 * time.Second
 	s.Server.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	s.doneChannel = make(chan bool, 100)
-	go func() {
-		var err error
-		if certificatesPath != "" {
-			fCRT := certificatesPath + ".crt"
-			fKey := certificatesPath + ".key"
-			if zfile.NotExist(fCRT) || zfile.NotExist(fKey) {
-				zlog.Fatal(nil, "missing certificate files:", fCRT, fKey)
+	var fCRT, fKey string
+	if certificatesPath != "" {
+		fCRT = certificatesPath + ".crt"
+		fKey = certificatesPath + ".key"
+		if zfile.NotExist(fCRT) || zfile.NotExist(fKey) {
+			zlog.Fatal(nil, "missing certificate files:", fCRT, fKey)
+		}
+		cer, err := tls.LoadX509KeyPair(fCRT, fKey)
+		if !zlog.OnError(err, "LoadX509KeyPair") {
+			x509Cert, err := x509.ParseCertificate(cer.Certificate[0])
+			if !zlog.OnError(err, "ParseCertificate") {
+				certificateExpires = x509Cert.NotAfter
 			}
+		}
+	}
+	go func() {
+		if certificatesPath != "" {
 			err = s.Server.ListenAndServeTLS(fCRT, fKey)
 		} else {
 			err = s.Server.ListenAndServe()
@@ -321,7 +333,7 @@ func ServeHTTPInBackground(address string, certificatesPath string, handler http
 		}
 		s.doneChannel <- true
 	}()
-	return s
+	return s, certificateExpires
 }
 
 func (s *HTTPServer) Shutdown(wait bool) error {
@@ -339,14 +351,18 @@ func (s *HTTPServer) Shutdown(wait bool) error {
 // Any line with the same comment is removed first.
 // If ip or domain are empty, no line is added.
 // It requires the running user to be able to sudo, and run a shell
-func SetEtcHostsEntry(ip, domain, comment, sudoPassword string) error {
+func SetEtcHostsEntries(forwards map[string]string, comment, sudoPassword string) error {
 	hpath := "/etc/hosts"
 	sed := fmt.Sprintf(`sed -i .old '/%s/d' %s`, comment, hpath)
-	var echo string
-	if ip != "" && domain != "" {
-		echo = fmt.Sprintf(`echo '%s %s %s' >> %s`, ip, domain, comment, hpath)
+	var echos []string
+	for domain, ip := range forwards {
+		line := fmt.Sprintf(`echo '%s %s %s' >> %s`, ip, domain, comment, hpath)
+		echos = append(echos, line)
 	}
-	str, err := zprocess.RunCommandWithSudo("sh", sudoPassword, "-c", sed+" ; "+echo)
+	sechos := strings.Join(echos, " ; ")
+	commands := sed + " ; " + sechos
+	zlog.Info("SetEtcHostsEntries:", commands)
+	str, err := zprocess.RunCommandWithSudo("sh", sudoPassword, "-c", commands)
 	if err != nil {
 		return zlog.NewError(err, str)
 	}
