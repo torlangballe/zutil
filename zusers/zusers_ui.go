@@ -3,6 +3,7 @@
 package zusers
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/torlangballe/zui/zalert"
@@ -40,6 +41,7 @@ var (
 	doingAuth              bool
 	MinimumPasswordLength  = 5
 	AppSpecificPermissions = []string{"root"}
+	NoLoginGUI             bool
 )
 
 func Init() {
@@ -226,13 +228,24 @@ func callAuthenticate(view zview.View, a Authentication, got func()) {
 }
 
 func checkAndDoAuth() {
+	var err error
+	// zlog.Info("checkAndDoAuth")
 	if doingAuth {
+		return
+	}
+	if zrpc.MainClient.AuthToken == "" {
+		if NoLoginGUI {
+			if AuthenticatedFunc != nil {
+				AuthenticatedFunc(errors.New("no token"))
+			}
+			return
+			go showOpenDialog()
+		}
 		return
 	}
 	doingAuth = true
 	var user User
-
-	err := zrpc.MainClient.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
+	err = zrpc.MainClient.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
 	// zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken, err)
 	if err == nil {
 		CurrentUser.UserID = user.ID
@@ -250,19 +263,26 @@ func checkAndDoAuth() {
 			return
 		}
 	}
-	a := zalert.New(err.Error())
-	a.ShowOK(func() {
-		ztimer.RepeatNow(0.1, func() bool {
-			if !zpresent.FirstPresented {
-				return true
-			}
-			OpenDialog(AllowRegistration, true, CanCancelAuthDialog, func() {
-				if AuthenticatedFunc != nil {
-					AuthenticatedFunc(nil)
-				}
-			})
-			return false
+	if !NoLoginGUI {
+		a := zalert.New(err.Error())
+		a.ShowOK(func() {
+			showOpenDialog()
 		})
+	}
+}
+
+func showOpenDialog() {
+	zlog.Info("open dialog", zpresent.FirstPresented)
+	ztimer.RepeatNow(0.1, func() bool {
+		if !zpresent.FirstPresented {
+			return true
+		}
+		OpenDialog(AllowRegistration, true, CanCancelAuthDialog, func() {
+			if AuthenticatedFunc != nil {
+				AuthenticatedFunc(nil)
+			}
+		})
+		return false
 	})
 }
 
