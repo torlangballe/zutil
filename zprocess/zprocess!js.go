@@ -325,3 +325,11 @@ func ConsumeOutAndError(outPipe, errPipe io.ReadCloser, ctx context.Context, dum
 		})
 	}
 }
+
+func OnLinux() bool {
+	return runtime.GOOS == "linux"
+}
+
+func OnDarwin() bool {
+	return runtime.GOOS == "darwin"
+}
