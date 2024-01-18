@@ -142,6 +142,8 @@ github.com/torlangballe/zui v0.0.0-20231109133330-c4bdfaf949c3 h1:waGU1NPERNcPDP
 github.com/torlangballe/zui v0.0.0-20231109133330-c4bdfaf949c3/go.mod h1:0cBfP6TAZfHy+bzUEGv76ARqm8WA0r3+ubmtIU7nGJI=
 github.com/torlangballe/zui v0.0.0-20240118112702-cefd97a89903 h1:QfHuowOtp0iQykqA+kIH/nITEf5EsUFOo+xa119md44=
 github.com/torlangballe/zui v0.0.0-20240118112702-cefd97a89903/go.mod h1:31LwGA8CEruOC+9JLgltgNbOpED87yOlHsxBTL4kb8Q=
+github.com/torlangballe/zui v0.0.0-20240118120130-d5a00e2dd34a h1:45h0INv0xzatA61+sVswmZK5uUshQ4xvbn7sVcOP58I=
+github.com/torlangballe/zui v0.0.0-20240118120130-d5a00e2dd34a/go.mod h1:1YRWc1GyJV0TepZpBl5/rB02L7zLAkF/lnbPbOoigyE=
 github.com/yusufpapurcu/wmi v1.2.3 h1:E1ctvB7uKFMOJw3fdOW32DwGE9I7t++CRUEMKvFoFiw=
 github.com/yusufpapurcu/wmi v1.2.3/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a/go.mod h1:P+XmwS30IXTQdn5tA2iutPOUgjI07+tq3H3K9MVA1s8=
