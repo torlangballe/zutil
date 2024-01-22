@@ -1192,3 +1192,15 @@ func GetIDFromAnySliceItemWithIndex(a any, index int) string {
 	}
 	return strconv.Itoa(index)
 }
+
+func SplitStringWithDoubleAsEscape(str, split string) []string {
+	const unlikely = "•°©°•"
+	replacer := strings.NewReplacer(split+split, unlikely)
+	deplacer := strings.NewReplacer(unlikely, split)
+	str = replacer.Replace(str)
+	parts := strings.Split(str, split)
+	for i, part := range parts {
+		parts[i] = deplacer.Replace(part)
+	}
+	return parts
+}
