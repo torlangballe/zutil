@@ -150,7 +150,7 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 			adjustableCount++
 		}
 	}
-	// 	zlog.Info(adjustableCount, "addLeftoverSpaceToWidths:", debugName, r.Size.W, "diff:", diff, "spacing:", spacing, "w:", width)
+	// zlog.Info(adjustableCount, "addLeftoverSpaceToWidths:", debugName, r.Size.W, "diff:", diff, "spacing:", spacing, "w:", width)
 	// zlog.Info("Possible adj:", adj)
 	ndiff := diff
 	//	viewsWidth := width - space - marg
@@ -162,7 +162,7 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 			}
 			w := math.Max(1, sc.size.W)
 			shouldAdjust := ndiff / adjustableCount
-			// 	zlog.Info("adj:", shouldAdjust, ndiff, sc.Name, adj[i])
+			// zlog.Info("adj:", shouldAdjust, ndiff, sc.Name, adj[i])
 			//			if math.Abs(adj[i]) < math.Abs(shouldAdjust) {
 			amount := math.Min(adj[i], shouldAdjust)
 			if amount > 0 {
@@ -190,6 +190,7 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 	}
 	zfloat.Maximize(&biggiesTotalWidth, 1)
 	for i, sc := range scells {
+		// zlog.Info("addLeftoverSpaceToWidths2:", sc.Name, adj[i], sc.MinSize, sc.MaxSize, sc.OriginalSize, sc.size)
 		if adj[i] != 0 {
 			w := sc.size.W
 			if sc.MaxSize.W != 0 {
@@ -280,6 +281,7 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 
 // LayoutCellsInStack stacks cells horizontally or vertically in rect, returning resulting slice of rects in same slice positions as input cells.
 func LayoutCellsInStack(debugName string, rect Rect, vertical bool, spacing float64, cells []LayoutCell) []Rect {
+	// zlog.Info("LayoutCellsInStack", debugName, zlog.CallingStackString())
 	// start := time.Now()
 	r := rect
 	if vertical {
@@ -295,7 +297,13 @@ func LayoutCellsInStack(debugName string, rect Rect, vertical bool, spacing floa
 
 func LayoutGetCellsStackedSize(debugName string, vertical bool, spacing float64, cells []LayoutCell) Size {
 	scells := getStackCells(debugName, vertical, cells)
+	// for i, sc := range scells {
+	// 	zlog.Info("LayoutGetCellsStackedSize:", i, sc.Name, sc.OriginalSize, sc.size, sc.MinSize)
+	// }
 	w, _, _ := calcPreAddedTotalWidth(debugName, scells, spacing)
+	// for i, sc := range scells {
+	// 	zlog.Info(w, "LayoutGetCellsStackedSize preadded:", i, sc.Name, sc.OriginalSize, sc.size, sc.MinSize, sc.MaxSize)
+	// }
 	h := 0.0
 	for _, sc := range scells {
 		zfloat.Maximize(&h, sc.size.H+sc.Margin.H*2)
