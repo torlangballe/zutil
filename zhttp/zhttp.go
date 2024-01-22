@@ -383,7 +383,6 @@ func TruncateLongParametersInURL(surl string, onlyIfTotalCharsMoreThan, maxChars
 	var query = url.Values{}
 	for k, vs := range u.Query() {
 		for _, p := range vs {
-			zlog.Info("URLP:", p)
 			if len(p) > maxCharsInParameter {
 				p = "xxx"
 			}
