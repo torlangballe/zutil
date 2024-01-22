@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -17,29 +18,25 @@ type (
 	JSONStringArray    []string
 )
 
-type UpsertInfo struct {
-	Rows         SQLDictSlice
-	TableName    string
-	SetColumns   map[string]string
-	EqualColumns map[string]string
-	OffsetQuery  string
+type UpsertInfo[S any] struct {
+	Rows [][]S
+	// OffsetQuery  string
 }
 
-type UpsertResult struct {
-	LastInsertID int64
-	Offset       int64
+type InsertInfo[S any] struct {
+	UpsertInfo[S]
+	DefCols []string
 }
 
-type SelectInfo struct {
-	TableName  string
-	GetColumns []string
-	Trailer    string
-}
+// type UpsertResult struct {
+// 	LastInsertID int64
+// 	Offset       int64
+// }
 
 type QueryBase struct {
 	Constraints string
 	Table       string
-	SkipFields  []string
+	SkipColumns []string
 }
 
 type BaseType int
@@ -130,42 +127,87 @@ func ConvertFieldName(i zreflect.Item) string {
 // 	return
 // }
 
-func FieldNamesStringFromStruct(istruct interface{}, skip []string, prefix string) (fields string) {
-	fs := FieldNamesFromStruct(istruct, skip, prefix)
+func ColumnNamesStringFromStruct(istruct interface{}, skip []string, prefix string) string {
+	fs := ColumnNamesFromStruct(istruct, skip, prefix)
 	return strings.Join(fs, ",")
 }
 
-func FieldNamesFromStruct(s interface{}, skip []string, prefix string) (fields []string) {
-	ForEachColumn(s, skip, prefix, func(v reflect.Value, sf reflect.StructField, column string, primary bool) {
-		fields = append(fields, column)
+func ColumnNamesFromStruct(s interface{}, skip []string, prefix string) []string {
+	var fields []string
+	ForEachColumn(s, skip, prefix, func(each ColumnInfo) bool {
+		fields = append(fields, each.Column)
+		return true
 	})
-	return
+	return fields
 }
 
-func ForEachColumn(s interface{}, skip []string, prefix string, got func(v reflect.Value, sf reflect.StructField, column string, primary bool)) {
-	zreflect.ForEachField(s, zreflect.FlattenIfAnonymous, func(index int, val reflect.Value, sf reflect.StructField) bool {
-		var column string
-		dbTags := zreflect.GetTagAsMap(string(sf.Tag))["db"]
+func FieldNamesToColumnFromStruct(s interface{}, skip []string, prefix string) (m map[string]string, primaryCol string) {
+	m = map[string]string{}
+	ForEachColumn(s, skip, prefix, func(each ColumnInfo) bool {
+		if each.IsPrimary {
+			primaryCol = each.Column
+		}
+		m[each.StructField.Name] = each.Column
+		return true
+	})
+	return m, primaryCol
+}
+
+func FieldForColumnName(s interface{}, skip []string, prefix, column string) (ColumnInfo, bool) {
+	var finfo ColumnInfo
+	var found bool
+	ForEachColumn(s, skip, prefix, func(each ColumnInfo) bool {
+		if each.Column == column {
+			finfo = each
+			found = true
+			return false
+		}
+		return true
+	})
+	return finfo, found
+}
+
+type ColumnInfo struct {
+	zreflect.FieldInfo
+	Column      string
+	IsPrimary   bool
+	ColumnIndex int
+}
+
+func ForEachColumn(s interface{}, skip []string, prefix string, got func(each ColumnInfo) bool) {
+	i := 0
+	zreflect.ForEachField(s, zreflect.FlattenIfAnonymous, func(each zreflect.FieldInfo) bool {
+		var colInfo ColumnInfo
+		colInfo.FieldInfo = each
+		dbTags := zreflect.GetTagAsMap(string(each.StructField.Tag))["db"]
 		if len(dbTags) == 0 || dbTags[0] == "" {
-			column = strings.ToLower(sf.Name)
+			colInfo.Column = strings.ToLower(each.StructField.Name)
 		} else {
-			column = dbTags[0]
-			if column == "-" {
+			colInfo.Column = dbTags[0]
+			if colInfo.Column == "-" {
 				return true
 			}
 		}
-		if zstr.StringsContain(skip, column) {
+		if zstr.StringsContain(skip, colInfo.Column) {
 			return true
 		}
-		if val.Kind() == reflect.Struct && val.Type() != timeType {
-			valuer, _ := val.Interface().(driver.Valuer)
+		if each.ReflectValue.Kind() == reflect.Struct && each.ReflectValue.Type() != timeType {
+			valuer, _ := each.ReflectValue.Interface().(driver.Valuer)
 			if valuer == nil {
-				ForEachColumn(val.Addr().Interface(), skip, prefix+column, got)
+				zlog.Info("HERE:", each.StructField.Name)
+				var a any
+				if each.ReflectValue.CanAddr() {
+					a = each.ReflectValue.Addr().Interface()
+				} else {
+					a = each.ReflectValue.Interface()
+				}
+				ForEachColumn(a, skip, prefix+colInfo.Column, got)
 				return true
 			}
 		}
-		primary := zstr.IndexOf("primary", dbTags) > 0
-		got(val, sf, prefix+column, primary)
-		return true
+		colInfo.ColumnIndex = i
+		colInfo.IsPrimary = zstr.IndexOf("primary", dbTags) > 0
+		i++
+		return got(colInfo)
 	})
 }
