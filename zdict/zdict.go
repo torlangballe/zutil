@@ -174,9 +174,9 @@ func FromStruct(structure any, lowerFirst bool) Dict {
 }
 
 func (d Dict) ToStruct(structPtr any) {
-	zreflect.ForEachField(structPtr, zreflect.FlattenIfAnonymous, func(index int, fval reflect.Value, sf reflect.StructField) bool {
-		dtags := zreflect.GetTagAsMap(string(sf.Tag))["zdict"]
-		name := sf.Name
+	zreflect.ForEachField(structPtr, zreflect.FlattenIfAnonymous, func(each zreflect.FieldInfo) bool {
+		dtags := zreflect.GetTagAsMap(string(each.StructField.Tag))["zdict"]
+		name := each.StructField.Name
 		hasTag := (len(dtags) != 0)
 		if hasTag {
 			name = dtags[0]
@@ -189,20 +189,20 @@ func (d Dict) ToStruct(structPtr any) {
 		if val == nil {
 			return true
 		}
-		// zlog.Info("Dict2Struct1:", name, fval.Kind())
-		switch fval.Kind() {
+		// zlog.Info("Dict2Struct1:", name, each.ReflectValue.Kind())
+		switch each.ReflectValue.Kind() {
 		case reflect.String:
 			str, got := val.(string)
 			zlog.Assert(got, reflect.TypeOf(val), name)
-			fval.Addr().Elem().SetString(str)
+			each.ReflectValue.Addr().Elem().SetString(str)
 		case reflect.Float32, reflect.Float64:
 			f, err := zfloat.GetAny(val)
-			zlog.AssertNotError(err, name, fval.Kind())
-			fval.Addr().Elem().SetFloat(f)
+			zlog.AssertNotError(err, name, each.ReflectValue.Kind())
+			each.ReflectValue.Addr().Elem().SetFloat(f)
 		case reflect.Int:
 			n, err := zint.GetAny(val)
 			zlog.AssertNotError(err)
-			fval.Addr().Elem().SetInt(n)
+			each.ReflectValue.Addr().Elem().SetInt(n)
 		case reflect.Bool:
 			b, isBool := val.(bool)
 			if !isBool {
@@ -211,13 +211,13 @@ func (d Dict) ToStruct(structPtr any) {
 					b = zbool.FromString(str, false)
 				}
 			}
-			fval.Addr().Elem().SetBool(b)
+			each.ReflectValue.Addr().Elem().SetBool(b)
 		case reflect.Map:
-			_, got1 := fval.Interface().(map[string]string)
+			_, got1 := each.ReflectValue.Interface().(map[string]string)
 			_, got2 := val.(map[string]string)
 			// zlog.Info("Got1&2", sdict, ddict, got1, got2)
 			if got1 && got2 {
-				fval.Set(reflect.ValueOf(val))
+				each.ReflectValue.Set(reflect.ValueOf(val))
 			}
 		}
 		return true

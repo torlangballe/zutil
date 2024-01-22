@@ -12,6 +12,7 @@ import (
 
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 var timeType = reflect.TypeOf(time.Time{})
@@ -288,7 +289,13 @@ func ItterateStruct(istruct any, options Options) (item Item, err error) {
 	return itterate(0, "", "", "", false, rval.Elem(), options)
 }
 
-func ForEachField(istruct any, flatten func(f reflect.StructField) bool, got func(index int, rval reflect.Value, sf reflect.StructField) bool) {
+type FieldInfo struct {
+	FieldIndex   int // this is the index of the field _used_ field, not adding skipped, and increasing in anon
+	ReflectValue reflect.Value
+	StructField  reflect.StructField
+}
+
+func ForEachField(istruct any, flatten func(f reflect.StructField) bool, got func(each FieldInfo) bool) {
 	forEachField(reflect.ValueOf(istruct), flatten, 0, got)
 }
 
@@ -296,7 +303,7 @@ func FlattenIfAnonymous(f reflect.StructField) bool {
 	return f.Anonymous
 }
 
-func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, istart int, got func(index int, fieldRefVal reflect.Value, sf reflect.StructField) bool) (index int, quit bool) {
+func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, istart int, got func(each FieldInfo) bool) (stoppedAt int, quit bool) {
 	if rval.Kind() == reflect.Ptr { // use Ptr instead of Pointer for old go
 		rval = rval.Elem()
 	}
@@ -317,7 +324,8 @@ func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, 
 			j++
 			continue
 		}
-		if flatten != nil && flatten(f) {
+		// zlog.Info("zreflect.ForEach:", i, j, f.Name, f.IsExported())
+		if rval.Kind() == reflect.Slice && flatten != nil && flatten(f) {
 			var quit bool
 			j, quit = forEachField(fv, flatten, j, got)
 			if quit {
@@ -325,7 +333,7 @@ func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, 
 			}
 			continue
 		}
-		if !got(j, fv, f) {
+		if !got(FieldInfo{j, fv, f}) {
 			return j, true
 		}
 		j++
@@ -333,30 +341,31 @@ func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, 
 	return j, false
 }
 
-func FieldForIndex(istruct any, flatten func(f reflect.StructField) bool, index int) (fieldRefVal reflect.Value, sf reflect.StructField) {
-	ForEachField(istruct, flatten, func(i int, rv reflect.Value, f reflect.StructField) bool {
-		if i == index {
-			fieldRefVal = rv
-			sf = f
+func FieldForIndex(istruct any, flatten func(f reflect.StructField) bool, index int) FieldInfo {
+	var found FieldInfo
+	found.FieldIndex = -1
+	ForEachField(istruct, flatten, func(each FieldInfo) bool {
+		if each.FieldIndex == index {
+			found = each
 			return false
 		}
 		return true
 	})
-	return
+	return found
 }
 
-func FieldForName(istruct any, flatten func(f reflect.StructField) bool, name string) (fieldRefVal reflect.Value, sf reflect.StructField, index int) {
-	index = -1
-	ForEachField(istruct, flatten, func(i int, rv reflect.Value, f reflect.StructField) bool {
-		if f.Name == name {
-			fieldRefVal = rv
-			sf = f
-			index = i
+func FieldForName(istruct any, flatten func(f reflect.StructField) bool, name string) (FieldInfo, bool) {
+	var finfo FieldInfo
+	var found bool
+	ForEachField(istruct, flatten, func(each FieldInfo) bool {
+		if each.StructField.Name == name {
+			finfo = each
+			found = true
 			return false
 		}
 		return true
 	})
-	return
+	return finfo, found
 }
 
 // GetTagAsFields returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
@@ -371,12 +380,7 @@ func GetTagAsMap(stag string) map[string][]string {
 				label := groups[1]
 				g := groups[2]
 				g = strings.Replace(g, "\\n", "\n", -1)
-				const chars = "•°©" // hack. Convert to weird chars, then back to single comma
-				g = strings.Replace(g, ",,", chars, -1)
-				vars := strings.Split(g, ",")
-				for i, v := range vars {
-					vars[i] = strings.Replace(v, chars, ",", -1)
-				}
+				vars := zstr.SplitStringWithDoubleAsEscape(g, ",")
 				m[label] = vars
 			}
 			return m
@@ -385,32 +389,32 @@ func GetTagAsMap(stag string) map[string][]string {
 	return nil
 }
 
-// TODO: Use FieldForName instead
-func FindFieldWithNameInStruct(name string, structure any, anonymous bool) (reflect.Value, bool) {
-	val := reflect.ValueOf(structure)
-	if val.Kind() == reflect.Pointer {
-		// zlog.Info("FindFieldWithNameInStruct 2emel")
-		val = val.Elem()
-	}
-	// zlog.Info("FindFieldWithNameInStruct:", val.Kind(), val.Kind() == reflect.Pointer, val.Type())
-	vtype := val.Type()
-	n := vtype.NumField()
-	for i := 0; i < n; i++ {
-		f := vtype.Field(i)
-		fval := val.Field(i)
-		// zlog.Info("FindFieldWithNameInStruct:", name, f.Name)
-		if f.Name == name {
-			return fval, true
-		}
-		if anonymous && fval.Kind() == reflect.Struct && f.Anonymous {
-			v, found := FindFieldWithNameInStruct(name, val.Field(i).Interface(), anonymous)
-			if found {
-				return v, true
-			}
-		}
-	}
-	return reflect.Value{}, false
-}
+// // TODO: Use FieldForName instead
+// func FindFieldWithNameInStruct(name string, structure any, anonymous bool) (reflect.Value, bool) {
+// 	val := reflect.ValueOf(structure)
+// 	if val.Kind() == reflect.Pointer {
+// 		// zlog.Info("FindFieldWithNameInStruct 2emel")
+// 		val = val.Elem()
+// 	}
+// 	// zlog.Info("FindFieldWithNameInStruct:", val.Kind(), val.Kind() == reflect.Pointer, val.Type())
+// 	vtype := val.Type()
+// 	n := vtype.NumField()
+// 	for i := 0; i < n; i++ {
+// 		f := vtype.Field(i)
+// 		fval := val.Field(i)
+// 		// zlog.Info("FindFieldWithNameInStruct:", name, f.Name)
+// 		if f.Name == name {
+// 			return fval, true
+// 		}
+// 		if anonymous && fval.Kind() == reflect.Struct && f.Anonymous {
+// 			v, found := FindFieldWithNameInStruct(name, val.Field(i).Interface(), anonymous)
+// 			if found {
+// 				return v, true
+// 			}
+// 		}
+// 	}
+// 	return reflect.Value{}, false
+// }
 
 func DeepCopy(destPtr, source any) error {
 	buf := bytes.Buffer{}

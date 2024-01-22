@@ -169,7 +169,7 @@ func (db *Database) writeItems() bool {
 	params := "(" + strings.Repeat("?,", len(db.FieldInfos)-2) + "?)"
 
 	storeLock.Lock()
-	query := "INSERT INTO " + db.TableName + " (" + zsql.FieldNamesStringFromStruct(itemsToStore[0], skip, "") +
+	query := "INSERT INTO " + db.TableName + " (" + zsql.ColumnNamesStringFromStruct(itemsToStore[0], skip, "") +
 		") VALUES "
 
 	var count int
@@ -367,7 +367,7 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 		wheres = append(wheres, w)
 	}
 	where := strings.Join(wheres, " AND ")
-	query := "SELECT " + zsql.FieldNamesStringFromStruct(resultStructVal.Interface(), nil, "") + " FROM " + db.TableName
+	query := "SELECT " + zsql.ColumnNamesStringFromStruct(resultStructVal.Interface(), nil, "") + " FROM " + db.TableName
 	if keepID != 0 {
 		where = "(" + where + fmt.Sprint(") OR id=", keepID)
 	}

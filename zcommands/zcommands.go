@@ -269,12 +269,12 @@ func (s *Session) structCommandWithMethod(method reflect.Method, structVal refle
 
 func anonStructsAndSelf(structure any) []any {
 	anon := []any{structure}
-	zreflect.ForEachField(structure, nil, func(index int, v reflect.Value, sf reflect.StructField) bool {
-		if sf.Anonymous {
-			if v.CanAddr() {
-				v = v.Addr()
+	zreflect.ForEachField(structure, nil, func(each zreflect.FieldInfo) bool {
+		if each.StructField.Anonymous {
+			if each.ReflectValue.CanAddr() {
+				each.ReflectValue = each.ReflectValue.Addr()
 			}
-			anon = append(anon, v.Interface())
+			anon = append(anon, each.ReflectValue.Interface())
 		}
 		return true
 	})
@@ -308,19 +308,19 @@ func (s *Session) getChildNodes() map[string]any {
 
 func (s *Session) addChildNodes(m map[string]any, parent any) {
 	// zlog.Info("AddChildNodes:", reflect.TypeOf(parent))
-	zreflect.ForEachField(parent, zreflect.FlattenIfAnonymous, func(index int, v reflect.Value, sf reflect.StructField) bool {
-		if v.Kind() == reflect.Pointer {
-			v = v.Elem()
+	zreflect.ForEachField(parent, zreflect.FlattenIfAnonymous, func(each zreflect.FieldInfo) bool {
+		if each.ReflectValue.Kind() == reflect.Pointer {
+			each.ReflectValue = each.ReflectValue.Elem()
 		}
-		if v.Kind() != reflect.Struct {
+		if each.ReflectValue.Kind() != reflect.Struct {
 			return true
 		}
-		meths := s.methodNames(v.Addr().Interface())
+		meths := s.methodNames(each.ReflectValue.Addr().Interface())
 		if len(meths) == 0 {
 			return true
 		}
-		name := strings.ToLower(sf.Name)
-		m[name] = v.Addr().Interface()
+		name := strings.ToLower(each.StructField.Name)
+		m[name] = each.ReflectValue.Addr().Interface()
 		return true
 	})
 }
