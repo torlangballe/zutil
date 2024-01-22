@@ -229,7 +229,7 @@ func callAuthenticate(view zview.View, a Authentication, got func()) {
 
 func checkAndDoAuth() {
 	var err error
-	// zlog.Info("checkAndDoAuth")
+	zlog.Info("checkAndDoAuth", zrpc.MainClient.AuthToken)
 	if doingAuth {
 		return
 	}
@@ -239,14 +239,14 @@ func checkAndDoAuth() {
 				AuthenticatedFunc(errors.New("no token"))
 			}
 			return
-			go showOpenDialog()
 		}
+		go showOpenDialog()
 		return
 	}
 	doingAuth = true
 	var user User
 	err = zrpc.MainClient.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
-	// zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken, err)
+	zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken, err)
 	if err == nil {
 		CurrentUser.UserID = user.ID
 		CurrentUser.UserName = user.UserName
