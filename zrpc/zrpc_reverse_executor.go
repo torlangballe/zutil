@@ -54,15 +54,15 @@ func (r *ReverseExecutor) SetOn(on bool) {
 
 // Starts the polling process in the background
 func NewReverseExecutor(pollClient *Client, id string, executor *Executor) *ReverseExecutor {
-	zlog.Info(EnableLogExecutor, "NewReverseExecutor", pollClient.AuthToken)
+	zlog.Info("NewReverseExecutor", id, pollClient.AuthToken) // EnableLogExecutor,
 	r := &ReverseExecutor{}
 	r.on = true
 	r.client = pollClient
 	r.client.TimeoutSecs = PollRestartSecs // polling should be fast, total time with execution not included
 	if id == "" {
-		id = pollClient.id
+		id = pollClient.ID
 	}
-	r.client.id = id
+	r.client.ID = id
 	r.client.KeepTokenOnAuthenticationInvalid = true
 	r.Executor = executor
 	go startCallingPollForReverseCalls(r)
@@ -71,12 +71,12 @@ func NewReverseExecutor(pollClient *Client, id string, executor *Executor) *Reve
 
 func startCallingPollForReverseCalls(r *ReverseExecutor) {
 	for {
-		// zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls", r.on, r.stop, r.client.id)
+		// zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls", r.on, r.stop, r.client.ID)
 		if r.stop {
 			return
 		}
 		if !r.on {
-			// zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls off", zlog.Pointer(r), r.client.id)
+			// zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls off", zlog.Pointer(r), r.client.ID)
 			time.Sleep(time.Millisecond * 50)
 			continue
 		}
@@ -84,7 +84,7 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 		// we loop forever calling RPCCalls.ReversePoll. No need to sleep between, as it waits on other end for a call to be ready
 		var cp callPayloadReceive
 		maxTimeout := math.Max(PollRestartSecs, r.client.TimeoutSecs)
-		err := r.client.CallWithTimeout(maxTimeout, "ReverseClienter.ReversePoll", r.client.id, &cp)
+		err := r.client.CallWithTimeout(maxTimeout, "ReverseClienter.ReversePoll", r.client.ID, &cp)
 		zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll:", maxTimeout, err, time.Since(start)) // EnableLogExecutor,
 		if err != nil {
 			zlog.Info(EnableLogExecutor, "Call ReverseClienter.ReversePoll, error! cp.Token:", err, cp.Token)
@@ -101,7 +101,7 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 			var ci ClientInfo
 			var rr ReverseResult
 			ci.Type = "zrpc-rev"
-			ci.ClientID = r.client.id
+			ci.ClientID = r.client.ID
 			ci.Token = r.client.AuthToken
 
 			receive, err := r.Executor.callWithDeadline(ci, cp.Method, cp.Expires, cp.Args)
@@ -117,7 +117,7 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 			zlog.OnError(err, "marshal receive")
 			rr.clientReceivePayload.TransportError = receive.TransportError
 			rr.Token = cp.Token
-			rr.ReverseReceiverID = r.client.id
+			rr.ReverseReceiverID = r.client.ID
 			maxTimeout := math.Max(PollRestartSecs, r.client.TimeoutSecs)
 			cerr := r.client.CallWithTimeout(maxTimeout, "ReverseClienter.ReversePushResult", rr, nil)
 			// zlog.Info("zrpc.RevExe RevPushResult:", cp.Method, rr.Error, maxTimeout, cerr, time.Since(start))
