@@ -29,7 +29,7 @@ type Client struct {
 	gettingResources zmap.LockMap[string, bool]
 	pollGetters      zmap.LockMap[string, func()]
 	callURL          string
-	id               string
+	ID               string
 }
 
 // client is structure to store received info from the call
@@ -61,7 +61,7 @@ func NewClient(prefixURL string, id string) *Client {
 	if id == "" {
 		id = zstr.GenerateRandomHexBytes(12)
 	}
-	c.id = id
+	c.ID = id
 	c.TimeoutSecs = 100
 	return c
 }
@@ -92,7 +92,7 @@ func (c *Client) Call(method string, input, result any) error {
 func (c *Client) callWithTransportError(method string, timeoutSecs float64, input, result any) (err error, terr error) {
 	var rp clientReceivePayload
 	cp := CallPayload{Method: method, Args: input}
-	cp.ClientID = c.id
+	cp.ClientID = c.ID
 	params := zhttp.MakeParameters()
 	params.TimeoutSecs = c.TimeoutSecs
 	params.SkipVerifyCertificate = c.SkipVerifyCertificate
@@ -180,6 +180,24 @@ func (c *Client) PollForUpdatedResources(got func(resID string)) {
 			c.gettingResources.Set(s, false)
 		}
 	})
+}
+
+func (c *Client) CallGetForUpdatedResources(resIDs []string) {
+	for _, s := range resIDs {
+		if !zstr.StringsContain(registeredResources, s) {
+			continue
+		}
+		setting, _ := c.gettingResources.Get(s)
+		if setting {
+			continue
+		}
+		c.gettingResources.Set(s, true)
+		f, has := c.pollGetters.Get(s)
+		if has {
+			f()
+		}
+		c.gettingResources.Set(s, false)
+	}
 }
 
 func RegisterResources(resources ...string) {
