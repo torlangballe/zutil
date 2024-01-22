@@ -11,6 +11,7 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmail"
 	"github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/zsql"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -51,6 +52,7 @@ func setupWithSQLServer(s *SQLServer, executor *zrpc.Executor) {
 	executor.SetAuthNotNeededForMethod("UsersCalls.Authenticate")
 	executor.SetAuthNotNeededForMethod("UsersCalls.SendForgotPasswordPasswordMail")
 	executor.SetAuthNotNeededForMethod("UsersCalls.SetNewPasswordFromForgotPassword")
+	zsql.GetUserIDFromTokenFunc = MainServer.GetUserIDFromToken
 }
 
 func makeHash(str, salt string) string {
@@ -71,7 +73,7 @@ func (UsersCalls) GetUserForToken(token string, user *User) error {
 		return nil
 	}
 	u, err := MainServer.GetUserForToken(token)
-	zlog.Info("GetUserForToken:", err, token, zlog.CallingStackString())
+	// zlog.Info("GetUserForToken:", err, token, zlog.CallingStackString())
 	if err != nil {
 		zlog.Error(err, "GetUserForToken", token)
 		return err
