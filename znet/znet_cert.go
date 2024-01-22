@@ -108,11 +108,9 @@ func CreateSSLCertificateTLSConfig(owner SSLCertificateOwner, years int) (server
 	if err != nil {
 		return nil, nil, err
 	}
-
 	serverTLSConf = &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
 	}
-
 	certpool := x509.NewCertPool()
 	certpool.AppendCertsFromPEM(caPEMBytes)
 	clientTLSConf = &tls.Config{
