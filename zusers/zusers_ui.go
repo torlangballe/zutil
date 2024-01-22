@@ -68,7 +68,7 @@ func UserNameType() string {
 }
 
 func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
-	const column = 120.0
+	const columnWith = 120.0
 	v1 := zcontainer.StackViewVert("auth")
 	v1.SetSpacing(10)
 	v1.SetMarginS(zgeo.Size{14, 14})
@@ -108,10 +108,10 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	usernameField.SetChangedHandler(validate)
 	passwordField.SetChangedHandler(validate)
 
-	_, s1, _ := zguiutil.Labelize(usernameField, UserNameType(), column, zgeo.CenterLeft)
+	_, s1, _ := zguiutil.Labelize(usernameField, UserNameType(), columnWith, zgeo.CenterLeft, "")
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
 
-	_, s2, _ := zguiutil.Labelize(passwordField, "Password", column, zgeo.CenterLeft)
+	_, s2, _ := zguiutil.Labelize(passwordField, "Password", columnWith, zgeo.CenterLeft, "")
 	v1.Add(s2, zgeo.TopLeft|zgeo.HorExpand)
 
 	if UserNameIsEmail && doLogin {
@@ -287,7 +287,7 @@ func showOpenDialog() {
 }
 
 func showDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title string, got func(newText string)) {
-	const column = 120.0
+	const columnWith = 120.0
 	v1 := zcontainer.StackViewVert("dialog")
 	// v1.SetMarginS(zgeo.Size{10, 10})
 
@@ -298,7 +298,7 @@ func showDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title strin
 		style.KeyboardType = zkeyboard.TypeEmailAddress
 	}
 	textField := ztext.NewView(oldValue, style, 20, 1)
-	_, s1, _ := zguiutil.Labelize(textField, name, column, zgeo.CenterLeft)
+	_, s1, _ := zguiutil.Labelize(textField, name, columnWith, zgeo.CenterLeft, "")
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
 
 	att := zpresent.AttributesNew()
@@ -333,7 +333,7 @@ func HandleResetPassword(args map[string]string) {
 		email := args["email"]
 		title := fmt.Sprint("Set new password for user ", email)
 		params := zfields.FieldViewParametersDefault()
-		params.LabelizeWidth = 120
+		params.Field.Flags |= zfields.FlagIsLabelize
 		zfields.PresentOKCancelStruct(&resetDialog, params, title, zpresent.AttributesNew(), func(ok bool) bool {
 			if !ok {
 				return true

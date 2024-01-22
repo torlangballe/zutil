@@ -3,6 +3,8 @@
 package zguiutil
 
 import (
+	"strings"
+
 	"github.com/torlangballe/zui/zcanvas"
 	"github.com/torlangballe/zui/zcheckbox"
 	"github.com/torlangballe/zui/zcontainer"
@@ -44,7 +46,17 @@ func NewBar(title string) *zcontainer.StackView {
 	return bar
 }
 
-func Labelize(view zview.View, prefix string, minWidth float64, alignment zgeo.Alignment) (label *zlabel.Label, stack *zcontainer.StackView, viewCell *zcontainer.Cell) {
+func makeLabelizeLabel(text string, postfix string, talign zgeo.Alignment) *zlabel.Label {
+	label := zlabel.New(text)
+	label.SetTextAlignment(talign)
+	if postfix == "" {
+		postfix = "desc"
+	}
+	label.SetObjectName("$labelize.label." + postfix)
+	return label
+}
+
+func Labelize(view zview.View, postfix string, minLabelWidth float64, alignment zgeo.Alignment, desc string) (label *zlabel.Label, stack *zcontainer.StackView, viewCell *zcontainer.Cell) {
 	font := zgeo.FontNice(zgeo.FontDefaultSize, zgeo.FontStyleBold)
 	to, _ := view.(ztextinfo.Owner)
 	if to != nil {
@@ -52,28 +64,40 @@ func Labelize(view zview.View, prefix string, minWidth float64, alignment zgeo.A
 		font = ti.Font
 		font.Style = zgeo.FontStyleBold
 	}
-	title := prefix
+	title := postfix
 	checkBox, isCheck := view.(*zcheckbox.CheckBox)
 	if checkBox != nil && alignment&zgeo.Right != 0 {
 		title = ""
-		_, cstack := zcheckbox.Labelize(checkBox, prefix)
+		_, cstack := zcheckbox.Labelize(checkBox, postfix)
 		view = cstack
 		alignment = alignment.FlippedHorizontal()
 	}
-	label = zlabel.New(title)
-	label.SetObjectName("$labelize.label " + prefix)
-	label.SetTextAlignment(zgeo.Right)
+	label = makeLabelizeLabel(title, postfix, zgeo.Right)
 	label.SetFont(font)
-	label.SetColor(zstyle.DefaultFGColor().WithOpacity(0.7))
-	stack = zcontainer.StackViewHor("$labelize." + prefix) // give it special name so not easy to mis-search for in recursive search
-	stack.SetSpacing(10)
+	label.SetColor(zstyle.DefaultFGColor().WithOpacity(0.8))
+	stack = zcontainer.StackViewHor("$labelize.stack." + postfix) // give it special name so not easy to mis-search for in recursive search
+	stack.SetSpacing(30)
+	cell := stack.Add(label, zgeo.CenterLeft)
+	if minLabelWidth != 0 {
+		cell.MinSize.W = minLabelWidth
+	}
 
-	stack.Add(label, zgeo.CenterLeft).MinSize.W = minWidth
 	marg := zgeo.Size{}
 	if isCheck {
 		marg.W = -6 // in html cell has a box around it of 20 pixels
 	}
 	viewCell = stack.Add(view, alignment, marg)
+
+	if desc != "" {
+		descLabel := makeLabelizeLabel(desc, postfix+".desc", zgeo.Left)
+		font.Style = zgeo.FontStyleNormal
+		lines := strings.Count(desc, "\n") + 1
+		descLabel.SetMaxLines(lines)
+		descLabel.SetFont(font)
+		descLabel.SetColor(zstyle.DefaultFGColor().WithOpacity(0.9).Mixed(zgeo.ColorOrange, 0.6))
+		stack.Add(descLabel, zgeo.CenterLeft)
+		viewCell = &stack.Cells[len(stack.Cells)-2] // we need to re-get the cell in case adding desc made a new slice
+	}
 	return
 }
 
