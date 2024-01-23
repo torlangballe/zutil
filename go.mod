@@ -25,7 +25,7 @@ require (
 	github.com/torlangballe/mdtopdf v0.0.0-20230912121500-0f15befadda9
 	github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
-	github.com/torlangballe/zui v0.0.0-20240118120349-3121d9657aeb
+	github.com/torlangballe/zui v0.0.0-20240123140121-6f2f9a94b865
 	golang.org/x/crypto v0.18.0
 	golang.org/x/net v0.19.0
 	golang.org/x/sys v0.16.0
