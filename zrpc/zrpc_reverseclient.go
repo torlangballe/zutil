@@ -154,7 +154,7 @@ func (r *ReverseClienter) findOrAddReverseClient(receiverID string, ci *ClientIn
 			zlog.Error(nil, "findOrAddReverseClient ci=nil: no reverse client for id:", receiverID)
 			return nil
 		}
-		// zlog.Warn("add RC:", receiverID, ci.Token)
+		zlog.Warn("Add Rerverse Client:", receiverID, ci.Token)
 		rc = NewReverseClient(r, receiverID, ci.Token, false)
 		if r.HandleNewReverseReceiverFunc != nil {
 			go r.HandleNewReverseReceiverFunc(receiverID, rc, ci)
