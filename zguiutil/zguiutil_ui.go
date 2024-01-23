@@ -14,6 +14,7 @@ import (
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zdebug"
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/ztimer"
 )
@@ -56,26 +57,27 @@ func makeLabelizeLabel(text string, postfix string, talign zgeo.Alignment) *zlab
 	return label
 }
 
-func Labelize(view zview.View, postfix string, minLabelWidth float64, alignment zgeo.Alignment, desc string) (label *zlabel.Label, stack *zcontainer.StackView, viewCell *zcontainer.Cell) {
+func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment zgeo.Alignment, desc string) (label *zlabel.Label, stack *zcontainer.StackView, viewCell *zcontainer.Cell, descLabel *zlabel.Label) {
 	font := zgeo.FontNice(zgeo.FontDefaultSize, zgeo.FontStyleBold)
 	to, _ := view.(ztextinfo.Owner)
 	if to != nil {
 		ti := to.GetTextInfo()
 		font = ti.Font
+		zfloat.Maximize(&font.Size, zgeo.FontDefaultSize)
 		font.Style = zgeo.FontStyleBold
 	}
-	title := postfix
+	title := slabel
 	checkBox, isCheck := view.(*zcheckbox.CheckBox)
 	if checkBox != nil && alignment&zgeo.Right != 0 {
 		title = ""
-		_, cstack := zcheckbox.Labelize(checkBox, postfix)
+		_, cstack := zcheckbox.Labelize(checkBox, slabel)
 		view = cstack
 		alignment = alignment.FlippedHorizontal()
 	}
-	label = makeLabelizeLabel(title, postfix, zgeo.Right)
+	label = makeLabelizeLabel(title, slabel, zgeo.Right)
 	label.SetFont(font)
 	label.SetColor(zstyle.DefaultFGColor().WithOpacity(0.8))
-	stack = zcontainer.StackViewHor("$labelize.stack." + postfix) // give it special name so not easy to mis-search for in recursive search
+	stack = zcontainer.StackViewHor("$labelize.stack." + slabel) // give it special name so not easy to mis-search for in recursive search
 	stack.SetSpacing(30)
 	cell := stack.Add(label, zgeo.CenterLeft)
 	if minLabelWidth != 0 {
@@ -89,7 +91,7 @@ func Labelize(view zview.View, postfix string, minLabelWidth float64, alignment 
 	viewCell = stack.Add(view, alignment, marg)
 
 	if desc != "" {
-		descLabel := makeLabelizeLabel(desc, postfix+".desc", zgeo.Left)
+		descLabel = makeLabelizeLabel(desc, slabel+".desc", zgeo.Left)
 		font.Style = zgeo.FontStyleNormal
 		lines := strings.Count(desc, "\n") + 1
 		descLabel.SetMaxLines(lines)
@@ -98,7 +100,7 @@ func Labelize(view zview.View, postfix string, minLabelWidth float64, alignment 
 		stack.Add(descLabel, zgeo.CenterLeft)
 		viewCell = &stack.Cells[len(stack.Cells)-2] // we need to re-get the cell in case adding desc made a new slice
 	}
-	return
+	return label, stack, viewCell, descLabel
 }
 
 var DefaultFrameStyling = zstyle.Styling{
