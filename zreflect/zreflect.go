@@ -304,6 +304,7 @@ func FlattenIfAnonymous(f reflect.StructField) bool {
 }
 
 func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, istart int, got func(each FieldInfo) bool) (stoppedAt int, quit bool) {
+	// zlog.Info("forEachField1")
 	if rval.Kind() == reflect.Ptr { // use Ptr instead of Pointer for old go
 		rval = rval.Elem()
 	}
@@ -319,13 +320,13 @@ func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, 
 	for i := 0; i < rval.NumField(); i++ {
 		fv := rval.Field(i)
 		f := rval.Type().Field(i)
-		// zlog.Info("zreflect.ForEach:", i, j, f.Name, f.IsExported())
+		// zlog.Info("zreflect.ForEach:", i, j, f.Name, rval.Kind(), flatten != nil)
 		if !fv.CanInterface() {
 			j++
 			continue
 		}
 		// zlog.Info("zreflect.ForEach:", i, j, f.Name, f.IsExported())
-		if rval.Kind() == reflect.Slice && flatten != nil && flatten(f) {
+		if rval.Kind() == reflect.Struct && flatten != nil && flatten(f) {
 			var quit bool
 			j, quit = forEachField(fv, flatten, j, got)
 			if quit {
