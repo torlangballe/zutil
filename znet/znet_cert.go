@@ -12,7 +12,6 @@ import (
 	"encoding/pem"
 	"math/big"
 	"net"
-	"path"
 	"time"
 
 	"github.com/torlangballe/zutil/zdebug"
@@ -20,7 +19,7 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
-func CreateSSLCertificate(owner SSLCertificateOwner, years int) (caPEMBytes, certPEMBytes, certPrivKeyPEMBytes []byte, err error) {
+func CreateSSLCertificate(owner SSLCertificateOwner, years int) (caPEMBytes, certPEMBytes, certPrivKeyPEMBytes []byte, expires time.Time, err error) {
 	// set up our CA certificate
 	subject := pkix.Name{
 		Organization:  []string{owner.Organization},
@@ -30,11 +29,13 @@ func CreateSSLCertificate(owner SSLCertificateOwner, years int) (caPEMBytes, cer
 		StreetAddress: []string{owner.StreetAddress},
 		PostalCode:    []string{owner.PostalCode},
 	}
+	now := time.Now()
+	expires = time.Now().AddDate(years, 0, 0)
 	ca := &x509.Certificate{
 		SerialNumber:          big.NewInt(2019),
 		Subject:               subject,
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(years, 0, 0),
+		NotBefore:             now,
+		NotAfter:              expires,
 		IsCA:                  true,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
@@ -44,13 +45,13 @@ func CreateSSLCertificate(owner SSLCertificateOwner, years int) (caPEMBytes, cer
 	// create our private and public key
 	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, time.Time{}, err
 	}
 
 	// create the CA
 	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, time.Time{}, err
 	}
 
 	// pem encode
@@ -71,8 +72,8 @@ func CreateSSLCertificate(owner SSLCertificateOwner, years int) (caPEMBytes, cer
 		SerialNumber: big.NewInt(2019),
 		Subject:      subject,
 		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(years, 0, 0),
+		NotBefore:    now,
+		NotAfter:     expires,
 		SubjectKeyId: []byte{1, 2, 3, 4, 6},
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:     x509.KeyUsageDigitalSignature,
@@ -80,12 +81,12 @@ func CreateSSLCertificate(owner SSLCertificateOwner, years int) (caPEMBytes, cer
 
 	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, time.Time{}, err
 	}
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, time.Time{}, err
 	}
 
 	certPEM := new(bytes.Buffer)
@@ -99,11 +100,11 @@ func CreateSSLCertificate(owner SSLCertificateOwner, years int) (caPEMBytes, cer
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
 	})
-	return caPEM.Bytes(), certPEM.Bytes(), certPrivKeyPEM.Bytes(), nil
+	return caPEM.Bytes(), certPEM.Bytes(), certPrivKeyPEM.Bytes(), expires, nil
 }
 
 func CreateSSLCertificateTLSConfig(owner SSLCertificateOwner, years int) (serverTLSConf *tls.Config, clientTLSConf *tls.Config, err error) {
-	caPEMBytes, certPEMBytes, certPrivKeyPEMBytes, err := CreateSSLCertificate(owner, years)
+	caPEMBytes, certPEMBytes, certPrivKeyPEMBytes, _, err := CreateSSLCertificate(owner, years)
 	serverCert, err := tls.X509KeyPair(certPEMBytes, certPrivKeyPEMBytes)
 	if err != nil {
 		return nil, nil, err
@@ -119,31 +120,17 @@ func CreateSSLCertificateTLSConfig(owner SSLCertificateOwner, years int) (server
 	return
 }
 
-func CreateSSLCertificateToFilepair(owner SSLCertificateOwner, years int, certPath, privateKeyPath string) error {
-	caPEMBytes, certPEMBytes, certPrivKeyPEMBytes, err := CreateSSLCertificate(owner, years)
+func CreateSSLCertificateToFilePair(owner SSLCertificateOwner, years int, certPath, privateKeyPath string) (expires time.Time, err error) {
+	caPEMBytes, certPEMBytes, certPrivKeyPEMBytes, expires, err := CreateSSLCertificate(owner, years)
 	zdebug.Consume(caPEMBytes)
 
 	err = zfile.WriteBytesToFile(certPEMBytes, certPath)
 	if err != nil {
-		return zlog.Error(err, "write cert", certPath)
+		return time.Time{}, zlog.Error(err, "write cert", certPath)
 	}
 	err = zfile.WriteBytesToFile(certPrivKeyPEMBytes, privateKeyPath)
 	if err != nil {
-		return zlog.Error(err, "write priv key", privateKeyPath)
+		return time.Time{}, zlog.Error(err, "write priv key", privateKeyPath)
 	}
-	return nil
-}
-
-func (ZNetCalls) WriteSSLCertificate(info SSLCertificateInfo) error {
-	dir, _ := path.Split(info.CertificatePath)
-	zfile.MakeDirAllIfNotExists(dir)
-	dir2, _ := path.Split(info.PrivateKeyPath)
-	if dir2 != dir {
-		zfile.MakeDirAllIfNotExists(dir2)
-	}
-	err := CreateSSLCertificateToFilepair(info.SSLCertificateOwner, info.YearsUntilExpiry, info.CertificatePath, info.PrivateKeyPath)
-	if err != nil {
-		return err
-	}
-	return nil
+	return expires, nil
 }

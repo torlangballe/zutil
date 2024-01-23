@@ -274,12 +274,12 @@ type HTTPServer struct {
 	doneChannel chan bool
 }
 
-func ServeHTTPInBackground(address string, certificatesPath string, handler http.Handler) (server *HTTPServer, certificateExpires time.Time) {
+func ServeHTTPInBackground(address string, certificatesStubPath string, handler http.Handler) (server *HTTPServer, certificateExpires time.Time) {
 	// https://ap.www.namecheap.com/Domains/DomainControlPanel/etheros.online/advancedns
 	// https://github.com/denji/golang-tls
 	//
 	str := "Serve HTTP"
-	if certificatesPath != "" {
+	if certificatesStubPath != "" {
 		str += "S"
 	}
 	host, sport, err := net.SplitHostPort(address)
@@ -288,7 +288,7 @@ func ServeHTTPInBackground(address string, certificatesPath string, handler http
 			address = ":" + sport
 		}
 		if sport == "" {
-			if certificatesPath != "" {
+			if certificatesStubPath != "" {
 				sport = "443"
 			} else {
 				sport = "80"
@@ -305,11 +305,12 @@ func ServeHTTPInBackground(address string, certificatesPath string, handler http
 	s.Server.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	s.doneChannel = make(chan bool, 100)
 	var fCRT, fKey string
-	if certificatesPath != "" {
-		fCRT = certificatesPath + ".crt"
-		fKey = certificatesPath + ".key"
+	if certificatesStubPath != "" {
+		fCRT = certificatesStubPath + ".crt"
+		fKey = certificatesStubPath + ".key"
 		if zfile.NotExist(fCRT) || zfile.NotExist(fKey) {
-			zlog.Fatal(nil, "missing certificate files:", fCRT, fKey)
+			zlog.Error(nil, "missing certificate files:", fCRT, fKey)
+			return
 		}
 		cer, err := tls.LoadX509KeyPair(fCRT, fKey)
 		if !zlog.OnError(err, "LoadX509KeyPair") {
@@ -320,14 +321,14 @@ func ServeHTTPInBackground(address string, certificatesPath string, handler http
 		}
 	}
 	go func() {
-		if certificatesPath != "" {
+		if certificatesStubPath != "" {
 			err = s.Server.ListenAndServeTLS(fCRT, fKey)
 		} else {
 			err = s.Server.ListenAndServe()
 		}
 		if err != http.ErrServerClosed {
 			if err != nil {
-				zlog.Error(err, "serve http listen err:", address, certificatesPath, stack)
+				zlog.Error(err, "serve http listen err:", address, certificatesStubPath, stack)
 				os.Exit(-1)
 			}
 		}

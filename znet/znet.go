@@ -26,8 +26,6 @@ type SSLCertificateOwner struct {
 type SSLCertificateInfo struct {
 	SSLCertificateOwner
 	YearsUntilExpiry int
-	CertificatePath  string `zui:"-"`
-	PrivateKeyPath   string `zui:"-"`
 }
 
 func GetHostAndPort(u *url.URL) (host string, port int) {
