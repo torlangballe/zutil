@@ -184,7 +184,7 @@ func (d Dict) ToStruct(structPtr any) {
 		val, got := d[name]
 		if !got && !hasTag {
 			name = zstr.FirstToTitleCase(name)
-			val, got = d[name]
+			val = d[name]
 		}
 		if val == nil {
 			return true
