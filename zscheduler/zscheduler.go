@@ -229,6 +229,7 @@ func (s *Scheduler[I]) selectLoop() {
 			run, _ := s.findRun(jobID)
 			if run == nil {
 				zlog.Error(nil, "SetJobHasErrorCh: no run for", jobID)
+				return
 			}
 			run.ErrorAt = time.Now()
 
