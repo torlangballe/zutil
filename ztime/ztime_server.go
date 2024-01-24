@@ -1,4 +1,4 @@
-//go:build server
+//go:build !zui
 
 package ztime
 
