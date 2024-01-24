@@ -70,13 +70,14 @@ func NewReverseExecutor(pollClient *Client, id string, executor *Executor) *Reve
 }
 
 func startCallingPollForReverseCalls(r *ReverseExecutor) {
+	// EnableLogExecutor = true
 	for {
-		// zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls", r.on, r.stop, r.client.ID)
+		zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls", r.on, r.stop, r.client.ID)
 		if r.stop {
 			return
 		}
 		if !r.on {
-			// zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls off", zlog.Pointer(r), r.client.ID)
+			zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls off", zlog.Pointer(r), r.client.ID)
 			time.Sleep(time.Millisecond * 50)
 			continue
 		}
