@@ -126,7 +126,7 @@ func (s *SQLServer) GetUserForID(id int64) (User, error) {
 	row := s.DB.QueryRow(squery, id)
 	err := row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions), &user.Created, &user.Login)
 	if err != nil {
-		return user, NoUserError
+		return user, fmt.Errorf("No user for id %d (%w)", id, AuthFailedError)
 	}
 	return user, nil
 }
@@ -137,7 +137,7 @@ func (s *SQLServer) GetUserIDFromToken(token string) (id int64, err error) {
 	row := s.DB.QueryRow(squery, token)
 	err = row.Scan(&id)
 	if err != nil {
-		zlog.Error(err, squery, token)
+		zlog.Error(err, squery, "token:", token, zlog.CallingStackString())
 		return 0, AuthFailedError
 	}
 	squery = "UPDATE zuser_sessions SET used=$NOW WHERE token=$1"
@@ -243,7 +243,7 @@ func (s *SQLServer) GetUserForUserName(username string) (user User, err error) {
 	err = row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions), &user.Created, &user.Login)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = NoUserError
+			err = fmt.Errorf("No user for username %s (%w)", username, AuthFailedError)
 		}
 		return
 	}

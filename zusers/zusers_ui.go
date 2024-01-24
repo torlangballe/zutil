@@ -3,7 +3,6 @@
 package zusers
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/torlangballe/zui/zalert"
@@ -229,24 +228,14 @@ func callAuthenticate(view zview.View, a Authentication, got func()) {
 
 func checkAndDoAuth() {
 	var err error
-	zlog.Info("checkAndDoAuth", zrpc.MainClient.AuthToken)
+	// zlog.Info("checkAndDoAuth", zrpc.MainClient.AuthToken)
 	if doingAuth {
-		return
-	}
-	if zrpc.MainClient.AuthToken == "" {
-		if NoLoginGUI {
-			if AuthenticatedFunc != nil {
-				AuthenticatedFunc(errors.New("no token"))
-			}
-			return
-		}
-		go showOpenDialog()
 		return
 	}
 	doingAuth = true
 	var user User
 	err = zrpc.MainClient.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
-	zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken, err)
+	// zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken, err)
 	if err == nil {
 		CurrentUser.UserID = user.ID
 		CurrentUser.UserName = user.UserName
@@ -258,6 +247,9 @@ func checkAndDoAuth() {
 		doingAuth = false
 		return
 	}
+	// if zrpc.MainClient.AuthToken == "" {
+	// 	return
+	// }
 	if AuthenticatedFunc != nil {
 		if AuthenticatedFunc(err) {
 			return
