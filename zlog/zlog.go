@@ -325,7 +325,7 @@ func FileLineAndCallingFunctionString(pos int) string {
 
 func Assert(success bool, parts ...interface{}) {
 	if !success {
-		parts = append([]interface{}{StackAdjust(1), "Assert:"}, parts...)
+		parts = append([]interface{}{"Assert:"}, parts...)
 		fmt.Println(parts...)
 		Fatal(errors.New("assert failed"), parts...)
 	}
