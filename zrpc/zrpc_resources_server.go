@@ -14,18 +14,18 @@ type Resources struct {
 	updatedResourcesSentToClient zmap.LockMap[string, []string]
 }
 
-type ResourceCalls struct {
+type ZRPCResourceCalls struct {
 	Resources *Resources
 }
 
 var (
 	MainResources     = new(Resources)
-	MainResourceCalls = &ResourceCalls{Resources: MainResources}
+	MainResourceCalls = &ZRPCResourceCalls{Resources: MainResources}
 )
 
 // GetUpdatedResourcesAndSetSent is called from clients (often browsers) to ask for updated resource-ids
 // The client id is stored as it having checked them out for that given update.
-func (rc *ResourceCalls) GetUpdatedResourcesAndSetSent(ci *ClientInfo, int Unused, reply *[]string) error {
+func (rc *ZRPCResourceCalls) GetUpdatedResourcesAndSetSent(ci *ClientInfo, int Unused, reply *[]string) error {
 	*reply = []string{}
 	rc.Resources.updatedResourcesSentToClient.ForEach(func(res string, c []string) bool {
 		if !zstr.StringsContain(c, ci.ClientID) {
@@ -67,14 +67,14 @@ func (r *Resources) SetClientKnowsResourceUpdated(resID, clientID string) {
 }
 
 // SetResourceUpdatedFromClient is called from client to say it knows of update
-func (r *ResourceCalls) SetResourceUpdatedFromClient(ci *ClientInfo, resID string) error {
+func (r *ZRPCResourceCalls) SetResourceUpdatedFromClient(ci *ClientInfo, resID string) error {
 	// fmt.Println("SetResourceUpdatedFromClient:", *resID)
 	r.Resources.SetResourceUpdated(resID, ci.ClientID)
 	return nil
 }
 
 // GetURL is a convenience function to get the contents of a url via the server.
-func (*ResourceCalls) GetURL(surl *string, reply *[]byte) error {
+func (*ZRPCResourceCalls) GetURL(surl *string, reply *[]byte) error {
 	params := zhttp.MakeParameters()
 	_, err := zhttp.Get(*surl, params, reply)
 	return err

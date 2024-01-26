@@ -157,7 +157,7 @@ func (c *Client) PollForUpdatedResources(got func(resID string)) {
 	}
 	ztimer.RepeatForever(1, func() {
 		var resIDs []string
-		err := c.Call("ResourceCalls.GetUpdatedResourcesAndSetSent", nil, &resIDs)
+		err := c.Call("ZRPCResourceCalls.GetUpdatedResourcesAndSetSent", nil, &resIDs)
 		if err != nil {
 			zlog.Error(err, "updateResources err:")
 			return
