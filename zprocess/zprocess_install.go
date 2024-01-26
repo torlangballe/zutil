@@ -8,11 +8,13 @@ import (
 
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 type Installer struct {
 	Company     string
 	ProductName string
+	Domain      string
 }
 
 const launchAgentPlistStr = `
@@ -62,16 +64,17 @@ func (i *Installer) VarPath(add string) string {
 }
 
 func (i *Installer) ID() string {
-	return i.Company + "." + i.ProductName
+	return zstr.Concat(".", i.Domain, i.Company, i.ProductName)
 }
 
 func (i *Installer) InstallProgramWithLauncher(args []string, copyBinary bool) error {
 	binDir := i.BinPath("")
-	zfile.MakeDirAllIfNotExists(binDir)
+	err := zfile.MakeDirAllIfNotExists(binDir)
+	zlog.OnError(err)
 	bin := binDir + "/" + i.ProductName
 	if copyBinary {
 		err := zfile.CopyFile(bin, os.Args[0])
-		if err != nil {
+		if zlog.OnError(err) {
 			return err
 		}
 	}
@@ -92,17 +95,17 @@ func (i *Installer) InstallProgramWithLauncher(args []string, copyBinary bool) e
 		"{args}", sargs,
 	)
 	launchConfig = replacer.Replace(launchConfig)
-	err := zfile.WriteStringToFile(launchConfig, launcherPath)
+	err = zfile.WriteStringToFile(launchConfig, launcherPath)
 	if err != nil {
 		return zlog.Error(err, "install launcher", launcherPath)
 	}
 	const launch = "launchctl"
 	_, err = RunCommand(launch, 5, "load", launcherPath)
-	if err != nil {
-		RunCommand(launch, 5, "stop")
-		return nil
-	} else {
-		RunCommand(launch, 5, "start")
-	}
+	zlog.OnError(err, launcherPath)
+	id := i.ID()
+	str, err := RunCommand(launch, 5, "stop", id)
+	zlog.OnError(err, str)
+	str, err = RunCommand(launch, 5, "start", id)
+	zlog.OnError(err, str)
 	return nil
 }
