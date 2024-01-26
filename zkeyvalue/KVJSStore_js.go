@@ -126,8 +126,9 @@ func (k *JSRawStore) RawSetItem(key string, v any, sync bool) error {
 	return nil
 }
 
-func (k JSRawStore) RawRemoveForKey(key string, sync bool) {
+func (k JSRawStore) RawRemoveForKey(key string, sync bool) error {
 	k.getLocalStorage().Call("removeItem", key)
+	return nil
 }
 
 /////////////

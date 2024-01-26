@@ -15,12 +15,12 @@ type Option[V comparable] struct {
 	MakeDefault func() V
 
 	value V
-	store Storer
+	store SimpleStorer
 }
 
 var optionChangedHandlers []optionChangeHandler
 
-func NewOption[V comparable](store Storer, key string, val V) *Option[V] {
+func NewOption[V comparable](store SimpleStorer, key string, val V) *Option[V] {
 	o := &Option[V]{}
 	o.Key = key
 	o.value = val

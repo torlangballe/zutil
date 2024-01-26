@@ -9,8 +9,9 @@ import (
 )
 
 type DictRawStore struct {
-	lock sync.Mutex
-	dict zdict.Dict
+	lock  sync.Mutex
+	dict  zdict.Dict
+	Saver Saver
 }
 
 func NewDictRawStore() *DictRawStore {
@@ -30,7 +31,6 @@ func (s *DictRawStore) RawGetItem(key string, pointer any) bool {
 }
 
 func (s *DictRawStore) RawGetItemAsAny(key string) (any, bool) {
-	// s.postfixKey(&key)
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	gval, got := s.dict[key]
@@ -38,19 +38,23 @@ func (s *DictRawStore) RawGetItemAsAny(key string) (any, bool) {
 }
 
 func (s *DictRawStore) RawSetItem(key string, v any, sync bool) error {
-	// s.postfixKey(&key)
-	// zlog.Info("DictRawStore.RawSetItem:", key, v)
 	s.lock.Lock()
 	s.dict[key] = v
 	s.lock.Unlock()
+	if sync && s.Saver != nil {
+		return s.Saver.Save()
+	}
 	return nil
 }
 
-func (s *DictRawStore) RawRemoveForKey(key string, sync bool) {
-	// s.postfixKey(&key)
+func (s *DictRawStore) RawRemoveForKey(key string, sync bool) error {
 	s.lock.Lock()
 	delete(s.dict, key)
 	s.lock.Unlock()
+	if sync && s.Saver != nil {
+		return s.Saver.Save()
+	}
+	return nil
 }
 
 func (s *DictRawStore) Set(dict zdict.Dict) {

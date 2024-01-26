@@ -23,14 +23,15 @@ type RawStorer interface {
 	RawGetItem(key string, v any) bool
 	RawGetItemAsAny(key string) (any, bool)
 	RawSetItem(key string, v any, sync bool) error
-	RawRemoveForKey(key string, sync bool)
+	RawRemoveForKey(key string, sync bool) error
 }
 
-type Storer interface {
-	GetItem(key string, v any) bool
-	GetItemAsAny(key string) (any, bool)
+type Saver interface {
+	Save() error
+}
+
+type SimpleStorer interface {
 	SetItem(key string, v any, sync bool) error
-	RemoveForKey(key string, sync bool)
 }
 
 type Store struct {
@@ -169,21 +170,9 @@ func (s Store) SetTime(value time.Time, key string, sync bool) {
 	s.Raw.RawSetItem(key, value, sync)
 }
 
-func (s Store) ForAllKeys(got func(key string)) {}
-
 func (s Store) SetBoolInd(value zbool.BoolInd, key string, sync bool) {
 	s.postfixKey(&key)
-	s.Raw.RawSetItem(key, int(value), sync)
-}
-
-func (s Store) postfixKey(key *string) {
-	if (*key)[0] != '/' && s.KeyPostfix != "" {
-		*key = *key + s.KeyPostfix
-	}
-	if zdebug.IsInTests {
-		*key += "_test"
-	}
-	*key = *key + GlobalKeyPostfix
+	s.Raw.RawSetItem(key, value, sync)
 }
 
 func (s Store) GetItem(key string, v any) bool {
@@ -200,5 +189,22 @@ func (s Store) GetItemAsAny(key string) (any, bool) {
 
 func (s Store) SetItem(key string, v any, sync bool) error {
 	s.postfixKey(&key)
-	return s.Raw.RawSetItem(key, v, sync)
+	err := s.Raw.RawSetItem(key, v, sync)
+	return err
 }
+
+func (s Store) RemoveForKey(key string, sync bool) error {
+	return s.Raw.RawRemoveForKey(key, sync)
+}
+
+func (s Store) postfixKey(key *string) {
+	if (*key)[0] != '/' && s.KeyPostfix != "" {
+		*key = *key + s.KeyPostfix
+	}
+	if zdebug.IsInTests {
+		*key += "_test"
+	}
+	*key = *key + GlobalKeyPostfix
+}
+
+func (s Store) ForAllKeys(got func(key string)) {}
