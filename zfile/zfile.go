@@ -149,6 +149,18 @@ func CalcMD5(filepath string) (data []byte, err error) {
 }
 
 func CopyFile(dest, source string) (err error) {
+	asource, err := filepath.Abs(source)
+	if zlog.OnError(err, source) {
+		return err
+	}
+	adest, err := filepath.Abs(dest)
+	if zlog.OnError(err, dest) {
+		return err
+	}
+	if asource == adest {
+		zlog.Info("zfile.CopyFile: source == dest, skipping.", source, dest)
+		return nil
+	}
 	err = CloneFile(dest, source)
 	if err == nil {
 		return
