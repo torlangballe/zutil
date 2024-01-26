@@ -125,7 +125,7 @@ func (r *Rect) Translated(t Pos) Rect {
 	return tr
 }
 
-func MergeAll(rects []Rect) []Rect {
+func MergeAllOverlapping(rects []Rect) []Rect {
 	var merged = true
 	var rold = rects
 	for merged {
@@ -353,20 +353,6 @@ func (r Rect) MovedInto(rect Rect) (m Rect) {
 	return
 }
 
-/* #kotlin-raw:
-   fun copy() : Rect {
-       var r = SetRect()
-       r.pos = Pos.copy()
-       r.size = Size.copy()
-       return r
-   }
-*/
-
-// Dummy function, but if translated(?) to kotlin needed to actually copy rect, not make reference
-func (r Rect) Copy() Rect {
-	return r
-}
-
 func (r Rect) UnionedWith(rect Rect) Rect {
 	if !rect.IsNull() {
 		if r.IsNull() {
@@ -452,3 +438,16 @@ func (r Rect) Swapped() Rect {
 	return Rect{Pos: r.Pos.Swapped(), Size: r.Size.Swapped()}
 }
 
+func TranslatePosInSystems(from, to Rect, pos Pos) Pos {
+	scale := to.Size.DividedBy(from.Size)
+	inFrom := pos.Minus(from.Pos)
+	scaledPos := inFrom.Times(scale.Pos())
+	inTo := to.Pos.Plus(scaledPos)
+	return inTo
+}
+
+func TranslateRectInSystems(from, to Rect, r Rect) Rect {
+	min := TranslatePosInSystems(from, to, r.Min())
+	max := TranslatePosInSystems(from, to, r.Max())
+	return RectFromMinMax(min, max)
+}
