@@ -6,6 +6,7 @@ import (
 	"github.com/torlangballe/zui/zcanvas"
 	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 func DrawAmountPie(rect zgeo.Rect, canvas *zcanvas.Canvas, value, strokeWidth float64, color, strokeColor zgeo.Color) {
@@ -30,4 +31,25 @@ func StrokeVertInImage(img zimage.SetableImage, x, y1, y2 int, col color.Color) 
 	for y := y1; y <= y2; y++ {
 		img.Set(x, y, col)
 	}
+}
+
+func MergeImages(box zgeo.Size, images []*zimage.ImageGetter, done func(img *zimage.Image)) {
+	zimage.GetImages(images, func(all bool) {
+		if !all {
+			zlog.Error(nil, "Not all images got")
+			return
+		}
+		if box.IsNull() {
+			for _, ig := range images {
+				box.Maximize(ig.Image.Size())
+			}
+		}
+		canvas := zcanvas.New()
+		canvas.SetSize(box)
+		for _, ig := range images {
+			r := zgeo.Rect{Size: box}.Align(ig.Image.Size(), ig.Alignment, ig.Margin)
+			canvas.DrawImageAt(ig.Image, r.Pos, false, ig.Opacity)
+		}
+		canvas.ZImage(false, done)
+	})
 }
