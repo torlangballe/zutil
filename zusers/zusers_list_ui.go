@@ -38,7 +38,6 @@ func makeTableOwner(users []AllUserInfo) *userTable {
 	ut.grid = zslicegrid.TableViewNew(&ut.users, "users-table", zslicegrid.AddMenu|zslicegrid.AllowAllEditing|zslicegrid.AddHeader|zslicegrid.AddBar)
 	ut.grid.EditParameters.SkipFieldNames = []string{"AdminStar"}
 	ut.grid.FieldParameters.AllStatic = true
-	ut.grid.FieldParameters.HideStatic = false
 	ut.grid.SetBGColor(zstyle.DefaultBGColor())
 	ut.grid.Grid.MinRowsForFullSize = 10
 	ut.grid.Grid.MaxRowsForFullSize = 10
@@ -60,7 +59,7 @@ func makeTableOwner(users []AllUserInfo) *userTable {
 		old(ids)
 	}
 	ut.grid.ActionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {
-		def := ut.grid.CreateDefaultMenuItems()
+		def := ut.grid.CreateDefaultMenuItems(false)
 		return append(def,
 			zmenu.MenuedSCFuncAction("Unauthorize selected users", 'U', 0, func() {
 				ut.unauthorizeUsers(ut.grid.Grid.SelectedIDs())
