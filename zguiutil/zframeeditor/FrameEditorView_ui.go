@@ -88,7 +88,6 @@ func NewFrameEditorView(boxes []Box, options Options, size zgeo.Size) *FrameEdit
 	v.boxTable = zslicegrid.TableViewNew[Box](&v.boxes, "etheros.box-editor", zslicegrid.AddHeader|zslicegrid.AllowEdit|zslicegrid.AllowDelete|zslicegrid.AllowDuplicate|zslicegrid.AddBarInHeader)
 	v.Add(v.boxTable, zgeo.TopLeft|zgeo.Expand)
 	v.boxTable.StructName = "Box"
-	v.boxTable.EditParameters.HideStatic = false
 	v.boxTable.ActionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {
 		def := v.boxTable.CreateDefaultMenuItems()
 		return append(def,
