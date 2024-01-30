@@ -89,7 +89,7 @@ func NewFrameEditorView(boxes []Box, options Options, size zgeo.Size) *FrameEdit
 	v.Add(v.boxTable, zgeo.TopLeft|zgeo.Expand)
 	v.boxTable.StructName = "Box"
 	v.boxTable.ActionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {
-		def := v.boxTable.CreateDefaultMenuItems()
+		def := v.boxTable.CreateDefaultMenuItems(false)
 		return append(def,
 			zmenu.MenuedSCFuncAction("Add Box", 'N', 0, v.addBox),
 		)
