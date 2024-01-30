@@ -451,3 +451,15 @@ func TranslateRectInSystems(from, to Rect, r Rect) Rect {
 	max := TranslatePosInSystems(from, to, r.Max())
 	return RectFromMinMax(min, max)
 }
+
+func (r Rect) NormalizedNegativeSize() Rect {
+	if r.Size.W < 0 {
+		r.Pos.X += r.Size.W
+		r.Size.W *= -1
+	}
+	if r.Size.H < 0 {
+		r.Pos.Y += r.Size.H
+		r.Size.H *= -1
+	}
+	return r
+}
