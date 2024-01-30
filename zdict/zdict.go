@@ -108,13 +108,18 @@ func (d Dict) Copy() Dict {
 	return out
 }
 
-func (d Dict) SortedKeys() (keys []string) {
+func (d Dict) Keys() []string {
+	var keys []string
 	for k := range d {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	return keys
+}
 
-	return
+func (d Dict) SortedKeys() []string {
+	keys := d.Keys()
+	sort.Strings(keys)
+	return keys
 }
 
 func (d Dict) Values() []any {
