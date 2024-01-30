@@ -3,6 +3,7 @@ package zprocess
 import (
 	"context"
 	"math/rand"
+	"runtime"
 	"sync"
 	"time"
 
@@ -20,6 +21,16 @@ type OnceWait struct {
 	inited bool
 	wg     sync.WaitGroup
 }
+
+type TimedMutex struct {
+	sync.Mutex
+}
+
+var (
+	MainThreadExeCh chan func()
+	procs           zmap.LockMap[int64, *proc]
+	lastProcPrint   time.Time
+)
 
 // PoolWorkOnItems runs jobs with do(), processing all in goroutines,
 // But up to max poolSize at a time.
@@ -80,75 +91,6 @@ func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 		return true // timed out
 	}
 }
-
-type TimedMutex struct {
-	sync.Mutex
-}
-
-/*
-var currentMutexes zmap.LockMap[int64, *TimedMutex]
-
-type TimedMutex struct {
-	mutex    sync.Mutex
-	start    time.Time
-	started  time.Time
-	stack    string
-	id       int64
-	repeater *ztimer.Repeater
-}
-
-const warnSecs = 10
-
-func reportExisting(skipID int64) {
-	currentMutexes.ForEach(func(id int64, t *TimedMutex) bool {
-		if id == skipID {
-			return true
-		}
-		zlog.Info("existing lock", time.Since(t.start), time.Since(t.started), t.stack)
-		return true
-	})
-	zlog.Info("")
-}
-
-func (t *TimedMutex) Lock() {
-	if t.id == 0 {
-		t.id = rand.Int63()
-	}
-	stack := zlog.CallingStackStringAt(1)
-	now := time.Now()
-	currentMutexes.Set(t.id, t)
-
-	t.start = now
-	timer := ztimer.StartIn(warnSecs, func() {
-		zlog.Info("🟥TimeMutex slow to lock:", time.Since(now), "secs:", stack, "original lock:", t.stack)
-		reportExisting(t.id)
-	})
-	t.stack = stack
-	t.mutex.Lock()
-	t.started = time.Now()
-	currentMutexes.Remove(t.id)
-	timer.Stop()
-	t.repeater = ztimer.Repeat(warnSecs, func() bool {
-		zlog.Info("🟥TimeMutex still locked for:", time.Since(t.start), stack)
-		reportExisting(t.id)
-		return true
-	})
-}
-
-func (t *TimedMutex) Unlock() {
-	t.repeater.Stop()
-	t.mutex.Unlock()
-	since := ztime.Since(t.started)
-	if since > warnSecs {
-		zlog.Info("🟥TimeMutex was locked for", since, "seconds", t.stack)
-	}
-}
-*/
-
-var (
-	procs         zmap.LockMap[int64, *proc]
-	lastProcPrint time.Time
-)
 
 func RepeatPrintInOutRequests() {
 	ztimer.RepeatForever(0.1, func() {
@@ -213,4 +155,44 @@ func (o *OnceWait) Done() {
 		o.done = true
 		o.wg.Done()
 	}
+}
+
+// OnThreadExecutor returns a channel of func() to push functions you want to run on the thread OnThreadExecutor was called on.
+// the rest function is called in a go-routine
+
+func OnThreadExecutor(c *chan func(), rest func()) chan func() {
+	runtime.LockOSThread()
+	*c = make(chan func())
+	if rest != nil {
+		go rest()
+}
+	for {
+		select {
+		case f := <-*c:
+			zlog.Info("Got Func")
+			f()
+		}
+	}
+}
+
+func StartMainThreadExecutor(rest func()) {
+	OnThreadExecutor(&MainThreadExeCh, rest)
+}
+
+func RunFuncInMainThread(f func()) {
+	MainThreadExeCh <- f
+}
+
+func RunAndWaitForFuncInMainThread(f func()) {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	zlog.Info("RunAndWaitForFuncInMainThread", MainThreadExeCh != nil)
+	MainThreadExeCh <- func() {
+		zlog.Info("here1")
+		f()
+		wg.Done()
+	}
+	zlog.Info("here")
+	wg.Wait()
 }

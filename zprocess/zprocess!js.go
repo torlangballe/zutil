@@ -81,6 +81,8 @@ func GetAppProgramPath(appName string) string {
 	return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
 }
 
+// RunApp runs appName in Applications (for mac), and returns the exec.Cmd and out/err readers and in writer.
+// If ctx is nil, the command it run without a context. using exec.Command in MakeCommand.
 func RunApp(appName string, ctx context.Context, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
 	path := GetAppProgramPath(appName)
 	cmd, outPipe, errPipe, err = MakeCommand(path, ctx, true, &inPipe, args...)
