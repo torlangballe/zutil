@@ -17,7 +17,8 @@ type FileStore struct {
 }
 
 var (
-	DefaultStore *FileStore
+	DefaultStore        *FileStore
+	DefaultSessionStore *FileStore
 )
 
 func NewFileStore(path string) *FileStore {
