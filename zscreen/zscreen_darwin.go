@@ -17,6 +17,7 @@ package zscreen
 import "C"
 
 import (
+	"strconv"
 	"unsafe"
 
 	"github.com/torlangballe/zutil/zgeo"
@@ -56,9 +57,17 @@ func GetAll() (screens []Screen) {
 	for i := 0; i < c; i++ {
 		var s Screen
 		si := cscreens[i]
-		s.ID = int64(si.sid)
+		s.ID = strconv.FormatInt(int64(si.sid), 10)
+		// r2 := zgeo.RectFromXYWH(float64(si.frame.origin.x), float64(si.frame.origin.y), float64(si.frame.size.width), float64(si.frame.size.height))
+		// zlog.Info("Frame:", s.ID, r2)
+		// r := zgeo.RectFromXYWH(float64(si.frame.origin.x), float64(-si.frame.origin.y), float64(si.frame.size.width), float64(-si.frame.size.height))
+		// s.Rect = r.CleanedNegative()
+		// r = zgeo.RectFromXYWH(float64(si.visibleFrame.origin.x), float64(-si.visibleFrame.origin.y), float64(si.visibleFrame.size.width), float64(-si.visibleFrame.size.height))
+		// s.UsableRect = r.CleanedNegative()
+
 		s.Rect = zgeo.RectFromXYWH(float64(si.frame.origin.x), float64(si.frame.origin.y), float64(si.frame.size.width), float64(si.frame.size.height))
 		s.UsableRect = zgeo.RectFromXYWH(float64(si.visibleFrame.origin.x), float64(si.visibleFrame.origin.y), float64(si.visibleFrame.size.width), float64(si.visibleFrame.size.height))
+
 		s.Scale = float64(si.scale)
 		s.IsMain = (si.ismain == 1)
 		s.SoftScale = 1

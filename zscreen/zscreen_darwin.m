@@ -77,4 +77,3 @@ void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh) {
         break;
     }
 }
-

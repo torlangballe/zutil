@@ -21,7 +21,7 @@ const (
 type Screen struct {
 	IsMain     bool
 	isLocked   bool
-	ID         int64
+	ID         string
 	Rect       zgeo.Rect
 	UsableRect zgeo.Rect
 	Scale      float64 //= float64(UIScreen.main.scale)
@@ -50,9 +50,9 @@ func GetMain() Screen {
 var MainSoftScale = GetMain().SoftScale
 var MainScale = GetMain().Scale
 
-func FromID(id int64) *Screen {
+func FindFromID(id string) *Screen {
 	for _, s := range GetAll() {
-		// zlog.Info(id, "ScreenFromID", s)
+		zlog.Info(id, "ScreenFromID", s.ID, s.Rect)
 		if s.ID == id {
 			return &s
 		}
