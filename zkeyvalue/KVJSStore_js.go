@@ -71,6 +71,9 @@ func (s *JSRawStore) RawGetItem(key string, v any) bool {
 	local := s.getLocalStorage()
 	o := local.Get(key)
 
+	if o.IsUndefined() {
+		return false
+	}
 	// zlog.Info("get kv item:", key, o.Type(), o)
 	switch o.Type() {
 	case js.TypeUndefined:
