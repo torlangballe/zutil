@@ -67,7 +67,7 @@ func makeTableOwner(users []AllUserInfo) *userTable {
 		)
 	}
 	ut.grid.StoreChangedItemFunc = storeUser
-	ut.grid.DeleteItemFunc = deleteUser
+	ut.grid.CallDeleteItemFunc = deleteUser
 	return ut
 }
 
@@ -93,12 +93,13 @@ func storeUser(item AllUserInfo, last bool) error {
 	return err
 }
 
-func deleteUser(item *AllUserInfo, showErr *bool, last bool) error {
-	err := zrpc.MainClient.Call("UsersCalls.DeleteUserForID", item.ID, nil)
-	zlog.Info("deleteUsers", item.ID, item.UserName, err)
+func deleteUser(sid string, showErr *bool, last bool) error {
+	userID, _ := strconv.ParseInt(sid, 10, 64)
+	err := zrpc.MainClient.Call("UsersCalls.DeleteUserForID", userID, nil)
+	zlog.Info("deleteUsers", userID, err)
 	if err != nil && *showErr {
 		*showErr = false
-		zalert.ShowError(err, "delete user", item.UserName)
+		zalert.ShowError(err, "delete user")
 	}
 	return err
 }
