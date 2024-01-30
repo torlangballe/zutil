@@ -327,11 +327,6 @@ func (s Size) Swapped() Size {
 	return Size{s.H, s.W}
 }
 
-func (s Size) ShunkToFill(in Size) Size {
-	ns := Rect{Size: s}.Align(s, Shrink|Center|Out, Size{}).Size
-	return ns.MinWith(s)
-}
-
 type ISize struct {
 	W int `json:"w"`
 	H int `json:"h"`
