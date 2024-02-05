@@ -267,6 +267,7 @@ func (j *JSONer) Scan(val interface{}) error {
 	*j = JSONer(b)
 	return nil
 }
+
 /*
 var insertQueries = map[string]string{}
 
@@ -335,7 +336,7 @@ func SelectIDStruct[S any](base *Base, s *S, id int64, table string) error {
 func getPrimaryColumn(row any) (column string, val any, err error) {
 	var got bool
 	ForEachColumn(row, nil, "", func(each ColumnInfo) bool {
-		zlog.Info("Each:", each.Column, each.IsPrimary)
+		// zlog.Info("Each:", each.Column, each.IsPrimary)
 		if each.IsPrimary {
 			column = each.Column
 			val = each.ReflectValue.Interface()
@@ -452,8 +453,9 @@ func SelectSlicesOfAny[S any](base *Base, resultSlice *[]S, q QueryBase) error {
 		return zlog.Error(err, "select", query)
 	}
 	defer rows.Close()
-	pointers := FieldPointersFromStruct(&s, q.SkipColumns)
 	for rows.Next() {
+		var s S
+		pointers := FieldPointersFromStruct(&s, q.SkipColumns)
 		err = rows.Scan(pointers...)
 		if err != nil {
 			return zlog.Error(err, "select", query)
