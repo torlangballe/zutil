@@ -77,14 +77,6 @@ func AlignmentFromString(str string) Alignment {
 	return Alignment(zbits.NamedFromString(str, nameMap))
 }
 
-func (a *Alignment) UnmarshalJSON(b []byte) error {
-	return (*zbits.NamedBit)(a).FromJSON(b, nameMap)
-}
-
-func (a Alignment) MarshalJSON() ([]byte, error) {
-	return zbits.NamedBit(a).ToJSON(nameMap)
-}
-
 func (a Alignment) Vector() Pos {
 	if a&Left != 0 {
 		return Pos{-1, 0}
@@ -234,4 +226,13 @@ func (a Alignment) SplitIntoIndividual() (all []Alignment) {
 		}
 	}
 	return
+}
+
+func (a *Alignment) UnmarshalJSON(b []byte) error {
+	*a = AlignmentFromString(string(b))
+	return nil
+}
+
+func (a Alignment) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + a.String() + `"`), nil
 }
