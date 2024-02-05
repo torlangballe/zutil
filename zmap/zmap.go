@@ -88,6 +88,10 @@ func (l *LockMap[K, V]) Remove(k K) {
 	l.Map.Delete(k)
 }
 
+func (l *LockMap[K, V]) RemoveAll() {
+	l.Map = sync.Map{}
+}
+
 func GetAnyKeyAsString(m interface{}) string {
 	mval := reflect.ValueOf(m)
 	keys := mval.MapKeys()
