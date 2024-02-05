@@ -49,11 +49,12 @@ func GetAll() (screens []Screen) {
 	var count C.uint32_t = 0
 	C.CGGetActiveDisplayList(0, nil, &count)
 	if count == 0 {
-		return
+		return nil
 	}
 	cscreens := make([]C.ScreenInfo, count)
 	p := (*C.ScreenInfo)(unsafe.Pointer(&cscreens[0]))
 	c := int(C.GetAll(p, C.int(count)))
+	var adjust zgeo.Pos
 	for i := 0; i < c; i++ {
 		var s Screen
 		si := cscreens[i]
@@ -65,15 +66,22 @@ func GetAll() (screens []Screen) {
 		// r = zgeo.RectFromXYWH(float64(si.visibleFrame.origin.x), float64(-si.visibleFrame.origin.y), float64(si.visibleFrame.size.width), float64(-si.visibleFrame.size.height))
 		// s.UsableRect = r.CleanedNegative()
 
-		s.Rect = zgeo.RectFromXYWH(float64(si.frame.origin.x), float64(si.frame.origin.y), float64(si.frame.size.width), float64(si.frame.size.height))
-		s.UsableRect = zgeo.RectFromXYWH(float64(si.visibleFrame.origin.x), float64(si.visibleFrame.origin.y), float64(si.visibleFrame.size.width), float64(si.visibleFrame.size.height))
-
+		r := zgeo.RectFromXYWH(float64(si.frame.origin.x), float64(-si.frame.origin.y), float64(si.frame.size.width), float64(-si.frame.size.height))
+		s.Rect = r.NormalizedNegativeSize()
+		r = zgeo.RectFromXYWH(float64(si.visibleFrame.origin.x), float64(si.visibleFrame.origin.y), float64(si.visibleFrame.size.width), float64(si.visibleFrame.size.height))
+		s.UsableRect = r.NormalizedNegativeSize()
 		s.Scale = float64(si.scale)
 		s.IsMain = (si.ismain == 1)
 		s.SoftScale = 1
 		screens = append(screens, s)
+		if s.IsMain {
+			adjust = s.Rect.Pos.Negative()
+		}
 	}
-	return
+	for i := range screens {
+		screens[i].Rect.Pos.Add(adjust)
+	}
+	return screens
 }
 
 // SetMainScreenResolutionMin goes through the display modes of the main screen, and finds the smallest width
