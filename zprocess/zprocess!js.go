@@ -138,6 +138,24 @@ func FindParameterAfterFlag(got *string, args []string, flag string) bool {
 	return false
 }
 
+func GetChildrenForPID(parentPID int64) []int64 {
+	var pids []int64
+	procs, _ := ps.Processes()
+	for _, p := range procs {
+		pid := int64(p.PPid())
+		if pid == parentPID {
+			pids = append(pids, int64(p.Pid()))
+			proc, err := process.NewProcess(int32(p.Pid()))
+			if zlog.OnError(err, p.Pid()) {
+				continue
+			}
+			name, _ := proc.Name()
+			zlog.Info("CHILD:", name, p.Pid())
+		}
+	}
+	return pids
+}
+
 // GetPIDsForAppName returns the pid for all processes with executable name *app*.
 // *excludeZombies* checks if it has a ps Z state and doesn't add it to list then. This can take quite a long time.
 func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
