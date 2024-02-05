@@ -146,7 +146,6 @@ func (c *Client) CallWithTimeout(timeoutSecs float64, method string, input, resu
 }
 
 func (c *Client) PollForUpdatedResources(got func(resID string)) {
-	// zlog.Info("PollForUpdatedResources1")
 	for _, r := range registeredResources {
 		got(r)
 		f, got := c.pollGetters.Get(r)
@@ -162,6 +161,7 @@ func (c *Client) PollForUpdatedResources(got func(resID string)) {
 			zlog.Error(err, "updateResources err:")
 			return
 		}
+		// zlog.Info("PollForUpdatedResources", resIDs, registeredResources)
 		for _, s := range resIDs {
 			if !zstr.StringsContain(registeredResources, s) {
 				continue
