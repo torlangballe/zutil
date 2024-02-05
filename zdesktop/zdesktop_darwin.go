@@ -33,7 +33,9 @@ package zdesktop
 //   char *data;
 // } Image;
 // CGImageRef GetWindowImage(long winID);
-//void ShowAlert(char *str);
+// void ShowAlert(char *str);
+// int closeOldWindowWithSamePIDAndRectOnceNew(long pid, int x, int y, int w, int h);
+// void closeOldWindowWithSamePIDAndRect(long pid, int x, int y, int w, int h);
 import "C"
 
 import (
@@ -167,6 +169,16 @@ func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, s
 		}
 	}
 	return
+}
+
+func CloseOldWindowWithSamePIDAndRectOnceNew(pid int64, r zgeo.Rect) bool {
+	n := C.closeOldWindowWithSamePIDAndRectOnceNew(C.long(pid), C.int(r.Pos.X), C.int(r.Pos.Y), C.int(r.Size.W), C.int(r.Size.H))
+	zlog.Info("CloseOldWindowWithIDInRectOnceNew:", n)
+	return n != 0
+}
+
+func CloseOldWindowWithSamePIDAndRect(pid int64, r zgeo.Rect) {
+	C.closeOldWindowWithSamePIDAndRect(C.long(pid), C.int(r.Pos.X), C.int(r.Pos.Y), C.int(r.Size.W), C.int(r.Size.H))
 }
 
 func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect) (img image.Image, pid int64, err error) {

@@ -133,6 +133,122 @@ void CloseWindowsForPIDIfNotInTitles(int pid, char *stitles) {
     }
 }
 
+long getWindowIDForPIDAndInRect(long findPID, int x, int y, int w, int h) {
+    long wid = 0;
+    CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly|kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+    for (NSMutableDictionary* entry in (__bridge NSArray*)windowList)
+    {
+        int layer = [[entry objectForKey:(id)kCGWindowLayer] integerValue];
+        if (layer == 0) {
+            continue;
+        }
+        long pid = (long)[[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
+        if (pid != findPID) {
+            continue;
+        }
+        NSDictionary *dict = [entry objectForKey:(id)kCGWindowBounds];
+        int dx = (int)[(NSNumber *)dict[@"X"] floatValue];
+        int dy = (int)[(NSNumber *)dict[@"Y"] floatValue];
+        int dw = (int)[(NSNumber *)dict[@"Width"] floatValue];
+        int dh = (int)[(NSNumber *)dict[@"Height"] floatValue];
+        if (dx < x) {
+            // NSLog(@"X\n");
+            continue;
+        }
+        if (dy < y) {
+            // NSLog(@"Y\n");
+            continue;
+        }
+        if (dx + dw > x + w) {
+            // NSLog(@"W %d %d %d %d\n", w, dw, x, dx);
+            continue;
+        }
+        if (dy + dh > y + h) {
+            // NSLog(@"H\n");
+            continue;
+        }
+        wid = (long)[[entry objectForKey:(id)kCGWindowNumber] integerValue];
+        NSLog(@"Win: %ld wid:%ld %d\n", pid, wid, dx);
+        break;
+    }
+    CFRelease(windowList);
+    return wid;
+}
+
+CFArrayRef getWindowsForPID(long pid) {
+    CFArrayRef windowArray = nil;
+    AXUIElementRef appElementRef = AXUIElementCreateApplication(pid);
+    AXError err = AXUIElementCopyAttributeValue(appElementRef, kAXWindowsAttribute, (CFTypeRef*)&windowArray);
+    CFRelease(appElementRef);
+    return windowArray;
+}
+
+NSMutableDictionary *openWinRefsForRectsDict = NULL;
+
+NSString *closeOldWindowWithSamePIDAndRectReturnKey(long pid, int x, int y, int w, int h) {
+    NSString *key = [NSString stringWithFormat:@"%ld %d %d %d %d", pid, x, y, w, h];
+    if (openWinRefsForRectsDict == NULL) {
+        openWinRefsForRectsDict = [[NSMutableDictionary alloc] init];
+    } else if (w == 0 && h == 0) {
+        [ openWinRefsForRectsDict removeAllObjects ];
+        return key;
+    }
+    NSValue *nsval = (NSValue*)[ openWinRefsForRectsDict objectForKey: key ];
+    if (nsval != nil) {
+        AXUIElementRef wref = (AXUIElementRef)[nsval pointerValue];
+        CFRelease(wref);
+        CloseWindowForWindowRef(wref);
+    }
+    return key;
+}
+
+void closeOldWindowWithSamePIDAndRect(long pid, int x, int y, int w, int h) {
+    closeOldWindowWithSamePIDAndRectReturnKey(pid, x, y, w, h);
+}
+
+int closeOldWindowWithSamePIDAndRectOnceNew(long pid, int x, int y, int w, int h) {
+    CFArrayRef windowArray = getWindowsForPID(pid);
+    NSLog(@"closeOldWindowWithIDInRectOnceNew1 %ld\n", pid);
+    if (windowArray == nil) {
+        // NSLog(@"getAXElementOfWindowForTitle is nil: %s pid=%ld err=%d\n", title, pid, err);
+        return 0;
+    }
+    CFIndex nItems = CFArrayGetCount(windowArray);
+    NSLog(@"closeWindowWithID: %ld %ld\n", pid, (long)nItems);
+    for (int i = 0; i < nItems; i++) {
+        CFTypeRef posValue, sizeValue;
+        CGPoint point;
+        CGSize size;
+        NSString *title = nil;
+        AXUIElementRef winRef = (AXUIElementRef) CFArrayGetValueAtIndex(windowArray, i);
+        NSLog(@"closeWindowWithID loop: %d\n", i);
+        AXUIElementCopyAttributeValue(winRef, kAXTitleAttribute, (CFTypeRef *)&title);
+        AXUIElementCopyAttributeValue(winRef, kAXPositionAttribute, (CFTypeRef*)&posValue);
+        AXValueGetValue(posValue, kAXValueCGPointType, &point);
+        int ax = (int)point.x;
+        int ay = (int)point.y;
+        if (ax < x || ay < y) {
+            CFRelease(windowArray);
+            return 0;
+        }
+        AXUIElementCopyAttributeValue(winRef, kAXSizeAttribute, (CFTypeRef*)&sizeValue);
+        AXValueGetValue(sizeValue, kAXValueCGSizeType, &size);
+        int aw = (int)size.width;
+        int ah = (int)size.height;
+        if (ax + aw > x + w || ay + ah > y + h) {
+            CFRelease(windowArray);
+            return 0;
+        }
+        NSString *key = closeOldWindowWithSamePIDAndRectReturnKey(pid, x, y, w, h);
+        [ openWinRefsForRectsDict setValue: [NSValue valueWithPointer:winRef] forKey: key ];
+        // NSLog(@"Close!!: %@\n", title);
+        CFRelease(windowArray);
+        return 1;
+    }
+    CFRelease(windowArray);
+    return 0;
+}
+
 const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct WinInfo *find, struct WinInfo w)) {
     if (forceScreenRecording) {
         if (!canRecordScreen()) {
@@ -245,17 +361,12 @@ WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title) {
 }
 
 AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL debug) {
-    NSString *nsTitle = [NSString stringWithUTF8String: title];
-   AXUIElementRef appElementRef = AXUIElementCreateApplication(pid);
-    // NSLog(@"getAXElementOfWindowForTitle1: %@ %ld %p\n", nsTitle, pid, appElementRef);
-    CFArrayRef windowArray = nil;
-    AXError err = AXUIElementCopyAttributeValue(appElementRef, kAXWindowsAttribute, (CFTypeRef*)&windowArray);
+    CFArrayRef windowArray = getWindowsForPID(pid);
     if (windowArray == nil) {
         // NSLog(@"getAXElementOfWindowForTitle is nil: %s pid=%ld err=%d\n", title, pid, err);
-        CFRelease(appElementRef);
-        CFRelease(nsTitle);
         return nil;
     }
+    NSString *nsTitle = [NSString stringWithUTF8String: title];
     AXUIElementRef matchingWinRef = nil;
     CFIndex nItems = CFArrayGetCount(windowArray);
     NSString *cleanTitle = removedNonASCIIAndTruncate(nsTitle);
@@ -284,7 +395,6 @@ AXUIElementRef getAXElementOfWindowForTitle(const char *title, long pid, BOOL de
         }
         CFRelease(winTitleClean);
     }
-    CFRelease(appElementRef);
     CFRelease(windowArray);
     CFRelease(cleanTitle);
     return matchingWinRef;
