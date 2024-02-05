@@ -209,7 +209,11 @@ func GetDurationAsHMSString(duration time.Duration, hours, mins, secs bool, subd
 		parts = append(parts, fmt.Sprintf(format, s))
 		// zlog.Info("GetSecsAsHMSString:", durSecs, subdigits, format, parts, h, m)
 	}
-	return strings.Join(parts, ":")
+	str := strings.Join(parts, ":")
+	if len(parts) == 1 && secs {
+		str += "s"
+	}
+	return str
 }
 
 func GetSecsFromHMSString(str string, hour, min, sec bool) (float64, error) {
