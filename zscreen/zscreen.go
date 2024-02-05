@@ -50,9 +50,8 @@ func GetMain() Screen {
 var MainSoftScale = GetMain().SoftScale
 var MainScale = GetMain().Scale
 
-func FindFromID(id string) *Screen {
+func FindForID(id string) *Screen {
 	for _, s := range GetAll() {
-		zlog.Info(id, "ScreenFromID", s.ID, s.Rect)
 		if s.ID == id {
 			return &s
 		}
