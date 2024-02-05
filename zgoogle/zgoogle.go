@@ -181,7 +181,7 @@ func GetMapImageUrlFromLocation(pos ugeo.FPoint, size ugeo.FSize, myLocation uge
 	args := map[string]string{
 		"size":     fmt.Sprintf("%gx%g", size.W, size.H),
 		"language": langCode,
-		"key":      "AIzaSyDLL1WYXwKFcibBR254seV5UuRIO20petQ",
+		"key":      "xxx",
 		//		"markers":  fmt.Sprintf("color:blue|icon:%s|%g,%g", personIcon, pos.Y, pos.X),
 		"markers": fmt.Sprintf("color:yellow|%g,%g", pos.Y, pos.X),
 	}
