@@ -4,6 +4,7 @@ package zframeeditor
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/torlangballe/zui/zcanvas"
 	"github.com/torlangballe/zui/zcontainer"
@@ -12,6 +13,7 @@ import (
 	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/zmenu"
 	"github.com/torlangballe/zui/zslicegrid"
+	"github.com/torlangballe/zui/ztextinfo"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zgeo"
@@ -48,11 +50,10 @@ var defaultColors = []zgeo.Color{
 }
 
 type FrameEditorView struct {
-	UpdateFunc func(boxes []Box, temporary bool)
-
-	boxes   []Box
-	options Options
 	zcontainer.StackView
+	UpdateFunc         func(boxes []Box, temporary bool)
+	boxes              []Box
+	options            Options
 	boxEditor          *zcustom.CustomView
 	boxTable           *zslicegrid.TableView[Box]
 	size               zgeo.Size
@@ -62,6 +63,11 @@ type FrameEditorView struct {
 	centerDragBox      Box
 	centerDragStart    zgeo.Pos
 	freeCornerDragging bool
+
+	selectedCorner zgeo.Alignment
+	selectedBoxID  int64
+	lastUpdate     time.Time
+	callingUpdate  bool
 }
 
 var (
@@ -79,10 +85,10 @@ func NewFrameEditorView(boxes []Box, options Options, size zgeo.Size) *FrameEdit
 	}
 	v.StackView.Init(v, true, "editor")
 	v.SetMargin(zgeo.RectFromMarginSize(zgeo.SizeBoth(10)))
-
 	v.boxEditor = zcustom.NewView("box-editor")
 	v.boxEditor.SetBGColor(zgeo.ColorDarkGray)
 	v.boxEditor.SetDrawHandler(v.draw)
+	v.boxEditor.SetCanTabFocus(true)
 	v.Add(v.boxEditor, zgeo.TopLeft)
 
 	v.boxTable = zslicegrid.TableViewNew[Box](&v.boxes, "etheros.box-editor", zslicegrid.AddHeader|zslicegrid.AllowEdit|zslicegrid.AllowDelete|zslicegrid.AllowDuplicate|zslicegrid.AddBarInHeader)
@@ -100,12 +106,56 @@ func NewFrameEditorView(boxes []Box, options Options, size zgeo.Size) *FrameEdit
 		if v.UpdateFunc != nil {
 			v.UpdateFunc(boxes, false)
 		}
+		v.boxTable.Expose()
 	}
 	v.boxEditor.SetPointerEnterHandler(true, v.handlePointerEnter)
 	v.boxEditor.SetPressUpDownMovedHandler(v.handlePressAndDrag)
-
+	v.boxEditor.SetKeyHandler(v.handleKey)
 	v.updateSize()
 	return v
+}
+
+func (v *FrameEditorView) ReadyToShow(beforeWindow bool) {
+	if beforeWindow {
+		v.callUpdate()
+	}
+}
+
+func (v *FrameEditorView) findBoxForID(id int64) *Box {
+	for i, box := range v.boxes {
+		if box.ID == v.selectedBoxID {
+			return &v.boxes[i]
+		}
+	}
+	return nil
+}
+
+func (v *FrameEditorView) handleKey(km zkeyboard.KeyMod, down bool) bool {
+	dir := zkeyboard.ArrowKeyToDirection(km.Key)
+	if dir != zgeo.AlignmentNone {
+		selectedBox := v.findBoxForID(v.selectedBoxID)
+		if selectedBox != nil && v.selectedCorner != zgeo.AlignmentNone {
+			freeDragging := (km.Modifier&zkeyboard.ModifierAlt != 0)
+			fast := (km.Modifier&zkeyboard.ModifierShift != 0)
+			vec := dir.Vector()
+			if fast {
+				vec.MultiplyD(4)
+			}
+			if v.selectedCorner == zgeo.Center {
+				for _, dir := range directions {
+					v.centerDragBox.Corners[dir] = v.centerDragBox.Corners[dir].Plus(vec)
+				}
+			} else {
+				npos := selectedBox.Corners[v.selectedCorner].Plus(vec)
+				setBoxCornerPos(selectedBox, v.selectedCorner, npos, freeDragging)
+			}
+			v.boxEditor.Expose()
+			v.callUpdate()
+			return true
+		}
+		return true
+	}
+	return false
 }
 
 func (v *FrameEditorView) dirForPos(box *Box, pos zgeo.Pos) zgeo.Alignment {
@@ -128,6 +178,8 @@ func (v *FrameEditorView) handlePressAndDrag(pos zgeo.Pos, down zbool.BoolInd) b
 			dir := v.dirForPos(box, pos)
 			if dir != zgeo.AlignmentNone {
 				v.draggingCorner = dir
+				v.selectedCorner = dir
+				v.selectedBoxID = box.ID
 				if dir == zgeo.Center {
 					v.centerDragBox = *box
 					v.centerDragStart = pos
@@ -142,8 +194,8 @@ func (v *FrameEditorView) handlePressAndDrag(pos zgeo.Pos, down zbool.BoolInd) b
 		v.draggingCorner = zgeo.AlignmentNone
 		v.boxEditor.Expose()
 		v.boxEditor.SetCursor(zcursor.Pointer)
-		v.callUpdate()
 		v.draggingBox = nil
+		v.callUpdate()
 		return false
 	}
 	if v.draggingBox != nil && v.draggingCorner != zgeo.AlignmentNone {
@@ -156,21 +208,29 @@ func (v *FrameEditorView) handlePressAndDrag(pos zgeo.Pos, down zbool.BoolInd) b
 			v.centerDragStart = pos
 		} else {
 			npos := v.viewToPos(pos)
-			v.draggingBox.Corners[v.draggingCorner] = npos
-			if !v.freeCornerDragging {
-				hflip := v.draggingCorner.FlippedHorizontal()
-				p := v.draggingBox.Corners[hflip]
-				p.Y = npos.Y
-				v.draggingBox.Corners[hflip] = p
-				vflip := v.draggingCorner.FlippedVertical()
-				p = v.draggingBox.Corners[vflip]
-				p.X = npos.X
-				v.draggingBox.Corners[vflip] = p
-			}
+			setBoxCornerPos(v.draggingBox, v.draggingCorner, npos, v.freeCornerDragging)
 		}
 		v.boxEditor.Expose()
+		if !v.callingUpdate && time.Since(v.lastUpdate) > time.Millisecond*100 {
+			v.callingUpdate = true
+			v.lastUpdate = time.Now()
+			v.callUpdate()
+			v.lastUpdate = time.Now()
+			v.callingUpdate = false
+		}
 	}
 	return true
+}
+
+func setBoxCornerPos(box *Box, corner zgeo.Alignment, pos zgeo.Pos, freeCornerDragging bool) {
+	diff := pos.Minus(box.Corners[corner])
+	box.Corners[corner] = pos
+	if !freeCornerDragging {
+		hflip := corner.FlippedHorizontal()
+		box.Corners[hflip] = box.Corners[hflip].Plus(zgeo.PosD(0, diff.Y))
+		vflip := corner.FlippedVertical()
+		box.Corners[vflip] = box.Corners[vflip].Plus(zgeo.PosD(diff.X, 0))
+	}
 }
 
 func (v *FrameEditorView) updateSize() {
@@ -218,11 +278,17 @@ func (v *FrameEditorView) addBox() {
 	v.callUpdate()
 }
 
-func drawGrabRect(canvas *zcanvas.Canvas, center zgeo.Pos) {
+func (v *FrameEditorView) drawGrabRect(canvas *zcanvas.Canvas, box *Box, corner zgeo.Alignment) {
+	center := box.Corners[corner]
 	r := zgeo.RectFromWH(6, 6)
 	r = r.Centered(center)
-	canvas.SetColor(zgeo.ColorBlack)
 	path := zgeo.PathNewRect(r, zgeo.Size{})
+	if box.ID == v.selectedBoxID && corner == v.selectedCorner {
+		canvas.SetColor(zgeo.ColorWhite)
+		canvas.FillPath(path)
+		return
+	}
+	canvas.SetColor(zgeo.ColorBlack)
 	canvas.StrokePath(path, 3, zgeo.PathLineSquare)
 
 	r = zgeo.RectFromWH(5, 5)
@@ -233,21 +299,28 @@ func drawGrabRect(canvas *zcanvas.Canvas, center zgeo.Pos) {
 }
 
 func (v *FrameEditorView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View) {
-	for _, b := range v.boxes {
+	tinfo := ztextinfo.New()
+	tinfo.Font = zgeo.FontNice(20, zgeo.FontStyleBold)
+	tinfo.Alignment = zgeo.Center | zgeo.Shrink
+	tinfo.MinimumFontScale = 0.2
+	for _, box := range v.boxes {
 		path := zgeo.PathNew()
-		col := b.Color
+		col := box.Color
 		canvas.SetColor(col)
-		path.MoveTo(v.posToView(b.Corners[zgeo.TopLeft]))
-		path.LineTo(v.posToView(b.Corners[zgeo.TopRight]))
-		path.LineTo(v.posToView(b.Corners[zgeo.BottomRight]))
-		path.LineTo(v.posToView(b.Corners[zgeo.BottomLeft]))
+		path.MoveTo(v.posToView(box.Corners[zgeo.TopLeft]))
+		path.LineTo(v.posToView(box.Corners[zgeo.TopRight]))
+		path.LineTo(v.posToView(box.Corners[zgeo.BottomRight]))
+		path.LineTo(v.posToView(box.Corners[zgeo.BottomLeft]))
 		path.Close()
 		canvas.StrokePath(path, 2, zgeo.PathLineRound)
-
-		drawGrabRect(canvas, v.posToView(b.Corners[zgeo.TopLeft]))
-		drawGrabRect(canvas, v.posToView(b.Corners[zgeo.TopRight]))
-		drawGrabRect(canvas, v.posToView(b.Corners[zgeo.BottomLeft]))
-		drawGrabRect(canvas, v.posToView(b.Corners[zgeo.BottomRight]))
+		v.drawGrabRect(canvas, &box, zgeo.TopLeft)
+		v.drawGrabRect(canvas, &box, zgeo.TopRight)
+		v.drawGrabRect(canvas, &box, zgeo.BottomLeft)
+		v.drawGrabRect(canvas, &box, zgeo.BottomRight)
+		tinfo.Rect = box.Bounds().ExpandedD(-5)
+		tinfo.Text = box.Name
+		tinfo.Color = box.Color
+		tinfo.Draw(canvas)
 	}
 }
 
