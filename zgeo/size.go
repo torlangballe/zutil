@@ -279,6 +279,10 @@ func (s *Size) UnmarshalJSON(b []byte) error {
 	}
 	str := string(b)
 	str = strings.Trim(str, `"`)
+	if len(str) == 0 {
+		*s = Size{}
+		return nil
+	}
 	var err error
 	*s, err = SizeFromString(str)
 	// fmt.Println("UNMARSHAL SIZE:", str, s)
@@ -286,6 +290,9 @@ func (s *Size) UnmarshalJSON(b []byte) error {
 }
 
 func (s *Size) MarshalJSON() ([]byte, error) {
+	if s.IsNull() {
+		return []byte(`""`), nil
+	}
 	str := `"` + s.String() + `"`
 	return []byte(str), nil
 }
