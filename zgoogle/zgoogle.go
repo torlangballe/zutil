@@ -1,31 +1,14 @@
 package zgoogle
 
 import (
-	"capsulefm/libs/util/places"
-	"capsulefm/libs/util/ugeo"
-	"capsulefm/libs/util/uhttp"
-	"capsulefm/libs/util/utime"
-
-	//	speech "cloud.google.com/go/speech/apiv1"
-	//	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 
-	"github.com/kaneshin/pigeon"
-	"github.com/kaneshin/pigeon/credentials"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zhttp"
-	"google.golang.org/api/vision/v1"
-
-	//	speechpb "google.golang.org/genproto/googleapis/cloud/speech/v1"
-
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
-
-	"source.calgoty.com/calgoty/go-json.git"
 )
 
 // https://developers.google.com/maps/documentation/geocoding/#Types
@@ -76,7 +59,8 @@ type tzJSON struct {
 	TimeZoneId string `json:"timeZoneId"`
 }
 
-func GetTimeZoneFromLocation(pos ugeo.FPoint) (string, error) {
+/*
+func GetTimeZoneFromLocation(pos zgeo.Pos) (string, error) {
 	var tzStruct tzJSON
 	u, err := url.Parse("https://maps.googleapis.com/maps/api/timezone/json")
 	if err != nil {
@@ -90,13 +74,14 @@ func GetTimeZoneFromLocation(pos ugeo.FPoint) (string, error) {
 	q.Set("sensor", "false")
 	u.RawQuery = q.Encode()
 	surl := u.String()
-	_, err = uhttp.UnmarshalFromJSONFromURL(surl, &tzStruct, false, "", "")
+	_, err = zhttp.UnmarshalFromJSONFromURL(surl, &tzStruct, false, "", "")
 	if err == nil && tzStruct.TimeZoneId == "" {
 		err = errors.New("Couldn't parse json from url: " + surl)
 	}
 	tzname := utime.ReplaceOldUnixTimeZoneNamesWithNew(tzStruct.TimeZoneId)
 	return tzname, err
 }
+*/
 
 func GetGeocodeURL(lang string, x, y float64) string {
 	surl := "http://maps.googleapis.com/maps/api/geocode/json?latlng=%f,%f&sensor=true&language=%s"
@@ -111,7 +96,7 @@ func GeocodeLocation(lang string, x, y float64) (gCode Geocode, err error) {
 	if err != nil {
 		return
 	}
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
@@ -121,12 +106,13 @@ func GeocodeLocation(lang string, x, y float64) (gCode Geocode, err error) {
 	}
 
 	if gCode.Status != "OK" {
-		err = fmt.Errorf(`ugeo: error response from Google "%s"`, gCode.Status)
+		err = fmt.Errorf(`geocode: error response from Google "%s"`, gCode.Status)
 		return
 	}
 	return
 }
 
+/*
 func GeocodeLocationToNameMap(lang string, x, y float64) (names map[string]string, err error) {
 	gCode, err := GeocodeLocation(lang, x, y)
 	if err != nil {
@@ -209,8 +195,9 @@ func GetStaticMapUrlToLocations(positions []ugeo.FPoint) string {
 	return surl + postfix
 
 }
+*/
 
-var googleCreds *credentials.Credentials = nil
+// var googleCreds *credentials.Credentials = nil
 
 const (
 	KUnknown      = "UNKNOWN"
@@ -240,6 +227,7 @@ type ImageResult struct {
 	SafeSearchAnnotation map[string]string `json:"safeSearchAnnotation"`
 }
 
+/*
 func AnnotateImage(imageUrl string, features ...*vision.Feature) (result ImageResult, err error) {
 	if googleCreds == nil {
 		googleCreds = credentials.NewApplicationCredentials("")
@@ -259,12 +247,10 @@ func AnnotateImage(imageUrl string, features ...*vision.Feature) (result ImageRe
 	if err != nil {
 		return
 	}
-	/*
-		for i := range batch.Requests {
-			batch.Requests[i].ImageContext = &vision.ImageContext{}
-			batch.Requests[i].ImageContext.LanguageHints = []string{"no"}
-		}
-	*/
+		// for i := range batch.Requests {
+		// 	batch.Requests[i].ImageContext = &vision.ImageContext{}
+		// 	batch.Requests[i].ImageContext.LanguageHints = []string{"no"}
+		// }
 	res, err := client.ImagesService().Annotate(batch).Do()
 	if err != nil {
 		return
@@ -284,7 +270,6 @@ func AnnotateImage(imageUrl string, features ...*vision.Feature) (result ImageRe
 	return
 }
 
-/*
 func SpeechToText() (err error) {
 
 	const usage = `Usage: wordoffset <audiofile>
