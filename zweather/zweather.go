@@ -14,4 +14,5 @@ type Forcast struct {
 	RelativeHumidityPercent  float64 `json:"relative_humidity"`
 	WindFromDirectionDegrees float64 `json:"wind_from_direction"`
 	WindSpeedMPS             float64 `json:"wind_speed"`
+	SymbolCode               string
 }

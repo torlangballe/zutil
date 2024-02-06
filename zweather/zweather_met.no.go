@@ -93,6 +93,7 @@ func GetLocalForcast(geoPos zgeo.Pos) ([]Forcast, error) {
 		f.RelativeHumidityPercent = t.Data.Instant.Details.RelativeHumidity
 		f.WindFromDirectionDegrees = t.Data.Instant.Details.WindFromDirection
 		f.WindSpeedMPS = t.Data.Instant.Details.WindSpeed
+		f.SymbolCode = t.Data.Next1Hours.Summary.SymbolCode
 		forcasts = append(forcasts, f)
 	}
 	return forcasts, nil
