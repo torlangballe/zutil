@@ -133,10 +133,10 @@ func (v *GraphView) forEachPart(got func(name string, r zgeo.Rect, first bool)) 
 }
 
 func (v *GraphView) requestParts() {
-	// zlog.Info("requestParts1", v.Hierarchy(), v.SecondsPerPixel, v.On, v.Job.WindowMinutes)
 	if !v.On || v.Job.WindowMinutes == 0 {
 		return
 	}
+	// zlog.Info("requestParts1", v.Job.ID, v.Hierarchy(), v.SecondsPerPixel, v.On, v.Job.WindowMinutes)
 	v.forEachPart(func(name string, r zgeo.Rect, first bool) {
 		// zlog.Info("requestParts:", name, first, v.drawn[name] != nil)
 		if !first && v.drawn[name] != nil {

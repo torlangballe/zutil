@@ -68,6 +68,7 @@ func NewGrapher(router *mux.Router, deleteDays int, grapherName, folderPath stri
 	return g
 }
 
+// interceptServe sniffs a request for alarm-graphs, and starts rendering if it is outside ones already cached or current.
 func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file string) bool {
 	// zlog.Info("zgrapher: interceptServe", req.URL.Path, zfile.Exists(file))
 	_, fullName := path.Split(req.URL.Path)
@@ -93,10 +94,10 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 			return false
 		}
 		job = *g.jobs.Index(g.jobs.AnyKey())
-		job.ID = "0"
+		job.ID = "0" // make a copy of any existing job, but set id to "0"
 	} else {
 		j, got := g.jobs.Get(sid)
-		if zlog.ErrorIf(!got, sid, "removed job?") {
+		if zlog.ErrorIf(!got, sid, fullName, "removed job?") {
 			return false
 		}
 		job = *j
