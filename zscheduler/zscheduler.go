@@ -331,7 +331,9 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 		return
 	}
 	if run.ExecutorID == s.zeroID {
-		zlog.Warn("stopJob: not running", jobID)
+		if !outsideRequest {
+			zlog.Warn("stopJob: not running", jobID)
+		}
 		return
 	}
 	// zlog.Warn("stopJob", jobID, run.Stopping, remove, outsideRequest, zlog.CallingStackString())
