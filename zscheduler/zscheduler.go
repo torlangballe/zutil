@@ -1212,7 +1212,7 @@ func (s *Scheduler[I]) GetRunForID(jobID I) (Run[I], error) {
 	// }
 	r, _ := s.findRun(jobID)
 	if r == nil {
-		return Run[I]{}, zlog.Error(nil, "no job: %v", jobID)
+		return Run[I]{}, zlog.Error(nil, "no job:", jobID)
 	}
 	// zlog.Warn("Run4job:", r.Job.ID, r.Count)
 	return *r, nil
