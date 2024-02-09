@@ -328,7 +328,7 @@ func ConsumeOutAndError(outPipe, errPipe io.ReadCloser, ctx context.Context, dum
 	if dump == nil {
 		dump = func(isErr bool, line string) {
 			if isErr {
-				zlog.Error(nil, line)
+				zlog.Error(line)
 			} else {
 				zlog.Info(line)
 			}

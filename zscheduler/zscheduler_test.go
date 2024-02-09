@@ -145,7 +145,7 @@ func compare(t *testing.T, str string, n ...int) bool {
 		}
 	}
 	if fail {
-		zlog.Error(nil, zlog.StackAdjust(1), "Fail:", str)
+		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
 		t.Error(str)
 	}
 	return !fail
@@ -401,7 +401,7 @@ func testEnoughRunning(t *testing.T) {
 		}
 		count := s.CountRunningJobs(0)
 		if count < jobCount-1 {
-			zlog.Error(nil, "Not enough jobs running:", sit, "count:", count, "<", jobCount-1, s.CountJobs(0))
+			zlog.Error("Not enough jobs running:", sit, "count:", count, "<", jobCount-1, s.CountJobs(0))
 			s.stopped = true
 			t.Error("Not enough jobs running")
 			// t.Fatal(time.Now(), "Not enough jobs running:", sit, "count:", count, "<", jobCount-1, s.CountJobs(0))

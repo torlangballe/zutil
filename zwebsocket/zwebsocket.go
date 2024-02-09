@@ -144,7 +144,7 @@ func (c *Server) Close(id string) error {
 	defer c.mutex.Unlock()
 	con, got := c.connections[id]
 	if !got {
-		return zlog.Error(nil, "no connection to close:", id)
+		return zlog.Error("no connection to close:", id)
 	}
 	err := con.Connection.Close()
 	delete(c.connections, id)
@@ -156,7 +156,7 @@ func (c *Server) Send(id string, structure interface{}) error {
 	defer c.mutex.Unlock()
 	con, got := c.connections[id]
 	if !got {
-		return zlog.Error(nil, "no connection to send to:", id)
+		return zlog.Error("no connection to send to:", id)
 	}
 	con.Connection.SetWriteDeadline(time.Now().Add(time.Second * 15))
 	return con.Connection.WriteJSON(structure)

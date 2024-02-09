@@ -140,7 +140,7 @@ func (r *ReverseClienter) ReversePushResult(rp ReverseResult) error {
 	pendingCall, got := rc.pendingCallsSent.Pop(rp.Token)
 	// zlog.Info("zrpc.PushResult:", pendingCall.Method, got) // EnableLogReverseClient
 	if !got {
-		zlog.Error(nil, "No call for result with token:", rp.Token, "in", rp.ReverseReceiverID, rc.pendingCallsSent.Count()) // make some kind of transport error
+		zlog.Error("No call for result with token:", rp.Token, "in", rp.ReverseReceiverID, rc.pendingCallsSent.Count()) // make some kind of transport error
 		return NoCallForTokenErr
 	}
 	pendingCall.done <- &rp.clientReceivePayload
@@ -151,7 +151,7 @@ func (r *ReverseClienter) findOrAddReverseClient(receiverID string, ci *ClientIn
 	rc, _ := r.allReverseClients.Get(receiverID)
 	if rc == nil {
 		if ci == nil { // if ci is nil, it's from ReversePoll, don't add otherwise
-			zlog.Error(nil, "findOrAddReverseClient ci=nil: no reverse client for id:", receiverID)
+			zlog.Error("findOrAddReverseClient ci=nil: no reverse client for id:", receiverID)
 			return nil
 		}
 		zlog.Warn("Add Rerverse Client:", receiverID, ci.Token)
@@ -188,7 +188,7 @@ func (rc *ReverseClient) CallWithTimeout(timeoutSecs float64, method string, arg
 	select {
 	case <-ticker.C:
 		ticker.Stop() // Very important to stop ticker, or memory leak
-		return zlog.Error(nil, "Reverse zrpc.Call timed out:", method, dur, rc.rid)
+		return zlog.Error("Reverse zrpc.Call timed out:", method, dur, rc.rid)
 	case r := <-pc.done:
 		// zlog.Warn("RevCall done", r.Error)
 		ticker.Stop() // Very important to stop ticker, or memory leak

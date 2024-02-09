@@ -38,7 +38,7 @@ func GetMain() Screen {
 		}
 	}
 	if runtime.GOOS != "linux" {
-		zlog.Error(nil, "No screen!", zlog.CallingStackString())
+		zlog.Error("No screen!", zlog.CallingStackString())
 	}
 	s := Screen{}
 	s.SoftScale = 1

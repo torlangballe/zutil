@@ -274,7 +274,7 @@ func CGImageToGoImage(cgimage C.CGImageRef, insetRect zgeo.Rect) (image.Image, e
 	}
 	img := image.NewNRGBA(image.Rect(0, 0, cw, ch))
 	if img == nil {
-		return nil, zlog.Error(nil, "NewRGBA returned nil", cw, ch)
+		return nil, zlog.Error("NewRGBA returned nil", cw, ch)
 	}
 	// zlog.Info("THUMB insetRect:", insetRect)
 	ctx := createBitmapContext(cw, ch, (*C.uint32_t)(unsafe.Pointer(&img.Pix[0])), img.Stride)
@@ -293,13 +293,13 @@ func CGImageToGoImage(cgimage C.CGImageRef, insetRect zgeo.Rect) (image.Image, e
 func GetWindowImage(winID string, insetRect zgeo.Rect) (image.Image, error) {
 	wid, _ := strconv.ParseInt(winID, 10, 64)
 	if wid == 0 {
-		return nil, zlog.Error(nil, "no valid image id")
+		return nil, zlog.Error("no valid image id")
 	}
 	zlog.Assert(wid != 0)
 	start := time.Now()
 	cgimage := C.GetWindowImage(C.long(wid))
 	if cgimage == C.CGImageRef(0) {
-		err := zlog.Error(nil, "get window image returned nil", time.Since(start), "wid:", wid)
+		err := zlog.Error("get window image returned nil", time.Since(start), "wid:", wid)
 		PrintWindowTitles()
 		return nil, err
 

@@ -65,7 +65,7 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 // Returns HTTP error code and error messages in JSON representation, with string made of args and, printed
 func ReturnAndPrintError(w http.ResponseWriter, req *http.Request, errorCode int, a ...interface{}) error {
 	str := fmt.Sprintln(a...)
-	zlog.ErrorAtStack(nil, 5, a...)
+	zlog.ErrorAtStack(5, a...)
 	ReturnError(w, req, str, errorCode)
 	return errors.New(str)
 }
@@ -183,7 +183,7 @@ func AddFileHandler(router *mux.Router, pattern, dir string, override func(w htt
 			http.ServeFile(w, req, filepath)
 			return
 		}
-		zlog.Error(nil, "no correct dir for serving:", req.URL.Path, dir, pattern)
+		zlog.Error("no correct dir for serving:", req.URL.Path, dir, pattern)
 	}
 	if HasTelemetryFunc() {
 		return AddSubHandler(router, pattern, WrapForTelemetryFunc(pattern, handlerFunc))

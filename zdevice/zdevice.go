@@ -66,7 +66,7 @@ func Platform() OSType {
 	case "linux":
 		return LinuxType
 	}
-	zlog.Fatal(nil, "other type")
+	zlog.Fatal("other type")
 	return OSType("")
 }
 

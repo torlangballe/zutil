@@ -48,24 +48,20 @@ var (
 
 func init() {
 	PanicHandler = func(reason string, exit bool) {
-		Error(nil, "panic handler:", reason)
+		Error("panic handler:", reason)
 		if exit {
 			panic(reason)
 		}
 	}
 }
 
-func Error(err error, parts ...interface{}) error {
-	return baseLog(err, ErrorLevel, 4, parts...)
-}
-
-func Warning(err error, parts ...interface{}) error {
-	return baseLog(err, WarningLevel, 4, parts...)
+func Error(parts ...interface{}) error {
+	return baseLog(ErrorLevel, 4, parts...)
 }
 
 // Fatal performs Log with Fatal priority
-func Fatal(err error, parts ...interface{}) error {
-	return baseLog(err, FatalLevel, 4, parts...)
+func Fatal(parts ...interface{}) error {
+	return baseLog(FatalLevel, 4, parts...)
 }
 
 func FatalNotImplemented() {
@@ -74,17 +70,17 @@ func FatalNotImplemented() {
 
 // Info performs Log with InfoLevel priority
 func Info(parts ...interface{}) {
-	baseLog(nil, InfoLevel, 4, parts...)
+	baseLog(InfoLevel, 4, parts...)
 }
 
 // Verbose performs Log with InfoLevel priority
 func Verbose(parts ...interface{}) {
-	baseLog(nil, VerboseLevel, 4, parts...)
+	baseLog(VerboseLevel, 4, parts...)
 }
 
 // Info performs Log with InfoLevel priority
 func Warn(parts ...interface{}) {
-	baseLog(nil, WarningLevel, 4, parts...)
+	baseLog(WarningLevel, 4, parts...)
 }
 
 // func Dummy(parts ...interface{}) {
@@ -92,20 +88,15 @@ func Warn(parts ...interface{}) {
 
 // Debug performs Log with DebugLevel priority
 func Debug(parts ...interface{}) {
-	baseLog(nil, DebugLevel, 4, parts...)
+	baseLog(DebugLevel, 4, parts...)
 }
 
 // Error performs Log with ErrorLevel priority, getting stack from N
-func ErrorAtStack(err error, stackPos int, parts ...interface{}) error {
-	return baseLog(err, ErrorLevel, stackPos, parts...)
+func ErrorAtStack(stackPos int, parts ...interface{}) error {
+	return baseLog(ErrorLevel, stackPos, parts...)
 }
 
-// Log returns a new error combined with err (if not nil), and parts. Printing done if priority >= PrintPriority
-func Log(err error, priority Priority, parts ...interface{}) error {
-	return baseLog(err, priority, 4, parts...)
-}
-
-func expandTildeInFilepath(path string) string {
+func expandTildeInFilepath(path string) string { // can't use one in zfile, cyclic dependency
 	if runtime.GOOS == "js" {
 		return ""
 	}
@@ -143,7 +134,7 @@ func NewError(parts ...interface{}) error {
 	return err
 }
 
-func baseLog(err error, priority Priority, pos int, parts ...any) error {
+func baseLog(priority Priority, pos int, parts ...any) error {
 	if priority < PrintPriority {
 		return nil
 	}
@@ -216,13 +207,10 @@ func baseLog(err error, priority Priority, pos int, parts ...any) error {
 	} else if priority == ErrorLevel {
 		finfo += FileLineAndCallingFunctionString(pos) + ": "
 	}
-	if err != nil {
-		parts = append([]interface{}{err}, parts...)
-	}
 	if priority == FatalLevel {
 		finfo += "\nFatal:" + CallingStackString() + "\n"
 	}
-	err = NewError(parts...)
+	err := NewError(parts...)
 	fmt.Println(finfo + col + err.Error() + endCol)
 	str := finfo + err.Error() + "\n"
 
@@ -325,24 +313,24 @@ func FileLineAndCallingFunctionString(pos int) string {
 
 func Assert(success bool, parts ...interface{}) {
 	if !success {
-		parts = append([]interface{}{"Assert:"}, parts...)
+		parts = append([]interface{}{"assert:"}, parts...)
 		fmt.Println(parts...)
-		Fatal(errors.New("assert failed"), parts...)
+		Fatal(parts...)
 	}
 }
 
 func AssertMakeError(success bool, parts ...interface{}) error {
 	if !success {
-		parts = append([]interface{}{StackAdjust(1)}, parts...)
-		return Error(errors.New("assert failed"), parts...)
+		parts = append([]interface{}{"assert failed:", StackAdjust(1)}, parts...)
+		return Error(parts...)
 	}
 	return nil
 }
 
 func ErrorIf(check bool, parts ...interface{}) bool {
 	if check {
-		parts = append([]interface{}{StackAdjust(1)}, parts...)
-		Error(errors.New("error if occured:"), parts...)
+		parts = append([]interface{}{"error if occured:", StackAdjust(1)}, parts...)
+		Error(parts...)
 	}
 	return check
 }
@@ -350,7 +338,7 @@ func ErrorIf(check bool, parts ...interface{}) bool {
 func OnError(err error, parts ...interface{}) bool {
 	if err != nil {
 		parts = append([]interface{}{StackAdjust(1)}, parts...)
-		Error(err, parts...)
+		Error(parts...)
 		return true
 	}
 	return false
@@ -359,7 +347,7 @@ func OnError(err error, parts ...interface{}) bool {
 func AssertNotError(err error, parts ...interface{}) {
 	if err != nil {
 		parts = append([]interface{}{StackAdjust(1)}, parts...)
-		Fatal(err, parts...)
+		Fatal(parts...)
 	}
 }
 
@@ -406,7 +394,7 @@ func HandlePanic(exit bool) error {
 	r := recover()
 	if r != nil {
 		fmt.Println("**HandlePanic")
-		Error(nil, "\n🟥HandlePanic:", r, "\n", CallingStackString())
+		Error("\n🟥HandlePanic:", r, "\n", CallingStackString())
 		str := fmt.Sprint(r)
 		PanicHandler(str, exit)
 		e, _ := r.(error)

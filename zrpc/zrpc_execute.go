@@ -38,7 +38,7 @@ func (e *Executor) Register(callers ...interface{}) {
 		for n, m := range methods {
 			_, got := e.callMethods[n]
 			if got {
-				zlog.Error(nil, "Registering existing call object:", n)
+				zlog.Error("Registering existing call object:", n)
 				break
 			}
 			// zlog.Info("REG:", n, m.Method, zlog.Pointer(e))
@@ -119,7 +119,7 @@ func isExportedOrBuiltinType(t reflect.Type) bool {
 func (e *Executor) methodNeedsAuth(name string) bool {
 	m, got := e.callMethods[name]
 	if !got {
-		zlog.Error(nil, "methodNeedsAuth on unknown:", name)
+		zlog.Error("methodNeedsAuth on unknown:", name)
 		return true
 	}
 	return !m.AuthNotNeeded
@@ -197,7 +197,7 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 	var err error
 	// zlog.Info("zrpc callWithDeadline:", method, zlog.Pointer(e))
 	if time.Since(expires) >= 0 {
-		zlog.Error(nil, "zrpc ReverseExecutor: callWithDeadline expired:", expires)
+		zlog.Error("zrpc ReverseExecutor: callWithDeadline expired:", expires)
 		rp.TransportError = TransportError(zstr.Spaced("Call received after timeout.", method, time.Since(expires)))
 	} else {
 		ctx, cancel := context.WithDeadline(context.Background(), expires)

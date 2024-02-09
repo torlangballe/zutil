@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/AllenDang/w32"
+	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
@@ -99,7 +100,7 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) error {
 		w32.MoveWindow(h, int(rect.Pos.X), int(rect.Pos.Y), int(rect.Size.W), int(rect.Size.H), true)
 		return nil
 	}
-	return zlog.Error(nil, "no window", title)
+	return zlog.Error("no window", title)
 }
 
 var screenLock sync.Mutex
@@ -135,7 +136,7 @@ func CloseWindowForTitle(title, app string) error {
 		zlog.Info("CloseWindowForTitle:", ok, title, h)
 		return nil
 	}
-	return zlog.Error(nil, "no window", title)
+	return zlog.Error("no window", title)
 }
 
 func SendQuitCommandToApp(app string) error {

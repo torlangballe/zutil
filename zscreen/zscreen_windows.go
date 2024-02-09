@@ -5,7 +5,7 @@ package zscreen
 func GetAll() (screens []Screen) {
 	// n := screenshot.NumActiveDisplays()
 	// if n <= 0 {
-	// 	zlog.Fatal(nil, "Active display not found")
+	// 	zlog.Fatal("Active display not found")
 	// }
 	// for i := 0; i < n; i++ {
 	// 	var s Screen

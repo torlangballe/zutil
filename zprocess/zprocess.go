@@ -128,7 +128,7 @@ func PushProcess(timeoutSecs float64, info string) *proc {
 	p.info = info
 	procs.Set(p.id, &p)
 	p.timer = ztimer.StartIn(timeoutSecs, func() {
-		zlog.Error(nil, "Process timed out:\n", info, p.stack)
+		zlog.Error("Process timed out:\n", info, p.stack)
 	})
 	return &p
 }
@@ -165,7 +165,7 @@ func OnThreadExecutor(c *chan func(), rest func()) chan func() {
 	*c = make(chan func())
 	if rest != nil {
 		go rest()
-}
+	}
 	for {
 		select {
 		case f := <-*c:

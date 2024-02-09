@@ -90,7 +90,7 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 	var job SJob
 	if sid == "0" {
 		if g.jobs.Count() == 0 {
-			zlog.Error(nil, "serving sid='0' zgraph")
+			zlog.Error("serving sid='0' zgraph")
 			return false
 		}
 		job = *g.jobs.Index(g.jobs.AnyKey())

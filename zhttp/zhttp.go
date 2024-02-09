@@ -295,7 +295,7 @@ func processResponse(surl string, resp *http.Response, printBody bool, receive a
 		fmt.Println("dump:", resp.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(resp)+"\n")
 	}
 	if receive != nil && reflect.ValueOf(receive).Kind() != reflect.Ptr {
-		zlog.Fatal(nil, "not pointer", surl)
+		zlog.Fatal("not pointer", surl)
 	}
 	if resp.Body != nil {
 		defer resp.Body.Close()
@@ -404,7 +404,7 @@ func GetRedirectedURL(surl string) (string, error) {
 	lastUrlQuery := surl
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) > 10 {
-			return zlog.Error(nil, "too many redirects")
+			return zlog.Error("too many redirects")
 		}
 		lastUrlQuery = req.URL.String()
 		return nil

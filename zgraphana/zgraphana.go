@@ -52,7 +52,7 @@ func SetAnnotation(graphanaURLPrefix string, a Annotation) error {
 	// params.PrintBody = true
 	key := APIKey.Get()
 	if a.TimeEnd.IsZero() && a.Time.IsZero() || a.DashboardUID == "" || graphanaURLPrefix == "" || key == "" {
-		return zlog.Error(nil, "Missing parameters for SetAnnotation", a)
+		return zlog.Error("Missing parameters for SetAnnotation", a)
 	}
 	params.Headers["Authorization"] = "Bearer " + key
 	_, err := zhttp.Post(surl, params, a, &got)

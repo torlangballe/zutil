@@ -309,7 +309,7 @@ func ServeHTTPInBackground(address string, certificatesStubPath string, handler 
 		fCRT = certificatesStubPath + ".crt"
 		fKey = certificatesStubPath + ".key"
 		if zfile.NotExist(fCRT) || zfile.NotExist(fKey) {
-			zlog.Error(nil, "missing certificate files:", fCRT, fKey)
+			zlog.Error("missing certificate files:", fCRT, fKey)
 			return
 		}
 		cer, err := tls.LoadX509KeyPair(fCRT, fKey)

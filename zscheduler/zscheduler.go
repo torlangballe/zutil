@@ -228,7 +228,7 @@ func (s *Scheduler[I]) selectLoop() {
 		case jobID := <-s.SetJobHasErrorCh:
 			run, _ := s.findRun(jobID)
 			if run == nil {
-				zlog.Error(nil, "SetJobHasErrorCh: no run for", jobID)
+				zlog.Error("SetJobHasErrorCh: no run for", jobID)
 				return
 			}
 			run.ErrorAt = time.Now()
@@ -237,7 +237,7 @@ func (s *Scheduler[I]) selectLoop() {
 			reason = "SetExecutorIsAliveCh"
 			e, _ := s.findExecutor(exID)
 			if e == nil {
-				zlog.Error(nil, "SetExecutorIsAlive: none with id:", exID)
+				zlog.Error("SetExecutorIsAlive: none with id:", exID)
 			} else {
 				e.KeptAliveAt = time.Now()
 				s.startAndStopRuns()
@@ -270,7 +270,7 @@ func (s *Scheduler[I]) selectLoop() {
 func (s *Scheduler[I]) setMilestoneForRun(jobID I, at time.Time) {
 	run, _ := s.findRun(jobID)
 	if run == nil {
-		zlog.Error(nil, "Scheduler setMilestoneForRun, not run with that job id:", jobID)
+		zlog.Error("Scheduler setMilestoneForRun, not run with that job id:", jobID)
 		return
 	}
 	run.MilestoneAt = at
@@ -319,22 +319,21 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 	// if s.stopped {
 	// }
 
-	// zlog.Warn("StopJob:", jobID)
 	now := time.Now()
 	run, _ := s.findRun(jobID)
+	zlog.Warn("StopJob:", jobID, run != nil)
 	if run == nil {
 		if s.stopped {
 			return
 		}
-		zlog.Error(nil, "Scheduler stop: no run with that id", jobID, "reason to stop was:", reason, zlog.CallingStackString())
+		zlog.Error("Scheduler stop: no run with that id", jobID, "reason to stop was:", reason, zlog.CallingStackString())
 		zlog.Assert(outsideRequest)
 		return
 	}
 	if run.ExecutorID == s.zeroID {
-		if !outsideRequest {
-			zlog.Warn("stopJob: not running", jobID)
-		}
-		return
+		// if !outsideRequest {
+		zlog.Warn("stopJob: not running", jobID)
+		// }
 	}
 	// zlog.Warn("stopJob", jobID, run.Stopping, remove, outsideRequest, zlog.CallingStackString())
 	defer func() {
@@ -396,7 +395,7 @@ func (s *Scheduler[I]) addJob(job Job[I], outsideRequest bool) {
 	// zlog.Warn("AddJob1:", job.DebugName)
 	_, i := s.findRun(job.ID)
 	if i != -1 {
-		// zlog.Error(nil, "adding job when existing", job.DebugName, i)
+		// zlog.Error("adding job when existing", job.DebugName, i)
 		zlog.Assert(outsideRequest)
 		return
 	}
@@ -725,7 +724,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			}
 		}
 		if !s.stopped && !s.timerOn && (len(s.executors) != 0 && len(s.runs) != 0) && starting == 0 {
-			// zlog.Error(nil, "No timer, yet we have runs or executors:", len(s.runs), len(s.executors), s.CountJobs(s.zeroID), s.CountRunningJobs(s.zeroID), "starting:", starting, s.setup.ExecutorAliveDuration)
+			// zlog.Error("No timer, yet we have runs or executors:", len(s.runs), len(s.executors), s.CountJobs(s.zeroID), s.CountRunningJobs(s.zeroID), "starting:", starting, s.setup.ExecutorAliveDuration)
 		}
 		s.timerOn = false
 		return
@@ -960,7 +959,7 @@ func (s *Scheduler[I]) addExecutor(e Executor[I]) {
 	// zlog.Warn("addExecutor")
 	_, i := s.findExecutor(e.ID)
 	if i != -1 {
-		zlog.Error(nil, "already exists:", e.ID)
+		zlog.Error("already exists:", e.ID)
 		return
 	}
 	s.executors = append(s.executors, e)
@@ -982,7 +981,7 @@ func (s *Scheduler[I]) changeJob(job Job[I]) {
 			return
 		}
 	}
-	zlog.Error(nil, "zscheduler.changeJob: no such job:", job.DebugName)
+	zlog.Error("zscheduler.changeJob: no such job:", job.DebugName)
 }
 
 func (s *Scheduler[I]) purgeStartedJobsNotInList(jobsOnExe JobsOnExecutor[I]) {
@@ -1018,7 +1017,7 @@ func (s *Scheduler[I]) purgeStartedJobsNotInList(jobsOnExe JobsOnExecutor[I]) {
 func (s *Scheduler[I]) setJobRunning(jobID I) {
 	r, _ := s.findRun(jobID)
 	if r == nil {
-		zlog.Error(nil, "JobIsRunningCh on non-existing job", jobID)
+		zlog.Error("JobIsRunningCh on non-existing job", jobID)
 		return
 	}
 	s.setDebugState(jobID, false, false, false, true)
@@ -1037,7 +1036,7 @@ func (s *Scheduler[I]) removeExecutor(exID I) {
 	// }
 	_, i := s.findExecutor(exID)
 	if i == -1 {
-		zlog.Error(nil, "remove: no executor with id", exID, zlog.CallingStackString())
+		zlog.Error("remove: no executor with id", exID, zlog.CallingStackString())
 		return
 	}
 	zslice.RemoveAt(&s.executors, i)
@@ -1047,13 +1046,16 @@ func (s *Scheduler[I]) removeExecutor(exID I) {
 func (s *Scheduler[I]) removeRun(jobID I) {
 	_, i := s.findRun(jobID)
 	if i == -1 {
-		zlog.Error(nil, "removeRun: job not found", jobID)
+		zlog.Error("removeRun: job not found", jobID)
 		return
 	}
 	// zlog.Warn(r.Job.DebugName, "removeRun", jobID, len(s.runs))
+	// was := len(s.runs)
+	// name := r.Job.DebugName
 	if i != -1 {
 		zslice.RemoveAt(&s.runs, i)
 	}
+	// zlog.Warn(name, "removeRun", jobID, was, len(s.runs))
 }
 
 func (s *Scheduler[I]) HasExecutor(exID I) bool {
@@ -1143,13 +1145,14 @@ func (s *Scheduler[I]) endRun(jobID I) {
 	r, i := s.findRun(jobID)
 	if i == -1 {
 		if !s.stopped {
-			zlog.Error(nil, "endRun: job not found", jobID, len(s.runs))
+			zlog.Error("endRun: job not found", jobID, len(s.runs))
 		}
 		return
 	}
 	// zlog.Warn("endRun:", jobID, r.Stopping, r.Removing, len(s.runs), r.Removing, s.stopped, r.ExecutorID)
 	rc := *r
 	if r.Removing || s.stopped {
+		// zlog.Warn("removing")
 		s.removeRun(jobID)
 	} else {
 		r.starting = false
@@ -1212,7 +1215,7 @@ func (s *Scheduler[I]) GetRunForID(jobID I) (Run[I], error) {
 	// }
 	r, _ := s.findRun(jobID)
 	if r == nil {
-		return Run[I]{}, zlog.Error(nil, "no job:", jobID)
+		return Run[I]{}, zlog.Error("no job:", jobID)
 	}
 	// zlog.Warn("Run4job:", r.Job.ID, r.Count)
 	return *r, nil

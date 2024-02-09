@@ -42,7 +42,7 @@ func (t *Timer) StartIn(secs float64, perform func()) {
 	timersCount[secs]++
 	t.secs = secs
 	if timersCount[secs]%1000 == 999 {
-		zlog.Error(nil, timersCount[secs], "timers of", secs, "seconds started", zlog.CallingStackString())
+		zlog.Error(timersCount[secs], "timers of", secs, "seconds started", zlog.CallingStackString())
 	}
 	countMutex.Unlock()
 

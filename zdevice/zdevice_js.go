@@ -58,7 +58,7 @@ func OS() OSType {
 	case ua.Android:
 		return AndroidType
 	}
-	zlog.Error(nil, "other type")
+	zlog.Error("other type")
 	return OSType("")
 }
 

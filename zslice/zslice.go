@@ -39,7 +39,7 @@ func RemoveAt(slice interface{}, index int) error {
 	slicePtrValue := reflect.ValueOf(slice)
 	sliceValue := slicePtrValue.Elem()
 	if index < 0 || index >= sliceValue.Len() {
-		return zlog.Error(nil, "index out of range:", index)
+		return zlog.Error("index out of range:", index)
 	}
 	sliceValue.Set(reflect.AppendSlice(sliceValue.Slice(0, index), sliceValue.Slice(index+1, sliceValue.Len())))
 	return nil

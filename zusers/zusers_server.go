@@ -151,7 +151,7 @@ func (UsersCalls) SetNewPasswordFromForgotPassword(ci *zrpc.ClientInfo, reset Re
 	var email string
 	got := resetCache.Get(&email, reset.ResetToken)
 	if !got {
-		zlog.Error(nil, "no reset initiated:", reset.ResetToken)
+		zlog.Error("no reset initiated:", reset.ResetToken)
 		return zlog.NewError("No reset initiated. Maybe you waited more than 10 minutes.")
 	}
 	u, err := MainServer.GetUserForUserName(email)

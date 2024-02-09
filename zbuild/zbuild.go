@@ -25,7 +25,7 @@ func SetFromLines(lines string) {
 	zstr.RangeStringLines(lines, true, func(s string) bool {
 		var name, val string
 		if !zstr.SplitN(s, ":", &name, &val) {
-			zlog.Error(nil, "bad build arg:", s)
+			zlog.Error("bad build arg:", s)
 			return true
 		}
 		switch name {

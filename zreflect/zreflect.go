@@ -309,7 +309,7 @@ func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, 
 		rval = rval.Elem()
 	}
 	if !rval.IsValid() {
-		zlog.Error(nil, "forEachField: rval not valid")
+		zlog.Error("forEachField: rval not valid")
 		return
 	}
 	if rval.Kind() == reflect.Slice {

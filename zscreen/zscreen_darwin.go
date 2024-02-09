@@ -30,7 +30,7 @@ func ScreenGetAll() (screens []Screen) {
 	mainID := C.CGMainDisplayID()
 	ids := make([]C.CGDirectDisplayID, count)
 	if C.CGGetActiveDisplayList(C.uint32_t(count), (*C.CGDirectDisplayID)(unsafe.Pointer(&ids[0])), nil) != C.kCGErrorSuccess {
-		zlog.Fatal(nil, "getting display list")
+		zlog.Fatal("getting display list")
 	}
 	for _, id := range ids {
 		var s Screen

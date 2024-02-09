@@ -61,10 +61,10 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	// if strings.HasPrefix(urlPrefix, "/") {
-	// 	zlog.Error(nil, "url should not start with /", urlPrefix)
+	// 	zlog.Error("url should not start with /", urlPrefix)
 	// }
 	if urlPrefix != "" && !strings.HasSuffix(urlPrefix, "/") {
-		zlog.Fatal(nil, "url should end with /"+urlPrefix)
+		zlog.Fatal("url should end with /" + urlPrefix)
 	}
 	c := &Cache{}
 	c.urlPrefix = urlPrefix
