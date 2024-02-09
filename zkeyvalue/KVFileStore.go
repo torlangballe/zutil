@@ -3,6 +3,7 @@
 package zkeyvalue
 
 import (
+	"path"
 	"strings"
 
 	"github.com/torlangballe/zutil/zdict"
@@ -21,15 +22,15 @@ var (
 	DefaultSessionStore *FileStore
 )
 
-func NewFileStore(path string) *FileStore {
+func NewFileStore(fpath string) *FileStore {
 	s := &FileStore{}
 	ds := NewDictRawStore()
 	ds.Saver = s
 	s.Raw = ds
-	s.storeFile = zfile.ChangedExtension(path, ".json")
-	if path != "" {
-		s.Load(path)
-	}
+	dir, _ := path.Split(fpath)
+	zfile.MakeDirAllIfNotExists(dir)
+	s.storeFile = zfile.ChangedExtension(fpath, ".json")
+	s.Load(fpath)
 	// zlog.Info("NewFileStore:", path, s.Raw, zlog.CallingStackString())
 	return s
 }
