@@ -132,7 +132,7 @@ func GetCurrentLocalIP4Addresses(skipLocal bool) (map[string]string, error) {
 					if i4 != nil {
 						str := i4.String()
 						// zlog.Info("IP:", a.String(), iface.Name, str)
-						if skipLocal && (strings.HasPrefix(str, "192.168.") || str == "127.0.0.1") {
+						if skipLocal && str == "127.0.0.1" { // && (strings.HasPrefix(str, "192.168.")
 							continue
 						}
 						m[iface.Name] = str
