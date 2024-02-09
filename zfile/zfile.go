@@ -411,7 +411,7 @@ func handleErr(err error, why, path string, file *os.File, close bool) error {
 	return err
 }
 
-// WriteToFileAtomically  opens a temporary file in same directory as fpath, calls write with it's file,
+// WriteToFileAtomically  opens a temporary file in same directory as fpath, calls write with its file,
 // closes it, and renames it to fpath
 func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error {
 	tempPath := fpath + fmt.Sprintf("_%x_ztemp", rand.Int31())

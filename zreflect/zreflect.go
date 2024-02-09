@@ -427,7 +427,7 @@ func DeepCopy(destPtr, source any) error {
 }
 
 // NewOfAny returns a new'ed item of that type.
-// If a is a pointer, it's element is used.
+// If a is a pointer, its element is used.
 func NewOfAny(a any) any {
 	val := reflect.ValueOf(a)
 	if val.Kind() == reflect.Pointer {

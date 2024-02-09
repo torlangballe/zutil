@@ -167,7 +167,7 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 }
 
 // AddFileHandler adds a file serving handler, which removes the pattern path prefix before creating the filepath.
-// It uses a FuncHandler function that is it's own http.Handler.
+// It uses a FuncHandler function that is its own http.Handler.
 // It calls preprocess (if != nil) before serving the file, this can manipulate the corresponding filepath,
 // or just be used for observing perposes.
 func AddFileHandler(router *mux.Router, pattern, dir string, override func(w http.ResponseWriter, filepath *string, urlpath string, req *http.Request) bool) *mux.Route {

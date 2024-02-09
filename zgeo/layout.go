@@ -137,7 +137,7 @@ func getPossibleAdjustments(diff float64, scells []stackCell) []float64 {
 }
 
 // addLeftoverSpaceToWidths adjusts the size of scells to fit in total space in r.
-// Each cell is increased based on it's current width compared to total
+// Each cell is increased based on its current width compared to total
 // it does two passes; First ones with a MaxSize or non-expanding, then rest with what is left.
 // it returns *added*, which is sum of width of all added cells
 func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vertical bool, spacing float64) {
@@ -236,7 +236,7 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 			wcenter += w
 			lastCenterWidth = w
 		} else if sc.Alignment&Right != 0 {
-			wcenter += lastCenterWidth // when last center is done, we add it's margin again for right side
+			wcenter += lastCenterWidth // when last center is done, we add its margin again for right side
 			lastCenterWidth = 0
 			wright += w
 		}

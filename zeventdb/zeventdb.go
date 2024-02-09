@@ -49,7 +49,7 @@ var (
 )
 
 // CreateDB creates (if *relPath* doesn't exist) a file and a sqlite DB pointer opened to it.
-// It creates a table *tableName* using the structure istruct as it's column names.
+// It creates a table *tableName* using the structure istruct as its column names.
 // The field with db:",primary" set, is the primary key.
 // If there is more than one time.Time type, set db:",eventtime" tag to make it the event's time.
 func CreateDB(relPath string, tableName string, istruct interface{}, deleteDays, deleteFreqSecs float64, indexFields []string) (db *Database, err error) {
