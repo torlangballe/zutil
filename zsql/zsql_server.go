@@ -360,8 +360,8 @@ func setUserIDInRows[S any](rows []S, userToken string) error {
 	if !found {
 		return errors.New("No userid column")
 	}
-	for _, row := range rows {
-		finfo := zreflect.FieldForIndex(&row, zfields.FlattenIfAnonymousOrZUITag, finfo.FieldIndex)
+	for i := range rows {
+		finfo := zreflect.FieldForIndex(&rows[i], zfields.FlattenIfAnonymousOrZUITag, finfo.FieldIndex)
 		finfo.ReflectValue.SetInt(userID)
 	}
 	return nil
@@ -384,6 +384,7 @@ func UpdateRows[S any](table string, rows []S, userToken string) error {
 		}
 	}
 	skip := []string{idColumn}
+	zlog.Info("zsql.UpdateRows:", table, len(rows))
 	for _, row := range rows {
 		set := FieldSettingToParametersFromStruct(row, skip, "", 1)
 		vals := FieldValuesFromStruct(row, skip)
@@ -391,7 +392,7 @@ func UpdateRows[S any](table string, rows []S, userToken string) error {
 		query := "UPDATE " + table + " SET " + set + " WHERE " + idColumn + fmt.Sprintf("=$%d", len(vals))
 		query = CustomizeQuery(query, Main.Type)
 		_, err := Main.DB.Exec(query, vals...)
-		// zlog.Info("SQLCalls.UpdateRows:", query, vals, err)
+		zlog.Info("SQLCalls.UpdateRows:", query, vals, err)
 		if err != nil {
 			return err
 		}
