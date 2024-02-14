@@ -11,7 +11,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -105,6 +107,25 @@ func WriteBytesToFile(data []byte, sfile string) error {
 
 func WriteStringToFile(str, sfile string) error {
 	return WriteBytesToFile([]byte(str), sfile)
+}
+
+func SetOwnerAndMainGroup(fpath, owner string) error {
+	zlog.Info("SetOwnerAndMainGroup", fpath, owner)
+	u, err := user.Lookup(owner)
+	if err != nil {
+		return err
+	}
+	uid, _ := strconv.Atoi(u.Uid)
+	if err != nil {
+		return err
+	}
+	gid, _ := strconv.Atoi(u.Gid)
+	if err != nil {
+		return err
+	}
+	err = os.Chown(fpath, uid, gid)
+	zlog.Info("SetOwnerAndMainGroup2", fpath, owner, err)
+	return err
 }
 
 func ForAllFileLines(path string, skipEmpty bool, line func(str string) bool) error {
