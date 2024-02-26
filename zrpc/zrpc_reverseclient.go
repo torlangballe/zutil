@@ -137,6 +137,9 @@ func (r *ReverseClienter) ReversePoll(ci *ClientInfo, receiverID string, cp *Cal
 func (r *ReverseClienter) ReversePushResult(rp ReverseResult) error {
 	// zlog.Info("ReversePushResult:", rp.Token, rp.Error)
 	rc := r.findOrAddReverseClient(rp.ReverseReceiverID, nil)
+	if rc == nil {
+		return zlog.Error(rp.ReverseReceiverID)
+	}
 	pendingCall, got := rc.pendingCallsSent.Pop(rp.Token)
 	// zlog.Info("zrpc.PushResult:", pendingCall.Method, got) // EnableLogReverseClient
 	if !got {
