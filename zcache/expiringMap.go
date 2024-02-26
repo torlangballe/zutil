@@ -1,6 +1,8 @@
 package zcache
 
-//	"github.com/torlangballe/zutil/zmap"
+// ExpiringMap is a thread-safe map which periodically sweeps through and removes items untouched
+// longer than secsToLive. If SetStorage is called with a path, it loads, and periodically stores itself.
+// Call FlushToStorage() to save any latest entries to storage.
 
 import (
 	"time"
@@ -15,7 +17,9 @@ type ExpiringMap[K comparable, V any] struct {
 		value   V
 		touched time.Time
 	}]
-	secsToLive float64
+	secsToLive  float64
+	storagePath string
+	changed     bool
 }
 
 func NewExpiringMap[K comparable, V any](secsToLive float64) *ExpiringMap[K, V] {
@@ -36,6 +40,7 @@ func NewExpiringMap[K comparable, V any](secsToLive float64) *ExpiringMap[K, V] 
 }
 
 func (m *ExpiringMap[K, V]) Set(k K, v V) {
+	m.changed = true
 	m.lockedMap.Set(k, struct {
 		value   V
 		touched time.Time
@@ -57,6 +62,7 @@ func (m *ExpiringMap[K, V]) Get(k K) (V, bool) {
 }
 
 func (m *ExpiringMap[K, V]) Remove(k K) {
+	m.changed = true
 	m.lockedMap.Remove(k)
 }
 
