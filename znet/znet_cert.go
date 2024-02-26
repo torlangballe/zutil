@@ -19,7 +19,7 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
-func CreateSSLCertificate(owner SSLCertificateOwner, years int) (caPEMBytes, certPEMBytes, certPrivKeyPEMBytes []byte, expires time.Time, err error) {
+func CreateSSLCertificate(owner Organization, years int) (caPEMBytes, certPEMBytes, certPrivKeyPEMBytes []byte, expires time.Time, err error) {
 	// set up our CA certificate
 	subject := pkix.Name{
 		Organization:  []string{owner.Organization},
@@ -103,7 +103,7 @@ func CreateSSLCertificate(owner SSLCertificateOwner, years int) (caPEMBytes, cer
 	return caPEM.Bytes(), certPEM.Bytes(), certPrivKeyPEM.Bytes(), expires, nil
 }
 
-func CreateSSLCertificateTLSConfig(owner SSLCertificateOwner, years int) (serverTLSConf *tls.Config, clientTLSConf *tls.Config, err error) {
+func CreateSSLCertificateTLSConfig(owner Organization, years int) (serverTLSConf *tls.Config, clientTLSConf *tls.Config, err error) {
 	caPEMBytes, certPEMBytes, certPrivKeyPEMBytes, _, err := CreateSSLCertificate(owner, years)
 	serverCert, err := tls.X509KeyPair(certPEMBytes, certPrivKeyPEMBytes)
 	if err != nil {
@@ -120,7 +120,7 @@ func CreateSSLCertificateTLSConfig(owner SSLCertificateOwner, years int) (server
 	return
 }
 
-func CreateSSLCertificateToFilePair(owner SSLCertificateOwner, years int, certPath, privateKeyPath string) (expires time.Time, err error) {
+func CreateSSLCertificateToFilePair(owner Organization, years int, certPath, privateKeyPath string) (expires time.Time, err error) {
 	caPEMBytes, certPEMBytes, certPrivKeyPEMBytes, expires, err := CreateSSLCertificate(owner, years)
 	zdebug.Consume(caPEMBytes)
 

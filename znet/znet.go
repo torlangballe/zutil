@@ -1,20 +1,15 @@
 package znet
 
 import (
-	"errors"
 	"fmt"
-	"net"
 	"net/url"
-	"runtime"
 	"strconv"
 	"strings"
 
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zmap"
-	"github.com/torlangballe/zutil/zstr"
 )
 
-type SSLCertificateOwner struct {
+type Organization struct {
 	Organization  string
 	Country       string
 	Province      string
@@ -24,27 +19,8 @@ type SSLCertificateOwner struct {
 }
 
 type SSLCertificateInfo struct {
-	SSLCertificateOwner
+	Organization
 	YearsUntilExpiry int
-}
-
-func GetHostAndPort(u *url.URL) (host string, port int) {
-	var err error
-	var sport string
-	if !strings.Contains(u.Host, ":") {
-		return u.Host, 0
-	}
-	host, sport, err = net.SplitHostPort(u.Host)
-	if err != nil {
-		zlog.Error(err)
-		return
-	}
-	port, err = strconv.Atoi(sport)
-	if err != nil {
-		zlog.Error(err)
-		return
-	}
-	return
 }
 
 func HostAndPortToAddress(host string, port int) string {
@@ -63,85 +39,6 @@ func StripQueryAndFragment(surl string) string {
 	u.RawQuery = ""
 	u.RawFragment = ""
 	return u.String()
-}
-
-func GetCurrentLocalIP4Address(skipLocal bool, netInterface string) (ip4 string, err error) {
-	all, err := GetCurrentLocalIP4Addresses(skipLocal)
-	if err != nil {
-		return "", err
-	}
-	if len(all) == 0 {
-		return "", errors.New("no ip4 address")
-	}
-	if netInterface != "" {
-		ip4 = all[netInterface]
-		if ip4 != "" {
-			return
-		}
-	}
-	err = zmap.GetAnyValue(&ip4, all)
-	return ip4, err
-}
-
-func GetCurrentLocalIP4Addresses(skipLocal bool) (map[string]string, error) {
-	m := map[string]string{}
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, err
-	}
-	var oldName string
-	var oldNum int = -1
-	for i, iface := range ifaces {
-		addresses, e := iface.Addrs()
-		if e != nil {
-			return m, e
-		}
-		for _, a := range addresses {
-			ipnet, ok := a.(*net.IPNet)
-			if ok {
-				// zlog.Info("IP:", a.String(), iface.Name, ipnet.IP.IsLoopback())
-				if ipnet.IP.IsLoopback() {
-					continue
-				}
-				get := false
-				name := iface.Name
-				// zlog.Info("CurrentLocalIP device:", name)
-				var snum string
-				win := (runtime.GOOS == "windows")
-
-				// code to prefer en/eth interfaces with highest number
-				if oldName == "" || (!win && zstr.HasPrefix(name, "en", &snum) || zstr.HasPrefix(name, "eth", &snum)) ||
-					win && name == "Ethernet" {
-					if oldName == "" || (!strings.HasPrefix(oldName, "en") && !strings.HasPrefix(oldName, "eth")) {
-						oldName = name
-						get = true
-					} else {
-						num, _ := strconv.Atoi(snum)
-						if num >= oldNum {
-							get = true
-						}
-						oldNum = num
-					}
-				}
-				if get || i == len(ifaces)-1 {
-					// i16 := ipnet.IP.To16()
-					// if i16 != nil {
-					// 	ip16 = i16.String()
-					// }
-					i4 := ipnet.IP.To4()
-					if i4 != nil {
-						str := i4.String()
-						// zlog.Info("IP:", a.String(), iface.Name, str)
-						if skipLocal && str == "127.0.0.1" { // && (strings.HasPrefix(str, "192.168.")
-							continue
-						}
-						m[iface.Name] = str
-					}
-				}
-			}
-		}
-	}
-	return m, nil
 }
 
 func GetIP4AddressAsParts(address string) (parts []int, err error) {
