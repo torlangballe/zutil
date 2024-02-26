@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,8 +20,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gosnmp/gosnmp"
+	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -368,4 +372,136 @@ func SetEtcHostsEntries(forwards map[string]string, comment, sudoPassword string
 		return zlog.NewError(err, str)
 	}
 	return err
+}
+
+func BindPort() error {
+	str, err := zprocess.RunCommand("/usr/sbin/setcap", 5, "CAP_NET_BIND_SERVICE=+eip", "/opt/btech/qtt/bin/manager")
+	if err != nil {
+		return zlog.Error(err, str)
+	}
+	return nil
+}
+
+const (
+	SNMPSysName     = ".1.3.6.1.2.1.1.5.0"
+	SNMPName        = ".1.3.6.1.2.1.1.1.0"
+	SNMPSysObjectID = ".1.3.6.1.2.1.1.2.0"
+	// https://www.10-strike.com/network-monitor/pro/useful-snmp-oids.shtml
+)
+
+func GetSNMPVariables(host string, oids ...string) (zdict.Dict, error) {
+	client := *gosnmp.Default
+	client.Target = host
+	client.Timeout = time.Second
+	client.Retries = 1
+	err := client.Connect()
+	if err != nil {
+		return nil, err
+	}
+	defer client.Conn.Close()
+
+	result, err := client.Get(oids) // Get() accepts up to g.MAX_OIDS
+	if err != nil {
+		return nil, err
+	}
+
+	d := zdict.Dict{}
+	for _, variable := range result.Variables {
+		switch variable.Type {
+		case gosnmp.OctetString:
+			str := variable.Value.(string)
+			d[variable.Name] = str
+		default:
+			n := gosnmp.ToBigInt(variable.Value)
+			d[variable.Name] = n
+		}
+	}
+	return d, nil
+}
+
+func GetSNMPVariableStr(host string, oid string) (string, error) {
+	vals, err := GetSNMPVariables(host, oid)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprint(vals[oid]), nil
+}
+
+func GetCurrentLocalIP4Address(skipLocal bool, netInterface string) (ip4 string, err error) {
+	all, err := GetCurrentLocalIP4Addresses(skipLocal)
+	if err != nil {
+		return "", err
+	}
+	if len(all) == 0 {
+		return "", errors.New("no ip4 address")
+	}
+	if netInterface != "" {
+		ip4 = all[netInterface]
+		if ip4 != "" {
+			return
+		}
+	}
+	err = zmap.GetAnyValue(&ip4, all)
+	return ip4, err
+}
+
+func GetCurrentLocalIP4Addresses(skipLocal bool) (map[string]string, error) {
+	m := map[string]string{}
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	var oldName string
+	var oldNum int = -1
+	for i, iface := range ifaces {
+		addresses, e := iface.Addrs()
+		if e != nil {
+			return m, e
+		}
+		for _, a := range addresses {
+			ipnet, ok := a.(*net.IPNet)
+			if ok {
+				// zlog.Info("IP:", a.String(), iface.Name, ipnet.IP.IsLoopback())
+				if ipnet.IP.IsLoopback() {
+					continue
+				}
+				get := false
+				name := iface.Name
+				// zlog.Info("CurrentLocalIP device:", name)
+				var snum string
+				win := (runtime.GOOS == "windows")
+
+				// code to prefer en/eth interfaces with highest number
+				if oldName == "" || (!win && zstr.HasPrefix(name, "en", &snum) || zstr.HasPrefix(name, "eth", &snum)) ||
+					win && name == "Ethernet" {
+					if oldName == "" || (!strings.HasPrefix(oldName, "en") && !strings.HasPrefix(oldName, "eth")) {
+						oldName = name
+						get = true
+					} else {
+						num, _ := strconv.Atoi(snum)
+						if num >= oldNum {
+							get = true
+						}
+						oldNum = num
+					}
+				}
+				if get || i == len(ifaces)-1 {
+					// i16 := ipnet.IP.To16()
+					// if i16 != nil {
+					// 	ip16 = i16.String()
+					// }
+					i4 := ipnet.IP.To4()
+					if i4 != nil {
+						str := i4.String()
+						// zlog.Info("IP:", a.String(), iface.Name, str)
+						if skipLocal && str == "127.0.0.1" { // && (strings.HasPrefix(str, "192.168.")
+							continue
+						}
+						m[iface.Name] = str
+					}
+				}
+			}
+		}
+	}
+	return m, nil
 }
