@@ -22,7 +22,9 @@ type Size struct {
 
 type Sizes []Size
 
-var SizeUndef = Size{W: math.MaxFloat32, H: math.MaxFloat32}
+const UndefValue = math.MaxFloat32
+
+var SizeUndef = Size{W: UndefValue, H: UndefValue}
 
 // SizeF creates a Size from float64 w and h
 func SizeF(w, h float32) Size {
@@ -121,30 +123,45 @@ func (s Size) Area() float64 {
 }
 
 func (s *Size) Maximize(a Size) {
-	s.W = math.Max(s.W, a.W)
-	s.H = math.Max(s.H, a.H)
+	if s.W == UndefValue {
+		s.W = a.W
+	} else {
+		s.W = math.Max(s.W, a.W)
+	}
+	if s.H == UndefValue {
+		s.H = a.W
+	} else {
+		s.H = math.Max(s.H, a.H)
+	}
 }
 
 func (s *Size) Minimize(a Size) {
-	s.W = math.Min(s.W, a.W)
-	s.H = math.Min(s.H, a.H)
-}
-
-func (s *Size) MinimizeNonZero(a Size) {
-	if a.W != 0 {
+	if s.W == UndefValue {
+		s.W = a.W
+	} else {
 		s.W = math.Min(s.W, a.W)
 	}
-	if a.H != 0 {
+	if s.H == UndefValue {
+		s.H = a.W
+	} else {
 		s.H = math.Min(s.H, a.H)
 	}
 }
 
-func (s *Size) MaximizeNonZero(a Size) {
+func (s *Size) MinimizeNonZero(a Size) {
 	if a.W != 0 {
-		s.W = math.Max(s.W, a.W)
+		if s.W == UndefValue {
+			s.W = a.W
+		} else {
+			s.W = math.Min(s.W, a.W)
+		}
 	}
 	if a.H != 0 {
-		s.H = math.Max(s.H, a.H)
+		if s.H == UndefValue {
+			s.H = a.W
+		} else {
+			s.H = math.Min(s.H, a.H)
+		}
 	}
 }
 
