@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
-	cryptoRand "crypto/rand"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -19,9 +19,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/torlangballe/zutil/zint"
-
 	"github.com/google/uuid"
+	"github.com/torlangballe/zutil/zint"
 )
 
 const Digits = "0123456789"
@@ -477,7 +476,7 @@ func AddToSet(strs *[]string, str ...string) int {
 
 func GenerateRandomBytes(count int) []byte {
 	data := make([]byte, count)
-	n, err := io.ReadFull(cryptoRand.Reader, data)
+	n, err := io.ReadFull(crand.Reader, data)
 	if n != len(data) || err != nil {
 		panic(err)
 	}
