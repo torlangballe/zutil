@@ -9,15 +9,21 @@ import (
 )
 
 type DictRawStore struct {
-	lock  sync.Mutex
-	dict  zdict.Dict
-	Saver Saver
+	lock sync.Mutex
+	dict zdict.Dict
 }
 
 func NewDictRawStore() *DictRawStore {
 	d := &DictRawStore{}
 	d.dict = zdict.Dict{}
 	return d
+}
+
+func (d *DictRawStore) AllKeys() []string {
+	d.lock.Lock()
+	keys := d.dict.Keys()
+	d.lock.Unlock()
+	return keys
 }
 
 func (s *DictRawStore) RawGetItem(key string, pointer any) bool {
@@ -37,23 +43,17 @@ func (s *DictRawStore) RawGetItemAsAny(key string) (any, bool) {
 	return gval, got
 }
 
-func (s *DictRawStore) RawSetItem(key string, v any, sync bool) error {
+func (s *DictRawStore) RawSetItem(key string, v any) error {
 	s.lock.Lock()
 	s.dict[key] = v
 	s.lock.Unlock()
-	if sync && s.Saver != nil {
-		return s.Saver.Save()
-	}
 	return nil
 }
 
-func (s *DictRawStore) RawRemoveForKey(key string, sync bool) error {
+func (s *DictRawStore) RawRemoveForKey(key string) error {
 	s.lock.Lock()
 	delete(s.dict, key)
 	s.lock.Unlock()
-	if sync && s.Saver != nil {
-		return s.Saver.Save()
-	}
 	return nil
 }
 

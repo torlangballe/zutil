@@ -19,26 +19,33 @@ import (
 // https://github.com/recoilme/pudge
 // https://github.com/nanobox-io/golang-scribble
 
+var (
+	DefaultStore        *Store
+	DefaultSessionStore *Store
+)
+
 type RawStorer interface {
-	RawGetItem(key string, v any) bool
+	RawGetItem(key string, vptr any) bool
 	RawGetItemAsAny(key string) (any, bool)
-	RawSetItem(key string, v any, sync bool) error
-	RawRemoveForKey(key string, sync bool) error
+	RawSetItem(key string, v any) error
+	RawRemoveForKey(key string) error
+	AllKeys() []string
 }
 
 type Saver interface {
 	Save() error
 }
 
-type SimpleStorer interface {
-	SetItem(key string, v any, sync bool) error
-}
+// type SimpleStorer interface {
+// 	RawSetItem(key string, v any, sync bool) error
+// }
 
 type Store struct {
-	Raw RawStorer
+	Raw   RawStorer
+	Saver Saver
 	// Secure      bool   // true if key/value stored in secure key chain
 	KeyPostfix string // this can be a user id. Not used if key starts with /
-	Path       string // Some variants of store use this
+	// Path       string // Some variants of store use this
 }
 
 var (
@@ -133,46 +140,73 @@ func (s Store) SetObject(object interface{}, key string, sync bool) {
 		return
 	}
 	s.postfixKey(&key)
-	s.Raw.RawSetItem(key, string(data), sync)
+	s.Raw.RawSetItem(key, string(data))
+	if sync && s.Saver != nil {
+		s.Saver.Save()
+	}
 }
 
 func (s Store) SetString(value string, key string, sync bool) {
 	s.postfixKey(&key)
-	s.Raw.RawSetItem(key, value, sync)
+	s.Raw.RawSetItem(key, value)
+	if sync && s.Saver != nil {
+		s.Saver.Save()
+	}
 }
 
 func (s Store) SetDict(dict zdict.Dict, key string, sync bool) {
 	s.SetObject(dict, key, sync)
+	if sync && s.Saver != nil {
+		s.Saver.Save()
+	}
 }
 
 func (s Store) SetInt64(value int64, key string, sync bool) {
 	s.postfixKey(&key)
-	s.Raw.RawSetItem(key, value, sync)
+	s.Raw.RawSetItem(key, value)
+	if sync && s.Saver != nil {
+		s.Saver.Save()
+	}
 }
 
 func (s Store) SetInt(value int, key string, sync bool) {
 	s.postfixKey(&key)
-	s.Raw.RawSetItem(key, value, sync)
+	s.Raw.RawSetItem(key, value)
+	if sync && s.Saver != nil {
+		s.Saver.Save()
+	}
 }
 
 func (s Store) SetDouble(value float64, key string, sync bool) {
 	s.postfixKey(&key)
-	s.Raw.RawSetItem(key, value, sync)
+	s.Raw.RawSetItem(key, value)
+	if sync && s.Saver != nil {
+		s.Saver.Save()
+	}
 }
 
 func (s Store) SetBool(value bool, key string, sync bool) {
 	s.postfixKey(&key)
-	s.Raw.RawSetItem(key, value, sync)
+	s.Raw.RawSetItem(key, value)
+	if sync && s.Saver != nil {
+		s.Saver.Save()
+	}
 }
 
 func (s Store) SetTime(value time.Time, key string, sync bool) {
 	s.postfixKey(&key)
-	s.Raw.RawSetItem(key, value, sync)
+	s.Raw.RawSetItem(key, value)
+	if sync && s.Saver != nil {
+		s.Saver.Save()
+	}
 }
 
 func (s Store) SetBoolInd(value zbool.BoolInd, key string, sync bool) {
 	s.postfixKey(&key)
-	s.Raw.RawSetItem(key, value, sync)
+	s.Raw.RawSetItem(key, value)
+	if sync && s.Saver != nil {
+		s.Saver.Save()
+	}
 }
 
 func (s Store) GetItem(key string, v any) bool {
@@ -189,12 +223,19 @@ func (s Store) GetItemAsAny(key string) (any, bool) {
 
 func (s Store) SetItem(key string, v any, sync bool) error {
 	s.postfixKey(&key)
-	err := s.Raw.RawSetItem(key, v, sync)
+	err := s.Raw.RawSetItem(key, v)
+	if err != nil && sync {
+		s.Saver.Save()
+	}
 	return err
 }
 
 func (s Store) RemoveForKey(key string, sync bool) error {
-	return s.Raw.RawRemoveForKey(key, sync)
+	err := s.Raw.RawRemoveForKey(key)
+	if err != nil && sync {
+		s.Saver.Save()
+	}
+	return err
 }
 
 func (s Store) postfixKey(key *string) {
@@ -207,4 +248,13 @@ func (s Store) postfixKey(key *string) {
 	*key = *key + GlobalKeyPostfix
 }
 
-func (s Store) ForAllKeys(got func(key string)) {}
+func (s Store) GetAllForPrefix(prefix string) zdict.Dict {
+	d := zdict.Dict{}
+	for _, key := range s.Raw.AllKeys() {
+		a, got := s.GetItemAsAny(key)
+		if got {
+			d[key] = a
+		}
+	}
+	return d
+}

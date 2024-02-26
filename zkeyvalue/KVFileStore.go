@@ -4,66 +4,44 @@ package zkeyvalue
 
 import (
 	"path"
-	"strings"
 
-	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zjson"
 	"github.com/torlangballe/zutil/zlog"
 )
 
-type FileStore struct {
-	Store
+type dictFile struct {
+	DictRawStore
 	storeFile string
 }
 
-var (
-	DefaultStore        *FileStore
-	DefaultSessionStore *FileStore
-)
-
-func NewFileStore(fpath string) *FileStore {
-	s := &FileStore{}
-	ds := NewDictRawStore()
-	ds.Saver = s
-	s.Raw = ds
-	dir, _ := path.Split(fpath)
-	zfile.MakeDirAllIfNotExists(dir)
-	s.storeFile = zfile.ChangedExtension(fpath, ".json")
-	s.Load(fpath)
-	// zlog.Info("NewFileStore:", path, s.Raw, zlog.CallingStackString())
-	return s
-}
-
-func (s *FileStore) Load(path string) error {
-	drs := s.DictRawStore()
-	err := zjson.UnmarshalFromFile(&drs.dict, s.storeFile, true)
+func (d *dictFile) load() error {
+	err := zjson.UnmarshalFromFile(&d.dict, d.storeFile, true)
 	if err != nil {
 		return zlog.Error(err, "unmarshal")
 	}
 	return nil
 }
 
-func (s *FileStore) Save() error {
-	drs := s.DictRawStore()
-	drs.lock.Lock()
-	err := zjson.MarshalToFile(drs.dict, s.storeFile)
-	zlog.OnError(err, "Save", s.storeFile, zlog.CallingStackString())
-	drs.lock.Unlock()
-	return err
+func NewFileStore(fpath string) *Store {
+	s := &Store{}
+	df := &dictFile{}
+	df.storeFile = zfile.ChangedExtension(fpath, ".json")
+	df.load()
+	s.Saver = df
+	s.Raw = df
+	dir, _ := path.Split(fpath)
+	zfile.MakeDirAllIfNotExists(dir)
+	// zlog.Info("NewFileStore:", path, s.Raw, zlog.CallingStackString())
+	return s
 }
 
-func (s *FileStore) GetAllForPrefix(prefix string) zdict.Dict {
-	drs := s.DictRawStore()
-	d := zdict.Dict{}
-	drs.lock.Lock()
-	for k, v := range drs.dict {
-		if strings.HasPrefix(k, prefix) {
-			d[k] = v
-		}
-	}
-	drs.lock.Unlock()
-	return d
+func (d *dictFile) Save() error {
+	d.lock.Lock()
+	err := zjson.MarshalToFile(d.dict, d.storeFile)
+	zlog.OnError(err, "Save", d.storeFile, zlog.CallingStackString())
+	d.lock.Unlock()
+	return err
 }
 
 // func (s *FileStore) SetItem(key string, v any) error {
@@ -80,6 +58,6 @@ func (s *FileStore) GetAllForPrefix(prefix string) zdict.Dict {
 // 	s.Save()
 // }
 
-func (s *FileStore) DictRawStore() *DictRawStore {
-	return s.Raw.(*DictRawStore)
-}
+// func (s *FileStore) DictRawStore() *DictRawStore {
+// 	return s.Raw.(*DictRawStore)
+// }

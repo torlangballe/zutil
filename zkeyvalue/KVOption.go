@@ -5,22 +5,22 @@ import (
 
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zslice"
 )
 
 type Option[V comparable] struct {
-	Key         string
-	Default     V
-	MakeDefault func() V
-
-	value V
-	store SimpleStorer
+	Key     string
+	Default V
+	value   V
+	store   *Store
+	gotten  bool
 }
 
 var optionChangedHandlers []optionChangeHandler
 
-func NewOption[V comparable](store SimpleStorer, key string, val V) *Option[V] {
+func NewOption[V comparable](store *Store, key string, val V) *Option[V] {
 	o := &Option[V]{}
 	o.Key = key
 	o.value = val
@@ -29,22 +29,31 @@ func NewOption[V comparable](store SimpleStorer, key string, val V) *Option[V] {
 }
 
 func (o *Option[V]) Get() V {
-	if o.store == nil {
-		if o.MakeDefault != nil {
-			return o.MakeDefault()
-		}
+	if o.gotten {
 		return o.value
 	}
+	if o.store == nil {
+		o.store = DefaultStore
+	}
+	if o.store.GetItem(o.Key, &o.value) {
+		o.gotten = true
+		return o.value
+	}
+	o.gotten = true
 	return o.value
 }
 
 func (o *Option[V]) Set(v V, callHandle bool) {
-	// zlog.Info("O.Set:", v, o.value)
+	// zlog.Info("O.Set:", o != nil)
 	if o.value == v {
 		return
 	}
+	if o.store == nil {
+		o.store = DefaultStore
+	}
 	o.value = v
-	o.store.SetItem(o.Key, o.value, true)
+	err := o.store.SetItem(o.Key, o.value, true)
+	zlog.OnError(err)
 	if !callHandle {
 		return
 	}

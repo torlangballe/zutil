@@ -9,26 +9,17 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
-type JSStore struct {
-	Store
-}
-
 type JSRawStore struct {
 	SessionOnly bool // if true, only for while a "session" is open.
 }
-
-var (
-	DefaultStore        *JSStore
-	DefaultSessionStore *JSStore
-)
 
 func init() {
 	DefaultStore = NewJSStore(false)
 	DefaultSessionStore = NewJSStore(true)
 }
 
-func NewJSStore(session bool) *JSStore {
-	s := &JSStore{}
+func NewJSStore(session bool) *Store {
+	s := &Store{}
 	var jsRaw JSRawStore
 	jsRaw.SessionOnly = session
 	s.Raw = &jsRaw
@@ -40,6 +31,11 @@ func (k *JSRawStore) getLocalStorage() js.Value {
 		return js.Global().Get("sessionStorage")
 	}
 	return js.Global().Get("localStorage")
+}
+
+func (d *JSRawStore) AllKeys() []string {
+	zlog.Fatal("Don't call me")
+	return nil
 }
 
 func (s *JSRawStore) RawGetItemAsAny(key string) (any, bool) {
@@ -123,40 +119,13 @@ func (s *JSRawStore) RawGetItem(key string, v any) bool {
 	return false
 }
 
-func (k *JSRawStore) RawSetItem(key string, v any, sync bool) error {
+func (k *JSRawStore) RawSetItem(key string, v any) error {
 	local := k.getLocalStorage()
 	local.Set(key, v)
 	return nil
 }
 
-func (k JSRawStore) RawRemoveForKey(key string, sync bool) error {
+func (k JSRawStore) RawRemoveForKey(key string) error {
 	k.getLocalStorage().Call("removeItem", key)
 	return nil
-}
-
-/////////////
-
-func (s *JSStore) GetItem(key string, v any) bool {
-	// zlog.Info("JSStore GetItem:", zlog.Pointer(s), key)
-	s.postfixKey(&key)
-	return s.Raw.RawGetItem(key, v)
-}
-
-func (s *JSStore) GetItemAsAny(key string) (any, bool) {
-	s.postfixKey(&key)
-	return s.Raw.RawGetItemAsAny(key)
-}
-
-func (k *JSStore) SetItem(key string, v any, sync bool) error {
-	k.postfixKey(&key)
-	return k.Raw.RawSetItem(key, v, sync)
-}
-
-func (k JSStore) RemoveForKey(key string, sync bool) {
-	k.postfixKey(&key)
-	k.Raw.RawRemoveForKey(key, sync)
-}
-
-func NewJSOption[V comparable](key string, val V) *Option[V] {
-	return NewOption(DefaultStore, key, val)
 }

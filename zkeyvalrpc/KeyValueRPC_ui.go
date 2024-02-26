@@ -9,22 +9,38 @@ import (
 	"github.com/torlangballe/zutil/zrpc"
 )
 
-type RPCStore struct {
-	zkeyvalue.Store
-}
-
 var rpcStore = newRPCStore()
+
+type dictRPC struct {
+	zkeyvalue.DictRawStore
+}
 
 func Init() {
 	zrpc.MainClient.RegisterPollGetter(ResourceID, getAll)
 	zrpc.RegisterResources(ResourceID)
 }
 
-func newRPCStore() *RPCStore {
-	s := &RPCStore{}
-	drs := zkeyvalue.NewDictRawStore()
-	s.Store.Raw = drs
+func newRPCStore() *zkeyvalue.Store {
+	s := &zkeyvalue.Store{}
+	drs := &dictRPC{}
+	s.Raw = drs
+	s.Saver = drs
 	return s
+}
+
+func (d *dictRPC) Save() error {
+	return nil
+}
+
+func (d *dictRPC) RawSetItem(key string, v any) error {
+	var item zdict.Item
+	item.Name = key
+	item.Value = v
+	go func() {
+		err := zrpc.MainClient.Call("KeyValueRPCCalls.SetItem", item, nil)
+		zlog.OnError(err)
+	}()
+	return nil
 }
 
 func getAll() {
@@ -34,7 +50,7 @@ func getAll() {
 		if zlog.OnError(err) {
 			return
 		}
-		old := rpcStore.Raw.(*zkeyvalue.DictRawStore).All()
+		old := rpcStore.Raw.(*dictRPC).All()
 		for k, v := range dict {
 			oldVal, got := old[k]
 			if !got || oldVal != v {
@@ -44,9 +60,8 @@ func getAll() {
 				old[k] = v
 			}
 		}
-		drs := rpcStore.Raw.(*zkeyvalue.DictRawStore)
+		drs := rpcStore.Raw.(*dictRPC)
 		drs.Set(dict)
-
 	}()
 }
 
@@ -60,28 +75,4 @@ func NewOption[V comparable](key string, val V) *zkeyvalue.Option[V] {
 		}
 	})
 	return o
-}
-
-func (s *RPCStore) GetItem(key string, pointer interface{}) bool {
-	return false
-}
-
-func (s *RPCStore) GetItemAsAny(key string) (any, bool) {
-	return nil, false
-}
-
-func (s *RPCStore) SetItem(key string, v any, sync bool) error {
-	// zlog.Info("RPCStore SetItem:", key)
-	var item zdict.Item
-	item.Name = key
-	item.Value = v
-	go func() {
-		err := zrpc.MainClient.Call("KeyValueRPCCalls.SetItem", item, nil)
-		zlog.OnError(err)
-	}()
-	return nil
-}
-
-func (s *RPCStore) RemoveForKey(key string, sync bool) {
-
 }
