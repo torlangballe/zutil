@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/lib/pq"
 	"github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
@@ -55,17 +54,17 @@ func NewSQLite(filePath string) (*sql.DB, error) {
 
 // interesting: https://github.com/jmoiron/sqlx
 type Executer interface {
-	Exec(query string, args ...interface{}) (sql.Result, error)
+	Exec(query string, args ...any) (sql.Result, error)
 }
 
 type RowQuerier interface {
-	QueryRow(query string, args ...interface{}) *sql.Row
+	QueryRow(query string, args ...any) *sql.Row
 }
 
 type SQLer interface { // this is used for routines that can take a sql.Db or sql.Tx
-	QueryRow(query string, args ...interface{}) *sql.Row
-	Query(query string, args ...interface{}) (*sql.Rows, error)
-	Exec(query string, args ...interface{}) (sql.Result, error)
+	QueryRow(query string, args ...any) *sql.Row
+	Query(query string, args ...any) (*sql.Rows, error)
+	Exec(query string, args ...any) (sql.Result, error)
 }
 
 var EscapeReplacer = strings.NewReplacer(
@@ -89,27 +88,45 @@ func (base *Base) CustomizeQuery(query string) string {
 	return CustomizeQuery(query, base.Type)
 }
 
-func FieldPointersFromStruct(istruct interface{}, skip []string) (pointers []interface{}) {
+// func makeAnyWithPQArrayIfSlice(rval reflect.Value, kind reflect.Kind) any {
+// 	a := rval.Interface()
+// 	if kind == reflect.Slice {
+// 		v := rval.Interface()
+// 		_, got := v.([]byte)
+// 		if !got {
+// 			_, is := v.(JSONer)
+// 			if !is {
+// 				_, is := v.(sql.Scanner)
+// 				if !is {
+// 					return pq.Array(a)
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return a
+// }
+
+func FieldPointersFromStruct(istruct any, skip []string) (pointers []any) {
 	ForEachColumn(istruct, skip, "", func(each ColumnInfo) bool {
-		// zlog.Info("FieldPointersFromStruct", column, val.CanAddr())
-		a := each.ReflectValue.Addr()
-		v := a.Interface()
-		if a.Kind() == reflect.Slice {
-			_, got := a.Interface().([]byte)
-			if !got {
-				_, is := v.(JSONer)
-				if !is {
-					v = pq.Array(v)
-				}
-			}
-		}
-		pointers = append(pointers, v)
+		pointers = append(pointers, each.ReflectValue.Addr().Interface())
+		// a := each.ReflectValue.Addr()
+		// // ptr := makePQArrayPointerIfSlice(a)
+		// zlog.Info("FieldPointersFromStruct:", each.Column, a.Type(), a.Kind())
+		// pointers = append(pointers, a.Interface())
 		return true
 	})
 	return
 }
 
-func FieldSettingToParametersFromStruct(istruct interface{}, skip []string, prefix string, start int) string {
+func FieldValuesFromStruct(istruct any, skip []string) (values []any) {
+	ForEachColumn(istruct, skip, "", func(each ColumnInfo) bool {
+		values = append(values, each.ReflectValue.Interface())
+		return true
+	})
+	return
+}
+
+func FieldSettingToParametersFromStruct(istruct any, skip []string, prefix string, start int) string {
 	var set string
 	var i int
 	ForEachColumn(istruct, skip, "", func(each ColumnInfo) bool {
@@ -123,7 +140,7 @@ func FieldSettingToParametersFromStruct(istruct interface{}, skip []string, pref
 	return set
 }
 
-func FieldParametersFromStruct(istruct interface{}, skip []string, start int) (parameters string) {
+func FieldParametersFromStruct(istruct any, skip []string, start int) (parameters string) {
 	var i int
 	ForEachColumn(istruct, skip, "", func(ColumnInfo) bool {
 		if i != 0 {
@@ -177,25 +194,7 @@ type FieldInfo struct {
 	SubTagParts []string
 }
 
-func FieldValuesFromStruct(istruct interface{}, skip []string) (values []interface{}) {
-	ForEachColumn(istruct, skip, "", func(each ColumnInfo) bool {
-		v := each.ReflectValue.Interface()
-		if each.ReflectValue.Kind() == reflect.Ptr {
-			v = each.ReflectValue.Addr()
-		}
-		if each.ReflectValue.Kind() == reflect.Slice {
-			_, got := v.([]byte)
-			if !got {
-				v = pq.Array(v)
-			}
-		}
-		values = append(values, v)
-		return true
-	})
-	return
-}
-
-func FieldInfosFromStruct(istruct interface{}, skip []string, btype BaseType) (infos []FieldInfo) {
+func FieldInfosFromStruct(istruct any, skip []string, btype BaseType) (infos []FieldInfo) {
 	items, err := zreflect.ItterateStruct(istruct, zreflect.Options{UnnestAnonymous: true})
 	if err != nil {
 		zlog.Fatal(err, "get items")
@@ -231,7 +230,7 @@ func FieldInfosFromStruct(istruct interface{}, skip []string, btype BaseType) (i
 	return infos
 }
 
-func CreateSQLite3TableCreateStatementFromStruct(istruct interface{}, table string) (query string, infos []FieldInfo) {
+func CreateSQLite3TableCreateStatementFromStruct(istruct any, table string) (query string, infos []FieldInfo) {
 	infos = FieldInfosFromStruct(istruct, nil, SQLite) // hardcode SQLite for now
 	// zlog.Info("CreateSQLite3TableCreateStatementFromStruct", reflect.ValueOf(istruct).IsZero())
 	for _, f := range infos {
@@ -254,7 +253,7 @@ func (j JSONer) Value() (driver.Value, error) {
 	return driver.Value(j), nil
 }
 
-func (j *JSONer) Scan(val interface{}) error {
+func (j *JSONer) Scan(val any) error {
 	if val == nil {
 		*j = JSONer{}
 		return nil
@@ -267,71 +266,6 @@ func (j *JSONer) Scan(val interface{}) error {
 	*j = JSONer(b)
 	return nil
 }
-
-/*
-var insertQueries = map[string]string{}
-
-func InsertIDStruct(rq RowQuerier, btype BaseType, ptr interface{}, table string) error {
-	rval := reflect.ValueOf(ptr)
-	zlog.Assert(rval.Kind() == reflect.Ptr)
-	// s := rval.Elem().Interface()
-	key := table + "_insertStruct"
-	skip := []string{"id"}
-	query := insertQueries[key]
-	if query == "" {
-		params := FieldParametersFromStruct(ptr, skip, 1)
-		query = "INSERT INTO " + table + " (" + ColumnNamesStringFromStruct(ptr, skip, "") + ") VALUES (" + params + ") RETURNING id"
-		insertQueries[key] = query
-	}
-	var id int64
-	vals := FieldValuesFromStruct(ptr, skip)
-	query = CustomizeQuery(query, btype)
-	row := rq.QueryRow(query, vals...)
-	err := row.Scan(&id)
-	if err != nil {
-		return err
-	}
-	finfo, found := zreflect.FieldForName(ptr, zfields.FlattenIfAnonymousOrZUITag, "ID")
-	if !found {
-		return zlog.NewError("ID not found")
-	}
-	finfo.ReflectValue.SetInt(id)
-	return nil
-}
-
-func UpdateIDStruct(ex Executer, btype BaseType, ptr interface{}, table string) error {
-	finfo, found := zreflect.FieldForName(ptr, zfields.FlattenIfAnonymousOrZUITag, "ID")
-	zlog.Assert(found)
-	skip := []string{"id"}
-	set := FieldSettingToParametersFromStruct(ptr, skip, "", 1)
-	vals := FieldValuesFromStruct(ptr, skip)
-	vals = append(vals, finfo.ReflectValue.Interface())
-	query := "UPDATE " + table + " SET " + set + fmt.Sprintf(" WHERE id=$%d", len(vals))
-	// zlog.Info("Update:", query, len(vals))
-	query = CustomizeQuery(query, btype)
-	_, err := ex.Exec(query, vals...)
-	if err != nil {
-		return zlog.Error(err, "exec", query, vals)
-	}
-	return nil
-}
-
-func SelectIDStruct[S any](base *Base, s *S, id int64, table string) error {
-	var slice []S
-	var q QueryBase
-	q.Constraints = fmt.Sprint("WHERE id=", id)
-	q.Table = table
-	err := SelectSlicesOfAny(base, &slice, q)
-	if err != nil {
-		return err
-	}
-	if len(slice) == 0 {
-		return zlog.NewError("no slice", id)
-	}
-	*s = slice[0]
-	return nil
-}
-*/
 
 func getPrimaryColumn(row any) (column string, val any, err error) {
 	var got bool

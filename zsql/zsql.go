@@ -2,6 +2,8 @@ package zsql
 
 import (
 	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -13,7 +15,7 @@ import (
 )
 
 type (
-	JSONer             []byte
+	JSONer             []byte // TODO: Remove? Use sql.Scan/Value methods instead?
 	JSONStringArrayPtr []string
 	JSONStringArray    []string
 )
@@ -210,4 +212,19 @@ func ForEachColumn(s interface{}, skip []string, prefix string, got func(each Co
 		i++
 		return got(colInfo)
 	})
+}
+
+func Value(a any) (d driver.Value, err error) {
+	// return json.Marshal(a)
+	v, err := json.Marshal(a)
+	zlog.Info("SQL Value", string(v), err)
+	return v, err
+}
+
+func Scan[A any](a *A, value any) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, a)
 }
