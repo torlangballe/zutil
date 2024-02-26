@@ -55,12 +55,12 @@ func init() {
 	}
 }
 
-func Error(parts ...interface{}) error {
+func Error(parts ...any) error {
 	return baseLog(ErrorLevel, 4, parts...)
 }
 
 // Fatal performs Log with Fatal priority
-func Fatal(parts ...interface{}) error {
+func Fatal(parts ...any) error {
 	return baseLog(FatalLevel, 4, parts...)
 }
 
@@ -69,30 +69,36 @@ func FatalNotImplemented() {
 }
 
 // Info performs Log with InfoLevel priority
-func Info(parts ...interface{}) {
+func Info(parts ...any) {
 	baseLog(InfoLevel, 4, parts...)
 }
 
+// Info performs Log with InfoLevel priority
+func Infof(format string, parts ...any) {
+	str := fmt.Sprintf(format, parts...)
+	baseLog(InfoLevel, 4, str)
+}
+
 // Verbose performs Log with InfoLevel priority
-func Verbose(parts ...interface{}) {
+func Verbose(parts ...any) {
 	baseLog(VerboseLevel, 4, parts...)
 }
 
 // Info performs Log with InfoLevel priority
-func Warn(parts ...interface{}) {
+func Warn(parts ...any) {
 	baseLog(WarningLevel, 4, parts...)
 }
 
-// func Dummy(parts ...interface{}) {
+// func Dummy(parts ...any) {
 // }
 
 // Debug performs Log with DebugLevel priority
-func Debug(parts ...interface{}) {
+func Debug(parts ...any) {
 	baseLog(DebugLevel, 4, parts...)
 }
 
 // Error performs Log with ErrorLevel priority, getting stack from N
-func ErrorAtStack(stackPos int, parts ...interface{}) error {
+func ErrorAtStack(stackPos int, parts ...any) error {
 	return baseLog(ErrorLevel, stackPos, parts...)
 }
 
@@ -113,7 +119,7 @@ var hooking = false
 var timeLock sync.Mutex
 var linesPrintedSinceTimeStamp int
 
-func NewError(parts ...interface{}) error {
+func NewError(parts ...any) error {
 	var err error
 	if len(parts) > 0 {
 		err, _ = parts[0].(error)
@@ -311,42 +317,42 @@ func FileLineAndCallingFunctionString(pos int) string {
 	return fmt.Sprintf("%s:%d %s()", file, line, function)
 }
 
-func Assert(success bool, parts ...interface{}) {
+func Assert(success bool, parts ...any) {
 	if !success {
-		parts = append([]interface{}{"assert:"}, parts...)
+		parts = append([]any{"assert:"}, parts...)
 		fmt.Println(parts...)
 		Fatal(parts...)
 	}
 }
 
-func AssertMakeError(success bool, parts ...interface{}) error {
+func AssertMakeError(success bool, parts ...any) error {
 	if !success {
-		parts = append([]interface{}{"assert failed:", StackAdjust(1)}, parts...)
+		parts = append([]any{"assert failed:", StackAdjust(1)}, parts...)
 		return Error(parts...)
 	}
 	return nil
 }
 
-func ErrorIf(check bool, parts ...interface{}) bool {
+func ErrorIf(check bool, parts ...any) bool {
 	if check {
-		parts = append([]interface{}{"error if occured:", StackAdjust(1)}, parts...)
+		parts = append([]any{"error if occured:", StackAdjust(1)}, parts...)
 		Error(parts...)
 	}
 	return check
 }
 
-func OnError(err error, parts ...interface{}) bool {
+func OnError(err error, parts ...any) bool {
 	if err != nil {
-		parts = append([]interface{}{StackAdjust(1)}, parts...)
+		parts = append([]any{StackAdjust(1), err}, parts...)
 		Error(parts...)
 		return true
 	}
 	return false
 }
 
-func AssertNotError(err error, parts ...interface{}) {
+func AssertNotError(err error, parts ...any) {
 	if err != nil {
-		parts = append([]interface{}{StackAdjust(1)}, parts...)
+		parts = append([]any{StackAdjust(1)}, parts...)
 		Fatal(parts...)
 	}
 }
@@ -364,7 +370,7 @@ func (w *WrappedError) Unwrap() error {
 	return w.Error
 }
 
-func Wrap(err error, parts ...interface{}) error {
+func Wrap(err error, parts ...any) error {
 	p := strings.TrimSpace(fmt.Sprintln(parts...))
 	return fmt.Errorf("%w %s", err, p)
 
@@ -406,24 +412,24 @@ func HandlePanic(exit bool) error {
 	return nil
 }
 
-func OnErrorTestError(t *testing.T, err error, items ...interface{}) bool {
+func OnErrorTestError(t *testing.T, err error, items ...any) bool {
 	if err != nil {
-		items = append([]interface{}{err}, items...)
+		items = append([]any{err}, items...)
 		t.Error(items...)
 		return true
 	}
 	return false
 }
 
-func Full(v interface{}) string {
+func Full(v any) string {
 	return fmt.Sprintf("%+v", v)
 }
 
-func Pointer(v interface{}) string {
+func Pointer(v any) string {
 	return fmt.Sprintf("%p", v)
 }
 
-func Hex(v interface{}) string {
+func Hex(v any) string {
 	return fmt.Sprintf("%X", v)
 }
 
