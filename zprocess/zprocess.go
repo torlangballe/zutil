@@ -22,9 +22,9 @@ type OnceWait struct {
 	wg     sync.WaitGroup
 }
 
-type TimedMutex struct {
-	sync.Mutex
-}
+// type TimedMutex struct {
+// 	sync.Mutex
+// }
 
 var (
 	MainThreadExeCh chan func()
@@ -34,9 +34,9 @@ var (
 
 // PoolWorkOnItems runs jobs with do(), processing all in goroutines,
 // But up to max poolSize at a time.
-func PoolWorkOnItems[T any](all []T, poolSize int, do func(t T)) {
+func PoolWorkOnItems[T any](all []T, poolSize int, do func(t *T)) {
 	length := len(all)
-	jobs := make(chan T, length)
+	jobs := make(chan *T, length)
 	results := make(chan struct{}, length)
 	for i := 0; i < poolSize; i++ {
 		go func() {
@@ -46,8 +46,8 @@ func PoolWorkOnItems[T any](all []T, poolSize int, do func(t T)) {
 			}
 		}()
 	}
-	for _, a := range all {
-		jobs <- a
+	for i := range all {
+		jobs <- &all[i]
 	}
 	close(jobs)
 	for range all {
