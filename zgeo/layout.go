@@ -82,7 +82,7 @@ func getStackCells(debugName string, vertical bool, cells []LayoutCell) (scells 
 				if c.Free {
 					sc.size = c.OriginalSize
 				} else {
-					sc.size.MaximizeNonZero(sc.MinSize)
+					sc.size.Maximize(sc.MinSize)
 					sc.size.MinimizeNonZero(sc.MaxSize)
 				}
 				// 	zlog.Info(debugName, i, sc.MinSize, sc.MaxSize, sc.size, "getStackCells add:", c.Alignment, c.Margin, c.Name, sc.OriginalSize)
@@ -104,7 +104,7 @@ func calcPreAddedTotalWidth(debugName string, scells []stackCell, spacing float6
 		if i != 0 {
 			space += spacing
 		}
-		// zlog.Info("calcPreAddedTotalWidth:", sc.Name, sc.size, sc.Margin.W, spacing)
+		// zlog.Info("calcPreAddedTotalWidth:", sc.Name, sc.size, sc.Margin.W, spacing, w)
 	}
 	w += space + marg
 	// zlog.Info("calcPreAddedTotalWidth total:", w)
