@@ -133,7 +133,7 @@ func GetNice(t time.Time, secs bool) string {
 	if secs {
 		f += ":05"
 	}
-	serverTime := zlocale.IsDisplayServerTime.Get()
+	serverTime := zlocale.IsDisplayServerTime != nil && zlocale.IsDisplayServerTime.Get()
 	if serverTime {
 		f += "-07"
 	}

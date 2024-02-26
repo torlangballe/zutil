@@ -2,7 +2,9 @@
 
 package ztime
 
-import "time"
+import (
+	"time"
+)
 
 func GetTimeWithServerLocation(t time.Time) time.Time {
 	return t
