@@ -26,6 +26,7 @@ func (d *dictFile) load() error {
 func NewFileStore(fpath string) *Store {
 	s := &Store{}
 	df := &dictFile{}
+	df.DictRawStore = *NewDictRawStore()
 	df.storeFile = zfile.ChangedExtension(fpath, ".json")
 	df.load()
 	s.Saver = df
