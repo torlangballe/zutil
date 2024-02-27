@@ -110,7 +110,7 @@ func WriteStringToFile(str, sfile string) error {
 }
 
 func SetOwnerAndMainGroup(fpath, owner string) error {
-	zlog.Info("SetOwnerAndMainGroup", fpath, owner)
+	// zlog.Info("SetOwnerAndMainGroup", fpath, owner)
 	u, err := user.Lookup(owner)
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func SetOwnerAndMainGroup(fpath, owner string) error {
 		return err
 	}
 	err = os.Chown(fpath, uid, gid)
-	zlog.Info("SetOwnerAndMainGroup2", fpath, owner, err)
+	// zlog.Info("SetOwnerAndMainGroup2", fpath, owner, err)
 	return err
 }
 
