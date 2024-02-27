@@ -87,7 +87,11 @@ func (i *Installer) addPath(isFile bool, parts ...string) string {
 }
 
 func (i *Installer) OptPath(isFile bool, parts ...string) string {
-	dir := zfile.JoinPathParts("/opt/", i.Company, i.ProductName)
+	str := "/opt/"
+	if OnDarwin() {
+		str = zfile.ExpandTildeInFilepath("~/opt/")
+	}
+	dir := zfile.JoinPathParts(str, i.Company, i.ProductName)
 	parts = append([]string{dir}, parts...)
 	return i.addPath(isFile, parts...)
 }
@@ -111,19 +115,20 @@ func (i *Installer) InstallProgramWithLauncher(args []string, copyBinary bool) e
 	if user != nil {
 		i.UserName = user.Username
 	}
-	zlog.Info("InstallProgramWithLauncher1:", i.UserName)
+	// zlog.Info("InstallProgramWithLauncher1:", i.UserName)
 	if OnLinux() && i.UserName == "root" {
 		var rest string
 		wd, _ := os.Getwd()
 		if zstr.HasPrefix(wd, "/home/", &rest) {
 			i.UserName = zstr.HeadUntil(rest, "/")
 		}
-		zlog.Info("InstallProgramWithLauncher2:", i.UserName, wd)
+		// zlog.Info("InstallProgramWithLauncher2:", i.UserName, wd)
 	}
-	zlog.Info("InstallProgramWithLauncher2:", i.UserName)
+	// zlog.Info("InstallProgramWithLauncher2:", i.UserName)
 	binDir := i.BinPath(false)
 	bin := i.BinPath(true, i.ProductName)
 	if copyBinary {
+		os.Remove(bin) // delete existing, in case running, and we get busy error
 		err := zfile.CopyFile(bin, os.Args[0])
 		if zlog.OnError(err, bin, os.Args[0]) {
 			return err
