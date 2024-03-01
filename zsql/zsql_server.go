@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/lib/pq"
 	"github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
@@ -108,11 +109,11 @@ func (base *Base) CustomizeQuery(query string) string {
 
 func FieldPointersFromStruct(istruct any, skip []string) (pointers []any) {
 	ForEachColumn(istruct, skip, "", func(each ColumnInfo) bool {
-		pointers = append(pointers, each.ReflectValue.Addr().Interface())
-		// a := each.ReflectValue.Addr()
-		// // ptr := makePQArrayPointerIfSlice(a)
-		// zlog.Info("FieldPointersFromStruct:", each.Column, a.Type(), a.Kind())
-		// pointers = append(pointers, a.Interface())
+		a := each.ReflectValue.Addr().Interface()
+		if each.ReflectValue.Kind() == reflect.Slice {
+			a = pq.Array(a)
+		}
+		pointers = append(pointers, a)
 		return true
 	})
 	return
@@ -120,7 +121,11 @@ func FieldPointersFromStruct(istruct any, skip []string) (pointers []any) {
 
 func FieldValuesFromStruct(istruct any, skip []string) (values []any) {
 	ForEachColumn(istruct, skip, "", func(each ColumnInfo) bool {
-		values = append(values, each.ReflectValue.Interface())
+		a := each.ReflectValue.Interface()
+		if each.ReflectValue.Kind() == reflect.Slice {
+			a = pq.Array(a)
+		}
+		values = append(values, a)
 		return true
 	})
 	return
@@ -358,7 +363,7 @@ func InsertRows[S any](table string, rows []S, userToken string) (int64, error) 
 		dbRow := Main.DB.QueryRow(query, vals...)
 		err := dbRow.Scan(&lastID)
 		if err != nil {
-			return 0, err
+			return 0, zlog.Error(err, query, vals)
 		}
 	}
 	return lastID, nil
