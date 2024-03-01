@@ -78,7 +78,10 @@ func RunCommandWithSudo(command, password string, args ...any) (string, error) {
 }
 
 func GetAppProgramPath(appName string) string {
-	return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
+	if OnDarwin() {
+		return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
+	}
+	return appName
 }
 
 // RunApp runs appName in Applications (for mac), and returns the exec.Cmd and out/err readers and in writer.
