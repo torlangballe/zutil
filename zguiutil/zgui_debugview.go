@@ -137,12 +137,16 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string)
 		pref := zgraphana.URLPrefix.Get()
 		uid := zgraphana.DashboardUID.Get()
 		var surl string
+		var args = map[string]string{
+			"theme": "dark",
+		}
 		if pref != "" && uid != "" {
 			surl = zfile.JoinPathParts(pref, "D", uid)
 			if serverName != "" {
-				surl += "?var-job=" + serverName
+				args["var-job"] = serverName
 			}
 		}
+		surl, _ = zhttp.MakeURLWithArgs(surl, args)
 		link.SetURL(surl, true)
 	})
 	v.AddOnRemoveFunc(timer.Stop)
