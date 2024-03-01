@@ -12,7 +12,8 @@ import (
 
 	blackfriday "github.com/torlangballe/blackfridayV2"
 	"github.com/torlangballe/mdtopdf"
-	"github.com/torlangballe/zui/zfields"
+
+	// "github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
@@ -356,7 +357,8 @@ func MakeCURLMarkdownDescriptor(empty bool, title string, restURL, path, method 
 	if body != nil {
 		if empty {
 			md += "-D '\\\n"
-			str := zfields.OutputJsonStructDescription(body, "")
+			var str string
+			// str := zfields.OutputJsonStructDescription(body, "")
 			str = strings.Replace(str, "\n", " \\\n", -1)
 			md += str
 			md += "'\\\n"
@@ -378,7 +380,7 @@ func MakeCURLMarkdownDescriptor(empty bool, title string, restURL, path, method 
 	md += "returning:\n"
 	md += "```\n"
 	if empty {
-		md += zfields.OutputJsonStructDescription(resultPtr, "")
+		//	md += zfields.OutputJsonStructDescription(resultPtr, "")
 	} else {
 		bdata, _ := json.MarshalIndent(resultPtr, "", "  ")
 		md += string(bdata) + "\n"
