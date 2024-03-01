@@ -352,7 +352,7 @@ func OnError(err error, parts ...any) bool {
 
 func AssertNotError(err error, parts ...any) {
 	if err != nil {
-		parts = append([]any{StackAdjust(1)}, parts...)
+		parts = append([]any{StackAdjust(1), err}, parts...)
 		Fatal(parts...)
 	}
 }
