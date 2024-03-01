@@ -10,7 +10,7 @@ import (
 
 // https://github.com/golang/go/wiki/SliceTricks#delete
 
-func CheckIsSlicePtr(s interface{}) error {
+func CheckIsSlicePtr(s any) error {
 	if s == nil {
 		return errors.New("slice is nil")
 	}
@@ -30,7 +30,7 @@ func CheckIsSlicePtr(s interface{}) error {
 	return nil
 }
 
-func RemoveAt(slice interface{}, index int) error {
+func RemoveAt(slice any, index int) error {
 	err := CheckIsSlicePtr(slice)
 	if err != nil {
 		return zlog.Fatal(err, zlog.StackAdjust(1), "not slice pointer", slice, reflect.TypeOf(slice).Kind(), reflect.TypeOf(slice))
@@ -45,7 +45,7 @@ func RemoveAt(slice interface{}, index int) error {
 	return nil
 }
 
-func Empty(slicePtr interface{}) {
+func Empty(slicePtr any) {
 	rval := reflect.ValueOf(slicePtr).Elem()
 	for {
 		length := rval.Len()
@@ -56,7 +56,7 @@ func Empty(slicePtr interface{}) {
 	}
 }
 
-func AddEmptyElementAtEnd(slicePtr interface{}) int {
+func AddEmptyElementAtEnd(slicePtr any) int {
 	e := MakeAnElementOfSliceType(slicePtr)
 	return AddAtEnd(slicePtr, e)
 }
@@ -74,7 +74,7 @@ func MakeAnElementOfSliceType(slice any) any {
 	return MakeAnElementOfSliceRValType(reflect.ValueOf(slice)).Interface()
 }
 
-func AddAtEnd(slicePtr interface{}, add interface{}) int {
+func AddAtEnd(slicePtr any, add any) int {
 	rptr := reflect.ValueOf(slicePtr)
 	rval := rptr.Elem()
 	rval = reflect.Append(rval, reflect.ValueOf(add))
@@ -82,11 +82,11 @@ func AddAtEnd(slicePtr interface{}, add interface{}) int {
 	return rval.Len() - 1
 }
 
-func Behead(slice interface{}) {
+func Behead(slice any) {
 	RemoveAt(slice, 0)
 }
 
-func RemoveIf(slice interface{}, remove func(i int) bool) {
+func RemoveIf(slice any, remove func(i int) bool) {
 	for {
 		val := reflect.ValueOf(slice).Elem()
 		len := val.Len()
@@ -104,7 +104,7 @@ func RemoveIf(slice interface{}, remove func(i int) bool) {
 	}
 }
 
-func CopyTo(to, slice interface{}) {
+func CopyTo(to, slice any) {
 	sliceVal := reflect.ValueOf(slice)
 	destVal := reflect.MakeSlice(sliceVal.Type(), sliceVal.Len(), sliceVal.Len())
 	reflect.Copy(destVal, sliceVal)
@@ -121,7 +121,7 @@ func IndexOf(length int, is func(i int) bool) int {
 	return -1
 }
 
-// func Reverse[T interface{}](s []T) {
+// func Reverse[T any](s []T) {
 // 	first := 0
 // 	last := len(s) - 1
 // 	for first < last {
@@ -131,7 +131,7 @@ func IndexOf(length int, is func(i int) bool) int {
 // 	}
 // }
 
-func Reverse(s interface{}) {
+func Reverse(s any) {
 	n := reflect.ValueOf(s).Len()
 	swap := reflect.Swapper(s)
 	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
