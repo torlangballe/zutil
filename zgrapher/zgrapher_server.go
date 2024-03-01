@@ -104,7 +104,11 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 	}
 	// zlog.Info("zgrapher: No serve2?:", fullName, job.storageName())
 	if job.storageName() == fullName {
-		return false // it's current, just render as usual
+		if zfile.NotExist(file) {
+			zlog.Info("zgrapher: Serve current: Not exists, so render", fullName, job.storageName())
+		} else {
+			return false // it's current, just render as usual
+		}
 	}
 	// zlog.Info("zgrapher: interceptServe: Name not same as current:", fullName, "!=", job.storageName())
 	t, err := time.ParseInLocation("2006-01-02T1504", date, time.Local)
