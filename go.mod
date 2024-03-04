@@ -9,9 +9,12 @@ require (
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/gomodule/redigo v1.8.9
-	github.com/google/uuid v1.5.0
+	github.com/google/gopacket v1.1.19
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
+	github.com/gosnmp/gosnmp v1.37.0
+	github.com/jezek/xgb v1.1.1
 	github.com/lib/pq v1.10.9
 	github.com/matishsiao/goInfo v0.0.0-20210923090445-da2e3fa8d45f
 	github.com/mileusna/useragent v1.3.4
@@ -21,11 +24,12 @@ require (
 	github.com/sendgrid/sendgrid-go v3.13.0+incompatible
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/shirou/gopsutil/v3 v3.23.12
+	github.com/timest/gomanuf v0.0.0-20230209100256-466f396c9305
 	github.com/torlangballe/blackfridayV2 v0.0.0-20230907135525-adceae2f31a8
 	github.com/torlangballe/mdtopdf v0.0.0-20230912121500-0f15befadda9
 	github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
-	github.com/torlangballe/zui v0.0.0-20240123140121-6f2f9a94b865
+	github.com/torlangballe/zui v0.0.0-20240227090556-2dcc26f4de3e
 	golang.org/x/crypto v0.18.0
 	golang.org/x/net v0.19.0
 	golang.org/x/sys v0.16.0
