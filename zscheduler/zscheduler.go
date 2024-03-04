@@ -321,7 +321,7 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 
 	now := time.Now()
 	run, _ := s.findRun(jobID)
-	zlog.Warn("StopJob:", jobID, run != nil)
+	// zlog.Warn("StopJob:", jobID, run != nil)
 	if run == nil {
 		if s.stopped {
 			return
@@ -997,8 +997,8 @@ func (s *Scheduler[I]) purgeStartedJobsNotInList(jobsOnExe JobsOnExecutor[I]) {
 				break
 			}
 		}
-		// zlog.Warn("Purge?:", r.Job.ID, has, r.StartedAt, r.starting)
 		if !has {
+			// zlog.Warn("Purge?:", r.Job.ID, has, r.StartedAt, r.starting)
 			if !r.StartedAt.IsZero() && r.starting {
 				// zlog.Warn("Not purging job cause starting", r.Job.ID, time.Since(r.StartedAt))
 				continue
