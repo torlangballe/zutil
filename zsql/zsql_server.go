@@ -110,7 +110,8 @@ func (base *Base) CustomizeQuery(query string) string {
 func FieldPointersFromStruct(istruct any, skip []string) (pointers []any) {
 	ForEachColumn(istruct, skip, "", func(each ColumnInfo) bool {
 		a := each.ReflectValue.Addr().Interface()
-		if each.ReflectValue.Kind() == reflect.Slice {
+		_, isScanner := a.(sql.Scanner)
+		if !isScanner && each.ReflectValue.Kind() == reflect.Slice {
 			a = pq.Array(a)
 		}
 		pointers = append(pointers, a)
@@ -122,7 +123,8 @@ func FieldPointersFromStruct(istruct any, skip []string) (pointers []any) {
 func FieldValuesFromStruct(istruct any, skip []string) (values []any) {
 	ForEachColumn(istruct, skip, "", func(each ColumnInfo) bool {
 		a := each.ReflectValue.Interface()
-		if each.ReflectValue.Kind() == reflect.Slice {
+		_, isScanner := a.(sql.Scanner)
+		if !isScanner && each.ReflectValue.Kind() == reflect.Slice {
 			a = pq.Array(a)
 		}
 		values = append(values, a)
@@ -383,6 +385,7 @@ func (SQLCalls) ExecuteQuery(query string, rowsAffected *int64) error {
 func SelectSlicesOfAny[S any](base *Base, resultSlice *[]S, q QueryBase) error {
 	var s S
 	fields := ColumnNamesStringFromStruct(&s, q.SkipColumns, "")
+	// zlog.Info("SelectSlicesOfAny", fields)
 	query := zstr.Spaced("SELECT", fields, "FROM", q.Table)
 	if q.Constraints != "" {
 		query += " " + q.Constraints
