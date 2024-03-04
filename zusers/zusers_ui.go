@@ -49,7 +49,7 @@ func Init() {
 		zrpc.MainClient.AuthToken = token
 	}
 	perms := append([]string{AdminPermission}, AppSpecificPermissions...)
-	zfields.AddStringBasedEnum("Permissions", perms...)
+	zfields.SetStringBasedEnum("Permissions", perms...)
 }
 
 func StartAuth() {
