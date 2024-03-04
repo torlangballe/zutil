@@ -1,9 +1,10 @@
 package zdesktop
 
 import (
-	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zhttp"
 	"image"
+
+	"github.com/torlangballe/zutil/zdevice"
+	"github.com/torlangballe/zutil/zgeo"
 )
 
 func GetAppNameOfBrowser(btype zdevice.BrowserType, fullName bool) string {

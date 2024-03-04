@@ -55,7 +55,7 @@ type methodType struct {
 // ClientInfo stores information about the client calling.
 type ClientInfo struct {
 	Type      string    // Type is zrpc or zrpc-rev for these calls. Might be something else if used elsewhere.
-	ClientID  string    // ClientID identifies the client
+	ClientID  string    // ClientID identifies the rpc client
 	Token     string    `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
 	UserAgent string    `json:",omitempty"` // From the http request
 	IPAddress string    `json:",omitempty"` // From the http request
