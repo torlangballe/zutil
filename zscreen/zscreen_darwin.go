@@ -23,28 +23,6 @@ import (
 	"github.com/torlangballe/zutil/zgeo"
 )
 
-/*
-func ScreenGetAll() (screens []Screen) {
-	var count C.uint32_t = 0
-	C.CGGetActiveDisplayList(0, nil, &count)
-	mainID := C.CGMainDisplayID()
-	ids := make([]C.CGDirectDisplayID, count)
-	if C.CGGetActiveDisplayList(C.uint32_t(count), (*C.CGDirectDisplayID)(unsafe.Pointer(&ids[0])), nil) != C.kCGErrorSuccess {
-		zlog.Fatal("getting display list")
-	}
-	for _, id := range ids {
-		var s Screen
-		bounds := C.CGDisplayBounds(id)
-		w := C.CGDisplayPixelsWide(id)
-		zlog.Info("SCREEN:", id, bounds.size.width, int(w))
-		s.Rect = zgeo.RectFromXYWH(float64(bounds.origin.x), float64(bounds.origin.y), float64(bounds.size.width), float64(bounds.size.height))
-		s.IsMain = (id == mainID)
-		screens = append(screens, s)
-	}
-	return
-}
-*/
-
 func GetAll() (screens []Screen) {
 	var count C.uint32_t = 0
 	C.CGGetActiveDisplayList(0, nil, &count)
@@ -66,10 +44,11 @@ func GetAll() (screens []Screen) {
 		// r = zgeo.RectFromXYWH(float64(si.visibleFrame.origin.x), float64(-si.visibleFrame.origin.y), float64(si.visibleFrame.size.width), float64(-si.visibleFrame.size.height))
 		// s.UsableRect = r.CleanedNegative()
 
-		r := zgeo.RectFromXYWH(float64(si.frame.origin.x), float64(-si.frame.origin.y), float64(si.frame.size.width), float64(-si.frame.size.height))
-		s.Rect = r.NormalizedNegativeSize()
-		r = zgeo.RectFromXYWH(float64(si.visibleFrame.origin.x), float64(si.visibleFrame.origin.y), float64(si.visibleFrame.size.width), float64(si.visibleFrame.size.height))
-		s.UsableRect = r.NormalizedNegativeSize()
+		// r := zgeo.RectFromXYWH(float64(si.frame.origin.x), float64(-si.frame.origin.y), float64(si.frame.size.width), float64(-si.frame.size.height))
+		// s.Rect = r.NormalizedNegativeSize()
+
+		s.Rect = normalizedRect(float64(si.frame.origin.x), float64(si.frame.origin.y), float64(si.frame.size.width), float64(si.frame.size.height))
+		s.UsableRect = normalizedRect(float64(si.visibleFrame.origin.x), float64(si.visibleFrame.origin.y), float64(si.visibleFrame.size.width), float64(si.visibleFrame.size.height))
 		s.Scale = float64(si.scale)
 		s.IsMain = (si.ismain == 1)
 		s.SoftScale = 1
@@ -80,6 +59,7 @@ func GetAll() (screens []Screen) {
 	}
 	for i := range screens {
 		screens[i].Rect.Pos.Add(adjust)
+		screens[i].UsableRect.Pos.Add(adjust)
 	}
 	return screens
 }

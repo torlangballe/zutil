@@ -29,6 +29,11 @@ type Screen struct {
 	//	KeyboardRect *zgeo.Rect
 }
 
+var (
+	mainSoftScale float64
+	mainScale     float64
+)
+
 func GetMain() Screen {
 	// test:
 	// zlog.Info("ScreenMain:", zlog.GetCallingStackString())
@@ -47,8 +52,21 @@ func GetMain() Screen {
 	return s
 }
 
-var MainSoftScale = GetMain().SoftScale
-var MainScale = GetMain().Scale
+func MainSoftScale() float64 {
+	if mainSoftScale != 0 {
+		return mainSoftScale
+	}
+	mainSoftScale = GetMain().SoftScale
+	return mainSoftScale
+}
+
+func MainScale() float64 {
+	if mainScale != 0 {
+		return mainScale
+	}
+	mainScale = GetMain().Scale
+	return mainScale
+}
 
 func FindForID(id string) *Screen {
 	for _, s := range GetAll() {
@@ -59,48 +77,7 @@ func FindForID(id string) *Screen {
 	return nil
 }
 
-// func ScreenStatusBarHeight() float64 {
-// 	return 0
-// }
-
-// func ScreenIsTall() bool {
-// 	return zscreen.GetMain().Rect.Size.H > 568
-// }
-
-// func ScreenIsWide() bool {
-// 	return zscreen.GetMain().Rect.Size.W > 320
-// }
-
-// func ScreenIsPortrait() bool {
-// 	s := zscreen.GetMain().Rect.Size
-// 	return s.H > s.W
-// }
-
-// func ScreenShowNetworkActivityIndicator(show bool) {
-// }
-
-// func ScreenHasSleepButtonOnSide() bool {
-// 	return false
-// }
-
-// func ScreenStatusBarVisible() bool {
-// 	return false
-// }
-
-// func ScreenSetStatusBarForLightContent(light bool) {
-// }
-
-// func ScreenEnableIdle(on bool) {
-// }
-
-// func ScreenOrientation() ScreenLayout {
-// 	return ScreenLandscapeLeft
-// }
-
-// func ScreenHasNotch() bool {
-// 	return false
-// }
-
-// func ScreenHasSwipeUpAtBottom() bool {
-// 	return false
-// }
+func normalizedRect(x, y, w, h float64) zgeo.Rect {
+	r := zgeo.RectFromXYWH(x, -y, w, -h)
+	return r.NormalizedNegativeSize()
+}
