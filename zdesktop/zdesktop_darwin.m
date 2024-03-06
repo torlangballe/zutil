@@ -58,7 +58,7 @@ int getWindowCountForPID(long pid) {
 int canRecordScreen() {
     if (@available(macOS 10.15, *)) {
         CGDisplayStreamRef stream = CGDisplayStreamCreate(CGMainDisplayID(), 1, 1, kCVPixelFormatType_32BGRA, nil, ^(CGDisplayStreamFrameStatus status, uint64_t displayTime, IOSurfaceRef frameSurface, CGDisplayStreamUpdateRef updateRef) {
-        });        
+        });
         int can = 0;
         if (stream != NULL) {
             can = 1;
@@ -73,7 +73,7 @@ int canRecordScreen() {
 }
 
 NSScreen *getBestScreenForBounds(CGRect bounds) {
-    NSScreen *bestScreen = nil;        
+    NSScreen *bestScreen = nil;
     CGFloat bestArea = 0.0;
     NSArray *screens = [NSScreen screens];
     for (NSScreen *s in screens) {
@@ -101,35 +101,6 @@ void CloseWindowForWindowRef(AXUIElementRef winRef) {
     AXError err2 = AXUIElementPerformAction(buttonRef, kAXPressAction);
     if (buttonRef != nil) {
         CFRelease(buttonRef);
-    }
-}
-
-void CloseWindowsForPIDIfNotInTitles(int pid, char *stitles) {
-    // NSLog(@"CloseWindowsForPIDIfNotInTitles %d %s\n", pid, "xxx");
-    NSString *nsTitles = [NSString stringWithUTF8String: stitles];
-    NSArray *titles = [nsTitles componentsSeparatedByString:@"\t"];
-    CFRelease(nsTitles);
-    AXUIElementRef app = AXUIElementCreateApplication(pid);
-    CFArrayRef windows = nil;
-    AXUIElementCopyAttributeValue(app, kAXWindowsAttribute, (CFTypeRef*)&windows); // get windows of the "Pages" application
-    CFRelease(app);
-    if (windows == nil) {
-        // NSLog(@"no windows");
-        return;
-    }
-    CFIndex wins = CFArrayGetCount(windows);
-    // NSLog(@"getAXElementOfWindowForTitle: %s %p %d\n", title, windowArray, (int)nItems);
-    for (int i = 0; i < wins; i++) {
-        NSString *title = nil;
-        AXUIElementRef w = (AXUIElementRef) CFArrayGetValueAtIndex(windows, i);
-        AXUIElementCopyAttributeValue(w, kAXTitleAttribute, (CFTypeRef *)&title);
-        NSString *cleanTitle = removedNonASCIIAndTruncate(title);
-        CFRelease(title);
-        if (![titles containsObject:cleanTitle]) {
-            NSLog(@"############## Close window without playback: %@\n", cleanTitle);
-            CloseWindowForWindowRef(w);
-        }
-        CFRelease(cleanTitle);
     }
 }
 
@@ -196,8 +167,8 @@ NSString *closeOldWindowWithSamePIDAndRectReturnKey(long pid, int x, int y, int 
     NSValue *nsval = (NSValue*)[ openWinRefsForRectsDict objectForKey: key ];
     if (nsval != nil) {
         AXUIElementRef wref = (AXUIElementRef)[nsval pointerValue];
-        CFRelease(wref);
         CloseWindowForWindowRef(wref);
+        CFRelease(wref);
     }
     return key;
 }
@@ -322,7 +293,10 @@ const char *getAllWindowTitlesTabSeparated() {
 BOOL findTitle(struct WinInfo *find, struct WinInfo w) {
     // NSLog(@"findTitle:%@ == %@\n", w.title, find->title);
     if ([w.title compare: find->title] == NSOrderedSame) {
-        *find = w;
+        find->wid = w.wid;
+        find->pid = w.pid;
+        find->rect = w.rect;
+        find->scale = w.scale;
         return YES;
     }
     return NO;
@@ -339,8 +313,8 @@ typedef struct WinIDInfo {
 } WinIDInfo;
 
 WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title) {
-    struct WinInfo find;
     struct WinIDInfo got;
+    struct WinInfo find;
     find.wid = 0;
     find.scale = 0;
     find.title = [NSString stringWithUTF8String: title];
@@ -349,14 +323,18 @@ WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title) {
         NSLog(@"getwin err: %s\n", got.err);
         return got;
     }
-    // NSLog(@"got win: %@ %g %g %g %g", find.title, (float)find.rect.origin.x, (float)find.rect.origin.y, (float)find.rect.size.width, (float)find.rect.size.height);
-    got.scale = getBestScreenForBounds(find.rect).backingScaleFactor;
+    // NSLog(@"got win: %@ %g %g %g %g\n", find.title, (float)find.rect.origin.x, (float)find.rect.origin.y, (float)find.rect.size.width, (float)find.rect.size.height);
+    NSScreen *screen = getBestScreenForBounds(find.rect);
+    got.scale = screen.backingScaleFactor;
+    CFRelease(screen);
+
     got.winID = find.wid;
     got.x = find.rect.origin.x;
     got.y = find.rect.origin.y;
     got.w = find.rect.size.width;
     got.h = find.rect.size.height;
-    // CFRelease(find.title);
+    CFRelease(find.title);
+
     return got;
 }
 
@@ -419,7 +397,6 @@ int CloseWindowForTitle(const char *title, long pid) {
 int ActivateWindowForTitle(const char *title, long pid) {
     NSRunningApplication* app = [NSRunningApplication runningApplicationWithProcessIdentifier: pid];
     [app activateWithOptions: NSApplicationActivateIgnoringOtherApps];
-
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, false);
     if (winRef == nil) {
         // NSLog(@"ActivateWindowForTitle: no window for %s %ld\n", title, pid);
@@ -493,12 +470,12 @@ void ShowAlert(char *str) {
     CFOptionFlags cfRes;
     CFStringRef cfstr = CFStringCreateWithCString(NULL, str, kCFStringEncodingUTF8);
 
-	CFUserNotificationDisplayAlert(5, kCFUserNotificationNoteAlertLevel,
-				NULL, NULL, NULL,
-				cfstr,
-				NULL,
-				(CFStringRef)@"OK",
-                NULL, NULL, 
-				&cfRes);
+    CFUserNotificationDisplayAlert(5, kCFUserNotificationNoteAlertLevel,
+        NULL, NULL, NULL,
+        cfstr,
+        NULL,
+        (CFStringRef)@"OK",
+        NULL, NULL,
+        &cfRes);
     CFRelease(cfstr);
 }
