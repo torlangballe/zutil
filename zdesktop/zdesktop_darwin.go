@@ -21,7 +21,6 @@ package zdesktop
 // int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h);
 // int ActivateWindowForTitle(const char *title, long pid);
 // void ConvertARGBToRGBAOpaque(int w, int h, int stride, unsigned char *img);
-// void CloseWindowsForPIDIfNotInTitles(int pid, char *stitles);
 // int canControlComputer(int prompt);
 // int getWindowCountForPID(long pid);
 // int canRecordScreen();
