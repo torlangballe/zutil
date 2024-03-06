@@ -61,6 +61,7 @@ func NewClient(prefixURL string, id string) *Client {
 	if id == "" {
 		id = zstr.GenerateRandomHexBytes(12)
 	}
+	// zlog.Info("zrpc.NewClient:", c.callURL)
 	c.ID = id
 	c.TimeoutSecs = 100
 	return c
@@ -108,7 +109,8 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 	// zlog.Warn("CALL:", surl)
 	_, err = zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
-		return nil, zlog.Error(err, "post", surl)
+		limitID := zlog.Limit("zrpc.Post.Err." + method)
+		return nil, zlog.Error(err, limitID, "post", surl)
 	}
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also
 		zlog.Info("zprc AuthenticationInvalid:", method, c.AuthToken, c.KeepTokenOnAuthenticationInvalid)

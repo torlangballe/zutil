@@ -160,7 +160,7 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 		}
 		rl, got := p.(LimitID)
 		if got {
-			parts = append(parts[:i], parts[i+1:]...) // can't use zslice as it would create cyclical import
+			parts = append(parts[:i], parts[i+1:]...) // can't use zslice.RemoveAt() as it would create cyclical import
 			i--
 			t, _ := rateLimiters.Get(rl)
 			if time.Since(t) < time.Second {
