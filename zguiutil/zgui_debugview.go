@@ -34,9 +34,12 @@ type DebugView struct {
 
 func doProfiling(ptype string) []byte {
 	out := bytes.NewBuffer([]byte{})
-	pprof.WriteHeapProfile(out)
-	defer pprof.StopCPUProfile()
-	return out.Bytes()
+	pprof.Lookup(ptype).WriteTo(out, 0)
+	o := out.Bytes()
+	if ptype == "profile" {
+		pprof.StopCPUProfile()
+	}
+	return o
 }
 
 func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zlabel.Label) {
@@ -82,7 +85,6 @@ func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 	surl += zrest.AppURLPrefix + zdebug.ProfilingURLPrefix + name // must be here and not in closure below!
 	button.SetToolTip(surl)
 	button.SetPressedHandler(func() {
-		zlog.Info("SetPressedHandler", zkeyboard.ModifiersAtPress)
 		if zkeyboard.ModifiersAtPress == zkeyboard.ModifierAlt {
 			str := "curl " + surl + " > " + name + " && go tool pprof -web " + name
 			zclipboard.SetString(str)
