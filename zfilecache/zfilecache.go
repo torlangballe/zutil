@@ -81,6 +81,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	// 	zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
 	// }
 	zrest.AddSubHandler(router, path, c)
+
 	// zrest.AddHandler(router, strings.TrimRight(path, "/"), c.ServeHTTP)
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
 		start := time.Now()
@@ -176,7 +177,7 @@ func (c *Cache) GetPathForName(name string) (path, dir string) {
 	dir = zfile.JoinPathParts(c.workDir, c.urlPrefix, c.cacheName, dir) + lastDir
 	path = dir + "/" + end
 	// zlog.Info("GetPathForName:", c.workDir, c.urlPrefix, c.cacheName, name, path)
-	return
+	return path, dir
 }
 
 func (c *Cache) IsCached(name string) bool {
