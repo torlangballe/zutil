@@ -7,6 +7,7 @@ package zcache
 import (
 	"time"
 
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
@@ -30,7 +31,9 @@ func NewExpiringMap[K comparable, V any](secsToLive float64) *ExpiringMap[K, V] 
 			value   V
 			touched time.Time
 		}) bool {
+			zlog.Info("Expiring: Purge?", k, v.touched)
 			if ztime.Since(v.touched) > secsToLive {
+				zlog.Info("Expiring: Purge!", k)
 				m.lockedMap.Remove(k)
 			}
 			return true
@@ -47,18 +50,28 @@ func (m *ExpiringMap[K, V]) Set(k K, v V) {
 	}{v, time.Now()})
 }
 
-func (m *ExpiringMap[K, V]) Get(k K) (V, bool) {
+func (m *ExpiringMap[K, V]) get(k K, touch bool) (V, bool) {
 	val, ok := m.lockedMap.Get(k)
 	if ok {
 		if ztime.Since(val.touched) > m.secsToLive {
 			m.lockedMap.Remove(k)
 		} else {
-			val.touched = time.Now()
-			m.lockedMap.Set(k, val)
+			if touch {
+				val.touched = time.Now()
+				m.lockedMap.Set(k, val)
+			}
 		}
 		return val.value, true
 	}
 	return val.value, false
+}
+
+func (m *ExpiringMap[K, V]) Get(k K) (V, bool) {
+	return m.get(k, true)
+}
+
+func (m *ExpiringMap[K, V]) Peek(k K) (V, bool) {
+	return m.get(k, false)
 }
 
 func (m *ExpiringMap[K, V]) Remove(k K) {
