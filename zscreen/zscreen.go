@@ -3,6 +3,7 @@ package zscreen
 import (
 	"runtime"
 
+	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 )
@@ -33,6 +34,10 @@ var (
 	mainSoftScale float64
 	mainScale     float64
 )
+
+func init() {
+	zimage.MainScreenScale = MainScale()
+}
 
 func GetMain() Screen {
 	// test:
@@ -80,4 +85,8 @@ func FindForID(id string) *Screen {
 func normalizedRect(x, y, w, h float64) zgeo.Rect {
 	r := zgeo.RectFromXYWH(x, -y, w, -h)
 	return r.NormalizedNegativeSize()
+}
+
+func (s *Screen) ScaledSize() zgeo.Size {
+	return s.Rect.Size.TimesD(s.Scale)
 }

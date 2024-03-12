@@ -17,10 +17,13 @@ package zscreen
 import "C"
 
 import (
+	"image"
 	"strconv"
 	"unsafe"
 
+	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 func GetAll() (screens []Screen) {
@@ -37,16 +40,6 @@ func GetAll() (screens []Screen) {
 		var s Screen
 		si := cscreens[i]
 		s.ID = strconv.FormatInt(int64(si.sid), 10)
-		// r2 := zgeo.RectFromXYWH(float64(si.frame.origin.x), float64(si.frame.origin.y), float64(si.frame.size.width), float64(si.frame.size.height))
-		// zlog.Info("Frame:", s.ID, r2)
-		// r := zgeo.RectFromXYWH(float64(si.frame.origin.x), float64(-si.frame.origin.y), float64(si.frame.size.width), float64(-si.frame.size.height))
-		// s.Rect = r.CleanedNegative()
-		// r = zgeo.RectFromXYWH(float64(si.visibleFrame.origin.x), float64(-si.visibleFrame.origin.y), float64(si.visibleFrame.size.width), float64(-si.visibleFrame.size.height))
-		// s.UsableRect = r.CleanedNegative()
-
-		// r := zgeo.RectFromXYWH(float64(si.frame.origin.x), float64(-si.frame.origin.y), float64(si.frame.size.width), float64(-si.frame.size.height))
-		// s.Rect = r.NormalizedNegativeSize()
-
 		s.Rect = normalizedRect(float64(si.frame.origin.x), float64(si.frame.origin.y), float64(si.frame.size.width), float64(si.frame.size.height))
 		s.UsableRect = normalizedRect(float64(si.visibleFrame.origin.x), float64(si.visibleFrame.origin.y), float64(si.visibleFrame.size.width), float64(si.visibleFrame.size.height))
 		s.Scale = float64(si.scale)
@@ -75,4 +68,31 @@ func SetMainResolutionWithinWidths(min, max zgeo.Size) {
 		return
 	}
 	C.SetMainResolutionWithinWidths(C.long(min.W), C.long(min.H), C.long(max.W), C.long(max.H))
+}
+
+func GetScreenShot(screenID string, noScale bool) image.Image {
+	var cgRect C.CGRect
+
+	n, _ := strconv.Atoi(screenID)
+	s := FindForID(screenID)
+	zlog.Assert(s != nil)
+	// cgRect.origin.x = C.CGFloat(s.Rect.Pos.X)
+	// cgRect.origin.y = C.CGFloat(s.Rect.Pos.Y)
+	ss := s.Rect.Size
+	cgRect.size.width = C.CGFloat(ss.W)
+	cgRect.size.height = C.CGFloat(ss.H)
+	cgImage := C.CGDisplayCreateImageForRect(C.CGDirectDisplayID(n), cgRect)
+	if cgImage == 0 {
+		return nil
+	}
+	iw := int(C.CGImageGetWidth(cgImage))
+	ih := int(C.CGImageGetHeight(cgImage))
+	scale := 1.0
+	if noScale {
+		scale = 1 / s.Scale
+	}
+	zlog.Info("ScreenShot:", ss, iw, ih, scale)
+	// r := zgeo.Rect{Size: ss}
+	img, _ := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), zgeo.Rect{}, scale)
+	return img
 }
