@@ -16,7 +16,7 @@ func NewActionsIcon() *zimageview.ImageView {
 		change = "change"
 		logout = "logout"
 	)
-	actions := zimageview.New(nil, "images/zcore/head-dark.png", zgeo.Size{18, 18})
+	actions := zimageview.NewWithCachedPath("images/zcore/head-dark.png", zgeo.Size{18, 18})
 	actions.DownsampleImages = true
 	actionMenu := zmenu.NewMenuedOwner()
 	actionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {

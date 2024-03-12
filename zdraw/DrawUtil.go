@@ -34,7 +34,7 @@ func StrokeVertInImage(img zimage.SetableImage, x, y1, y2 int, col color.Color) 
 }
 
 func MergeImages(box zgeo.Size, images []*zimage.ImageGetter, done func(img *zimage.Image)) {
-	zimage.GetImages(images, func(all bool) {
+	zimage.GetImages(images, false, func(all bool) {
 		if !all {
 			zlog.Error("Not all images got")
 			return

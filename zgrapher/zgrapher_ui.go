@@ -146,7 +146,7 @@ func (v *GraphView) requestParts() {
 		surl := zfile.JoinPathParts(v.ImagePathPrefix, "caches", folderName, name)
 		surl += "?tick=" + zstr.GenerateRandomHexBytes(12)
 		// zlog.Info("Request:", r, surl)
-		zimage.FromPath(surl, func(img *zimage.Image) {
+		zimage.FromPath(surl, false, func(img *zimage.Image) {
 			if img == nil {
 				zlog.Info("No image request parts:", surl)
 				if !first {
