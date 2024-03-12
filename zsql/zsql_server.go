@@ -341,7 +341,7 @@ func UpdateRows[S any](table string, rows []S, userToken string) error {
 	return nil
 }
 
-func InsertRows[S any](table string, rows []S, userToken string) (int64, error) {
+func InsertRows[S any](table string, rows []S, skipColumns []string, userToken string) (int64, error) {
 	if len(rows) == 0 {
 		return 0, nil
 	}
@@ -356,12 +356,12 @@ func InsertRows[S any](table string, rows []S, userToken string) (int64, error) 
 		}
 	}
 	var lastID int64
-	idCols := []string{idColumn}
-	params := FieldParametersFromStruct(rows[0], idCols, 1)
-	query := "INSERT INTO " + table + " (" + ColumnNamesStringFromStruct(rows[0], idCols, "") + ") VALUES (" + params + ") RETURNING " + idColumn
+	skip := append(skipColumns, idColumn)
+	params := FieldParametersFromStruct(rows[0], skip, 1)
+	query := "INSERT INTO " + table + " (" + ColumnNamesStringFromStruct(rows[0], skip, "") + ") VALUES (" + params + ") RETURNING " + idColumn
 	query = CustomizeQuery(query, Main.Type)
 	for _, row := range rows {
-		vals := FieldValuesFromStruct(row, idCols)
+		vals := FieldValuesFromStruct(row, skip)
 		dbRow := Main.DB.QueryRow(query, vals...)
 		err := dbRow.Scan(&lastID)
 		if err != nil {
@@ -385,12 +385,12 @@ func (SQLCalls) ExecuteQuery(query string, rowsAffected *int64) error {
 func SelectSlicesOfAny[S any](base *Base, resultSlice *[]S, q QueryBase) error {
 	var s S
 	fields := ColumnNamesStringFromStruct(&s, q.SkipColumns, "")
-	// zlog.Info("SelectSlicesOfAny", fields)
 	query := zstr.Spaced("SELECT", fields, "FROM", q.Table)
 	if q.Constraints != "" {
 		query += " " + q.Constraints
 	}
 	query = CustomizeQuery(query, base.Type)
+	zlog.Info("SelectSlicesOfAny:", query)
 	rows, err := base.DB.Query(query)
 	if err != nil {
 		return zlog.Error(err, "select", query)
