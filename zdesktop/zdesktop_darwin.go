@@ -22,10 +22,10 @@ package zdesktop
 // int ActivateWindowForTitle(const char *title, long pid);
 // void ConvertARGBToRGBAOpaque(int w, int h, int stride, unsigned char *img);
 // int canControlComputer(int prompt);
-// int getWindowCountForPID(long pid);
-// int canRecordScreen();
-// void printWindowTitles();
-// const char *getAllWindowTitlesTabSeparated(long forPid);
+// int GetWindowCountForPID(long pid);
+// int CanRecordScreen();
+// void PrintWindowTitles();
+// const char *GetAllWindowTitlesTabSeparated(long forPid);
 // typedef struct Image {
 //   int width;
 //   int height;
@@ -33,8 +33,8 @@ package zdesktop
 // } Image;
 // CGImageRef GetWindowImage(long winID);
 // void ShowAlert(char *str);
-// int closeOldWindowWithSamePIDAndRectOnceNew(long pid, int x, int y, int w, int h);
-// void closeOldWindowWithSamePIDAndRect(long pid, int x, int y, int w, int h);
+// int CloseOldWindowWithSamePIDAndRectOnceNew(long pid, int x, int y, int w, int h);
+// void CloseOldWindowWithSamePIDAndRect(long pid, int x, int y, int w, int h);
 import "C"
 
 import (
@@ -49,6 +49,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
@@ -66,7 +67,7 @@ func ClearAppPIDCache() {
 
 func PrintWindowTitles() {
 	// zlog.Info("PrintWindowTitles")
-	C.printWindowTitles()
+	C.PrintWindowTitles()
 }
 
 func GetCachedPIDForAppName(app string) (int64, error) {
@@ -152,9 +153,9 @@ func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, s
 	// pid, _ := GetCachedPIDForAppName(app)
 	// fmt.Println("SetWindowRectForTitle:", title, app, pids)
 	for _, pid := range pids {
-		fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
+		// fmt.Println("GetIDAndScaleForWindowTitle go:", title, pid)
 		ctitle := C.CString(title)
-		w := C.WindowGetIDScaleAndRectForTitle(ctitle, C.long(pid))
+		w := C.WindowGetIDScaleAndRectForTitle(ctitle, C.long(pid)) // w.err is a const if anything, so no need to free
 		C.free(unsafe.Pointer(ctitle))
 		serr := C.GoString(w.err)
 		// fmt.Println("GetIDAndScaleForWindowTitle2 go:", serr, w.winID)
@@ -171,13 +172,13 @@ func GetIDScaleAndRectForWindowTitle(title, app string, pid int64) (id string, s
 }
 
 func CloseOldWindowWithSamePIDAndRectOnceNew(pid int64, r zgeo.Rect) bool {
-	n := C.closeOldWindowWithSamePIDAndRectOnceNew(C.long(pid), C.int(r.Pos.X), C.int(r.Pos.Y), C.int(r.Size.W), C.int(r.Size.H))
+	n := C.CloseOldWindowWithSamePIDAndRectOnceNew(C.long(pid), C.int(r.Pos.X), C.int(r.Pos.Y), C.int(r.Size.W), C.int(r.Size.H))
 	zlog.Info("CloseOldWindowWithIDInRectOnceNew:", n)
 	return n != 0
 }
 
 func CloseOldWindowWithSamePIDAndRect(pid int64, r zgeo.Rect) {
-	C.closeOldWindowWithSamePIDAndRect(C.long(pid), C.int(r.Pos.X), C.int(r.Pos.Y), C.int(r.Size.W), C.int(r.Size.H))
+	C.CloseOldWindowWithSamePIDAndRect(C.long(pid), C.int(r.Pos.X), C.int(r.Pos.Y), C.int(r.Size.W), C.int(r.Size.H))
 }
 
 func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect) (img image.Image, pid int64, err error) {
@@ -241,54 +242,6 @@ func AddExecutableToLoginItems(exePath, name string, hidden bool) error {
 	return nil
 }
 
-func createColorspace() C.CGColorSpaceRef {
-	return C.CGColorSpaceCreateWithName(C.kCGColorSpaceSRGB)
-}
-
-func createBitmapContext(width int, height int, data *C.uint32_t, bytesPerRow int) C.CGContextRef {
-	colorSpace := createColorspace()
-	if colorSpace == 0 {
-		return 0
-	}
-	defer C.CGColorSpaceRelease(colorSpace)
-
-	return C.CGBitmapContextCreate(unsafe.Pointer(data),
-		C.size_t(width),
-		C.size_t(height),
-		8, // bits per component
-		C.size_t(bytesPerRow),
-		colorSpace,
-		C.kCGImageAlphaNoneSkipFirst)
-}
-
-func CGImageToGoImage(cgimage C.CGImageRef, insetRect zgeo.Rect) (image.Image, error) {
-	var cw, ch int
-	iw := int(C.CGImageGetWidth(cgimage))
-	ih := int(C.CGImageGetHeight(cgimage))
-	cw = iw
-	ch = ih
-	if !insetRect.IsNull() {
-		cw = int(insetRect.Size.W)
-		ch = int(insetRect.Size.H)
-	}
-	img := image.NewNRGBA(image.Rect(0, 0, cw, ch))
-	if img == nil {
-		return nil, zlog.Error("NewRGBA returned nil", cw, ch)
-	}
-	// zlog.Info("THUMB insetRect:", insetRect)
-	ctx := createBitmapContext(cw, ch, (*C.uint32_t)(unsafe.Pointer(&img.Pix[0])), img.Stride)
-	diff := float64(ih - ch)
-	x := C.CGFloat(-insetRect.Pos.X)
-	y := C.CGFloat(-diff + insetRect.Pos.Y)
-	cgDrawRect := C.CGRectMake(x, y, C.CGFloat(iw), C.CGFloat(ih))
-	C.CGContextDrawImage(ctx, cgDrawRect, cgimage)
-
-	C.ConvertARGBToRGBAOpaque(C.int(cw), C.int(ch), C.int(img.Stride), (*C.uchar)(unsafe.Pointer(&img.Pix[0])))
-	C.CGContextRelease(ctx)
-
-	return img, nil
-}
-
 func GetWindowImage(winID string, insetRect zgeo.Rect) (image.Image, error) {
 	wid, _ := strconv.ParseInt(winID, 10, 64)
 	if wid == 0 {
@@ -303,8 +256,9 @@ func GetWindowImage(winID string, insetRect zgeo.Rect) (image.Image, error) {
 		return nil, err
 
 	}
-	// zlog.Info("GetWindowImage:", time.Since(start))
-	img, err := CGImageToGoImage(cgimage, insetRect)
+	// iw := int(C.CGImageGetWidth(cgimage))
+	// ih := int(C.CGImageGetHeight(cgimage))
+	img, err := zimage.CGImageToGoImage(unsafe.Pointer(cgimage), insetRect, 1)
 	// zlog.Info("GetWindowImage Make Go Image:", time.Since(start))
 	C.CGImageRelease(cgimage)
 	return img, err
@@ -323,15 +277,15 @@ func CanGetWindowInfo() bool {
 	if err != nil {
 		return false
 	}
-	return C.getWindowCountForPID(C.long(pid)) != -1
+	return C.GetWindowCountForPID(C.long(pid)) != -1
 }
 
 func GetWindowCountForPid(pid int64) int {
-	return int(C.getWindowCountForPID(C.long(pid)))
+	return int(C.GetWindowCountForPID(C.long(pid)))
 }
 
 func CanRecordScreen() bool {
-	return C.canRecordScreen() == 1
+	return C.CanRecordScreen() == 1
 }
 
 func GetAllWindowTitlesForApp(app string) []string {
@@ -339,14 +293,19 @@ func GetAllWindowTitlesForApp(app string) []string {
 	if pid == 0 {
 		return nil
 	}
-	str := C.GoString(C.getAllWindowTitlesTabSeparated(C.long(pid)))
-	if len(str) == 0 {
+	ctitles := C.GetAllWindowTitlesTabSeparated(C.long(pid))
+	stitles := C.GoString(ctitles)
+	C.free(unsafe.Pointer(ctitles))
+	if len(stitles) == 0 {
 		return nil
 	}
 	// zlog.Info("GetAllWindowTitlesForApp", app, str)
-	return strings.Split(str, "\t")
+	titles := strings.Split(stitles, "\t")
+	return titles
 }
 
 func ShowAlert(str string) {
-	C.ShowAlert(C.CString(str))
+	cstr := C.CString(str)
+	C.ShowAlert(cstr)
+	C.free(unsafe.Pointer(cstr))
 }
