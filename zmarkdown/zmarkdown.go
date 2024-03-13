@@ -179,7 +179,6 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 	// })
 	// return "", nil
 	for _, chapter := range m.PartNames {
-		zlog.Info("Flatten:", chapter)
 		if strings.HasSuffix(chapter, SharedPageSuffix) {
 			continue
 		}
