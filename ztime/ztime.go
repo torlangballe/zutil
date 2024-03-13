@@ -41,7 +41,7 @@ type Differ time.Time
 // Distant is a very far-future time when you want to do things forever etc
 var (
 	Distant                  = time.Unix(1<<62, 0)
-	BigTime                  = time.Date(2200, 01, 01, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000
+	BigTime                  = time.Date(2200, 12, 20, 0, 0, 0, 0, time.UTC) // time.Duration can max handle 290 years, so better than 3000. Setting to December 20th, so it is easily distinguishable from zero time
 	TestTime                 = MustParse("2020-05-17T10:30:45.0+02:00")      // Random time we can use in tests when it has to look normal and be a fixed time
 	ServerTimezoneOffsetSecs int
 	SundayFirstWeekdays      = []time.Weekday{time.Sunday, time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday}
