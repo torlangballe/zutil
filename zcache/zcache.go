@@ -13,13 +13,17 @@ import (
 // TODO: rename fixedExpiry to NonExcedableExpiry?
 // TODO: Allow a redis hookup?
 
+type Releaser interface {
+	Release()
+}
+
 type item struct {
-	value   interface{}
+	value   any
 	touched time.Time
 	expiry  time.Duration
 }
 
-// Cache is a simple in-memory cached map
+// Cache is a simple in-memory cached map. If it's value conforms to Releaser (above), Release() is called on it before removing from cache.
 type Cache struct {
 	fixedExpiry   bool // If fixedExpiry set, items are not touched on get, and Get returns false if expired, even if not flushed out yet. Good for tokens etc that actually have an expiry time
 	defaultExpiry time.Duration
@@ -88,6 +92,10 @@ func (c *Cache) purge() {
 	c.lock.Lock()
 	for key, i := range c.items {
 		if time.Since(i.touched) >= i.expiry {
+			releaser, _ := i.value.(Releaser)
+			if releaser != nil {
+				releaser.Release()
+			}
 			delete(c.items, key)
 		}
 	}
@@ -122,7 +130,14 @@ func (c *Cache) Get(toPtr interface{}, key string) (got bool) {
 
 func (c *Cache) Remove(key string) {
 	c.lock.Lock()
-	delete(c.items, key)
+	i, got := c.items[key]
+	if got {
+		releaser, _ := i.value.(Releaser)
+		if releaser != nil {
+			releaser.Release()
+		}
+		delete(c.items, key)
+	}
 	c.lock.Unlock()
 }
 
