@@ -7,7 +7,6 @@ package zcache
 import (
 	"time"
 
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
@@ -32,7 +31,7 @@ func NewExpiringMap[K comparable, V any](secsToLive float64) *ExpiringMap[K, V] 
 			touched time.Time
 		}) bool {
 			if ztime.Since(v.touched) > secsToLive {
-				zlog.Info("Expiring: Purge!", k)
+				// zlog.Info("Expiring: Purge!", k)
 				m.lockedMap.Remove(k)
 			}
 			return true
