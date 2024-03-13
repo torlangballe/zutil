@@ -31,7 +31,6 @@ func NewExpiringMap[K comparable, V any](secsToLive float64) *ExpiringMap[K, V] 
 			value   V
 			touched time.Time
 		}) bool {
-			zlog.Info("Expiring: Purge?", k, v.touched)
 			if ztime.Since(v.touched) > secsToLive {
 				zlog.Info("Expiring: Purge!", k)
 				m.lockedMap.Remove(k)
@@ -48,6 +47,14 @@ func (m *ExpiringMap[K, V]) Set(k K, v V) {
 		value   V
 		touched time.Time
 	}{v, time.Now()})
+}
+
+func (m *ExpiringMap[K, V]) SetForever(k K, v V) {
+	m.changed = true
+	m.lockedMap.Set(k, struct {
+		value   V
+		touched time.Time
+	}{v, ztime.BigTime})
 }
 
 func (m *ExpiringMap[K, V]) get(k K, touch bool) (V, bool) {
