@@ -53,7 +53,7 @@ func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zla
 	then := zlabel.New("then")
 	then.SetFont(zgeo.FontDefault(0).NewWithStyle(zgeo.FontStyleBold))
 	v.Add(then, zgeo.CenterLeft)
-	label := zlabel.New("go tool pprof -web " + down + "/" + ptype)
+	label := zlabel.New("go tool pprof -web " + down + "/" + name)
 	ztext.MakeViewPressToClipboard(label)
 	v.Add(label, zgeo.CenterLeft)
 	in.Add(v, zgeo.CenterLeft|zgeo.HorExpand)
