@@ -23,6 +23,10 @@ var (
 
 var stopping bool
 
+func startDuration() time.Duration {
+	return time.Millisecond * time.Duration(startMS)
+}
+
 func newScheduler(jobs, workers int, jobCost, workerCap float64, setupFunc func(*Setup[int64])) *Scheduler[int64] {
 	s := NewScheduler[int64]()
 	setup := DefaultSetup[int64]()
@@ -123,112 +127,15 @@ func testStartingTime(t *testing.T) {
 	s.setup.LoadBalanceIfCostDifference = 0
 	c1 := s.CountRunningJobs(1)
 	compare(t, "Jobs not starting at 0:", c1, 0)
-	time.Sleep(time.Millisecond * 2 * 9)
+	time.Sleep(time.Millisecond * time.Duration(startMS) * 8) // wait for 8 of them to start
 	c1 = s.CountRunningJobs(1)
 	if c1 == 0 || c1 == 10 {
-		t.Error("Jobs not still 0 or reached 10:", c1, 10, c1, 0)
+		t.Error("Jobs still 0 or reached 10:", c1, 10, c1, 0)
 	}
-	time.Sleep(time.Millisecond * time.Duration(startMS) * 3)
+	time.Sleep(startDuration() * 7) // wait past when all 10 should be started, give a bit extra (7-2) to make sure
 	c1 = s.CountRunningJobs(1)
 	compare(t, "Jobs not reached 10:", c1, 10)
 	stopAndCheckScheduler(s, t)
-}
-
-func compare(t *testing.T, str string, n ...int) bool {
-	var fail bool
-	for i := 0; i < len(n); i += 2 {
-		c := n[i]
-		val := n[i+1]
-		if c != val {
-			str += fmt.Sprint(" ", c, "!=", val)
-			fail = true
-		}
-	}
-	if fail {
-		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
-		t.Error(str)
-	}
-	return !fail
-}
-
-func makeJob(s *Scheduler[int64], id int64, dur time.Duration, cost float64) Job[int64] {
-	job := Job[int64]{
-		ID:        id,
-		DebugName: fmt.Sprint("J", id),
-		Duration:  dur,
-		Cost:      cost,
-	}
-	return job
-}
-
-func makeExecutor(s *Scheduler[int64], id int64, cap float64) Executor[int64] {
-	e := Executor[int64]{
-		ID:           id,
-		CostCapacity: cap,
-		KeptAliveAt:  time.Now(),
-		DebugName:    fmt.Sprint("Wrk", id),
-	}
-	return e
-}
-
-func randDurSecs(min, max float64) float64 {
-	return min + (max-min)*rand.Float64()
-}
-
-func addAndRemoveJobRandomly(s *Scheduler[int64], job Job[int64]) *ztimer.Timer {
-	timer := ztimer.TimerNew()
-	timer.StartIn(randDurSecs(1, 2), func() {
-		// zlog.Warn("addJobRandomly", job.DebugName)
-		if s.stopped {
-			return
-		}
-		go func() {
-			s.AddJobCh <- job
-		}()
-		timer.StartIn(randDurSecs(3, 2), func() {
-			if s.stopped {
-				return
-			}
-			s.RemoveJobCh <- job.ID
-			addAndRemoveJobRandomly(s, job)
-		})
-	})
-	return timer
-}
-
-func addAndRemoveExecutorRandomly(s *Scheduler[int64], e Executor[int64]) *ztimer.Timer {
-	timer := ztimer.TimerNew()
-	timer.StartIn(randDurSecs(2, 3), func() {
-		// zlog.Warn("addJobRandomly", job.DebugName)
-		if s.stopped {
-			return
-		}
-		go func() {
-			s.AddExecutorCh <- e
-		}()
-		ztimer.StartIn(randDurSecs(8, 12), func() {
-			if s.stopped {
-				return
-			}
-			s.RemoveExecutorCh <- e.ID
-			addAndRemoveExecutorRandomly(s, e)
-		})
-	})
-	return timer
-}
-
-func stopAndCheckScheduler(s *Scheduler[int64], t *testing.T) {
-	// zlog.Warn("stopAndCheckScheduler")
-	sleep := (startMS + stopMS) * (len(s.runs) + 1)
-	s.Stop()
-	time.Sleep(time.Duration(sleep) * time.Millisecond)
-	if !compare(t, "stopAndCheckScheduler: length of runs should be zero", len(s.runs), 0) {
-		zlog.Warn("should be zero:", sleep)
-	}
-	compare(t, "stopAndCheckScheduler: length of executors should be zero", len(s.executors), 0)
-	if s.timerOn {
-		t.Error("timers still on a while after stop")
-	}
 }
 
 func testPauseWithCapacity(t *testing.T) {
@@ -437,7 +344,7 @@ func testPurgeFromSlowStarting(t *testing.T) {
 	s := newScheduler(4, 1, 1, 10, func(setup *Setup[int64]) {
 		setup.SimultaneousStarts = 0
 	})
-	time.Sleep(time.Millisecond * 4)
+	time.Sleep(startDuration() / 3) // enough time to have jobs registered, but not be running
 	count := s.CountJobs(0)
 	compare(t, "Jobs not at 4:", count, 4) // All 4 jobs running
 	countRunning := s.CountRunningJobs(0)
@@ -652,6 +559,103 @@ func testErrorAt(t *testing.T) {
 	}
 	time.Sleep(time.Millisecond * 170)
 	stopAndCheckScheduler(s, t)
+}
+
+func compare(t *testing.T, str string, n ...int) bool {
+	var fail bool
+	for i := 0; i < len(n); i += 2 {
+		c := n[i]
+		val := n[i+1]
+		if c != val {
+			str += fmt.Sprint(" ", c, "!=", val)
+			fail = true
+		}
+	}
+	if fail {
+		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
+		t.Error(str)
+	}
+	return !fail
+}
+
+func makeJob(s *Scheduler[int64], id int64, dur time.Duration, cost float64) Job[int64] {
+	job := Job[int64]{
+		ID:        id,
+		DebugName: fmt.Sprint("J", id),
+		Duration:  dur,
+		Cost:      cost,
+	}
+	return job
+}
+
+func makeExecutor(s *Scheduler[int64], id int64, cap float64) Executor[int64] {
+	e := Executor[int64]{
+		ID:           id,
+		CostCapacity: cap,
+		KeptAliveAt:  time.Now(),
+		DebugName:    fmt.Sprint("Wrk", id),
+	}
+	return e
+}
+
+func randDurSecs(min, max float64) float64 {
+	return min + (max-min)*rand.Float64()
+}
+
+func addAndRemoveJobRandomly(s *Scheduler[int64], job Job[int64]) *ztimer.Timer {
+	timer := ztimer.TimerNew()
+	timer.StartIn(randDurSecs(1, 2), func() {
+		// zlog.Warn("addJobRandomly", job.DebugName)
+		if s.stopped {
+			return
+		}
+		go func() {
+			s.AddJobCh <- job
+		}()
+		timer.StartIn(randDurSecs(3, 2), func() {
+			if s.stopped {
+				return
+			}
+			s.RemoveJobCh <- job.ID
+			addAndRemoveJobRandomly(s, job)
+		})
+	})
+	return timer
+}
+
+func addAndRemoveExecutorRandomly(s *Scheduler[int64], e Executor[int64]) *ztimer.Timer {
+	timer := ztimer.TimerNew()
+	timer.StartIn(randDurSecs(2, 3), func() {
+		// zlog.Warn("addJobRandomly", job.DebugName)
+		if s.stopped {
+			return
+		}
+		go func() {
+			s.AddExecutorCh <- e
+		}()
+		ztimer.StartIn(randDurSecs(8, 12), func() {
+			if s.stopped {
+				return
+			}
+			s.RemoveExecutorCh <- e.ID
+			addAndRemoveExecutorRandomly(s, e)
+		})
+	})
+	return timer
+}
+
+func stopAndCheckScheduler(s *Scheduler[int64], t *testing.T) {
+	// zlog.Warn("stopAndCheckScheduler")
+	sleep := (startMS + stopMS) * (len(s.runs) + 1)
+	s.Stop()
+	time.Sleep(time.Duration(sleep) * time.Millisecond)
+	if !compare(t, "stopAndCheckScheduler: length of runs should be zero", len(s.runs), 0) {
+		zlog.Warn("should be zero:", sleep)
+	}
+	compare(t, "stopAndCheckScheduler: length of executors should be zero", len(s.executors), 0)
+	if s.timerOn {
+		t.Error("timers still on a while after stop")
+	}
 }
 
 func TestAll(t *testing.T) {
