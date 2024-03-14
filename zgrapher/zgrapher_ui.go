@@ -16,7 +16,6 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
@@ -50,6 +49,12 @@ type GraphView struct {
 func NewGraphView(id, grapherName string, pixelHeight int) *GraphView {
 	v := &GraphView{}
 	v.Init(v, id, grapherName, pixelHeight)
+	v.AddOnRemoveFunc(func() {
+		// zlog.Info("GraphView remove", id, grapherName)
+		for _, img := range v.drawn {
+			img.Release()
+		}
+	})
 	return v
 }
 
@@ -145,16 +150,21 @@ func (v *GraphView) requestParts() {
 		folderName := makeCacheFoldername(v.SecondsPerPixel, v.grapherName)
 		surl := zfile.JoinPathParts(v.ImagePathPrefix, "caches", folderName, name)
 		surl += "?tick=" + zstr.GenerateRandomHexBytes(12)
-		// zlog.Info("Request:", r, surl)
 		zimage.FromPath(surl, false, func(img *zimage.Image) {
 			if img == nil {
-				zlog.Info("No image request parts:", surl)
-				if !first {
-					v.timer.StartIn(5, func() {
-						v.requestParts()
-					})
-				}
+				// zlog.Info("No image request parts:", surl, v.On)
+				// if !first {
+				v.timer.StartIn(5, func() {
+					v.requestParts()
+				})
+				// }
 				return
+			}
+			// zlog.Info("Got image request part:", surl)
+			old := v.drawn[name]
+			if old != nil {
+				// zlog.Info("GraphView remove old image", v.grapherName, name, zlog.Pointer(old), zlog.Pointer(img))
+				old.Release()
 			}
 			v.drawn[name] = img // set img before expose, expose is immediate draw on web at least
 			v.Expose()
