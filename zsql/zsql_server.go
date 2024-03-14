@@ -123,8 +123,9 @@ func FieldPointersFromStruct(istruct any, skip []string) (pointers []any) {
 func FieldValuesFromStruct(istruct any, skip []string) (values []any) {
 	ForEachColumn(istruct, skip, "", func(each ColumnInfo) bool {
 		a := each.ReflectValue.Interface()
-		_, isScanner := a.(sql.Scanner)
-		if !isScanner && each.ReflectValue.Kind() == reflect.Slice {
+		_, isValuer := a.(driver.Valuer)
+		// zlog.Info("FieldValuesFromStruct:", isValuer, each.ReflectValue.Kind(), each.ReflectValue.Type(), each.Column)
+		if !isValuer && each.ReflectValue.Kind() == reflect.Slice {
 			a = pq.Array(a)
 		}
 		values = append(values, a)
@@ -292,14 +293,24 @@ func getPrimaryColumn(row any) (column string, val any, err error) {
 	return column, val, err
 }
 
-func setUserIDInRows[S any](rows []S, userToken string) error {
-	userID, err := GetUserIDFromTokenFunc(userToken)
+func SetUserIDInRows[S any](rows []S, token string) error {
+	userID, err := GetUserIDFromTokenFunc(token)
 	if err != nil {
 		return err
 	}
+	var a any
+	a = &rows[0]
+	_, has := a.(UserIDSetter)
+	if has {
+		for i := range rows {
+			a = &rows[i]
+			a.(UserIDSetter).SetUserID(userID)
+		}
+		return nil
+	}
 	finfo, found := FieldForColumnName(rows[0], nil, "", "userid")
 	if !found {
-		return errors.New("No userid column")
+		return errors.New("No userid column or UserIDSetter")
 	}
 	for i := range rows {
 		finfo := zreflect.FieldForIndex(&rows[i], zfields.FlattenIfAnonymousOrZUITag, finfo.FieldIndex)
@@ -319,7 +330,7 @@ func UpdateRows[S any](table string, rows []S, userToken string) error {
 		return err
 	}
 	if userToken != "" {
-		err = setUserIDInRows[S](rows, userToken)
+		err = SetUserIDInRows[S](rows, userToken)
 		if err != nil {
 			return err
 		}
@@ -333,7 +344,7 @@ func UpdateRows[S any](table string, rows []S, userToken string) error {
 		query := "UPDATE " + table + " SET " + set + " WHERE " + idColumn + fmt.Sprintf("=$%d", len(vals))
 		query = CustomizeQuery(query, Main.Type)
 		_, err := Main.DB.Exec(query, vals...)
-		zlog.Info("SQLCalls.UpdateRows:", query, vals, err)
+		zlog.Info("SQLCalls.UpdateRows2:", query, vals, err)
 		if err != nil {
 			return err
 		}
@@ -350,7 +361,7 @@ func InsertRows[S any](table string, rows []S, skipColumns []string, userToken s
 		return 0, err
 	}
 	if userToken != "" {
-		err = setUserIDInRows[S](rows, userToken)
+		err = SetUserIDInRows[S](rows, userToken)
 		if err != nil {
 			return 0, err
 		}
@@ -390,7 +401,7 @@ func SelectSlicesOfAny[S any](base *Base, resultSlice *[]S, q QueryBase) error {
 		query += " " + q.Constraints
 	}
 	query = CustomizeQuery(query, base.Type)
-	zlog.Info("SelectSlicesOfAny:", query)
+	// zlog.Info("SelectSlicesOfAny:", query)
 	rows, err := base.DB.Query(query)
 	if err != nil {
 		return zlog.Error(err, "select", query)
