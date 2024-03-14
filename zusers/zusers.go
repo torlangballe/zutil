@@ -48,10 +48,6 @@ type AllUserInfo struct {
 	Sessions int `zui:"static,width:70"`
 }
 
-type UserIDer interface {
-	GetUserID() int64
-}
-
 const (
 	AdminPermission = "admin" // This is someone who can add/delete users, set permissions
 	AdminStar       = "★"

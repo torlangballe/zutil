@@ -43,6 +43,16 @@ type QueryBase struct {
 
 type BaseType int
 
+// UserIDer is an interface a struct can get a field that represents a user id with.
+type UserIDer interface {
+	GetUserID() int64
+}
+
+// UserIDSetter is an interface a struct can set a field that represents a user id with.
+type UserIDSetter interface {
+	SetUserID(int64)
+}
+
 const (
 	NoType          = 0
 	SQLite BaseType = iota + 1
@@ -217,7 +227,7 @@ func ForEachColumn(s interface{}, skip []string, prefix string, got func(each Co
 func Value(a any) (d driver.Value, err error) {
 	// return json.Marshal(a)
 	v, err := json.Marshal(a)
-	zlog.Info("SQL Value", string(v), err)
+	// zlog.Info("SQL Value", string(v), err)
 	return v, err
 }
 
