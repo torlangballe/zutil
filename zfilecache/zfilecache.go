@@ -49,6 +49,7 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if c.InterceptServeFunc != nil && c.InterceptServeFunc(w, req, file) {
 		return
 	}
+	// zlog.Info("zfilecache serve:", req.URL.String(), zfile.Exists(file))
 	if c.ServeEmptyImage && !zfile.Exists(file) {
 		zlog.Info("Serve empty cached image:", file)
 		file = zrest.StaticFolderPathFunc("/images/empty.png")
