@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/torlangballe/zutil/zwords"
 )
@@ -30,7 +31,7 @@ func PrintMemoryStats() {
 	if GetOpenFileCountFunc != nil {
 		files = GetOpenFileCountFunc()
 	}
-	fmt.Printf("MemAlloc:%s TotalAlloc:%s Sys:%s RSS:%s NumGC:%d Gos:%d Files:%d\n", memStr(m.Alloc), memStr(m.TotalAlloc), memStr(m.Sys), memStr(rss), m.NumGC, goroutines, files)
+	fmt.Printf("MemAlloc:%s: %s TotalAlloc:%s Sys:%s RSS:%s NumGC:%d Gos:%d Files:%d\n", time.Now().Local().Format("15:04"), memStr(m.Alloc), memStr(m.TotalAlloc), memStr(m.Sys), memStr(rss), m.NumGC, goroutines, files)
 }
 
 func PrintAllGoroutines() {
