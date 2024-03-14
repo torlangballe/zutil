@@ -21,12 +21,12 @@ type Info struct {
 	Version    string
 }
 
-func SetFromLines(lines string) {
-	zstr.RangeStringLines(lines, true, func(s string) bool {
+func SetFromLine(line, sep, eq string) {
+	for _, s := range strings.Split(line, sep) {
 		var name, val string
 		if !zstr.SplitN(s, ":", &name, &val) {
 			zlog.Error("bad build arg:", s)
-			return true
+			return
 		}
 		switch name {
 		case "BRANCH":
@@ -35,6 +35,7 @@ func SetFromLines(lines string) {
 			Build.CommitHash = val
 		case "AT":
 			Build.At, _ = time.Parse(time.RFC3339, val)
+			zlog.Info("BuildAT:", val, Build.At)
 		case "USER":
 			Build.User = val
 		case "HOST":
@@ -42,14 +43,7 @@ func SetFromLines(lines string) {
 		case "VERSION":
 			Build.Version = val
 		}
-		return true
-	})
-}
-
-func SetFromLine(lines string, linefeed, space string) {
-	str := strings.Replace(lines, linefeed, "\n", -1)
-	str = strings.Replace(str, space, " ", -1)
-	SetFromLines(str)
+	}
 }
 
 func (info Info) ZUIString() string {
