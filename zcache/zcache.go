@@ -92,7 +92,7 @@ func (c *Cache) purge() {
 	c.lock.Lock()
 	for key, i := range c.items {
 		if time.Since(i.touched) >= i.expiry {
-			i.release()
+			c.release(i)
 			delete(c.items, key)
 		}
 	}
@@ -129,7 +129,7 @@ func (c *Cache) Remove(key string) {
 	c.lock.Lock()
 	i, got := c.items[key]
 	if got {
-		i.release()
+		c.release(i)
 		delete(c.items, key)
 	}
 	c.lock.Unlock()
@@ -145,11 +145,13 @@ func (c *Cache) ForAll(f func(key string, value interface{}) bool) {
 	c.lock.Unlock()
 }
 
-func (i *item) release() {
+func (c *Cache) release(i *item) {
+	c.lock.Lock()
 	if i.value != nil {
 		releaser, _ := i.value.(Releaser)
 		if releaser != nil {
 			releaser.Release()
 		}
 	}
+	c.lock.Unlock()
 }
