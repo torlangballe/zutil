@@ -35,7 +35,6 @@ func SetFromLine(line, sep, eq string) {
 			Build.CommitHash = val
 		case "AT":
 			Build.At, _ = time.Parse(time.RFC3339, val)
-			zlog.Info("BuildAT:", val, Build.At)
 		case "USER":
 			Build.User = val
 		case "HOST":
