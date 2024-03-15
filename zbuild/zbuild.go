@@ -21,6 +21,8 @@ type Info struct {
 	Version    string
 }
 
+const RFC3339NoZ = "2006-01-02T15:04:0507:00"
+
 func SetFromLine(line, sep, eq string) {
 	for _, s := range strings.Split(line, sep) {
 		var name, val string
@@ -34,7 +36,7 @@ func SetFromLine(line, sep, eq string) {
 		case "HASH":
 			Build.CommitHash = val
 		case "AT":
-			Build.At, _ = time.Parse(time.RFC3339, val)
+			Build.At, _ = time.Parse(RFC3339NoZ, val)
 		case "USER":
 			Build.User = val
 		case "HOST":
