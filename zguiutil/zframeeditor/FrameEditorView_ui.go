@@ -251,6 +251,10 @@ func (v *FrameEditorView) posToView(pos zgeo.Pos) zgeo.Pos {
 	return pos.DividedByD(v.divSize)
 }
 
+func (v *FrameEditorView) rectToView(r zgeo.Rect) zgeo.Rect {
+	return r.DividedByD(v.divSize)
+}
+
 func (v *FrameEditorView) viewToPos(pos zgeo.Pos) zgeo.Pos {
 	return pos.TimesD(v.divSize)
 }
@@ -279,7 +283,7 @@ func (v *FrameEditorView) addBox() {
 }
 
 func (v *FrameEditorView) drawGrabRect(canvas *zcanvas.Canvas, box *Box, corner zgeo.Alignment) {
-	center := box.Corners[corner]
+	center := v.posToView(box.Corners[corner])
 	r := zgeo.RectFromWH(6, 6)
 	r = r.Centered(center)
 	path := zgeo.PathNewRect(r, zgeo.Size{})
@@ -317,7 +321,7 @@ func (v *FrameEditorView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zvie
 		v.drawGrabRect(canvas, &box, zgeo.TopRight)
 		v.drawGrabRect(canvas, &box, zgeo.BottomLeft)
 		v.drawGrabRect(canvas, &box, zgeo.BottomRight)
-		tinfo.Rect = box.Bounds().ExpandedD(-5)
+		tinfo.Rect = v.rectToView(box.Bounds()).ExpandedD(-5)
 		tinfo.Text = box.Name
 		tinfo.Color = box.Color
 		tinfo.Draw(canvas)
