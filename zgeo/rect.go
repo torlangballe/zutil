@@ -407,6 +407,9 @@ func (r Rect) Minus(a Rect) Rect    { return RectFromMinMax(r.Pos.Minus(a.Pos), 
 func (r Rect) DividedBy(a Size) Rect {
 	return RectFromMinMax(r.Min().DividedBy(a.Pos()), r.Max().DividedBy(a.Pos()))
 }
+func (r Rect) DividedByD(d float64) Rect {
+	return r.DividedBy(SizeBoth(d))
+}
 func (r Rect) TimesD(d float64) Rect {
 	return RectFromMinMax(r.Min().TimesD(d), r.Max().TimesD(d))
 }
