@@ -21,7 +21,7 @@ type Info struct {
 	Version    string
 }
 
-const RFC3339NoZ = "2006-01-02T15:04:0507:00"
+const RFC3339NoZ = "2006-01-02T15:04:05-07:00"
 
 func SetFromLine(line, sep, eq string) {
 	for _, s := range strings.Split(line, sep) {
@@ -36,7 +36,9 @@ func SetFromLine(line, sep, eq string) {
 		case "HASH":
 			Build.CommitHash = val
 		case "AT":
-			Build.At, _ = time.Parse(RFC3339NoZ, val)
+			var err error
+			Build.At, err = time.Parse(RFC3339NoZ, val)
+			zlog.Info("AT:", Build.At, val, err)
 		case "USER":
 			Build.User = val
 		case "HOST":
