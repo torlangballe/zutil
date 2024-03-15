@@ -48,11 +48,6 @@ type UserIDer interface {
 	GetUserID() int64
 }
 
-// UserIDSetter is an interface a struct can set a field that represents a user id with.
-type UserIDSetter interface {
-	SetUserID(int64)
-}
-
 const (
 	NoType          = 0
 	SQLite BaseType = iota + 1
@@ -183,6 +178,7 @@ type ColumnInfo struct {
 	zreflect.FieldInfo
 	Column      string
 	IsPrimary   bool
+	IsUserID    bool
 	ColumnIndex int
 }
 
@@ -219,6 +215,7 @@ func ForEachColumn(s interface{}, skip []string, prefix string, got func(each Co
 		}
 		colInfo.ColumnIndex = i
 		colInfo.IsPrimary = zstr.IndexOf("primary", dbTags) > 0
+		colInfo.IsUserID = zstr.IndexOf("userid", dbTags) > 0
 		i++
 		return got(colInfo)
 	})

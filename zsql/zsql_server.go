@@ -275,40 +275,33 @@ func (j *JSONer) Scan(val any) error {
 	return nil
 }
 
-func getPrimaryColumn(row any) (column string, val any, err error) {
-	var got bool
+func getSpecialColumns(row any) (primaryCol, uidCol string, pval, uval any, err error) {
+	var got int
 	ForEachColumn(row, nil, "", func(each ColumnInfo) bool {
 		// zlog.Info("Each:", each.Column, each.IsPrimary)
 		if each.IsPrimary {
-			column = each.Column
-			val = each.ReflectValue.Interface()
-			got = true
-			return false
+			primaryCol = each.Column
+			pval = each.ReflectValue.Interface()
+			got++
+			return got != 2
+		}
+		if each.IsUserID {
+			uidCol = each.Column
+			uval = each.ReflectValue.Interface()
+			got++
+			return got != 2
 		}
 		return true
 	})
-	if !got {
-		err = errors.New("primary column not found")
-	}
-	return column, val, err
+	return primaryCol, uidCol, pval, uval, err
 }
 
-func SetUserIDInRows[S any](rows []S, token string) error {
+func setUserIDInRows[S any](rows []S, uidColumn, token string) error {
 	userID, err := GetUserIDFromTokenFunc(token)
 	if err != nil {
 		return err
 	}
-	var a any
-	a = &rows[0]
-	_, has := a.(UserIDSetter)
-	if has {
-		for i := range rows {
-			a = &rows[i]
-			a.(UserIDSetter).SetUserID(userID)
-		}
-		return nil
-	}
-	finfo, found := FieldForColumnName(rows[0], nil, "", "userid")
+	finfo, found := FieldForColumnName(rows[0], nil, "", uidColumn)
 	if !found {
 		return errors.New("No userid column or UserIDSetter")
 	}
@@ -320,28 +313,33 @@ func SetUserIDInRows[S any](rows []S, token string) error {
 }
 
 func UpdateRows[S any](table string, rows []S, userToken string) error {
-	var idColumn string
-	var id any
 	if len(rows) == 0 {
 		return nil
 	}
-	idColumn, id, err := getPrimaryColumn(rows[0])
+	idCol, userIDCol, id, userID, err := getSpecialColumns(rows[0])
 	if err != nil {
 		return err
 	}
+
+	skip := []string{idCol}
+	if userIDCol != "" {
+		skip = append(skip, userIDCol)
+	}
 	if userToken != "" {
-		err = SetUserIDInRows[S](rows, userToken)
+		userID, err = GetUserIDFromTokenFunc(userToken)
 		if err != nil {
 			return err
 		}
 	}
-	skip := []string{idColumn}
 	zlog.Info("zsql.UpdateRows:", table, len(rows))
 	for _, row := range rows {
 		set := FieldSettingToParametersFromStruct(row, skip, "", 1)
 		vals := FieldValuesFromStruct(row, skip)
 		vals = append(vals, id)
-		query := "UPDATE " + table + " SET " + set + " WHERE " + idColumn + fmt.Sprintf("=$%d", len(vals))
+		query := "UPDATE " + table + " SET " + set + " WHERE " + idCol + fmt.Sprintf("=$%d", len(vals))
+		if userIDCol != "" {
+			query += fmt.Sprintf(" AND %s=%v", userIDCol, userID)
+		}
 		query = CustomizeQuery(query, Main.Type)
 		_, err := Main.DB.Exec(query, vals...)
 		zlog.Info("SQLCalls.UpdateRows2:", query, vals, err)
@@ -356,20 +354,20 @@ func InsertRows[S any](table string, rows []S, skipColumns []string, userToken s
 	if len(rows) == 0 {
 		return 0, nil
 	}
-	idColumn, _, err := getPrimaryColumn(rows[0])
+	idCol, uidCol, _, _, err := getSpecialColumns(rows[0])
 	if err != nil {
 		return 0, err
 	}
 	if userToken != "" {
-		err = SetUserIDInRows[S](rows, userToken)
+		err = setUserIDInRows[S](rows, uidCol, userToken)
 		if err != nil {
 			return 0, err
 		}
 	}
 	var lastID int64
-	skip := append(skipColumns, idColumn)
+	skip := append(skipColumns, idCol)
 	params := FieldParametersFromStruct(rows[0], skip, 1)
-	query := "INSERT INTO " + table + " (" + ColumnNamesStringFromStruct(rows[0], skip, "") + ") VALUES (" + params + ") RETURNING " + idColumn
+	query := "INSERT INTO " + table + " (" + ColumnNamesStringFromStruct(rows[0], skip, "") + ") VALUES (" + params + ") RETURNING " + idCol
 	query = CustomizeQuery(query, Main.Type)
 	for _, row := range rows {
 		vals := FieldValuesFromStruct(row, skip)
