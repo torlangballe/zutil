@@ -325,13 +325,13 @@ func UpdateRows[S any](table string, rows []S, userToken string) error {
 	if userIDCol != "" {
 		skip = append(skip, userIDCol)
 	}
-	if userToken != "" {
+	if userID == 0 && userToken != "" {
 		userID, err = GetUserIDFromTokenFunc(userToken)
 		if err != nil {
 			return err
 		}
 	}
-	zlog.Info("zsql.UpdateRows:", table, len(rows))
+	// zlog.Info("zsql.UpdateRows:", table, len(rows))
 	for _, row := range rows {
 		set := FieldSettingToParametersFromStruct(row, skip, "", 1)
 		vals := FieldValuesFromStruct(row, skip)
@@ -342,7 +342,7 @@ func UpdateRows[S any](table string, rows []S, userToken string) error {
 		}
 		query = CustomizeQuery(query, Main.Type)
 		_, err := Main.DB.Exec(query, vals...)
-		zlog.Info("SQLCalls.UpdateRows2:", query, vals, err)
+		// zlog.Info("SQLCalls.UpdateRows2:", query, vals, err)
 		if err != nil {
 			return err
 		}
@@ -358,7 +358,7 @@ func InsertRows[S any](table string, rows []S, skipColumns []string, userToken s
 	if err != nil {
 		return 0, err
 	}
-	if userToken != "" {
+	if userToken != "" && uidCol != "" {
 		err = setUserIDInRows[S](rows, uidCol, userToken)
 		if err != nil {
 			return 0, err
@@ -399,6 +399,7 @@ func SelectSlicesOfAny[S any](base *Base, resultSlice *[]S, q QueryBase) error {
 		query += " " + q.Constraints
 	}
 	query = CustomizeQuery(query, base.Type)
+
 	// zlog.Info("SelectSlicesOfAny:", query)
 	rows, err := base.DB.Query(query)
 	if err != nil {
