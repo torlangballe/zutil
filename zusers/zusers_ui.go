@@ -29,7 +29,6 @@ import (
 
 const (
 	usernameKey = "zusers.AuthUserName"
-	tokenKey    = "zusers.AuthToken"
 )
 
 var (
@@ -198,10 +197,6 @@ func validateFields(user, pass *ztext.TextView, login, register *zbutton.Button)
 	}
 	login.SetUsable(usable)
 	register.SetUsable(usable)
-}
-
-func StoreTokenInKeyValueStore(token string) {
-	zkeyvalue.DefaultStore.SetString(token, tokenKey, true)
 }
 
 func callAuthenticate(view zview.View, a Authentication, got func()) {

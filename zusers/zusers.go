@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -51,6 +52,7 @@ type AllUserInfo struct {
 const (
 	AdminPermission = "admin" // This is someone who can add/delete users, set permissions
 	AdminStar       = "★"
+	tokenKey        = "zusers.AuthToken"
 )
 
 var (
@@ -79,4 +81,13 @@ func (u *User) IsAdmin() bool {
 
 func (u *User) IsSuper() bool {
 	return u.ID == 1
+}
+
+func StoreTokenInKeyValueStore(token string) {
+	zkeyvalue.DefaultStore.SetString(token, tokenKey, true)
+}
+
+func GetTokenInKeyValueStore() string {
+	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
+	return token
 }
