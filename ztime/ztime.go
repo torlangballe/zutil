@@ -27,6 +27,7 @@ const (
 	JavascriptISO       = "2006-01-02T15:04:05.999Z"
 	FullCompact         = "06-Jan-02T15:04:05.9"
 	NiceFormat          = "15:04:05 02-Jan-2006" // MaxSize of GetNice()
+	RFC3339NoZ          = "2006-01-02T15:04:05-07:00"
 
 	Day  = time.Hour * time.Duration(24)
 	Week = Day * time.Duration(7)

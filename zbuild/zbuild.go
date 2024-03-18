@@ -6,6 +6,7 @@ import (
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 var (
@@ -21,8 +22,6 @@ type Info struct {
 	Version    string
 }
 
-const RFC3339NoZ = "2006-01-02T15:04:05-07:00"
-
 func SetFromLine(line, sep, eq string) {
 	for _, s := range strings.Split(line, sep) {
 		var name, val string
@@ -37,7 +36,7 @@ func SetFromLine(line, sep, eq string) {
 			Build.CommitHash = val
 		case "AT":
 			var err error
-			Build.At, err = time.Parse(RFC3339NoZ, val)
+			Build.At, err = time.Parse(ztime.RFC3339NoZ, val)
 			zlog.Info("AT:", Build.At, val, err)
 		case "USER":
 			Build.User = val
