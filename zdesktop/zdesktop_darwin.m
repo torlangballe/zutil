@@ -244,8 +244,10 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
         return "";
     }
 
-    NSLog(@"getWindowIDs: %ld\n", (long)CFArrayGetCount(windowList));
-
+    long winCount = (long)CFArrayGetCount(windowList);
+    if (winCount > 20) {
+        NSLog(@"getWindowIDs: %ld\n", winCount);
+    }
     if (gotWin != NULL)  {
         for (NSDictionary* entry in (__bridge NSArray*)windowList) {
             struct WinInfo w;
@@ -345,7 +347,7 @@ WinIDInfo WindowGetIDScaleAndRectForTitle(const char *title) {
         NSLog(@"getwin err: %s\n", got.err);
         return got;
     }
-    NSLog(@"got win: %@ %g %g %g %g\n", find.title, (float)find.rect.origin.x, (float)find.rect.origin.y, (float)find.rect.size.width, (float)find.rect.size.height);
+    // NSLog(@"got win: %@ %g %g %g %g\n", find.title, (float)find.rect.origin.x, (float)find.rect.origin.y, (float)find.rect.size.width, (float)find.rect.size.height);
     NSScreen *screen = getBestScreenForBounds(find.rect);
     got.scale = screen.backingScaleFactor;
     CFRelease(screen);
