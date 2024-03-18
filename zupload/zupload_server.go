@@ -114,9 +114,12 @@ func handleUpload(w http.ResponseWriter, req *http.Request) {
 	up.Text = values.Get("text")
 	up.Password = req.Header.Get("X-Password")
 	token := req.Header.Get("X-Token")
-	if authenticator != nil && !authenticator.IsTokenValid(token) {
-		zrest.ReturnAndPrintError(w, req, http.StatusUnauthorized)
-		return
+	if authenticator != nil {
+		valid, _ := authenticator.IsTokenValid(token)
+		if !valid {
+			zrest.ReturnAndPrintError(w, req, http.StatusUnauthorized)
+			return
+		}
 	}
 	reader := req.Body
 

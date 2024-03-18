@@ -40,6 +40,7 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var cp callPayloadReceive
 	var rp receivePayload
 	var token string
+	var userID int64
 
 	// zlog.Warn("zrpc.doServeHTTP:", req.URL.String(), zlog.Pointer(e))
 	// defer zlog.Info("zrpc.doServeHTTP DONE:", req.URL.Path, req.URL.Query())
@@ -58,7 +59,9 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	} else {
 		token = cp.Token
 		if e.Authenticator != nil && e.methodNeedsAuth(cp.Method) {
-			if !e.Authenticator.IsTokenValid(token) {
+			var valid bool
+			valid, userID = e.Authenticator.IsTokenValid(token)
+			if !valid {
 				zlog.Error("token not valid: '"+token+"'", zlog.Full(e.Authenticator), req.RemoteAddr, req.URL.Path, req.URL.Query())
 				rp.TransportError = "authentication error"
 				rp.AuthenticationInvalid = true
@@ -79,6 +82,7 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 			ci.Type = "zrpc"
 			ci.ClientID = cp.ClientID
 			ci.Token = token
+			ci.UserID = userID
 			ci.UserAgent = req.UserAgent()
 			ci.IPAddress = req.RemoteAddr
 			sdate := req.Header.Get(dateHeaderID)

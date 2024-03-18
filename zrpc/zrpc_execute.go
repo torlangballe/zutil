@@ -12,7 +12,7 @@ import (
 )
 
 type TokenAuthenticator interface {
-	IsTokenValid(token string) bool
+	IsTokenValid(token string) (bool, int64) 
 }
 
 type Executor struct {

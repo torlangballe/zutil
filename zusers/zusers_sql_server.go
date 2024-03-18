@@ -110,13 +110,16 @@ func (s *SQLServer) GetUserForToken(token string) (user User, err error) {
 	return s.GetUserForID(id)
 }
 
-func (s *SQLServer) IsTokenValid(token string) bool {
-	var exists bool
-	squery := "SELECT true FROM zuser_sessions WHERE token=$1"
+func (s *SQLServer) IsTokenValid(token string) (bool, int64) {
+	var userID int64
+	squery := "SELECT userid FROM zuser_sessions WHERE token=$1"
 	squery = s.customizeQuery(squery)
 	row := s.DB.QueryRow(squery, token)
-	row.Scan(&exists)
-	return exists
+	err := row.Scan(&userID)
+	if err == sql.ErrNoRows {
+		return false, 0
+	}
+	return true, userID
 }
 
 func (s *SQLServer) GetUserForID(id int64) (User, error) {

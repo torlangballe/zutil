@@ -71,12 +71,10 @@ func NewReverseClienter(executor *Executor) *ReverseClienter {
 	ztimer.RepeatForever(PollRestartSecs+5, func() {
 		r.allReverseClients.ForAll(func(cid string, c *ReverseClient) {
 			if time.Since(c.LastPolled) > ztime.SecondsDur(PollRestartSecs+5) {
-				var str string
 				if !c.permanent {
-					str = "removed"
 					RemoveReverseClient(r, cid)
 				}
-				zlog.Info("zrpc: Unresponsive client from allReverseClients", c.permanent, cid, c.LastPolled, str, r.allReverseClients.Count())
+				//!! zlog.Info("zrpc: Unresponsive client from allReverseClients", c.permanent, cid, c.LastPolled, str, r.allReverseClients.Count())
 			}
 		})
 	})
@@ -157,7 +155,7 @@ func (r *ReverseClienter) findOrAddReverseClient(receiverID string, ci *ClientIn
 			zlog.Error("findOrAddReverseClient ci=nil: no reverse client for id:", receiverID)
 			return nil
 		}
-		zlog.Warn("Add Rerverse Client:", receiverID, ci.Token)
+		// zlog.Warn("Add Rerverse Client:", receiverID, ci.Token)
 		rc = NewReverseClient(r, receiverID, ci.Token, false)
 		if r.HandleNewReverseReceiverFunc != nil {
 			go r.HandleNewReverseReceiverFunc(receiverID, rc, ci)
