@@ -59,8 +59,10 @@ func (m *ExpiringMap[K, V]) SetForever(k K, v V) {
 func (m *ExpiringMap[K, V]) get(k K, touch bool) (V, bool) {
 	val, ok := m.lockedMap.Get(k)
 	if ok {
+		// zlog.Info("Peek:", k, ztime.Since(val.touched), m.secsToLive)
 		if ztime.Since(val.touched) > m.secsToLive {
 			m.lockedMap.Remove(k)
+			return val.value, false
 		} else {
 			if touch {
 				val.touched = time.Now()
