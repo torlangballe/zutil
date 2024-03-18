@@ -43,7 +43,7 @@ const (
 	AndroidType OSType = "android"
 	WindowsType OSType = "windows"
 	LinuxType   OSType = "linux"
-	JSType      OSType = "js"
+	WebType     OSType = "web"
 
 	ARM64Type            ArchitectureType = "arm64"
 	AMD64Type            ArchitectureType = "amd64"
@@ -52,7 +52,7 @@ const (
 )
 
 // Platform is the surface-system we are running on.
-// For wasm in browser this is JSType, not underlying os browser is running on
+// For wasm in browser this is WebType, not underlying os browser is running on
 func Platform() OSType {
 	switch runtime.GOOS {
 	case "windows":
@@ -60,7 +60,7 @@ func Platform() OSType {
 	case "darwin":
 		return MacOSType
 	case "js":
-		return JSType
+		return WebType
 	case "android":
 		return AndroidType
 	case "linux":

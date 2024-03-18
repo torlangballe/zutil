@@ -5,12 +5,21 @@ import (
 	"time"
 
 	ua "github.com/mileusna/useragent"
+	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 // https://developer.mozilla.org/en-US/docs/Web/API/Navigator - info about browser/dev
 
 var userAgent *ua.UserAgent
+
+func init() {
+	if OS() == MacOSType && WasmBrowser() == "safari" {
+		zgeo.SetSafariDefaultFont()
+	}
+}
 
 func getUserAgentInfo() *ua.UserAgent {
 	if userAgent == nil {
@@ -159,5 +168,11 @@ func HardwareTypeAndVersion() (string, float32) {
 }
 
 func UUID() string {
-	return "01234567-89AB-CDEF-0123-456789ABCDEF"
+	const webHardwareIDKey = "zutil.zdevice.WebHardwareIDKey"
+	id, _ := zkeyvalue.DefaultStore.GetString(webHardwareIDKey)
+	if id == "" {
+		id = zstr.CreateGUUID()
+		zkeyvalue.DefaultStore.SetString(id, webHardwareIDKey, true)
+	}
+	return id
 }
