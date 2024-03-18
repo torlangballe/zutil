@@ -21,6 +21,7 @@ func GetAll() []Screen {
 	dpr := win.Get("devicePixelRatio").Float()
 	m.Rect = zgeo.RectMake(0, 0, w, h)
 	m.Scale = math.Round(dpr)
+	m.ID = "1"
 	if zdevice.OS() == zdevice.MacOSType {
 		// zlog.Info("SCALE:", m.Scale, win.Get("screen").Get("height").Float(), win.Get("devicePixelRatio").Float())
 		m.Scale = 2
