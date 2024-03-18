@@ -22,8 +22,38 @@ type OnceWait struct {
 	wg     sync.WaitGroup
 }
 
-// type TimedMutex struct {
-// 	sync.Mutex
+// type TimedMutex chan struct{}
+
+// func NewTimedMutex() TimedMutex {
+// 	m := make(chan struct{}, 1)
+// 	return m
+// }
+
+// func (m TimedMutex) Lock() error {
+// 	return m.lock(false)
+// }
+
+// func (m TimedMutex) FailLock() error {
+// 	return m.lock(true)
+// }
+
+// func (m TimedMutex) lock(fail bool) error {
+// 	select {
+// 	case m <- struct{}{}:
+// 		break
+// 		// lock acquired
+// 	case <-time.After(time.Second * 10):
+// 		err := zlog.NewError("lock timed out")
+// 		if fail {
+// 			return err
+// 		}
+// 		zlog.Error(err, zlog.CallingStackString())
+// 	}
+// 	return nil
+// }
+
+// func (m TimedMutex) Unlock() {
+// 	<-m
 // }
 
 var (
