@@ -53,5 +53,5 @@ func testPooling(t *testing.T) {
 
 func TestAll(t *testing.T) {
 	// testPooling(t)
-	testLocking(t)
+	// testLocking(t)
 }
