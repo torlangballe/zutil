@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
@@ -464,4 +467,38 @@ func HashAnyToInt64(a interface{}, add string) int64 {
 	str := fmt.Sprintf("%v", a) + add
 	// fmt.Println("HashAnyToInt64", str)
 	return zint.HashTo64(str)
+}
+
+// SetAny tries to set anyPtr using string for int, float, string and bool types
+func SetAnyFomString(anyPtr any, fromStr string) error {
+	aval := reflect.ValueOf(anyPtr).Elem()
+	kind := KindFromReflectKindAndType(aval.Kind(), aval.Type())
+	switch kind {
+	case KindInt, KindFloat:
+		if kind == KindFloat {
+			n, err := strconv.ParseFloat(fromStr, 64)
+			if err != nil {
+				return zlog.Error(err, fromStr)
+			}
+			zfloat.SetAny(aval.Interface(), n)
+		} else {
+			n, err := strconv.ParseInt(fromStr, 10, 64)
+			if err != nil {
+				return zlog.Error(err, fromStr)
+			}
+			zint.SetAny(aval.Interface(), n)
+		}
+
+	case KindString:
+		aval.SetString(fromStr)
+
+	case KindBool:
+		val, err := zbool.FromStringWithError(fromStr)
+		if err != nil {
+			return err
+		}
+		bptr := aval.Interface().(*bool)
+		*bptr = val
+	}
+	return nil
 }
