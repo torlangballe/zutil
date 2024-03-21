@@ -312,7 +312,7 @@ func ServeHTTPInBackground(address string, certificatesStubPath string, handler 
 	if certificatesStubPath != "" {
 		fCRT = certificatesStubPath + ".crt"
 		fKey = certificatesStubPath + ".key"
-		if zfile.NotExist(fCRT) || zfile.NotExist(fKey) {
+		if zfile.NotExists(fCRT) || zfile.NotExists(fKey) {
 			zlog.Error("missing certificate files:", fCRT, fKey)
 			return
 		}

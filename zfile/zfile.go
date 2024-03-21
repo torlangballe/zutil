@@ -60,7 +60,7 @@ func Exists(fpath string) bool {
 	return err == nil
 }
 
-func NotExist(fpath string) bool { // not same as !DoesFileExist...
+func NotExists(fpath string) bool { // not same as !DoesFileExist...
 	if _, err := os.Stat(fpath); os.IsNotExist(err) {
 		return true
 	}
@@ -333,7 +333,7 @@ func Walk(folder, wildcards string, opts WalkOptions, got func(fpath string, inf
 func GetFilesFromPath(path string, opts WalkOptions) (files []string, err error) {
 	var wild string
 	dir, name := filepath.Split(path)
-	if dir != "" && NotExist(dir) {
+	if dir != "" && NotExists(dir) {
 		return files, os.ErrNotExist
 	}
 	if dir == "" {

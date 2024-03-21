@@ -90,7 +90,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 			return false
 		}
 		dir := zfile.JoinPathParts(c.workDir, c.urlPrefix, c.cacheName)
-		if zfile.NotExist(dir) {
+		if zfile.NotExists(dir) {
 			return true
 		}
 		cutoff := time.Now().Add(-c.DeleteAfter)

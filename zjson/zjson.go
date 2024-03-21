@@ -11,7 +11,7 @@ import (
 )
 
 func UnmarshalFromFile(to interface{}, fpath string, allowNoFile bool) error {
-	if allowNoFile && zfile.NotExist(fpath) {
+	if allowNoFile && zfile.NotExists(fpath) {
 		return nil
 	}
 	file, err := os.Open(fpath)

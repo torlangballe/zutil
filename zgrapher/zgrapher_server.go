@@ -104,7 +104,7 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 	}
 	// zlog.Info("zgrapher: No serve2?:", fullName, job.storageName())
 	if job.storageName() == fullName {
-		if zfile.NotExist(file) {
+		if zfile.NotExists(file) {
 			zlog.Info("zgrapher: Serve current: Not exists, so render", fullName, job.storageName())
 		} else {
 			return false // it's current, just render as usual
