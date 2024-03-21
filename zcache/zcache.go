@@ -146,12 +146,10 @@ func (c *Cache) ForAll(f func(key string, value interface{}) bool) {
 }
 
 func (c *Cache) release(i *item) {
-	c.lock.Lock()
 	if i.value != nil {
 		releaser, _ := i.value.(Releaser)
 		if releaser != nil {
 			releaser.Release()
 		}
 	}
-	c.lock.Unlock()
 }
