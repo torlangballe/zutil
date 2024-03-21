@@ -85,14 +85,13 @@ func GetScreenShot(screenID string, noScale bool) image.Image {
 	if cgImage == 0 {
 		return nil
 	}
-	iw := int(C.CGImageGetWidth(cgImage))
-	ih := int(C.CGImageGetHeight(cgImage))
 	scale := 1.0
 	if noScale {
 		scale = 1 / s.Scale
 	}
-	zlog.Info("ScreenShot:", ss, iw, ih, scale)
+	// zlog.Info("ScreenShot:", ss, iw, ih, scale)
 	// r := zgeo.Rect{Size: ss}
 	img, _ := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), zgeo.Rect{}, scale)
+	C.CGImageRelease(cgImage)
 	return img
 }
