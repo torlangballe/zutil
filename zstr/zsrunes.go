@@ -1,6 +1,9 @@
 package zstr
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 func IndexOfRuneInSet(r rune, set []rune) int {
 	for i, s := range set {
@@ -16,6 +19,7 @@ func BreakRunesIntoLines(runes []rune, breakChars string, columns int) (lines []
 		breakChars = "\n\r –-\t"
 	}
 	lastBreak := -1
+	var count int
 	for {
 		added := false
 		for i, r := range runes {
@@ -34,6 +38,11 @@ func BreakRunesIntoLines(runes []rune, breakChars string, columns int) (lines []
 			}
 		}
 		if !added {
+			break
+		}
+		count++
+		if count > 50 {
+			fmt.Println("BreakRunesIntoLines loop!", string(runes), breakChars, columns)
 			break
 		}
 	}
