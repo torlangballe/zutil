@@ -708,7 +708,6 @@ func ReplaceVariablesWithValues(text, prefix string, values map[string]string) (
 	sort.Strings(keys) // sorts the keys
 
 	for i := len(keys) - 1; i >= 0; i-- { // gets them in reverse, so StoryStartHour before StoryStart
-		//		zlog.Info("ReplaceVariablesWithValues key:", keys[i])
 		spairs[j] = prefix + keys[i]
 		spairs[j+1] = values[keys[i]]
 		j += 2

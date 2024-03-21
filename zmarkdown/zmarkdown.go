@@ -84,7 +84,7 @@ func (m *MarkdownConverter) Convert(w io.Writer, name string, output OutputType)
 	fullmd, err := m.Flatten()
 	// zlog.Info("MD:\n", fullmd)
 	if err != nil {
-		return zlog.Error(err, "building pdf", name)
+		return zlog.Error(err, "building doc", name)
 	}
 	if output == OutputMD {
 		w.Write([]byte(fullmd))

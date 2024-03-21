@@ -315,6 +315,7 @@ func RestartSelf() error {
 		return err
 	}
 	return syscall.Exec(self, args, env)
+	// do we need to exit if not windows too? Not used yet...
 }
 
 func MemoryBytesUsedByProcess(processID int64) int64 {
