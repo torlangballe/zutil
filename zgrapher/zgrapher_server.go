@@ -111,7 +111,7 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 		}
 	}
 	// zlog.Info("zgrapher: interceptServe: Name not same as current:", fullName, "!=", job.storageName())
-	t, err := time.ParseInLocation("2006-01-02T1504", date, time.Local)
+	t, err := time.ParseInLocation("2006-01-02T1504", date, time.UTC)
 	// zlog.Info("zgrapher: No serve2?:", name, t, err)
 	if zlog.OnError(err, date) {
 		return false
@@ -128,7 +128,7 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 }
 
 func (g *Grapher) startRenderLoop(windowMinutes int) {
-	s := calculateWindowStart(time.Now(), windowMinutes)
+	s := calculateWindowStart(time.Now().UTC(), windowMinutes)
 	durSecs := int(ztime.Since(s))
 	addSecs := (durSecs/g.SecondsPerPixel + 1) * g.SecondsPerPixel
 	next := s.Add(ztime.SecondsDur(float64(addSecs)))
@@ -181,7 +181,7 @@ func (g *Grapher) AddJob(job SJob) {
 	} else {
 		zlog.Assert(60%g.SecondsPerPixel == 0, g.SecondsPerPixel)
 	}
-	now := time.Now()
+	now := time.Now().UTC()
 	// zlog.Warn("JOB:", job.WindowMinutes)
 	job.CanvasStartTime = calculateWindowStart(now, job.WindowMinutes)
 	job.drawnUntil = job.CanvasStartTime
@@ -224,6 +224,7 @@ func (g *Grapher) HasJob(jobID string) bool {
 // }
 
 func clampTimeToPixels(g *Grapher, t time.Time) time.Time {
+	t = t.UTC()
 	year, month, day := t.Date()
 	hour, min, sec := t.Clock()
 	if g.SecondsPerPixel < 60 {
@@ -234,11 +235,11 @@ func clampTimeToPixels(g *Grapher, t time.Time) time.Time {
 		hour = zmath.RoundToMod(hour, g.SecondsPerPixel/3600)
 	}
 	// zlog.Warn("CLAMP:", hour, min, sec)
-	return time.Date(year, month, day, hour, min, sec, 0, t.Location())
+	return time.Date(year, month, day, hour, min, sec, 0, time.UTC)
 }
 
 func (g *Grapher) renderOldPart(job SJob, t time.Time) {
-	job.CanvasStartTime = t
+	job.CanvasStartTime = t.UTC()
 	_, has := g.renderingOldParts.GetSet(job.Job, true)
 	if has {
 		return
@@ -256,6 +257,7 @@ func (g *Grapher) renderOldPart(job SJob, t time.Time) {
 }
 
 func (g *Grapher) updateAll(now time.Time) {
+	now = now.UTC()
 	first := true
 	g.jobs.ForEach(func(id string, job *SJob) bool {
 		cstart := calculateWindowStart(now, job.WindowMinutes)
@@ -274,6 +276,7 @@ func (g *Grapher) updateAll(now time.Time) {
 }
 
 func (j *SJob) saveToCacheAtTime(g *Grapher, img *image.NRGBA, t time.Time) {
+	t = t.UTC()
 	data, err := zimage.GoImagePNGData(img)
 	if zlog.OnError(err) {
 		return

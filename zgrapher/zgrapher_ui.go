@@ -72,7 +72,7 @@ func (v *GraphView) Init(view zview.View, id, grapherName string, height int) {
 	v.Job.PixelHeight = height
 	v.Job.ID = id
 	v.TickColor = zgeo.ColorDarkGray
-	v.SetStroke(1, zgeo.ColorGray, true)
+	v.SetStroke(1, zgeo.ColorLightGray, true)
 	v.SetDrawHandler(v.draw)
 	v.drawn = map[string]*zimage.Image{}
 	v.repeater = ztimer.RepeaterNew()
@@ -82,17 +82,20 @@ func (v *GraphView) Init(view zview.View, id, grapherName string, height int) {
 
 func (v *GraphView) Update(secsPerPixel int, windowMinutes int, ticks int, on bool) bool {
 	if v.Job.WindowMinutes != windowMinutes && v.SecondsPerPixel != secsPerPixel || v.On != on {
-		// zlog.Info("GV Update:", v.Job.ID, secsPerPixel, windowMinutes, v.On, on)
 		v.On = on
 		v.Job.WindowMinutes = windowMinutes
 		v.SecondsPerPixel = secsPerPixel
 		v.Ticks = ticks
-		v.requestParts()
 		v.TickYRange = zfloat.RangeF(0, float64(v.Job.PixelHeight)/2.5)
-		v.repeater.Set(float64(v.SecondsPerPixel), true, func() bool {
-			v.requestParts()
-			return true
-		})
+		// zlog.Info("GraphView.Update", v.Job.ID, v.On, zlog.CallingStackString())
+		if on {
+			v.repeater.Set(float64(v.SecondsPerPixel), true, func() bool {
+				v.requestParts()
+				return true
+			})
+		} else {
+			v.repeater.Stop()
+		}
 		v.Expose()
 		return true
 	}
@@ -141,7 +144,6 @@ func (v *GraphView) requestParts() {
 	if !v.On || v.Job.WindowMinutes == 0 {
 		return
 	}
-	// zlog.Info("requestParts1", v.Job.ID, v.Hierarchy(), v.SecondsPerPixel, v.On, v.Job.WindowMinutes)
 	v.forEachPart(func(name string, r zgeo.Rect, first bool) {
 		// zlog.Info("requestParts:", name, first, v.drawn[name] != nil)
 		if !first && v.drawn[name] != nil {
@@ -213,6 +215,7 @@ func drawMarker(x float64, rect zgeo.Rect, canvas *zcanvas.Canvas, color zgeo.Co
 }
 
 func (v *GraphView) xForTime(t time.Time) float64 {
+	t = t.UTC()
 	w := v.LocalRect().Size.W
 	d := time.Since(t) / time.Second / time.Duration(v.SecondsPerPixel)
 	return w - float64(d)
@@ -221,7 +224,7 @@ func (v *GraphView) xForTime(t time.Time) float64 {
 func (v *GraphView) TimeForX(x int) time.Time {
 	w := int(v.LocalRect().Size.W)
 	d := time.Duration((w-x)*v.SecondsPerPixel) * time.Second
-	return time.Now().Add(-d)
+	return time.Now().Add(-d).UTC()
 }
 
 func getTimeInt(t time.Time, span time.Duration) (n, n2 int, important bool) {
@@ -240,7 +243,7 @@ func getTimeInt(t time.Time, span time.Duration) (n, n2 int, important bool) {
 
 func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 	canvas.SetColor(v.TickColor)
-	end := time.Now()
+	end := time.Now().Local()
 	w := int(v.LocalRect().Size.W)
 	pixWidth := v.Job.PixelWidth(&v.GrapherBase)
 	span := time.Duration(w*v.SecondsPerPixel) * time.Second

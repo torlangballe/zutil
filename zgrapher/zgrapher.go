@@ -42,7 +42,7 @@ func (j *Job) PixelSize(base *GrapherBase) zgeo.Size {
 }
 
 func (j *Job) XForTime(base *GrapherBase, t time.Time) int {
-	x := int(t.Sub(j.CanvasStartTime) / time.Second / time.Duration(base.SecondsPerPixel))
+	x := int(t.UTC().Sub(j.CanvasStartTime) / time.Second / time.Duration(base.SecondsPerPixel))
 	return x
 }
 
@@ -56,7 +56,7 @@ func (j *Job) storageName() string {
 }
 
 func (j *Job) storageNameForTime(t time.Time) string {
-	year, month, day := t.Date()
+	year, month, day := t.UTC().Date()
 	hour := t.Hour()
 	min := t.Minute()
 	return fmt.Sprintf("%s_%d@%02d-%02d-%02dT%02d%02d.png", j.ID, j.WindowMinutes, year, int(month), day, hour, min)
@@ -67,6 +67,7 @@ func makeCacheFoldername(secondsPerPixel int, grapherName string) string {
 }
 
 func calculateWindowStart(t time.Time, windowMinutes int) time.Time {
+	t = t.UTC()
 	if windowMinutes <= 24*60 {
 		midnight := ztime.GetStartOfDay(t)
 		div := windowMinutes / 60
