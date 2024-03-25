@@ -1,19 +1,21 @@
 package zmarkdown
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/chromedp/cdproto/emulation"
+	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/chromedp"
 	blackfriday "github.com/torlangballe/blackfridayV2"
-	"github.com/torlangballe/mdtopdf"
-
-	// "github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
@@ -43,67 +45,78 @@ type MarkdownConverter struct {
 	TableOfContents bool
 }
 
-func (m *MarkdownConverter) ConvertToHTML(input, title string) (string, error) {
+func (m *MarkdownConverter) ConvertFromHTMLToPDF(w io.Writer, surl, title string) error {
+	taskCtx, cancel := chromedp.NewContext(
+		context.Background(),
+		chromedp.WithLogf(log.Printf),
+	)
+	defer cancel()
+	var pdfBuffer []byte
+	err := chromedp.Run(taskCtx, pdfGrabber(w, surl, "body", &pdfBuffer))
+	if err != nil {
+		return zlog.Error(err)
+	}
+	// err = ioutil.WriteFile("coolsite.pdf", pdfBuffer, 0644)
+	// if err != nil {
+	// 	return zlog.Error(err)
+	// }
+
+	// // os.Remove(tempFile)
+	// return string(pdfBuffer), nil
+	return nil
+}
+
+func pdfGrabber(w io.Writer, url string, sel string, res *[]byte) chromedp.Tasks {
+	start := time.Now()
+	return chromedp.Tasks{
+		emulation.SetUserAgentOverride("WebScraper 1.0"),
+		chromedp.Navigate(url),
+		// wait for footer element is visible (ie, page is loaded)
+		// chromedp.ScrollIntoView(`footer`),
+		chromedp.WaitVisible(`body`, chromedp.ByQuery),
+		// chromedp.Text(`h1`, &res, chromedp.NodeVisible, chromedp.ByQuery),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			buf, _, err := page.PrintToPDF().WithPrintBackground(true).Do(ctx)
+			if err != nil {
+				return err
+			}
+			//			w.Write(buf)
+			*res = buf
+			//fmt.Printf("h1 contains: '%s'\n", res)
+			fmt.Printf("\nTook: %f secs\n", time.Since(start).Seconds())
+			return nil
+		}),
+	}
+}
+
+// google-chrome-stable
+
+func (m *MarkdownConverter) ConvertToHTML(w io.Writer, name string) error {
+	fullmd, err := m.Flatten()
+	if err != nil {
+		return zlog.Error(err, "building doc", name)
+	}
+	return m.ConvertToHTMLFromString(w, fullmd, name)
+}
+
+func (m *MarkdownConverter) ConvertToHTMLFromString(w io.Writer, fullmd, name string) error {
+	var extensions = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
+		blackfriday.Autolink | blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HeadingIDs |
+		blackfriday.BackslashLineBreak | blackfriday.DefinitionLists | blackfriday.HardLineBreak
+
 	t := newTemplater()
-	input = t.Preprocess(m, input, title)
+	input := t.Preprocess(m, fullmd, name)
 	// zlog.Info("ConvertToHTML:", m.Variables, input)
 	params := blackfriday.HTMLRendererParameters{}
-	params.Title = title
+	params.Title = name
 	params.Flags = blackfriday.CompletePage | blackfriday.HrefTargetBlank
 	params.CSS = zrest.AppURLPrefix + "css/zcore/github-markdown.css"
 	renderer := blackfriday.NewHTMLRenderer(params)
 	output := blackfriday.Run([]byte(input),
 		blackfriday.WithExtensions(extensions|blackfriday.AutoHeadingIDs),
 		blackfriday.WithRenderer(renderer))
-	return string(output), nil
-}
-
-var extensions = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
-	blackfriday.Autolink | blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HeadingIDs |
-	blackfriday.BackslashLineBreak | blackfriday.DefinitionLists | blackfriday.HardLineBreak
-
-func (m *MarkdownConverter) ConvertToPDF(input, title string) (string, error) {
-	t := newTemplater()
-	t.DPI = 300
-	input = t.Preprocess(m, input, title)
-	tempFile := zfile.CreateTempFilePath(title + ".pdf")
-	renderer := mdtopdf.NewPdfRenderer("", "", tempFile, "trace.log")
-	renderer.Pdf.FileSystem = m.FileSystem
-	renderer.LocalFilePathPrefix = m.Dir
-	renderer.LocalImagePathAlternativePrefix = m.Dir
-	err := renderer.Process([]byte(input), blackfriday.WithExtensions(extensions)) //blackfriday.HeadingIDs))
-	if err != nil {
-		return "", zlog.Error(err, "processing")
-	}
-	spdf, err := zfile.ReadStringFromFile(tempFile)
-	os.Remove(tempFile)
-	return spdf, err
-}
-
-func (m *MarkdownConverter) Convert(w io.Writer, name string, output OutputType) error {
-	fullmd, err := m.Flatten()
-	// zlog.Info("MD:\n", fullmd)
-	if err != nil {
-		return zlog.Error(err, "building doc", name)
-	}
-	if output == OutputMD {
-		w.Write([]byte(fullmd))
-		return nil
-	}
-	if output == OutputHTML {
-		html, err := m.ConvertToHTML(fullmd, name)
-		if err != nil {
-			return zlog.Error(err, "converting to html")
-		}
-		w.Write([]byte(html))
-		return nil
-	}
-	spdf, err := m.ConvertToPDF(fullmd, name)
-	if err != nil {
-		return zlog.Error(err, "converting to pdf")
-	}
-	w.Write([]byte(spdf))
-	return nil
+	_, err := w.Write([]byte(output))
+	return err
 }
 
 // var linkReg = regexp.MustCompile(`\[[\w\s]+\]\(([\w/]+\.md)\)`)
@@ -309,13 +322,12 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 	if zlog.OnError(err, spath) {
 		return
 	}
-	html, err := m.ConvertToHTML(input, spath)
+	zrest.AddCORSHeaders(w, req)
+	err = m.ConvertToHTML(w, input)
 	if err != nil {
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, err, "convert")
 		return
 	}
-	zrest.AddCORSHeaders(w, req)
-	io.WriteString(w, html)
 }
 
 func outputValue(empty bool, k, v string) string {
