@@ -1,3 +1,5 @@
+//go:build server
+
 package zmarkdown
 
 import (
@@ -10,7 +12,6 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/page"
@@ -23,16 +24,14 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
-// For embedded editor:
-// https://reposhub.com/javascript/css/antonmedv-codejar.html
 // https://godoc.org/github.com/russross/blackfriday
 
-type OutputType string
+// type OutputType string
 
 const (
-	OutputPDF  OutputType = "pdf"
-	OutputMD   OutputType = "md"
-	OutputHTML OutputType = "html"
+	// OutputPDF  OutputType = "pdf"
+	// OutputMD   OutputType = "md"
+	// OutputHTML OutputType = "html"
 
 	SharedPageSuffix = ".shared.md"
 )
@@ -45,51 +44,43 @@ type MarkdownConverter struct {
 	TableOfContents bool
 }
 
-func (m *MarkdownConverter) ConvertFromHTMLToPDF(w io.Writer, surl, title string) error {
-	taskCtx, cancel := chromedp.NewContext(
-		context.Background(),
-		chromedp.WithLogf(log.Printf),
-	)
-	defer cancel()
-	var pdfBuffer []byte
-	err := chromedp.Run(taskCtx, pdfGrabber(w, surl, "body", &pdfBuffer))
-	if err != nil {
-		return zlog.Error(err)
-	}
-	// err = ioutil.WriteFile("coolsite.pdf", pdfBuffer, 0644)
-	// if err != nil {
-	// 	return zlog.Error(err)
-	// }
-
-	// // os.Remove(tempFile)
-	// return string(pdfBuffer), nil
-	return nil
-}
-
-func pdfGrabber(w io.Writer, url string, sel string, res *[]byte) chromedp.Tasks {
-	start := time.Now()
+func pdfGrabber(w io.Writer, url string) chromedp.Tasks {
 	return chromedp.Tasks{
 		emulation.SetUserAgentOverride("WebScraper 1.0"),
 		chromedp.Navigate(url),
-		// wait for footer element is visible (ie, page is loaded)
-		// chromedp.ScrollIntoView(`footer`),
-		chromedp.WaitVisible(`body`, chromedp.ByQuery),
-		// chromedp.Text(`h1`, &res, chromedp.NodeVisible, chromedp.ByQuery),
+		chromedp.WaitVisible("body", chromedp.ByQuery),
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			buf, _, err := page.PrintToPDF().WithPrintBackground(true).Do(ctx)
+			params := page.PrintToPDFParams{ // https://github.com/chromedp/cdproto/blob/master/page/page.go#L823
+				DisplayHeaderFooter:     true,
+				MarginLeft:              0.7,
+				MarginTop:               1.0,
+				MarginBottom:            0.5,
+				HeaderTemplate:          `<div style="width: 100%; font-size:12px; height: 20px; text-align:center" class=title></div>`,
+				FooterTemplate:          `<div style="width: 100%; font-size:14px; height: 20px; text-align:center" class=pageNumber></div>`,
+				GenerateDocumentOutline: true,
+			}
+			buf, _, err := params.Do(ctx)
 			if err != nil {
 				return err
 			}
-			//			w.Write(buf)
-			*res = buf
-			//fmt.Printf("h1 contains: '%s'\n", res)
-			fmt.Printf("\nTook: %f secs\n", time.Since(start).Seconds())
+			w.Write(buf)
 			return nil
 		}),
 	}
 }
 
-// google-chrome-stable
+func ConvertFromHTMLToPDF(w io.Writer, surl string) error {
+	ctx, cancel := chromedp.NewContext(
+		context.Background(),
+		chromedp.WithLogf(log.Printf),
+	)
+	defer cancel()
+	err := chromedp.Run(ctx, pdfGrabber(w, surl))
+	if err != nil {
+		return zlog.Error(err)
+	}
+	return nil
+}
 
 func (m *MarkdownConverter) ConvertToHTML(w io.Writer, name string) error {
 	fullmd, err := m.Flatten()
@@ -104,9 +95,9 @@ func (m *MarkdownConverter) ConvertToHTMLFromString(w io.Writer, fullmd, name st
 		blackfriday.Autolink | blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HeadingIDs |
 		blackfriday.BackslashLineBreak | blackfriday.DefinitionLists | blackfriday.HardLineBreak
 
-	t := newTemplater()
-	input := t.Preprocess(m, fullmd, name)
-	// zlog.Info("ConvertToHTML:", m.Variables, input)
+	templater := &Templater{TeXFontSize: 14, DPI: 144}
+
+	input := templater.Preprocess(m, fullmd, name)
 	params := blackfriday.HTMLRendererParameters{}
 	params.Title = name
 	params.Flags = blackfriday.CompletePage | blackfriday.HrefTargetBlank
@@ -125,12 +116,7 @@ var linkInterReg = regexp.MustCompile(`\[[\w\s]+\]\((#[\w/]+)\)`)
 var footReg = regexp.MustCompile(`\s*\[.+\]\:`)
 var headerReg = regexp.MustCompile(`^#{1,6}\s*(.+)`)
 var headerWithLink = regexp.MustCompile(`(.+)\s+\[(.+)\]\((.+)\)\s*(.*)`)
-
-var headerReplacer = strings.NewReplacer(
-	" ", "_",
-	"#", "",
-	".", "_",
-)
+var headerReplacer = strings.NewReplacer(" ", "_", "#", "", ".", "_")
 
 func headerToAnchorID(header string) string {
 	header = strings.ToLower(header)
@@ -166,15 +152,12 @@ func getNiceHeader(header *string, rest *string) bool {
 	return true
 }
 
-// type chapterAnchor struct {
-// 	chapter string
-// 	anchor  string
-// }
-
 func getTableOfContents(contents []content) string {
-	table := "\\\n### Table of Contents\n\n\\\n\\\n"
+	// zlog.Info("getTableOfContents1")
+	table := "\\\n### Table of Contents\n\n\\\n"
 	for _, c := range contents {
-		table += "**[" + c.title + "](#" + c.anchor + ")**\n\n\\\n"
+		// zlog.Info("getTableOfContents:", c.title)
+		table += "**[" + c.title + "](#" + c.anchor + ")**\n"
 	}
 	return table + "\\\n\\\n"
 }
@@ -182,15 +165,6 @@ func getTableOfContents(contents []content) string {
 func (m *MarkdownConverter) Flatten() (string, error) {
 	var out, footers string
 	var contents []content
-
-	// var topFileAnchors []chapterAnchor
-
-	// str := `### ![open](open.png) Open prefs`
-	// zstr.ReplaceAllCapturesFunc(headerReg, str, func(capture string, index int) string {
-	// 	zlog.Info("Replace:", capture)
-	// 	return "xxx"
-	// })
-	// return "", nil
 	for _, chapter := range m.PartNames {
 		if strings.HasSuffix(chapter, SharedPageSuffix) {
 			continue
@@ -201,6 +175,7 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 			zlog.Error(err, spath)
 			continue
 		}
+		var hasHeader bool
 		zstr.RangeStringLines(str, false, func(s string) bool {
 			header := headerReg.FindString(s)
 			if header != "" {
@@ -217,6 +192,7 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 				c.title = header
 				c.anchor = anchorFromFileAndAnchor(chapter, id)
 				c.chapter = chapter
+				hasHeader = true
 				contents = append(contents, c)
 				// topFileAnchors = append(topFileAnchors, c.anchor})
 				// zlog.Info("ANCH:", topFileAnchors[chapter], chapter, id)
@@ -224,6 +200,9 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 			}
 			return true
 		})
+		if !hasHeader {
+			return "", zlog.Error("No header for chapter:", chapter)
+		}
 	}
 	if m.TableOfContents {
 		out = getTableOfContents(contents)
@@ -239,15 +218,7 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 			continue
 		}
 		zstr.RangeStringLines(str, false, func(s string) bool {
-			// if !atFooters && footReg.MatchString(s) {
-			// 	atFooters = true
-			// }
-			// if atFooters {
-			// 	footers += s + "\n"
-			// 	return true
-			// }
 			snew := zstr.ReplaceAllCapturesFunc(linkInterReg, s, 0, func(capture string, index int) string {
-				// zlog.Info("replace inter:", s, capture, index)
 				file, anchor := zstr.SplitInTwo(capture, "#")
 				if file == "" {
 					file = chapter
@@ -258,10 +229,6 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 				return link
 			})
 			snew = zstr.ReplaceAllCapturesFunc(linkFileReg, snew, 0, func(capture string, index int) string {
-				// if zhttp.HasURLScheme(capture) {
-				// 	return capture
-				// }
-				// if !strings.Contains(capture, "#") {
 				for _, c := range contents {
 					if c.chapter == capture {
 						link := "#" + c.anchor
@@ -269,31 +236,17 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 					}
 				}
 				return ""
-				// }
-				// file, anchor := zstr.SplitInTwo(capture, "#")
-				// link := "#" + anchorFromFileAndAnchor(file, anchor)
-				// return link
 			})
 			snew = zstr.ReplaceAllCapturesFunc(headerReg, snew, 0, func(capture string, index int) string {
-				// zlog.Info("replace headers:", snew, capture, index)
 				if strings.HasPrefix(capture, "!") {
 					return capture
 				}
-				// var titleReg = regexp.MustCompile(`\[([(\w\s]+)\]\(\S+\)(.+)`)
-				// parts := zstr.GetAllCaptures(titleReg, capture)
-				// if len(parts) > 1 {
-				// 	zlog.Info("PARTS:", zstr.Spaced(zstr.StringsToAnySlice(parts)...))
-				// 	return zstr.Spaced(zstr.StringsToAnySlice(parts)...)
-				// }
-				// var rest string
-
 				id := headerToAnchorID(capture)
 				anchor := anchorFromFileAndAnchor(chapter, id)
 				anchorEscaped := fmt.Sprintf("{{`{#%s}`}}", anchor)
 				parts := zstr.GetAllCaptures(headerWithLink, capture)
 				if len(parts) < 3 {
 					nstr := fmt.Sprint(capture, " ", anchorEscaped)
-					// zlog.Info("Anchor:", anchorEscaped)
 					return nstr
 				}
 				var postText string
@@ -322,8 +275,9 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 	if zlog.OnError(err, spath) {
 		return
 	}
+	_, _, stub, _ := zfile.Split(spath)
 	zrest.AddCORSHeaders(w, req)
-	err = m.ConvertToHTML(w, input)
+	err = m.ConvertToHTMLFromString(w, input, stub)
 	if err != nil {
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, err, "convert")
 		return

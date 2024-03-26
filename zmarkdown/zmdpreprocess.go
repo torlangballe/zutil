@@ -1,3 +1,5 @@
+//go:build server
+
 package zmarkdown
 
 import (
@@ -23,13 +25,6 @@ const (
 	TexType = "text"
 	DotType = "dot"
 )
-
-func newTemplater() *Templater {
-	t := &Templater{}
-	t.TeXFontSize = 14
-	t.DPI = 144
-	return t
-}
 
 func errToStr(err error, title, desc string) string {
 	return fmt.Sprint(title, "@", desc, ": ", err)
