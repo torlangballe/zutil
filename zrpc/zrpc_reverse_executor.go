@@ -54,7 +54,7 @@ func (r *ReverseExecutor) SetOn(on bool) {
 
 // Starts the polling process in the background
 func NewReverseExecutor(pollClient *Client, id string, executor *Executor) *ReverseExecutor {
-	zlog.Info("NewReverseExecutor", id, pollClient.AuthToken) // EnableLogExecutor,
+	// zlog.Info("NewReverseExecutor", id, pollClient.AuthToken) // EnableLogExecutor,
 	r := &ReverseExecutor{}
 	r.on = true
 	r.client = pollClient
