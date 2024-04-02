@@ -17,6 +17,8 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	blackfriday "github.com/torlangballe/blackfridayV2"
+	"github.com/torlangballe/zui/zkeyboard"
+	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
@@ -276,12 +278,23 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 		return
 	}
 	_, _, stub, _ := zfile.Split(spath)
+	osType := zdevice.OSTypeFromUserAgentString(req.Header.Get("User-Agent"))
+	m.SetOSSpecificDocKeyValues(osType)
+
 	zrest.AddCORSHeaders(w, req)
 	err = m.ConvertToHTMLFromString(w, input, stub)
 	if err != nil {
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, err, "convert")
 		return
 	}
+}
+
+func (m *MarkdownConverter) SetOSSpecificDocKeyValues(os zdevice.OSType) {
+	selectMod := zkeyboard.ModifierControl
+	if os == zdevice.MacOSType {
+		selectMod = zkeyboard.ModifierCommand
+	}
+	m.Variables["ZMultiSelectModifier"] = zkeyboard.GetModifiersString(selectMod)
 }
 
 func outputValue(empty bool, k, v string) string {

@@ -135,6 +135,7 @@ func SendBody(surl string, params Parameters, send, receive any) (*http.Response
 				if err != nil {
 					return nil, zlog.Error(err, "marshal")
 				}
+				// zlog.Info("SendBody:", surl, string(bout))
 			}
 			if params.ContentType == "" {
 				params.ContentType = "application/json"
