@@ -11,6 +11,14 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
+const (
+	PNGExt  = ".png"
+	JPEGExt = ".jpeg"
+	JPGExt  = ".jpg"
+)
+
+var ImageExtensions = []string{PNGExt, JPEGExt, JPGExt}
+
 func RemovedExtension(spath string) string {
 	name := strings.TrimSuffix(spath, path.Ext(spath))
 	return name
