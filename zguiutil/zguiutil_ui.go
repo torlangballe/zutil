@@ -96,7 +96,7 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 		lines := strings.Count(desc, "\n") + 1
 		descLabel.SetMaxLines(lines)
 		descLabel.SetFont(font)
-		descLabel.SetColor(zstyle.DefaultFGColor().WithOpacity(0.9).Mixed(zgeo.ColorOrange, 0.6))
+		descLabel.SetColor(zstyle.DefaultFGColor().Mixed(zgeo.ColorBlue, 0.3))
 		stack.Add(descLabel, zgeo.CenterLeft)
 		viewCell = &stack.Cells[len(stack.Cells)-2] // we need to re-get the cell in case adding desc made a new slice
 	}
