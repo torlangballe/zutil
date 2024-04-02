@@ -33,6 +33,10 @@ type CreateStrIDer interface {
 	CreateStrID()
 }
 
+type TitleOwner interface {
+	GetTitle() string
+}
+
 type KeyValue struct {
 	Key   string
 	Value string
