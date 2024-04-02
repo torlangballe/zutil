@@ -150,6 +150,22 @@ func (d Dict) AsString(assigner, separator string) string {
 	return strings.Join(all, separator)
 }
 
+func (d Dict) AsShallowMap() map[string]any {
+	m := map[string]any{}
+	for k, v := range d {
+		m[k] = v
+	}
+	return m
+}
+
+func FromShallowMap(m map[string]any) Dict {
+	d := Dict{}
+	for k, v := range m {
+		d[k] = v
+	}
+	return d
+}
+
 func FromString(str, assigner, separator string) Dict {
 	d := Dict{}
 	for _, part := range strings.Split(str, separator) {
