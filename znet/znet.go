@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 type Organization struct {
@@ -29,6 +30,19 @@ func HostAndPortToAddress(host string, port int) string {
 		str += fmt.Sprint(":", port)
 	}
 	return str
+}
+
+func HostAndPortFromAddress(address string) (string, int) {
+	var host string
+	var sport string
+	if !zstr.SplitN(address, ":", &host, &sport) {
+		return address, 0
+	}
+	port, err := strconv.Atoi(sport)
+	if err != nil {
+		return address, 0
+	}
+	return host, port
 }
 
 func StripQueryAndFragment(surl string) string {
