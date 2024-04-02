@@ -64,9 +64,6 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	// if strings.HasPrefix(urlPrefix, "/") {
 	// 	zlog.Error("url should not start with /", urlPrefix)
 	// }
-	if urlPrefix != "" && !strings.HasSuffix(urlPrefix, "/") {
-		zlog.Fatal("url should end with /" + urlPrefix)
-	}
 	c := &Cache{}
 	c.urlPrefix = urlPrefix
 	c.DeleteAfter = time.Hour * 24
@@ -81,9 +78,8 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	// if err != nil {
 	// 	zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
 	// }
+	// zlog.Info("zfilecache.AddHandler:", path)
 	zrest.AddSubHandler(router, path, c)
-
-	// zrest.AddHandler(router, strings.TrimRight(path, "/"), c.ServeHTTP)
 	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
 		start := time.Now()
 		if c.DeleteAfter == 0 {
