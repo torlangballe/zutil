@@ -87,19 +87,15 @@ func Behead(slice any) {
 }
 
 func RemoveIf(slice any, remove func(i int) bool) {
-	for {
-		val := reflect.ValueOf(slice).Elem()
-		len := val.Len()
-		found := false
-		for i := 0; i < len; i++ {
-			if remove(i) {
-				RemoveAt(slice, i)
-				found = true
-				break
-			}
-		}
-		if !found {
-			break
+	val := reflect.ValueOf(slice)
+	if val.Kind() == reflect.Pointer {
+		val = val.Elem()
+	}
+	len := val.Len()
+	for i := 0; i < len; i++ {
+		if remove(i) {
+			RemoveAt(slice, i)
+			i--
 		}
 	}
 }
