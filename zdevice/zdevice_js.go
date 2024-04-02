@@ -7,7 +7,6 @@ import (
 	ua "github.com/mileusna/useragent"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zkeyvalue"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -55,20 +54,8 @@ func WasmBrowser() BrowserType {
 // OS Returns the underlying operating system program is running on.
 // For wasm in browsers, this is the actual mac/win/linux etc os the browser is running on.
 func OS() OSType {
-	switch getUserAgentInfo().OS {
-	case ua.MacOS:
-		return MacOSType
-	case ua.Windows:
-		return WindowsType
-	case ua.Linux:
-		return LinuxType
-	case ua.IOS:
-		return IOSType
-	case ua.Android:
-		return AndroidType
-	}
-	zlog.Error("other type")
-	return OSType("")
+	u := getUserAgentInfo()
+	return OSTypeFromUserAgent(u)
 }
 
 func IsIPhone() bool {

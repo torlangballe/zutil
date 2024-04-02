@@ -5,6 +5,7 @@ import (
 	"net"
 	"runtime"
 
+	ua "github.com/mileusna/useragent"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/torlangballe/zutil/zlog"
@@ -155,4 +156,26 @@ func MemoryAvailableUsedAndTotal() (available int64, used int64, total int64) {
 		zlog.Fatal(err, "get vm")
 	}
 	return int64(vm.Available), int64(vm.Used), int64(vm.Total)
+}
+
+func OSTypeFromUserAgentString(uas string) OSType {
+	u := ua.Parse(uas)
+	return OSTypeFromUserAgent(&u)
+}
+
+func OSTypeFromUserAgent(u *ua.UserAgent) OSType {
+	switch u.OS {
+	case ua.MacOS:
+		return MacOSType
+	case ua.Windows:
+		return WindowsType
+	case ua.Linux:
+		return LinuxType
+	case ua.IOS:
+		return IOSType
+	case ua.Android:
+		return AndroidType
+	}
+	zlog.Error("other type")
+	return OSType("")
 }
