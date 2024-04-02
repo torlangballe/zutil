@@ -39,8 +39,6 @@ var (
 	StoreAuthenticationError = fmt.Errorf("Store authentication failed: %w", AuthFailedError)
 	NoTokenError             = fmt.Errorf("no token for user: %w", AuthFailedError)
 	ForgotPassword           = ForgotPasswordData{ProductName: "This service"}
-	DefaultEmail             = "user@example.com"
-	DefaultPassword          = "admin"
 )
 
 func setupWithSQLServer(s *SQLServer, executor *zrpc.Executor) {
