@@ -319,7 +319,7 @@ func FileLineAndCallingFunctionString(pos int) string {
 
 func Assert(success bool, parts ...any) {
 	if !success {
-		parts = append([]any{"assert:"}, parts...)
+		parts = append([]any{StackAdjust(2), "assert:"}, parts...)
 		fmt.Println(parts...)
 		Fatal(parts...)
 	}
