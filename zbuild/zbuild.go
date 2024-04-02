@@ -37,7 +37,7 @@ func SetFromLine(line, sep, eq string) {
 		case "AT":
 			var err error
 			Build.At, err = time.Parse(ztime.RFC3339NoZ, val)
-			zlog.Info("AT:", Build.At, val, err)
+			zlog.OnError(err, val)
 		case "USER":
 			Build.User = val
 		case "HOST":
