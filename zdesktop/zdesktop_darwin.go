@@ -184,6 +184,10 @@ func CloseOldWindowWithSamePIDAndRect(pid int64, r zgeo.Rect) {
 func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect) (img image.Image, pid int64, err error) {
 	winID, _, _, pid, err := GetIDScaleAndRectForWindowTitle(title, app, oldPID)
 	if err != nil {
+		zlog.Error(err, "get id scale with old pid:", oldPID)
+		winID, _, _, pid, err = GetIDScaleAndRectForWindowTitle(title, app, 0)
+	}
+	if err != nil {
 		return nil, 0, zlog.Error(err, "get id scale")
 	}
 	img, err = GetWindowImage(winID, insetRect)
