@@ -71,17 +71,10 @@ func SetMainResolutionWithinWidths(min, max zgeo.Size) {
 }
 
 func GetScreenShot(screenID string, noScale bool) image.Image {
-	var cgRect C.CGRect
-
 	n, _ := strconv.Atoi(screenID)
 	s := FindForID(screenID)
 	zlog.Assert(s != nil)
-	// cgRect.origin.x = C.CGFloat(s.Rect.Pos.X)
-	// cgRect.origin.y = C.CGFloat(s.Rect.Pos.Y)
-	ss := s.Rect.Size
-	cgRect.size.width = C.CGFloat(ss.W)
-	cgRect.size.height = C.CGFloat(ss.H)
-	cgImage := C.CGDisplayCreateImageForRect(C.CGDirectDisplayID(n), cgRect)
+	cgImage := C.CGDisplayCreateImage(C.CGDirectDisplayID(n))
 	if cgImage == 0 {
 		return nil
 	}
@@ -92,6 +85,8 @@ func GetScreenShot(screenID string, noScale bool) image.Image {
 	// zlog.Info("ScreenShot:", ss, iw, ih, scale)
 	// r := zgeo.Rect{Size: ss}
 	img, _ := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), zgeo.Rect{}, scale)
+	zlog.Info("GetScreenShot1 count:", C.CFGetRetainCount(C.CFTypeRef(cgImage)))
 	C.CGImageRelease(cgImage)
+	zlog.Info("GetScreenShot2:", C.CFGetRetainCount(C.CFTypeRef(cgImage)))
 	return img
 }
