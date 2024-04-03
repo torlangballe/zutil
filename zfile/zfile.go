@@ -30,6 +30,7 @@ const (
 	WalkOptionGiveFolders
 	WalkOptionGiveHidden
 	WalkOptionGiveNameOnly
+	WalkOptionRelativePath
 )
 
 func CreateTempFile(name string) (file *os.File, fpath string, err error) {
@@ -276,6 +277,10 @@ func Walk(folder, wildcards string, opts WalkOptions, got func(fpath string, inf
 	if wildcards != "" {
 		wcards = strings.Split(wildcards, "\t")
 	}
+	afterFolderIndex := len(folder)
+	if zstr.FirstRune(folder) != '/' {
+		afterFolderIndex++
+	}
 	return filepath.Walk(folder, func(fpath string, info os.FileInfo, err error) error {
 		// fmt.Println("zFile walk:", fpath, len(wcards), err)
 		if err != nil {
@@ -295,27 +300,20 @@ func Walk(folder, wildcards string, opts WalkOptions, got func(fpath string, inf
 			}
 			return nil
 		}
-		matched := true
-		if len(wcards) > 0 {
-			matched = false
-			for _, w := range wcards {
-				m, _ := filepath.Match(w, name)
-				if m {
-					matched = true
-					break
-				}
-			}
-		}
-		if !matched {
-			return nil
-		}
 		rpath := fpath
-		if opts&WalkOptionGiveNameOnly != 0 {
+		if opts&WalkOptionRelativePath != 0 {
+			if len(rpath) >= afterFolderIndex {
+				rpath = rpath[afterFolderIndex:]
+			} else {
+				zlog.Error("fpath not bigger than folder:", fpath, folder)
+			}
+		} else if opts&WalkOptionGiveNameOnly != 0 {
 			rpath = name
 		}
 		if info.IsDir() {
 			if opts&WalkOptionGiveFolders != 0 {
 				e := got(rpath, info)
+				// zlog.Info("zWalk dir:", rpath, opts&WalkOptionGiveFolders, e)
 				if e != nil {
 					return e
 				}
@@ -324,6 +322,21 @@ func Walk(folder, wildcards string, opts WalkOptions, got func(fpath string, inf
 				return nil
 			}
 			return filepath.SkipDir
+		}
+		matched := true
+		if len(wcards) > 0 {
+			matched = false
+			for _, w := range wcards {
+				m, _ := filepath.Match(w, name)
+				// zlog.Info("zWalk?:", w, name, m)
+				if m {
+					matched = true
+					break
+				}
+			}
+		}
+		if !matched {
+			return nil
 		}
 		return got(rpath, info)
 	})
