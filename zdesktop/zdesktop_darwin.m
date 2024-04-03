@@ -294,11 +294,15 @@ const char *ns2chars(NSString *s) {
     return NULL;
 }
 
-const char *GetAllWindowTitlesTabSeparated() {
+const char *GetAllWindowTitlesTabSeparated(long pid) {
     NSMutableString *str = [NSMutableString stringWithCapacity: 5000];
     CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
     for (NSMutableDictionary* entry in (__bridge NSArray*)windowList)
     {
+        long wpid = (long)[[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
+        if (wpid != pid) {
+            continue;
+        }
         NSString *title = [entry objectForKey:(id)kCGWindowName];
         if (title == NULL) {
             continue;
