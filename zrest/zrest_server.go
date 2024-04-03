@@ -26,7 +26,7 @@ import (
 
 var (
 	RunningOnServer      bool
-	LegalCORSOrigins     = map[string]bool{}
+	LegalCORSOrigins     []string
 	CurrentInRequests    int
 	StaticFolderPathFunc = func(add string) string {
 		return "www"
@@ -35,6 +35,9 @@ var (
 	WrapForTelemetryFunc func(handlerName string, handlerFunc http.HandlerFunc) http.HandlerFunc
 )
 
+func AddLegalCORSAddress(add string) {
+	LegalCORSOrigins = append(LegalCORSOrigins, add)
+}
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	o := req.Header.Get("Origin")
@@ -49,7 +52,7 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 		find = u.String()
 	}
 	// zlog.Info("AddCorsHeaders:", o, find, req.URL.String(), "allowed:", LegalCORSOrigins, LegalCORSOrigins[find])
-	if LegalCORSOrigins[find] {
+	if zstr.StringsContain(LegalCORSOrigins, find) {
 		// zlog.Info("AddCorsHeaders2:", o, "allowed:", LegalCORSOrigins)
 		w.Header().Set("Access-Control-Allow-Origin", o)
 		// w.Header().Set("Access-Control-Allow-Origin", "*")
