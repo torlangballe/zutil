@@ -3,6 +3,7 @@
 package zfilelister
 
 import (
+	"path"
 	"strings"
 
 	"github.com/torlangballe/zui/zalert"
@@ -14,6 +15,7 @@ import (
 	"github.com/torlangballe/zui/zpresent"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc"
@@ -32,22 +34,16 @@ import (
 
 type FileListerView struct {
 	zcontainer.StackView
-	BasePath          string
-	ViewOnly          bool
-	ChooseFolders     bool
-	IconSize          zgeo.Size
-	ExtensionsAllowed []string // slash / means folders can be chosen
+	DirOptions
 
-	DirFunc     func(path string, got func([]string, error))
+	DirFunc     func(dirOpts DirOptions, got func(paths []string, err error))
 	GetImageURL func(path string) string
 	PickedPaths []string // ends in / if folders
 
-	currentPathStub  string
-	back             *zlabel.Label
-	title            *zlabel.Label
-	errorLabel       *zlabel.Label
-	grid             *zgridlist.GridListView
-	currentViewPaths []string
+	back       *zlabel.Label
+	title      *zlabel.Label
+	errorLabel *zlabel.Label
+	grid       *zgridlist.GridListView
 }
 
 const (
@@ -56,30 +52,18 @@ const (
 	checkID = "check"
 )
 
-var (
-	rpcClient *zrpc.Client
-)
-
-func Init(client *zrpc.Client) {
-	rpcClient = client
-}
-
 func makeLabel(text string) *zlabel.Label {
 	label := zlabel.New(text)
 	return label
 }
 
-func NewFileListerView(basePath string, opts Options) *FileListerView {
+func NewFileListerView(opts DirOptions) *FileListerView {
 	// zlog.Info("NewFileListerView:", basePath, storeName)
 	v := &FileListerView{}
 	v.SetMarginS(zgeo.SizeBoth(5))
 	v.Init(v, true, opts.StoreName+".FileLister")
-	v.PickedPaths = opts.PickedPaths
-	v.BasePath = basePath
-	v.ViewOnly = opts.ViewOnly
-	v.ChooseFolders = opts.ChooseFolders
-	v.ExtensionsAllowed = opts.ExtensionsAllowed
 
+	v.DirOptions = opts
 	bar := zcontainer.StackViewHor("bar")
 	v.Add(bar, zgeo.TopLeft|zgeo.HorExpand)
 
@@ -95,7 +79,7 @@ func NewFileListerView(basePath string, opts Options) *FileListerView {
 	v.grid.MinRowsForFullSize = 5
 	v.grid.MaxRowsForFullSize = 20
 	v.grid.CellCountFunc = func() int {
-		return len(v.currentViewPaths)
+		return len(v.DirOptions.PickedPaths)
 	}
 	v.grid.CreateCellFunc = v.createRow
 	v.grid.UpdateCellFunc = v.updateRow
@@ -118,7 +102,7 @@ func (v *FileListerView) ReadyToShow(beforeWindow bool) {
 
 func (v *FileListerView) pathOfID(id string) string {
 	index := v.grid.IndexOfID(id)
-	return v.currentViewPaths[index]
+	return v.DirOptions.PickedPaths[index]
 }
 
 func (v *FileListerView) updateRow(grid *zgridlist.GridListView, id string) {
@@ -183,11 +167,11 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 }
 
 func (v *FileListerView) update() {
-	v.DirFunc(v.currentPathStub, func(paths []string, err error) {
-		if zlog.OnError(err, "DirFunc", v.currentPathStub) {
+	v.DirFunc(v.DirOptions, func(paths []string, err error) {
+		if zlog.OnError(err, "DirFunc", v.DirOptions.PathStub) {
 			return
 		}
-		v.currentViewPaths = paths
+		v.DirOptions.PickedPaths = paths
 		v.grid.LayoutCells(true)
 	})
 }
@@ -206,40 +190,28 @@ func (v *FileListerView) update() {
 // 	return basePrefix
 // }
 
-func NewRemoteFileListerView(urlPrefix, urlStub string, opts Options) *FileListerView {
-
-	// // zlog.Info("NewRemoteFileListerView!!")
-	// basePrefix := MakeGetURL(opts.StoreName, urlPrefix, urlStub, opts.ToToken)
-	// // zlog.Info("NewRemoteFileListerView", basePrefix, toToken)
-	// flister := NewFileListerView(basePrefix, opts)
-	// flister.DirFunc = func(path string, got func([]string, error)) {
-	// 	surl := zfile.JoinPathParts(basePrefix, path)
-	// 	// zlog.Info("NewRemoteFileListerView:Dir", urlPrefix, path, "token:", toToken)
-	// 	go func() {
-	// 		var slist string
-	// 		_, err := zhttp.Get(surl, zhttp.MakeParameters(), &slist)
-	// 		if err != nil {
-	// 			flister.errorLabel.SetText(err.Error())
-	// 			got(nil, err)
-	// 			return
-	// 		}
-	// 		var paths []string
-	// 		if slist != "" {
-	// 			paths = strings.Split(slist, "\n")
-	// 		}
-	// 		got(paths, nil)
-	// 	}()
-	// }
+func NewRemoteFileListerView(urlPrefix, urlStub string, opts DirOptions) *FileListerView {
+	flister := NewFileListerView(opts)
+	flister.DirFunc = func(dirOpts DirOptions, got func(paths []string, err error)) {
+		go func() {
+			var paths []string
+			err := zrpc.MainClient.Call("FileServerCalls.GetDirectory", dirOpts, &paths)
+			if err != nil {
+				got(nil, err)
+				return
+			}
+			got(paths, nil)
+		}()
+	}
 	// zlog.Info("NewRemoteFileLister: DirFunc:", flister.DirFunc != nil)
-	// flister.GetImageURL = func(spath string) string {
-	// 	ext := path.Ext(spath)
-	// 	hash := zstr.HashTo64Hex(spath)
-	// 	surl := zfile.JoinPathParts(urlPrefix, "caches/filelister-icons/"+opts.StoreName, hash+ext)
-	// 	zlog.Info("RemoteFileLister:Image", spath, surl)
-	// 	return surl
-	// }
-	return nil
-	// return flister
+	flister.GetImageURL = func(spath string) string {
+		ext := path.Ext(spath)
+		hash := zstr.HashTo64Hex(spath)
+		surl := zfile.JoinPathParts(urlPrefix, "caches/filelister-icons/"+opts.StoreName, hash+ext)
+		zlog.Info("RemoteFileLister:Image", spath, surl)
+		return surl
+	}
+	return flister
 }
 
 func (v *FileListerView) Present(title string, got func(pickedPaths []string)) {
@@ -250,5 +222,4 @@ func (v *FileListerView) Present(title string, got func(pickedPaths []string)) {
 		}
 		return true
 	})
-
 }
