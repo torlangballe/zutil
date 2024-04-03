@@ -829,13 +829,18 @@ func FirstToLowerWithAcronyms(str string) (out string) {
 }
 
 func IsFirstLetterLowerCase(str string) bool {
-	r, _ := utf8.DecodeRuneInString(str)
+	r := FirstRune(str)
 	return unicode.ToLower(r) == r
 }
 
 func IsFirstLetterUpperCase(str string) bool {
-	r, _ := utf8.DecodeRuneInString(str)
+	r := FirstRune(str)
 	return unicode.ToUpper(r) == r
+}
+
+func FirstRune(str string) rune {
+	r, _ := utf8.DecodeRuneInString(str)
+	return r
 }
 
 func GetUntilChars(str, chars string) string {
