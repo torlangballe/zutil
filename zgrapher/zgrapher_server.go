@@ -97,7 +97,7 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file *
 		job.ID = "0" // make a copy of any existing job, but set id to "0"
 	} else {
 		j, got := g.jobs.Get(sid)
-		if zlog.ErrorIf(!got, sid, fullName, "removed job?") {
+		if !got { // if zlog.ErrorIf(!got, sid, fullName, "removed job?") {
 			return false
 		}
 		job = *j

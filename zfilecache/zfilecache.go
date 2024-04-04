@@ -37,7 +37,7 @@ type Cache struct {
 }
 
 func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	zlog.Info("zfilecache.ServeHTTP:", req.Header.Get("Origin"))
+	// zlog.Info("zfilecache.ServeHTTP:", req.Header.Get("Origin"))
 	zrest.AddCORSHeaders(w, req)
 	spath := req.URL.Path[1:]
 	zstr.HasPrefix(req.URL.Path, zrest.AppURLPrefix, &spath)
