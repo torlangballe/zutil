@@ -165,7 +165,7 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 	}
 	// TODO: Add Telemetry!!!
 	route := router.PathPrefix(pattern)
-	zlog.Info("zrest.AddSubHandler:", pattern)
+	// zlog.Info("zrest.AddSubHandler:", pattern)
 	r := route.Handler(h)
 	return r
 }
