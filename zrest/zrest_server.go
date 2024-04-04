@@ -38,6 +38,7 @@ var (
 func AddLegalCORSAddress(add string) {
 	LegalCORSOrigins = append(LegalCORSOrigins, add)
 }
+
 // Adds CORS headers to response if appropriate.
 func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	o := req.Header.Get("Origin")
@@ -51,7 +52,7 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 		u.Host = u.Hostname()
 		find = u.String()
 	}
-	// zlog.Info("AddCorsHeaders:", o, find, req.URL.String(), "allowed:", LegalCORSOrigins, LegalCORSOrigins[find])
+	// zlog.Info("AddCorsHeaders:", o, find, req.URL.String(), "allowed:", LegalCORSOrigins, zstr.IndexOf(find, LegalCORSOrigins))
 	if zstr.StringsContain(LegalCORSOrigins, find) {
 		// zlog.Info("AddCorsHeaders2:", o, "allowed:", LegalCORSOrigins)
 		w.Header().Set("Access-Control-Allow-Origin", o)
@@ -164,7 +165,7 @@ func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Rout
 	}
 	// TODO: Add Telemetry!!!
 	route := router.PathPrefix(pattern)
-	// zlog.Info("zrest.AddSubHandler:", pattern)
+	zlog.Info("zrest.AddSubHandler:", pattern)
 	r := route.Handler(h)
 	return r
 }

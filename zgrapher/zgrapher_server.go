@@ -54,7 +54,7 @@ func NewGrapher(router *mux.Router, deleteDays int, grapherName, folderPath stri
 	g.SecondsPerPixel = secondsPerPixel
 	folderName := makeCacheFoldername(secondsPerPixel, grapherName)
 	g.cache = zfilecache.Init(router, folderPath, "caches/", folderName)
-	g.cache.InterceptServeFunc = func(w http.ResponseWriter, req *http.Request, file string) bool {
+	g.cache.InterceptServeFunc = func(w http.ResponseWriter, req *http.Request, file *string) bool {
 		return interceptServe(g, w, req, file)
 	}
 	g.cache.DeleteAfter = ztime.Day * time.Duration(deleteDays)
@@ -69,7 +69,7 @@ func NewGrapher(router *mux.Router, deleteDays int, grapherName, folderPath stri
 }
 
 // interceptServe sniffs a request for alarm-graphs, and starts rendering if it is outside ones already cached or current.
-func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file string) bool {
+func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file *string) bool {
 	// zlog.Info("zgrapher: interceptServe", req.URL.String(), zfile.Exists(file))
 	_, fullName := path.Split(req.URL.Path)
 	name := fullName
@@ -104,7 +104,7 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 	}
 	// zlog.Info("zgrapher: No serve2?:", fullName, job.storageName())
 	if job.storageName() == fullName {
-		if zfile.NotExists(file) {
+		if zfile.NotExists(*file) {
 			zlog.Info("zgrapher: Serve current: Not exists, so render", fullName, job.storageName())
 		} else {
 			return false // it's current, just render as usual
@@ -116,7 +116,7 @@ func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file s
 	if zlog.OnError(err, date) {
 		return false
 	}
-	mod := zfile.Modified(file)
+	mod := zfile.Modified(*file)
 	end := t.Add(time.Duration(job.WindowMinutes) * time.Minute)
 	if !mod.IsZero() && !mod.Before(end) {
 		zlog.Info(EnableLog, "zgrapher: Has old rendered non-current part with new modified date:", fullName, end, "mod:", mod)

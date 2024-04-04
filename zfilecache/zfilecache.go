@@ -24,7 +24,7 @@ import (
 )
 
 type Cache struct {
-	workDir            string
+	WorkDir            string
 	cacheName          string
 	getURL             string
 	urlPrefix          string
@@ -33,20 +33,22 @@ type Cache struct {
 	UseToken           bool          // Not implemented
 	DeleteRatio        float32       // When deleting files, only do some of sub-folders (randomly) each time 0.1 is do 10% of them at random
 	NestInHashFolders  bool
-	InterceptServeFunc func(w http.ResponseWriter, req *http.Request, file string) bool // return true if handled
+	InterceptServeFunc func(w http.ResponseWriter, req *http.Request, file *string) bool // return true if handled
 }
 
 func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	zlog.Info("zfilecache.ServeHTTP:", req.Header.Get("Origin"))
+	zrest.AddCORSHeaders(w, req)
 	spath := req.URL.Path[1:]
 	zstr.HasPrefix(req.URL.Path, zrest.AppURLPrefix, &spath)
-	fpath := path.Join(c.workDir, spath)
+	fpath := path.Join(c.WorkDir, spath)
 	dir, file := filepath.Split(fpath)
 	post := file
 	if c.NestInHashFolders {
 		post = file[:3] + "/" + file[3:]
 	}
 	file = zfile.JoinPathParts(dir, post)
-	if c.InterceptServeFunc != nil && c.InterceptServeFunc(w, req, file) {
+	if c.InterceptServeFunc != nil && c.InterceptServeFunc(w, req, &file) {
 		return
 	}
 	// zlog.Info("zfilecache serve:", req.URL.String(), zfile.Exists(file))
@@ -54,7 +56,6 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		zlog.Info("Serve empty cached image:", file)
 		file = zrest.StaticFolderPathFunc("/images/empty.png")
 	}
-	zrest.AddCORSHeaders(w, req)
 	// zlog.Info("Serve cached image:", req.URL.Path, file)
 	// zlog.Warn("FileCache serve:", file, spath, zfile.Exists(file), zfile.Size(file))
 	http.ServeFile(w, req, file)
@@ -67,7 +68,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	c := &Cache{}
 	c.urlPrefix = urlPrefix
 	c.DeleteAfter = time.Hour * 24
-	c.workDir = workDir
+	c.WorkDir = workDir
 	c.cacheName = cacheName
 	c.DeleteRatio = 1
 	c.NestInHashFolders = true
@@ -85,7 +86,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 		if c.DeleteAfter == 0 {
 			return false
 		}
-		dir := zfile.JoinPathParts(c.workDir, c.urlPrefix, c.cacheName)
+		dir := zfile.JoinPathParts(c.WorkDir, c.urlPrefix, c.cacheName)
 		if zfile.NotExists(dir) {
 			return true
 		}
@@ -99,7 +100,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 		zlog.Info("Deleted in cache:", dir, time.Since(start))
 		return true
 	})
-	// zlog.Info("zfilecache Init:", c.workDir+cacheName, c.getURL, path)
+	// zlog.Info("zfilecache Init:", c.WorkDir+cacheName, c.getURL, path)
 	return c
 }
 
@@ -171,9 +172,9 @@ func (c *Cache) GetPathForName(name string) (path, dir string) {
 		lastDir = "/" + name[:3]
 		end = "/" + name[3:]
 	}
-	dir = zfile.JoinPathParts(c.workDir, c.urlPrefix, c.cacheName, dir) + lastDir
+	dir = zfile.JoinPathParts(c.WorkDir, c.urlPrefix, c.cacheName, dir) + lastDir
 	path = dir + "/" + end
-	// zlog.Info("GetPathForName:", c.workDir, c.urlPrefix, c.cacheName, name, path)
+	// zlog.Info("GetPathForName:", c.WorkDir, c.urlPrefix, c.cacheName, name, path)
 	return path, dir
 }
 
