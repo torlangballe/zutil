@@ -225,7 +225,7 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 	sx := r.Min().X
 	x := sx
 	prevAlign := Left
-	lastCenterWidth := 0.0
+	// lastCenterWidth := 0.0
 	var wcenter, wright float64
 	for i, sc := range scells {
 		w := sc.size.W + sc.Margin.W
@@ -234,12 +234,15 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 		}
 		if sc.Alignment&HorCenter != 0 {
 			wcenter += w
-			lastCenterWidth = w
+			// lastCenterWidth = w
 		} else if sc.Alignment&Right != 0 {
-			wcenter += lastCenterWidth // when last center is done, we add its margin again for right side
-			lastCenterWidth = 0
+			// wcenter += lastCenterWidth // when last center is done, we add its margin again for right side
+			// lastCenterWidth = 0
 			wright += w
 		}
+		// if debugName == "bt-bar" {
+		// 	zlog.Info(i, "layoutRectsInBoxes:", sc.Name, w, sc.Alignment&HorCenter != 0, wcenter)
+		// }
 	}
 	for i, sc := range scells {
 		if (sc.Alignment&(Left|HorCenter|Right))&prevAlign == 0 { // if align is something new, ie. center/right
