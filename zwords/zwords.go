@@ -32,7 +32,7 @@ var TSL = func(str, langCode string) string {
 }
 
 func getSizeString(b int64, multiples int64, suffix, langCode string, maxSignificant int) string {
-	prefs := []string{"", "k", "m", "g", "t", "p"}
+	prefs := []string{"", "K", "M", "G", "T", "P"}
 	var n int64 = 1
 	for _, pref := range prefs {
 		if b < n*multiples {
@@ -48,11 +48,11 @@ func GetBandwidthString(b int64, langCode string, maxSignificant int) string {
 }
 
 func GetStorageSizeString(b int64, langCode string, maxSignificant int) string {
-	return getSizeString(b, 1000, "b", langCode, maxSignificant)
+	return getSizeString(b, 1000, "B", langCode, maxSignificant)
 }
 
 func GetMemoryString(b int64, langCode string, maxSignificant int) string {
-	return getSizeString(b, 1024, "b", langCode, maxSignificant)
+	return getSizeString(b, 1024, "B", langCode, maxSignificant)
 }
 
 // NiceFloat converts a float to string, with only significant amount of post-comma digits
