@@ -3,7 +3,6 @@
 package zfilelister
 
 import (
-	"path"
 	"strings"
 
 	"github.com/torlangballe/zui/zalert"
@@ -63,6 +62,9 @@ func NewFileListerView(opts DirOptions) *FileListerView {
 	v.SetMarginS(zgeo.SizeBoth(5))
 	v.Init(v, true, opts.StoreName+".FileLister")
 
+	if opts.IconSize.IsNull() {
+		opts.IconSize = zgeo.SizeD(24, 16)
+	}
 	v.DirOptions = opts
 	bar := zcontainer.StackViewHor("bar")
 	v.Add(bar, zgeo.TopLeft|zgeo.HorExpand)
@@ -205,10 +207,12 @@ func NewRemoteFileListerView(urlPrefix, urlStub string, opts DirOptions) *FileLi
 	}
 	// zlog.Info("NewRemoteFileLister: DirFunc:", flister.DirFunc != nil)
 	flister.GetImageURL = func(spath string) string {
-		ext := path.Ext(spath)
-		hash := zstr.HashTo64Hex(spath)
-		surl := zfile.JoinPathParts(urlPrefix, "caches/filelister-icons/"+opts.StoreName, hash+ext)
-		zlog.Info("RemoteFileLister:Image", spath, surl)
+		// ext := path.Ext(spath)
+		// if zstr.HasSuffix(spath, "/", &spath) {
+		// 	ext = "._folder"
+		// }
+		surl := zfile.JoinPathParts(urlPrefix, cachePrefix, opts.StoreName, spath)
+		zlog.Info("RemoteFileLister:Image", surl)
 		return surl
 	}
 	return flister

@@ -3,37 +3,51 @@
 package zfilelister
 
 import (
+	"embed"
+	"io"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/torlangballe/zui/zapp"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfilecache"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
+
+//go:embed images
+var iconsFS embed.FS
 
 type FileServerCalls struct{}
 
 type FileServer struct {
 	IconCache *zfilecache.Cache
-	// Token         string // If not empty, Header Authentication on requests needs to be with this token.
-	router  *mux.Router
-	folders map[string]string // storeName:baseFolder
+	router    *mux.Router
+	folders   map[string]string // storeName:baseFolder
 }
 
 const urlPrefix = "zfilelister-files"
 
-var MainServer *FileServer
+var (
+	MainServer   *FileServer
+	addedIconsFS bool
+)
 
 func NewFileServer(router *mux.Router, cacheBaseFolder string) *FileServer {
+	if !addedIconsFS {
+		zapp.AllWebFS.Add(iconsFS)
+	}
 	s := &FileServer{}
-	s.IconCache = zfilecache.Init(router, cacheBaseFolder, "caches/filelister-icons", "filelister-icons")
+	s.IconCache = zfilecache.Init(router, cacheBaseFolder, "caches", "filelister-icons")
 	s.IconCache.DeleteAfter = ztime.Day * 7
 	s.IconCache.ServeEmptyImage = true
 	s.IconCache.DeleteRatio = 0.1
 	s.IconCache.InterceptServeFunc = s.interceptCache
+	s.IconCache.NestInHashFolders = false
 	s.router = router
 	s.folders = map[string]string{}
 	return s
@@ -112,7 +126,42 @@ func (s *FileServer) handleServeFile(w http.ResponseWriter, filepath *string, ur
 }
 */
 
-func (s *FileServer) interceptCache(w http.ResponseWriter, req *http.Request, file string) bool {
-	zlog.Info("FS:intercept:", req.URL, file)
-	return false
+func (s *FileServer) interceptCache(w http.ResponseWriter, req *http.Request, fpath *string) bool {
+	const prefix = "images/zcore/zfilelister/icons/"
+	zlog.Info("FS:intercept:", req.URL, *fpath)
+	ext := path.Ext(*fpath)
+	var path string
+	if zstr.StringsContain(zfile.ImageExtensions, ext) {
+		s.serveThumb(w, req, *fpath)
+		return true
+	}
+	docPath := prefix + "document.png"
+	if ext == "" {
+		path = docPath
+	} else {
+		path = prefix + ext[1:] + ".png"
+	}
+	file, err := iconsFS.Open(path)
+	if err != nil && path != docPath {
+		file, err = iconsFS.Open(docPath)
+	}
+	if err == nil {
+		_, err = io.Copy(w, file)
+		zlog.OnError(err)
+		return true
+	}
+	return true
+}
+
+func (s *FileServer) serveThumb(w http.ResponseWriter, req *http.Request, fpath string) {
+	var rest string
+	prefix := zfile.JoinPathParts(s.IconCache.WorkDir, cachePrefix) + "/"
+	zlog.Info("serveThumb1:", fpath)
+
+	if zstr.HasPrefix(fpath, prefix, &rest) {
+		name, _ := zstr.SplitInTwo(rest, "/")
+		baseFolder := s.folders[name]
+		file := zfile.JoinPathParts(baseFolder, rest)
+		zlog.Info("serveThumb:", file)
+	}
 }

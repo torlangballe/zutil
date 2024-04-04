@@ -12,3 +12,7 @@ type DirOptions struct {
 	PathStub          string
 	IconSize          zgeo.Size
 }
+
+const (
+	cachePrefix = "caches/filelister-icons"
+)
