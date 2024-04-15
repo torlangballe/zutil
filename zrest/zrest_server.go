@@ -59,7 +59,7 @@ func AddCORSHeaders(w http.ResponseWriter, req *http.Request) {
 		// w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Access-Token")
+		w.Header().Set("Access-Control-Allow-Headers", "*") // "Origin, Content-Type, Accept, Access-Token, X-Date, X-Timeout-Secs "
 		return
 		// } else {
 		// 	zlog.Info("AddCorsHeaders NOT allowed!:", o, find, LegalCORSOrigins)
@@ -199,7 +199,7 @@ func AddFileHandler(router *mux.Router, pattern, dir string, override func(w htt
 
 func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	pattern = AppURLPrefix + pattern
-	// zlog.Info("AddHandler:", pattern)
+	zlog.Info("AddHandler:", pattern)
 	defer zlog.HandlePanic(false)
 	// if router == nil {
 	// 	if HasTelemetryFunc() {
