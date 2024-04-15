@@ -91,8 +91,7 @@ func RemoveIf(slice any, remove func(i int) bool) {
 	if val.Kind() == reflect.Pointer {
 		val = val.Elem()
 	}
-	len := val.Len()
-	for i := 0; i < len; i++ {
+	for i := 0; i < val.Len(); i++ {
 		if remove(i) {
 			RemoveAt(slice, i)
 			i--
