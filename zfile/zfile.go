@@ -342,28 +342,9 @@ func Walk(folder, wildcards string, opts WalkOptions, got func(fpath string, inf
 	})
 }
 
-// GetFilesFromPath returns a list of names of files inside path. If path has a wildcard
-func GetFilesFromPath(path string, opts WalkOptions) (files []string, err error) {
-	var wild string
-	dir, name := filepath.Split(path)
-	if dir != "" && NotExists(dir) {
-		return files, os.ErrNotExist
-	}
-	if dir == "" {
-		dir = "."
-	}
-	if strings.Contains(name, "*") {
-		wild = name
-	} else {
-		dir = path
-	}
-	Walk(dir, wild, opts, func(fpath string, info os.FileInfo) error {
-		if info.IsDir() {
-			if fpath == dir {
-				return nil
-			}
-			return filepath.SkipDir
-		}
+// GetFilesFromPath returns a list of names of files inside path.
+func GetFilesFromPath(path, wildcards string, opts WalkOptions) (files []string, err error) {
+	Walk(path, wildcards, opts, func(fpath string, info os.FileInfo) error {
 		files = append(files, fpath)
 		return nil
 	})
