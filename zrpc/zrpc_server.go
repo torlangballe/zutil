@@ -42,9 +42,12 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var token string
 	var userID int64
 
-	// zlog.Warn("zrpc.doServeHTTP:", req.URL.String(), zlog.Pointer(e))
+	zlog.Warn("zrpc.doServeHTTP:", req.URL.String(), req.Method)
 	// defer zlog.Info("zrpc.doServeHTTP DONE:", req.URL.Path, req.URL.Query())
 	zrest.AddCORSHeaders(w, req)
+	if req.Method == http.MethodOptions {
+		return
+	}
 	defer req.Body.Close()
 	if req.Method == "OPTIONS" {
 		return
