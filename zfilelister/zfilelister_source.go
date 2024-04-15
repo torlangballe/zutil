@@ -8,12 +8,14 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zui/zapp"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfilecache"
+	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -64,8 +66,8 @@ func (s *FileServer) AddFolder(baseFolder, storeName, servePath string) {
 
 func (FileServerCalls) GetDirectory(dirOpts DirOptions, paths *[]string) error {
 	baseFolder := MainServer.folders[dirOpts.StoreName]
-	folder := zfile.JoinPathParts(baseFolder, dirOpts.StoreName)
-	walkOpts := zfile.WalkOptionGiveNameOnly | zfile.WalkOptionRecursive
+	folder := zfile.JoinPathParts(baseFolder, dirOpts.StoreName, dirOpts.PathStub)
+	walkOpts := zfile.WalkOptionGiveNameOnly
 	if dirOpts.ChooseFolders || dirOpts.FoldersOnly {
 		walkOpts |= zfile.WalkOptionGiveFolders
 	}
@@ -73,7 +75,7 @@ func (FileServerCalls) GetDirectory(dirOpts DirOptions, paths *[]string) error {
 	if len(dirOpts.ExtensionsAllowed) != 0 {
 		wildcards = "*" + strings.Join(dirOpts.ExtensionsAllowed, "\t*")
 	}
-	// zlog.Info("FileServerCalls.GetDir", folder, wildcards)
+	zlog.Info("FileServerCalls.GetDir", folder, wildcards)
 	err := zfile.Walk(folder, wildcards, walkOpts, func(fpath string, info os.FileInfo) error {
 		// zlog.Info("FileServerCalls.GetDir2", fpath, dirOpts.ChooseFolders, dirOpts.FoldersOnly)
 		if dirOpts.FoldersOnly && !info.IsDir() {
@@ -85,6 +87,7 @@ func (FileServerCalls) GetDirectory(dirOpts DirOptions, paths *[]string) error {
 		*paths = append(*paths, fpath)
 		return nil
 	})
+	sort.Strings(*paths)
 	if err != nil {
 		return err
 	}
@@ -128,12 +131,15 @@ func (s *FileServer) handleServeFile(w http.ResponseWriter, filepath *string, ur
 
 func (s *FileServer) interceptCache(w http.ResponseWriter, req *http.Request, fpath *string) bool {
 	const prefix = "images/zcore/zfilelister/icons/"
-	zlog.Info("FS:intercept:", req.URL, *fpath)
+	// zlog.Info("FS:intercept:", req.URL, *fpath)
 	ext := path.Ext(*fpath)
 	var path string
-	if zstr.StringsContain(zfile.ImageExtensions, ext) {
-		s.serveThumb(w, req, *fpath)
-		return true
+	if ext == "" && strings.HasSuffix(req.URL.Path, "/") {
+		ext = ".folder_"
+	} else {
+		if zstr.StringsContain(zfile.ImageExtensions, ext) {
+			return s.serveThumb(w, req, fpath)
+		}
 	}
 	docPath := prefix + "document.png"
 	if ext == "" {
@@ -142,6 +148,7 @@ func (s *FileServer) interceptCache(w http.ResponseWriter, req *http.Request, fp
 		path = prefix + ext[1:] + ".png"
 	}
 	file, err := iconsFS.Open(path)
+	zlog.Info("FS:intercept:", path, req.URL, *fpath, err)
 	if err != nil && path != docPath {
 		file, err = iconsFS.Open(docPath)
 	}
@@ -153,15 +160,20 @@ func (s *FileServer) interceptCache(w http.ResponseWriter, req *http.Request, fp
 	return true
 }
 
-func (s *FileServer) serveThumb(w http.ResponseWriter, req *http.Request, fpath string) {
+func (s *FileServer) serveThumb(w http.ResponseWriter, req *http.Request, fpath *string) bool {
 	var rest string
 	prefix := zfile.JoinPathParts(s.IconCache.WorkDir, cachePrefix) + "/"
-	zlog.Info("serveThumb1:", fpath)
+	// zlog.Info("serveThumb1:", fpath)
 
-	if zstr.HasPrefix(fpath, prefix, &rest) {
+	size, _ := zgeo.SizeFromString(req.URL.Query().Get("size"))
+	if zstr.HasPrefix(*fpath, prefix, &rest) {
 		name, _ := zstr.SplitInTwo(rest, "/")
 		baseFolder := s.folders[name]
-		file := zfile.JoinPathParts(baseFolder, rest)
-		zlog.Info("serveThumb:", file)
+		imagePath := zfile.JoinPathParts(baseFolder, rest)
+		// img, format, err := zimage.GoImageFromFile(file)
+		zlog.Info("serveThumb1:", rest, size)
+
+		zlog.Info("serveThumb:", imagePath, "toicon:", *fpath)
 	}
+	return false
 }
