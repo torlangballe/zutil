@@ -199,7 +199,7 @@ func AddFileHandler(router *mux.Router, pattern, dir string, override func(w htt
 
 func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	pattern = AppURLPrefix + pattern
-	zlog.Info("AddHandler:", pattern)
+	// zlog.Info("AddHandler:", pattern)
 	defer zlog.HandlePanic(false)
 	// if router == nil {
 	// 	if HasTelemetryFunc() {
