@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/torlangballe/zui/ztermfields"
 	"github.com/torlangballe/zutil/zmap"
+	"github.com/torlangballe/zutil/ztermfields"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
 )

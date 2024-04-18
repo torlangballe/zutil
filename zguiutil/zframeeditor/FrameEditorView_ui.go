@@ -286,7 +286,7 @@ func (v *FrameEditorView) drawGrabRect(canvas *zcanvas.Canvas, box *Box, corner 
 	center := v.posToView(box.Corners[corner])
 	r := zgeo.RectFromWH(6, 6)
 	r = r.Centered(center)
-	path := zgeo.PathNewRect(r, zgeo.Size{})
+	path := zgeo.PathNewRect(r, zgeo.SizeNull)
 	if box.ID == v.selectedBoxID && corner == v.selectedCorner {
 		canvas.SetColor(zgeo.ColorWhite)
 		canvas.FillPath(path)
@@ -298,7 +298,7 @@ func (v *FrameEditorView) drawGrabRect(canvas *zcanvas.Canvas, box *Box, corner 
 	r = zgeo.RectFromWH(5, 5)
 	r = r.Centered(center)
 	canvas.SetColor(zgeo.ColorWhite)
-	path = zgeo.PathNewRect(r, zgeo.Size{})
+	path = zgeo.PathNewRect(r, zgeo.SizeNull)
 	canvas.StrokePath(path, 1, zgeo.PathLineSquare)
 }
 

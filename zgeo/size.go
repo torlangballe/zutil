@@ -24,7 +24,10 @@ type Sizes []Size
 
 const UndefValue = math.MaxFloat32
 
-var SizeUndef = Size{W: UndefValue, H: UndefValue}
+var (
+	SizeUndef = Size{W: UndefValue, H: UndefValue}
+	SizeNull  Size
+)
 
 // SizeF creates a Size from float64 w and h
 func SizeF(w, h float32) Size {

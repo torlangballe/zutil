@@ -69,7 +69,7 @@ func NewUploadView(storeName string, allow []string, storeKey string) *UploadVie
 
 func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string, storeKey string) {
 	v.StackView.Init(v, false, storeName)
-	v.SetMinSize(zgeo.Size{0, 22})
+	v.SetMinSize(zgeo.SizeD(0, 22))
 	var items zdict.Items
 	for _, a := range allTypes {
 		if len(allowTypes) == 0 || zstr.StringsContain(allowTypes, a) {
@@ -110,7 +110,7 @@ func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string
 	v.Add(v.button, zgeo.CenterLeft)
 	v.button.SetPressedHandler(v.buttonPressed)
 
-	v.DropWell = zwidgets.NewDropWell("", zgeo.Size{10, 20})
+	v.DropWell = zwidgets.NewDropWell("", zgeo.SizeD(10, 20))
 	v.Add(v.DropWell, zgeo.CenterLeft|zgeo.Expand)
 	v.DropWell.HandleDroppedFile = v.handleGivenFile
 	v.DropWell.HandleDropPreflight = v.checkExtensions
@@ -215,7 +215,7 @@ func (v *UploadView) addUploadButton() {
 	v.selectButton = zbutton.New("choose file")
 	v.selectButton.SetMinWidth(100)
 	len := v.CountChildren()
-	v.AddAdvanced(v.selectButton, zgeo.CenterLeft, zgeo.Size{}, zgeo.Size{}, len-1, false)
+	v.AddAdvanced(v.selectButton, zgeo.CenterLeft, zgeo.SizeNull, zgeo.SizeNull, len-1, false)
 	v.selectButton.SetUploader(v.handleGivenFile, v.checkExtensions, nil)
 }
 

@@ -35,10 +35,7 @@ func (j *Job) PixelWidth(base *GrapherBase) int {
 }
 
 func (j *Job) PixelSize(base *GrapherBase) zgeo.Size {
-	return zgeo.Size{
-		W: float64(j.PixelWidth(base)),
-		H: float64(j.PixelHeight),
-	}
+	return zgeo.SizeD(float64(j.PixelWidth(base)), float64(j.PixelHeight))
 }
 
 func (j *Job) XForTime(base *GrapherBase, t time.Time) int {

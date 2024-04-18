@@ -69,7 +69,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	const columnWith = 120.0
 	v1 := zcontainer.StackViewVert("auth")
 	v1.SetSpacing(10)
-	v1.SetMarginS(zgeo.Size{14, 14})
+	v1.SetMarginS(zgeo.SizeD(14, 14))
 	v1.SetBGColor(zgeo.ColorNewGray(0.9, 1))
 
 	username, _ := zkeyvalue.DefaultStore.GetString(usernameKey)
@@ -123,7 +123,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 		})
 	}
 	h1 := zcontainer.StackViewHor("buttons")
-	v1.Add(h1, zgeo.TopLeft|zgeo.HorExpand, zgeo.Size{0, 14})
+	v1.Add(h1, zgeo.TopLeft|zgeo.HorExpand, zgeo.SizeD(0, 14))
 
 	if doReg {
 		h1.Add(register, zgeo.CenterRight)
@@ -276,7 +276,6 @@ func showOpenDialog() {
 func showDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title string, got func(newText string)) {
 	const columnWith = 120.0
 	v1 := zcontainer.StackViewVert("dialog")
-	// v1.SetMarginS(zgeo.Size{10, 10})
 
 	style := ztext.Style{KeyboardType: zkeyboard.TypeDefault}
 	if isPassword {

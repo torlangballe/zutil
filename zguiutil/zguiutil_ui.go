@@ -34,14 +34,14 @@ func NewBar(title string) *zcontainer.StackView {
 			zdebug.PrintAllGoroutines()
 			ztimer.DumpRepeaters()
 		})
-		bar.Add(label, zgeo.Left|zgeo.VertCenter|zgeo.HorExpand, zgeo.Size{0, 0})
+		bar.Add(label, zgeo.Left|zgeo.VertCenter|zgeo.HorExpand)
 	}
 	bar.SetDrawHandler(func(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View) {
 		colors := []zgeo.Color{
 			zstyle.Col(zgeo.ColorNew(0.85, 0.88, 0.91, 1), zgeo.ColorNew(0.15, 0.18, 0.21, 1)),
 			zstyle.Col(zgeo.ColorNew(0.69, 0.72, 0.76, 1), zgeo.ColorNew(0.29, 0.32, 0.36, 1)),
 		}
-		path := zgeo.PathNewRect(rect, zgeo.Size{})
+		path := zgeo.PathNewRect(rect, zgeo.SizeNull)
 		canvas.DrawGradient(path, colors, rect.Min(), rect.BottomLeft(), nil)
 	})
 	return bar
@@ -84,7 +84,7 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 		cell.MinSize.W = minLabelWidth
 	}
 
-	marg := zgeo.Size{}
+	marg := zgeo.SizeNull
 	if isCheck {
 		marg.W = -6 // in html cell has a box around it of 20 pixels
 	}
@@ -130,19 +130,19 @@ func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFra
 			header.SetCorner(4)
 			header.SetBGColor(zgeo.ColorWhite)
 		}
-		stack.AddAdvanced(header, zgeo.TopLeft|zgeo.HorExpand, zgeo.Size{0, h}, zgeo.Size{}, 0, false)
+		stack.AddAdvanced(header, zgeo.TopLeft|zgeo.HorExpand, zgeo.SizeD(0, h), zgeo.SizeNull, 0, false)
 		label := zlabel.New(title)
 		label.SetObjectName("title")
 		ts := DefaultFrameTitleStyling.MergeWith(titleStyling)
 		label.SetStyling(ts)
-		header.Add(label, zgeo.CenterLeft, zgeo.Size{})
+		header.Add(label, zgeo.CenterLeft, zgeo.SizeNull)
 	}
 	return header
 }
 
 func AddLabeledViewToGrid(grid *zcontainer.GridView, title string, view zview.View) {
 	label := zlabel.New(title)
-	grid.Add(label, zgeo.CenterRight, zgeo.Size{})
+	grid.Add(label, zgeo.CenterRight, zgeo.SizeNull)
 
-	grid.Add(view, zgeo.CenterLeft|zgeo.HorExpand, zgeo.Size{})
+	grid.Add(view, zgeo.CenterLeft|zgeo.HorExpand, zgeo.SizeNull)
 }

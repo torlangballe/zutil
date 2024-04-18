@@ -103,7 +103,7 @@ func makeFrame(in *zcontainer.StackView, name string) (frame, header *zcontainer
 
 func NewDebugView(urlStub string, otherIPs map[string]string, serverName string) *DebugView {
 	v := &DebugView{}
-	v.SetMarginS(zgeo.Size{10, 10})
+	v.SetMarginS(zgeo.SizeD(10, 10))
 	v.Init(v, true, "debug-view")
 	frame, _ := makeFrame(&v.StackView, "gui")
 	addGUIProfileRow(frame, "gui-heap", "heap")
