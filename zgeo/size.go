@@ -336,7 +336,7 @@ func (s *Size) Scan(value interface{}) error {
 
 func (s Sizes) GetItems() (items zdict.Items) {
 	for _, size := range s {
-		items = append(items, zdict.Item{size.String(), size})
+		items = append(items, zdict.Item{Name: size.String(), Value: size})
 	}
 	return
 }

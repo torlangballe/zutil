@@ -1,3 +1,5 @@
+//go:build zui && catalyst
+
 package zmacapp
 
 import (

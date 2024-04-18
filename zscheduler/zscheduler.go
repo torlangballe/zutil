@@ -371,7 +371,7 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 	// zlog.Warn("stopJob handleSit:", r.ExecutorID, r.Job.ID, r.ExecutorID)
 	s.setup.HandleSituationFastFunc(r, JobStopped, reason)
 	// run.ExecutorID = s.zeroIDe
-	ctx, _ := context.WithDeadline(context.Background(), now.Add(s.setup.SlowStopJobFuncTimeout))
+	ctx, cancel := context.WithDeadline(context.Background(), now.Add(s.setup.SlowStopJobFuncTimeout))
 	// zlog.Warn("stopJob", run.Job.DebugName, run.ExecutorID, refresh, remove, outsideRequest, "reason:", reason, run) //, zlog.CallingStackString())
 	go func() {
 		err := s.setup.StopJobOnExecutorFunc(r, ctx)
@@ -389,6 +389,7 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 		}
 		s.endRunCh <- jobID
 	}()
+	cancel()
 }
 
 func (s *Scheduler[I]) addJob(job Job[I], outsideRequest bool) {
@@ -570,7 +571,6 @@ func (s *Scheduler[I]) startAndStopRuns() {
 	// defer zlog.Warn("startAndStopRuns END", ssCount)
 	if !ssLock.TryLock() {
 		panic("startAndStopRuns already running!")
-		return
 	}
 	defer ssLock.Unlock()
 	// defer zlog.Warn("startAndStopRuns done")
@@ -897,7 +897,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 	d, _ := s.Debug.Get(run.Job.ID)
 	d.ExecutorName = e.DebugName
 	s.Debug.Set(run.Job.ID, d)
-	ctx, _ := context.WithDeadline(context.Background(), now.Add(s.setup.SlowStartJobFuncTimeout))
+	ctx, cancel := context.WithDeadline(context.Background(), now.Add(s.setup.SlowStartJobFuncTimeout))
 	run.Count++
 	// zlog.Warn("STARTING JOB:", jobID, run.Count)
 	run.starting = true
@@ -929,6 +929,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 			}
 		}
 	}()
+	cancel()
 	go func() {
 		s.refreshCh <- struct{}{} // Do this via a goroutine or it gets stuck, even with s.startStopViaChannelNonBlocking()
 	}()

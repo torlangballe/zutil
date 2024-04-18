@@ -1,3 +1,5 @@
+//go:build server
+
 package znetstats
 
 type Buffer struct {

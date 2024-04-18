@@ -73,7 +73,7 @@ func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string
 	var items zdict.Items
 	for _, a := range allTypes {
 		if len(allowTypes) == 0 || zstr.StringsContain(allowTypes, a) {
-			items = append(items, zdict.Item{a, a})
+			items = append(items, zdict.Item{Name: a, Value: a})
 		}
 	}
 	v.actionMenu = zmenu.NewView("allow", items, storeKey)

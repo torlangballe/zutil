@@ -12,7 +12,7 @@ type BoxCornerType string
 type Box struct {
 	ID      int64                       `zui:"-"`
 	Color   zgeo.Color                  `zui:"width:100"`
-	Name    string                      `zui:width:400"`
+	Name    string                      `zui:"width:400"`
 	Corners map[zgeo.Alignment]zgeo.Pos `zui:"-"`
 }
 

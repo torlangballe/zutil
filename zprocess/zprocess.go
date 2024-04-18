@@ -88,8 +88,10 @@ func PoolWorkOnItems[T any](all []T, poolSize int, do func(t *T)) {
 // RunFuncUntilTimeoutSecs uses RunFuncUntilContextDone to wait secs for a function to finish,
 // or returns while it's still running in a goroutine.
 func RunFuncUntilTimeoutSecs(secs float64, do func()) (completed bool) {
-	ctx, _ := context.WithTimeout(context.Background(), ztime.SecondsDur(secs))
-	return RunFuncUntilContextDone(ctx, do)
+	ctx, cancel := context.WithTimeout(context.Background(), ztime.SecondsDur(secs))
+	completed = RunFuncUntilContextDone(ctx, do)
+	cancel()
+	return completed
 }
 
 // RunFuncUntilContextDone waits for do() to finish or the context to be done
