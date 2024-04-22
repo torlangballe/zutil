@@ -19,7 +19,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/google/uuid"
+	uuidv4 "github.com/bitactro/UUIDv4"
 	"github.com/torlangballe/zutil/zint"
 )
 
@@ -492,13 +492,12 @@ func GenerateRandomHexBytes(byteCount int) string {
 	return hex.EncodeToString(data)
 }
 
-func CreateGUUID() string {
-	return strings.ToUpper(GenerateUUID())
-}
+// func CreateGUUID() string {
+// 	return strings.ToUpper(GenerateUUID())
+// }
 
 func GenerateUUID() string {
-	u := uuid.New()
-	return u.String()
+	return uuidv4.GenerateUUID4()
 }
 
 func MD5Hex(data []byte) string {

@@ -158,7 +158,7 @@ func UUID() string {
 	const webHardwareIDKey = "zutil.zdevice.WebHardwareIDKey"
 	id, _ := zkeyvalue.DefaultStore.GetString(webHardwareIDKey)
 	if id == "" {
-		id = zstr.CreateGUUID()
+		id = zstr.GenerateUUID()
 		zkeyvalue.DefaultStore.SetString(id, webHardwareIDKey, true)
 	}
 	return id
