@@ -6,6 +6,8 @@ github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b h1:5Ci5wpOL75rYF6RQGRo
 github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b/go.mod h1:obBQGGIFbbv9KWg92Qu9UHeD94JXmHD1jovY/z6I3O8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
+github.com/bitactro/UUIDv4 v0.0.0-20220313143507-9a5732793937 h1:00sDJBJKhcYaziJl1XDd/1Qa0SJYRrN0BgK1z39Hdsc=
+github.com/bitactro/UUIDv4 v0.0.0-20220313143507-9a5732793937/go.mod h1:7KBT0S0ZdxeZDER0ChWwTNYy00nCR3xKhn00eqGOpDU=
 github.com/bramvdbogaerde/go-scp v1.2.1 h1:BKTqrqXiQYovrDlfuVFaEGz0r4Ou6EED8L7jCXw6Buw=
 github.com/bramvdbogaerde/go-scp v1.2.1/go.mod h1:s4ZldBoRAOgUg8IrRP2Urmq5qqd2yPXQTPshACY8vQ0=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=

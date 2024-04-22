@@ -43,6 +43,7 @@ require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bitactro/UUIDv4 v0.0.0-20220313143507-9a5732793937 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chromedp/sysutil v1.0.0 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
