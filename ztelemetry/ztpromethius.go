@@ -1,3 +1,5 @@
+//go:build server
+
 package ztelemetry
 
 import (
@@ -9,7 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/torlangballe/zutil/zkeyvalrpc"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -36,9 +37,8 @@ type SummaryVec struct {
 const URLBaseLabel = "url_base"
 
 var (
-	registry       *prometheus.Registry
-	httpBuckets    []float64 = prometheus.ExponentialBuckets(0.1, 1.5, 5)
-	PrometheusPort           = zkeyvalrpc.NewOption[int]("PrometheusPort", 9090)
+	registry    *prometheus.Registry
+	httpBuckets []float64 = prometheus.ExponentialBuckets(0.1, 1.5, 5)
 )
 
 func IsRunning() bool {
