@@ -57,6 +57,14 @@ func FromStringWithError(str string) (bool, error) {
 	return bind.Bool(), nil
 }
 
+func (bi *BoolInd) FromBool(b bool) {
+	if b {
+		*bi = True
+	} else {
+		*bi = False
+	}
+}
+
 func FromBool(b bool) BoolInd {
 	if b {
 		return True
