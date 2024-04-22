@@ -2,4 +2,4 @@
 
 package zsql
 
-type SQLDictSlice any
+// type SQLDictSlice any

@@ -13,7 +13,6 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/torlangballe/zui/zfields"
-	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
@@ -26,7 +25,8 @@ type Base struct {
 }
 
 type SQLCalls struct{}
-type SQLDictSlice []zdict.Dict
+
+// type SQLDictSlice []zdict.Dict
 
 var (
 	Main                   Base

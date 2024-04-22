@@ -445,6 +445,7 @@ func GetCurrentLocalIP4Address(skipLocal bool, netInterface string) (ip4 string,
 	return ip4, err
 }
 
+// GetCurrentLocalIP4Addresses returns a map of interface:ip4-address
 func GetCurrentLocalIP4Addresses(skipLocal bool) (map[string]string, error) {
 	m := map[string]string{}
 	ifaces, err := net.Interfaces()

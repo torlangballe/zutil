@@ -191,6 +191,7 @@ func makeClient(skipVerify bool) *http.Client {
 }
 
 func MakeRequest(surl string, params Parameters) (request *http.Request, client *http.Client, err error) {
+	// wasm fetch options: https://go.dev/src/net/http/roundtrip_js.go
 	if params.Args != nil {
 		surl, _ = MakeURLWithArgs(surl, params.Args)
 	}
@@ -694,6 +695,10 @@ func MakeDataURL(data []byte, mime string) string {
 
 func StringStartsWithHTTPX(str string) bool {
 	return strings.HasPrefix(str, "http:") || strings.HasPrefix(str, "https:")
+}
+
+func HostIsLocal(host string) bool {
+	return host == "localhost" || host == "127.0.0.1"
 }
 
 func HasURLScheme(str string) bool {
