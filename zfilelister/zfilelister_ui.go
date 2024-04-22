@@ -72,6 +72,7 @@ func NewFileListerView(opts DirOptions, rpcClient *zrpc.Client) *FileListerView 
 
 	v.grid = zgridlist.NewView(opts.StoreName)
 	v.grid.MakeFullSize = true
+	v.grid.MaxColumns = 1
 	v.grid.SetMinSize(zgeo.SizeD(340, 400))
 	v.grid.MinRowsForFullSize = 5
 	v.grid.MaxRowsForFullSize = 20
@@ -104,15 +105,16 @@ func (v *FileListerView) goBack() {
 	v.update()
 }
 
-func (v *FileListerView) handleRowPressed(id string) {
+func (v *FileListerView) handleRowPressed(id string) bool {
 	path := v.pathOfID(id)
 	name := strings.TrimRight(path, "/")
 	if name == path { // it isn't a folder
-		return
+		return false
 	}
 	v.DirOptions.PathStub = zfile.JoinPathParts(v.DirOptions.PathStub, name)
-	zlog.Info("pressed:", v.DirOptions.PathStub)
+	zlog.Info("pressed:", id, path, v.DirOptions.PathStub)
 	v.update()
+	return true
 }
 
 func (v *FileListerView) ReadyToShow(beforeWindow bool) {
@@ -137,21 +139,23 @@ func (v *FileListerView) updateRow(grid *zgridlist.GridListView, id string) {
 
 	f, _ = row.FindViewWithName(titleID, false)
 	label := f.(*zlabel.Label)
+	isFolder := (zstr.LastByteAsString(path) == "/")
 	path = strings.TrimRight(path, "/")
+	fullpath := zfile.JoinPathParts(v.PathStub, path)
 	label.SetText(path)
 
-	zlog.Info("updateRow", id, v.PickedPaths)
 	f, _ = row.FindViewWithName(checkID, false)
 	check := f.(*zcheckbox.CheckBox)
+	zlog.Info("updateRow", id, v.PickedPaths, fullpath)
 	on := zbool.False
 	for _, p := range v.PickedPaths {
-		if p == path {
+		if p == fullpath {
 			zlog.Info("updateRow on", id)
 			on = zbool.True
 			break
-		} else if !on.IsTrue() && strings.HasPrefix(p, path) {
-			zlog.Info("updateRow udef", id)
+		} else if isFolder && !on.IsTrue() && strings.HasPrefix(p, fullpath) {
 			on = zbool.Unknown
+			zlog.Info("updateRow udef", id)
 		}
 	}
 	check.SetValue(on)
@@ -167,14 +171,14 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 	check.SetValueHandler(func() {
 		on := check.On()
 		path := v.pathOfID(id)
+		fullpath := zfile.JoinPathParts(v.PathStub, path)
 		zslice.RemoveIf(&v.PickedPaths, func(i int) bool {
-			return strings.HasPrefix(v.PickedPaths[i], path)
+			return strings.HasPrefix(v.PickedPaths[i], fullpath)
 		})
-
 		if on {
-			v.PickedPaths = append(v.PickedPaths, path) // we can add it, as it will be removed above
+			v.PickedPaths = append(v.PickedPaths, fullpath) // we can add it, as it will be removed above
 		} else {
-			v.PickedPaths = zstr.RemovedFromSlice(v.PickedPaths, path)
+			v.PickedPaths = zstr.RemovedFromSlice(v.PickedPaths, fullpath)
 		}
 	})
 	s.Add(check, zgeo.CenterLeft)
