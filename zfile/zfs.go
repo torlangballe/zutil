@@ -1,3 +1,5 @@
+//go:build !js
+
 package zfile
 
 import (
@@ -9,20 +11,39 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
-type MultiFS []fs.FS
-
-func (m MultiFS) Open(name string) (fs.File, error) {
-	for _, f := range m {
-		file, err := f.Open(name)
-		if err == nil || !errors.Is(err, fs.ErrNotExist) {
-			return file, err
-		}
-	}
-	return nil, fs.ErrNotExist
+type multiRow struct {
+	FS     fs.FS
+	FSName string
 }
 
-func CanOpenInFS(f fs.FS, name string) bool {
-	file, err := f.Open(name)
+type MultiFS []multiRow
+
+func (m MultiFS) OpenReturningFSName(filename string) (fs.File, string, error) {
+	for _, f := range m {
+		file, err := f.FS.Open(filename)
+		if err == nil || !errors.Is(err, fs.ErrNotExist) {
+			return file, f.FSName, err
+		}
+	}
+	return nil, "", fs.ErrNotExist
+}
+
+func (m MultiFS) Open(filename string) (fs.File, error) {
+	f, _, err := m.OpenReturningFSName(filename)
+	return f, err
+}
+
+func (m MultiFS) IsOpenable(filename string) (bool, string) {
+	f, fsname, _ := m.OpenReturningFSName(filename)
+	if f != nil {
+		f.Close()
+		return true, fsname
+	}
+	return false, ""
+}
+
+func CanOpenInFS(f fs.FS, filename string) bool {
+	file, err := f.Open(filename)
 	if err != nil {
 		return false
 	}
@@ -30,21 +51,35 @@ func CanOpenInFS(f fs.FS, name string) bool {
 	return true
 }
 
-func (m MultiFS) Stat(name string) (fs.FileInfo, error) {
+// Stat does not work for embeded file systems, so is not a good way to detect if file present.
+func (m MultiFS) Stat(filename string) (fs.FileInfo, string, error) {
 	for _, f := range m {
-		is, i := f.(fs.StatFS)
-		zlog.Assert(is != nil, i)
-		info, err := is.Stat(name)
-		zlog.Info("fs.Stat", name, err)
+		stat, got := f.FS.(fs.StatFS)
+		zlog.Info("fs.Stat1", stat, got, filename)
+		if !got {
+			continue
+		}
+		info, err := stat.Stat(filename)
+		// zlog.Info("fs.Stat", name, err)
 		if err == nil || !errors.Is(err, fs.ErrNotExist) {
-			return info, err
+			return info, f.FSName, err
 		}
 	}
-	return nil, fs.ErrNotExist
+	return nil, "", fs.ErrNotExist
 }
 
-func (m *MultiFS) Add(f fs.FS) {
-	*m = append(*m, f)
+func (m *MultiFS) Add(f fs.FS, fsname string) {
+	var row multiRow
+	row.FS = f
+	row.FSName = fsname
+	*m = append(*m, row)
+}
+
+func (m *MultiFS) InsertFirst(f fs.FS, fsname string) {
+	var row multiRow
+	row.FS = f
+	row.FSName = fsname
+	*m = append([]multiRow{row}, *m...)
 }
 
 func ReadBytesFromFileInFS(f fs.FS, name string) ([]byte, error) {
