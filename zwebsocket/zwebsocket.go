@@ -180,9 +180,9 @@ type Client struct {
 	Connection *websocket.Conn
 }
 
-func ClientNew(address string, receive func(message []byte, err error) bool) (*Client, error) {
+func ClientNew(address string, requestHeader http.Header, receive func(message []byte, err error) bool) (*Client, error) {
 	var err error
-	c, _, err := websocket.DefaultDialer.Dial(address, nil)
+	c, _, err := websocket.DefaultDialer.Dial(address, requestHeader)
 	if err != nil {
 		return nil, zlog.Error(err, "dial")
 	}
