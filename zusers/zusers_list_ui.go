@@ -108,6 +108,7 @@ func (t *userTable) unauthorizeUsers(sids []string) {
 	var shownError bool
 	for _, sid := range sids {
 		id, _ := strconv.ParseInt(sid, 10, 64)
+		t.grid.Grid.SetDirtyRow(sid)
 		err := zrpc.MainClient.Call("UsersCalls.UnauthenticateUser", id, nil)
 		if err != nil && !shownError {
 			zalert.ShowError(err)
