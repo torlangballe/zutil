@@ -28,6 +28,7 @@ void removeNonASCIIAndTruncate(NSString **str) {
     NSData *data = [snew dataUsingEncoding:NSASCIIStringEncoding allowLossyConversion:YES];
     CFRelease(*str);
     *str = [NSString stringWithUTF8String:[data bytes]];
+    [data release];
 }
 
 int canControlComputer(int prompt) {
@@ -314,6 +315,7 @@ const char *GetAllWindowTitlesTabSeparated(long pid) {
     }
 
     const char *cstr = ns2chars(str);
+    [str release];
     CFRelease(windowList);
     return cstr;
 }
