@@ -19,15 +19,15 @@ type Line struct {
 	Time     time.Time
 }
 
-func NewProfile(name string, minSecs float64) Profile {
+func NewProfile(minSecs float64, name ...any) Profile {
 	p := Profile{}
-	p.Name = name
+	p.Name = zstr.Spaced(name)
 	p.Start = time.Now()
 	p.MinSecs = minSecs
 	return p
 }
 
-func (p *Profile) Log(parts ...interface{}) {
+func (p *Profile) Log(parts ...any) {
 	var line *Line
 	previ := -1
 	str := zstr.Spaced(parts...)
@@ -53,9 +53,12 @@ func (p *Profile) Log(parts ...interface{}) {
 	// Info("Add:", p.Name, line.Duration)
 }
 
-func (p *Profile) End(parts ...interface{}) {
+func (p *Profile) End(parts ...any) {
 	if len(parts) != 0 {
-		p.Log(parts...)
+		since := time.Since(p.Start)
+		if since > time.Duration(p.MinSecs) {
+			p.Log(zstr.Spaced(parts), since)
+		}
 	}
 	dur := time.Since(p.Start)
 	var print bool
