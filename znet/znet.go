@@ -2,6 +2,7 @@ package znet
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"strconv"
 	"strings"
@@ -84,4 +85,17 @@ func GetIP4PartsAsAddress(parts []int) (address string, err error) {
 	}
 	address = fmt.Sprintf("%d.%d.%d.%d", parts[0], parts[1], parts[2], parts[3])
 	return
+}
+
+func DNSLookupToIP4(domain string) (string, error) {
+	ips, err := net.LookupIP(domain)
+	if err != nil {
+		return "", zlog.NewError(err, domain)
+	}
+	for _, ip := range ips {
+		if ip.To4() != nil {
+			return ip.String(), nil
+		}
+	}
+	panic("here")
 }
