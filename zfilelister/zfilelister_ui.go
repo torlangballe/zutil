@@ -140,22 +140,23 @@ func (v *FileListerView) updateRow(grid *zgridlist.GridListView, id string) {
 	f, _ = row.FindViewWithName(titleID, false)
 	label := f.(*zlabel.Label)
 	isFolder := (zstr.LastByteAsString(path) == "/")
+	fullFolderPath := zfile.JoinPathParts(v.PathStub, path)
 	path = strings.TrimRight(path, "/")
 	fullpath := zfile.JoinPathParts(v.PathStub, path)
 	label.SetText(path)
 
 	f, _ = row.FindViewWithName(checkID, false)
 	check := f.(*zcheckbox.CheckBox)
-	zlog.Info("updateRow", id, v.PickedPaths, fullpath)
+	// zlog.Info("updateRow", id, v.PickedPaths, fullpath)
 	on := zbool.False
 	for _, p := range v.PickedPaths {
-		if p == fullpath {
-			zlog.Info("updateRow on", id)
+		if p == fullFolderPath {
+			// zlog.Info("updateRow on", id)
 			on = zbool.True
 			break
 		} else if isFolder && !on.IsTrue() && strings.HasPrefix(p, fullpath) {
 			on = zbool.Unknown
-			zlog.Info("updateRow udef", id)
+			// zlog.Info("updateRow udef", id)
 		}
 	}
 	check.SetValue(on)
@@ -196,7 +197,7 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 
 func (v *FileListerView) update() {
 	title := zfile.JoinPathParts(v.DirOptions.StoreName, v.DirOptions.PathStub)
-	zlog.Info("update:", title)
+	// zlog.Info("update:", title)
 	v.title.SetText(title)
 	v.back.SetUsable(v.DirOptions.PathStub != "")
 	v.DirFunc(v.DirOptions, func(paths []string, err error) {
@@ -224,7 +225,7 @@ func (v *FileListerView) update() {
 
 func NewRemoteFileListerView(urlPrefix, urlStub string, opts DirOptions, rpcClient *zrpc.Client) *FileListerView {
 	flister := NewFileListerView(opts, rpcClient)
-	zlog.Info("NewRemoteFileListerView.rpcClient:", flister.rpcClient != nil)
+	// zlog.Info("NewRemoteFileListerView.rpcClient:", flister.rpcClient != nil)
 	flister.DirFunc = func(dirOpts DirOptions, got func(paths []string, err error)) {
 		go func() {
 			var paths []string
