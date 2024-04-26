@@ -484,13 +484,20 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 	var needsMilestone bool
 	var extraStr string
 	sinceRun := time.Since(run.RanAt)
-	hasSlack := (s.setup.KeepJobsBeyondAtEndUntilEnoughSlack != 0 && sinceRun <= run.Job.Duration+s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
+	deadline := run.Job.Duration + s.setup.KeepJobsBeyondAtEndUntilEnoughSlack
+	hasSlack := (s.setup.KeepJobsBeyondAtEndUntilEnoughSlack != 0 && sinceRun <= deadline)
 	if hasSlack && s.setup.StopJobIfSinceMilestoneLessThan != 0 {
 		extraStr = ", and near milestone"
 		if run.MilestoneAt.IsZero() || time.Since(run.MilestoneAt) > s.setup.StopJobIfSinceMilestoneLessThan {
 			needsMilestone = true
+			if sinceRun > deadline+s.setup.StopJobIfSinceMilestoneLessThan*2 {
+				zlog.Error("Bail milestone:", sinceRun, deadline, s.setup.StopJobIfSinceMilestoneLessThan*2)
+				needsMilestone = false
+				extraStr += ", beyond waiting for milestone"
+			}
 		}
 	}
+
 	if e.Paused {
 		// zlog.Warn("shouldStopJob paused:", caps, existingCap, unrunCost, run.Job.ID, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack, left, run.Job.Cost)
 		if s.setup.KeepJobsBeyondAtEndUntilEnoughSlack == 0 {
@@ -534,7 +541,7 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 			}
 		}
 		if !hasSlack {
-			return true, zstr.Spaced("job duration with slack and not enough capacity over, stopping anyway", unrunCost, time.Since(run.RanAt), run.Job.Duration, "left:", left, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
+			return true, zstr.Spaced("job duration with slack and not enough capacity, is done, stopping anyway", unrunCost, time.Since(run.RanAt), run.Job.Duration, "left:", left, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack)
 		}
 		str := zstr.Spaced("job duration with slack and not enough capacity still has slack, not stopping yet", time.Since(run.RanAt), run.Job.Duration, "left:", left, "cost:", run.Job.Cost, "unrun:", unrunCost, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack, "urn:", unrunName)
 		// zlog.Info("Job not stopped:", run.Job.DebugName, "@", e.DebugName, str)
