@@ -743,6 +743,17 @@ func ReplaceWithFunc(str string, replace func(rune) string) string {
 	return out
 }
 
+func FilterWithFunc(str string, keep func(r rune) bool) string {
+	var out string
+
+	for _, r := range str {
+		if keep(r) {
+			out += string(r)
+		}
+	}
+	return out
+}
+
 func Replace(str *string, find, with string) bool {
 	text := strings.Replace(*str, find, with, -1)
 	if *str != text {
@@ -752,13 +763,13 @@ func Replace(str *string, find, with string) bool {
 	return false
 }
 
-func FilterCharsFromEditor(r rune) rune {
-	switch {
-	case r == 0xA0:
-		return ' '
-	}
-	return r
-}
+// func FilterCharsFromEditor(r rune) rune { ???
+// 	switch {
+// 	case r == 0xA0:
+// 		return ' '
+// 	}
+// 	return r
+// }
 
 func ToAsciiCode(r rune) rune {
 	switch {
