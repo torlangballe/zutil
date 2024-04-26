@@ -207,9 +207,16 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 	for i, sc := range scells {
 		if sc.Divider != 0 {
 			// zlog.Info("DIV0:", i, len(scells), sc.Divider, debugName, sc.Name)
-			// zlog.Info("DIV1:", scells[i-1].Name, scells[i-1].size.W, scells[i+1].size.W, sc.Divider)
-			scells[i-1].size.W += sc.Divider
-			scells[i+1].size.W -= sc.Divider
+			div := sc.Divider
+			div2 := div
+			nsize := scells[i-1].size.W + div
+			if nsize < 20 {
+				div -= (nsize - 20)
+				div2 = 0
+				// zlog.Info("DIV1:", scells[i-1].Name, scells[i-1].size.W, scells[i+1].size.W, sc.Divider, div, "nsize2:", scells[i-1].size.W+div, scells[i+1].size.W-div2)
+			}
+			scells[i-1].size.W += div
+			scells[i+1].size.W -= div2
 			// zlog.Info("DIV2:", scells[i+1].Name, scells[i+1].size.W, scells[i+1].size.W, sc.Divider)
 			break
 		}
