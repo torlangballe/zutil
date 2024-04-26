@@ -421,7 +421,7 @@ func handleErr(err error, why, path string, file *os.File, close bool) error {
 	}
 	rerr := os.Remove(path)
 	if ferr != nil || rerr != nil {
-		fmt.Println(err, "{nolog}WriteToFileAtomically call write func", ferr, rerr)
+		zlog.Error(err, "{nolog}WriteToFileAtomically call write func", ferr, rerr)
 	}
 	return err
 }
@@ -432,7 +432,7 @@ func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error
 	tempPath := fpath + fmt.Sprintf("_%x_ztemp", rand.Int31())
 	file, err := os.Create(tempPath)
 	if err != nil {
-		fmt.Println("WriteToFileAtomically create:", err)
+		zlog.Error(err, "create", fpath)
 		return err
 	}
 	err = write(file)
@@ -443,7 +443,7 @@ func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error
 	if err != nil {
 		return handleErr(err, "close", tempPath, file, false)
 	}
-	// fmt.Println("WriteToFileAtomically:", tempPath, "->", fpath, Exists(tempPath), Size(tempPath))
+	// zlog.Error("WriteToFileAtomically:", tempPath, "->", fpath, Exists(tempPath), Size(tempPath))
 	err = os.Rename(tempPath, fpath)
 	if err != nil {
 		return handleErr(err, "rename", tempPath, file, false)
