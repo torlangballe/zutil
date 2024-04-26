@@ -24,6 +24,7 @@ import (
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -414,6 +415,19 @@ func GetRedirectedURL(surl string) (string, error) {
 	resp, err := client.Do(req)
 	if resp != nil && resp.Body != nil {
 		resp.Body.Close()
+	}
+	if err != nil {
+		u, perr := url.Parse(surl)
+		if perr != nil {
+			zlog.Error(perr, surl)
+			return "", err
+		}
+		ip, lerr := znet.DNSLookupToIP4(u.Host)
+		if lerr != nil {
+			zlog.Error(lerr, surl)
+			return "", err
+		}
+		zlog.Info("GetRedirectedURL fail, lookup ok:", u.Host, ip)
 	}
 	if err == nil && SetTelemetryForRedirectFunc != nil {
 		SetTelemetryForRedirectFunc(surl, ztime.Since(start))
