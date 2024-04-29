@@ -397,6 +397,7 @@ func TruncateLongParametersInURL(surl string, onlyIfTotalCharsMoreThan, maxChars
 }
 
 func GetRedirectedURL(surl string) (string, error) {
+	var log string
 	start := time.Now()
 	req, err := http.NewRequest("HEAD", surl, nil)
 	if err != nil {
@@ -406,6 +407,7 @@ func GetRedirectedURL(surl string) (string, error) {
 	client.Timeout = time.Second * 5
 	lastUrlQuery := surl
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		log += fmt.Sprintf("%s %v\n", req.URL.String(), time.Since(start))
 		if len(via) > 10 {
 			return zlog.Error("too many redirects")
 		}
@@ -422,12 +424,13 @@ func GetRedirectedURL(surl string) (string, error) {
 			zlog.Error(perr, surl)
 			return "", err
 		}
+		startDNS := time.Now()
 		ip, lerr := znet.DNSLookupToIP4(u.Host)
 		if lerr != nil {
-			zlog.Error(lerr, surl)
+			zlog.Error(lerr, surl, time.Since(startDNS), "log:", log)
 			return "", err
 		}
-		zlog.Info("GetRedirectedURL fail, lookup ok:", u.Host, ip)
+		zlog.Info("GetRedirectedURL fail, lookup ok:", u.Host, ip, time.Since(startDNS), "log:", log)
 	}
 	if err == nil && SetTelemetryForRedirectFunc != nil {
 		SetTelemetryForRedirectFunc(surl, ztime.Since(start))
