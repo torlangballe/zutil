@@ -49,8 +49,8 @@ func makeLabel(text string) *zlabel.Label {
 }
 
 func NewFileListerView(opts DirOptions, rpcClient *zrpc.Client) *FileListerView {
-	// zlog.Info("NewFileListerView:", basePath, storeName)
 	v := &FileListerView{}
+
 	v.SetMarginS(zgeo.SizeBoth(5))
 	v.rpcClient = rpcClient
 	v.Init(v, true, opts.StoreName+".FileLister")
@@ -59,6 +59,7 @@ func NewFileListerView(opts DirOptions, rpcClient *zrpc.Client) *FileListerView 
 		opts.IconSize = zgeo.SizeD(24, 16)
 	}
 	v.DirOptions = opts
+	zlog.Info("NewFileListerView:", v.DirOptions.PickedPaths)
 	bar := zcontainer.StackViewHor("bar")
 	v.Add(bar, zgeo.TopLeft|zgeo.HorExpand)
 
