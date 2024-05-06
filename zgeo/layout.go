@@ -227,6 +227,7 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 // it aligns the cell's original size within this with cells alignment.
 // any space not used by cells (see jump below), is added between left and center, and center and right.
 func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical bool, spacing float64, outRects []Rect) {
+	// zlog.Info("layoutRectsInBoxes1:", debugName)
 	// if !vertical {
 	// }
 	sx := r.Min().X
@@ -247,9 +248,6 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 			// lastCenterWidth = 0
 			wright += w
 		}
-		// if debugName == "bt-bar" {
-		// 	zlog.Info(i, "layoutRectsInBoxes:", sc.Name, w, sc.Alignment&HorCenter != 0, wcenter)
-		// }
 	}
 	for i, sc := range scells {
 		if (sc.Alignment&(Left|HorCenter|Right))&prevAlign == 0 { // if align is something new, ie. center/right
@@ -291,13 +289,15 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 
 // LayoutCellsInStack stacks cells horizontally or vertically in rect, returning resulting slice of rects in same slice positions as input cells.
 func LayoutCellsInStack(debugName string, rect Rect, vertical bool, spacing float64, cells []LayoutCell) []Rect {
-	// zlog.Info("LayoutCellsInStack", debugName, zlog.CallingStackString())
 	// start := time.Now()
 	r := rect
 	if vertical {
 		r = r.Swapped() // we do everything as if it's a horizontal stack, swapping coordinates before and after if not
 	}
 	scells := getStackCells(debugName, vertical, cells)
+	// if debugName == "HeightsForMultipleTests" {
+	// 	zlog.Info("LayoutCellsInStack", rect, vertical, spacing, zlog.Full(scells))
+	// }
 	outRects := make([]Rect, len(cells), len(cells))
 	fillFreeInOutRect(debugName, r, vertical, outRects, &scells)
 	addLeftoverSpaceToWidths(debugName, r, scells, vertical, spacing)
