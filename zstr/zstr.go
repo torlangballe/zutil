@@ -1221,3 +1221,22 @@ func SplitStringWithDoubleAsEscape(str, split string) []string {
 	}
 	return parts
 }
+
+// SmartSort sorts a string slice using zstr.SmartCompare()
+func SmartSort(s []string) {
+	sort.Slice(s, func(i, j int) bool {
+		return SmartCompare(s[i], s[j])
+	})
+}
+
+// SmartCompare compares two strings, comparing as float if possible, or caseless
+func SmartCompare(a, b string) bool {
+	na, err := strconv.ParseFloat(a, 64)
+	if err == nil {
+		nb, err := strconv.ParseFloat(a, 64)
+		if err == nil {
+			return na < nb
+		}
+	}
+	return CaselessCompare(a, b) < 0
+}
