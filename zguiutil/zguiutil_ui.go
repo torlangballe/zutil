@@ -83,10 +83,9 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 	if minLabelWidth != 0 {
 		cell.MinSize.W = minLabelWidth
 	}
-
 	marg := zgeo.SizeNull
 	if isCheck {
-		marg.W = -6 // in html cell has a box around it of 20 pixels
+		// marg.W = -6 // in html cell has a box around it of 20 pixels
 	}
 	viewCell = stack.Add(view, alignment, marg)
 
