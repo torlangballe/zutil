@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math/rand"
 	"reflect"
+	"slices"
 
 	"github.com/torlangballe/zutil/zlog"
 )
@@ -142,6 +143,21 @@ func Swap[A any](slice []A, i, j int) {
 
 func Add[T any](s *[]T, a T) {
 	*s = append(*s, a)
+}
+
+func AddToSet[T comparable](s *[]T, a T) {
+	if !slices.Contains(*s, a) {
+		Add(s, a)
+	}
+}
+
+func SetsOverlap[S comparable](a, b []S) bool {
+	for _, ib := range b {
+		if slices.Contains(a, ib) {
+			return true
+		}
+	}
+	return false
 }
 
 func Reduced[A any](slice []A, keep func(a A) bool) []A {
