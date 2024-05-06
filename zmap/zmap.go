@@ -173,3 +173,9 @@ func GetValueInRecursiveMap(m map[string]any, slashPath string) (any, error) {
 	}
 	return nil, nil // can't get here
 }
+
+// EmptyOf returns an empty list like m.
+// Usefull since maps are shared and you want to avoid clearing a shared map.
+func EmptyOf[K comparable, V any](m map[K]V) map[K]V {
+	return map[K]V{}
+}
