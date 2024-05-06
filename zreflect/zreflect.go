@@ -429,6 +429,21 @@ func DeepCopy(destPtr, source any) error {
 	return gob.NewDecoder(&buf).Decode(destPtr)
 }
 
+// CopyVal makes a copy of rval. If rval is a pointer, it makes a copy of element and returns a pointer
+func CopyAny(v any) any {
+	rval := reflect.ValueOf(v)
+	isPointer := (rval.Kind() == reflect.Pointer)
+	if isPointer {
+		rval = rval.Elem()
+	}
+	n := reflect.New(rval.Type()).Elem()
+	n.Set(rval)
+	if isPointer {
+		n = n.Addr()
+	}
+	return n.Interface()
+}
+
 // NewOfAny returns a new'ed item of that type.
 // If a is a pointer, its element is used.
 func NewOfAny(a any) any {
