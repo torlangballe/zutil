@@ -11,6 +11,7 @@ type DirOptions struct {
 	StoreName         string
 	PathStub          string
 	IconSize          zgeo.Size
+	MaxFiles          int // used when getting all file paths from picked files/folders
 }
 
 const (

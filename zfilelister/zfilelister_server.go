@@ -15,8 +15,10 @@ import (
 	"github.com/torlangballe/zui/zapp"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfilecache"
+	"github.com/torlangballe/zutil/zfiles"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zslice"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -90,6 +92,30 @@ func (FileServerCalls) GetDirectory(dirOpts DirOptions, paths *[]string) error {
 	sort.Strings(*paths)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (FileServerCalls) ExpandFilePathsFromPicked(dirOpts DirOptions, paths *[]string) error {
+	var all []string
+	for _, f := range dirOpts.PickedPaths {
+		if strings.HasSuffix(f, "/") {
+			files, err := zfiles.GetFilesFromPath(f, "", zfile.WalkOptionRecursive)
+			zlog.OnError(err, f)
+			all = append(all, files...)
+		} else {
+			all = append(all, f)
+		}
+	}
+	if dirOpts.MaxFiles == 0 {
+		*paths = all
+		return nil
+	}
+	for dirOpts.MaxFiles > 0 && len(all) > 0 {
+		f, i := zslice.Random(all)
+		zslice.RemoveAt(&all, i)
+		*paths = append(*paths, f)
+		dirOpts.MaxFiles--
 	}
 	return nil
 }

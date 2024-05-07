@@ -3,6 +3,7 @@
 package zfilelister
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/torlangballe/zui/zalert"
@@ -26,9 +27,9 @@ type FileListerView struct {
 	zcontainer.StackView
 	DirOptions
 
-	DirFunc     func(dirOpts DirOptions, got func(paths []string, err error))
-	GetImageURL func(path string) string
-	PickedPaths []string // ends in / if folders
+	DirFunc      func(dirOpts DirOptions, got func(paths []string, err error))
+	GetImageURL  func(path string) string
+	CurrentPaths []string // ends in / if folders
 
 	back       *zimageview.ImageView
 	title      *zlabel.Label
@@ -59,7 +60,7 @@ func NewFileListerView(opts DirOptions, rpcClient *zrpc.Client) *FileListerView 
 		opts.IconSize = zgeo.SizeD(24, 16)
 	}
 	v.DirOptions = opts
-	zlog.Info("NewFileListerView:", v.DirOptions.PickedPaths)
+	v.DirOptions.PickedPaths = slices.Clone(opts.PickedPaths)
 	bar := zcontainer.StackViewHor("bar")
 	v.Add(bar, zgeo.TopLeft|zgeo.HorExpand)
 
@@ -78,7 +79,7 @@ func NewFileListerView(opts DirOptions, rpcClient *zrpc.Client) *FileListerView 
 	v.grid.MinRowsForFullSize = 5
 	v.grid.MaxRowsForFullSize = 20
 	v.grid.CellCountFunc = func() int {
-		return len(v.DirOptions.PickedPaths)
+		return len(v.CurrentPaths)
 	}
 	v.grid.CreateCellFunc = v.createRow
 	v.grid.UpdateCellFunc = v.updateRow
@@ -90,6 +91,8 @@ func NewFileListerView(opts DirOptions, rpcClient *zrpc.Client) *FileListerView 
 	v.errorLabel.Columns = 2
 	v.errorLabel.SetColor(zgeo.ColorRed)
 	v.Add(v.errorLabel, zgeo.TopLeft|zgeo.HorExpand)
+
+	zlog.Info("NewFileListerView:", v.DirOptions.PickedPaths)
 
 	return v
 }
@@ -126,10 +129,11 @@ func (v *FileListerView) ReadyToShow(beforeWindow bool) {
 
 func (v *FileListerView) pathOfID(id string) string {
 	index := v.grid.IndexOfID(id)
-	return v.DirOptions.PickedPaths[index]
+	return v.CurrentPaths[index]
 }
 
 func (v *FileListerView) updateRow(grid *zgridlist.GridListView, id string) {
+	zlog.Info("updateRow1", id, v.CurrentPaths, v.DirOptions.PickedPaths)
 	row := v.grid.CellView(id).(*zcontainer.StackView)
 	path := v.pathOfID(id)
 
@@ -148,9 +152,8 @@ func (v *FileListerView) updateRow(grid *zgridlist.GridListView, id string) {
 
 	f, _ = row.FindViewWithName(checkID, false)
 	check := f.(*zcheckbox.CheckBox)
-	// zlog.Info("updateRow", id, v.PickedPaths, fullpath)
 	on := zbool.False
-	for _, p := range v.PickedPaths {
+	for _, p := range v.DirOptions.PickedPaths {
 		if p == fullFolderPath {
 			// zlog.Info("updateRow on", id)
 			on = zbool.True
@@ -174,13 +177,13 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 		on := check.On()
 		path := v.pathOfID(id)
 		fullpath := zfile.JoinPathParts(v.PathStub, path)
-		zslice.RemoveIf(&v.PickedPaths, func(i int) bool {
-			return strings.HasPrefix(v.PickedPaths[i], fullpath)
+		zslice.RemoveIf(&v.DirOptions.PickedPaths, func(i int) bool {
+			return strings.HasPrefix(v.DirOptions.PickedPaths[i], fullpath)
 		})
 		if on {
-			v.PickedPaths = append(v.PickedPaths, fullpath) // we can add it, as it will be removed above
+			v.DirOptions.PickedPaths = append(v.DirOptions.PickedPaths, fullpath) // we can add it, as it will be removed above
 		} else {
-			v.PickedPaths = zstr.RemovedFromSlice(v.PickedPaths, fullpath)
+			v.DirOptions.PickedPaths = zstr.RemovedFromSlice(v.DirOptions.PickedPaths, fullpath)
 		}
 	})
 	s.Add(check, zgeo.CenterLeft)
@@ -198,14 +201,14 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 
 func (v *FileListerView) update() {
 	title := zfile.JoinPathParts(v.DirOptions.StoreName, v.DirOptions.PathStub)
-	// zlog.Info("update:", title)
+	zlog.Info("update:", title)
 	v.title.SetText(title)
 	v.back.SetUsable(v.DirOptions.PathStub != "")
 	v.DirFunc(v.DirOptions, func(paths []string, err error) {
 		if zlog.OnError(err, "DirFunc", v.DirOptions.PathStub) {
 			return
 		}
-		v.DirOptions.PickedPaths = paths
+		v.CurrentPaths = paths
 		v.grid.LayoutCells(true)
 	})
 }
@@ -231,6 +234,7 @@ func NewRemoteFileListerView(urlPrefix, urlStub string, opts DirOptions, rpcClie
 		go func() {
 			var paths []string
 			err := flister.rpcClient.Call("FileServerCalls.GetDirectory", dirOpts, &paths)
+			zlog.Info("NewRemoteFileListerView.GetDir:", paths, err)
 			if err != nil {
 				got(nil, err)
 				return
@@ -256,7 +260,7 @@ func (v *FileListerView) Present(title string, got func(pickedPaths []string)) {
 	att := zpresent.ModalDialogAttributes
 	zalert.PresentOKCanceledView(v, title, att, nil, func(ok bool) bool {
 		if ok {
-			got(v.PickedPaths)
+			got(v.DirOptions.PickedPaths)
 		}
 		return true
 	})
