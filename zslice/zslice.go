@@ -170,7 +170,7 @@ func Reduced[A any](slice []A, keep func(a A) bool) []A {
 	return snew
 }
 
-func Random[S any](slice []S) S {
+func Random[S any](slice []S) (S, int) {
 	i := rand.Int31n(int32(len(slice)))
-	return slice[i]
+	return slice[i], int(i)
 }
