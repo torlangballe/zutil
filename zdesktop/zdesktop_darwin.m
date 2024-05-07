@@ -58,7 +58,8 @@ int GetWindowCountForPID(long pid) {
 
 // also: https://stackoverflow.com/questions/56597221/detecting-screen-recording-settings-on-macos-catalina/58991936#58991936
 int CanRecordScreen() {
-    return CGPreflightScreenCaptureAccess() ? 1 : 0;
+    // return CGPreflightScreenCaptureAccess() ? 1 : 0;
+    return CGRequestScreenCaptureAccess() ? 1 : 0;
     // if (@available(macOS 10.15, *)) {
     //     CGDisplayStreamRef stream = CGDisplayStreamCreate(CGMainDisplayID(), 1, 1, kCVPixelFormatType_32BGRA, nil, ^(CGDisplayStreamFrameStatus status, uint64_t displayTime, IOSurfaceRef frameSurface, CGDisplayStreamUpdateRef updateRef) {
     //     });
