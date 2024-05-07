@@ -15,7 +15,6 @@ import (
 	"github.com/torlangballe/zui/zapp"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfilecache"
-	"github.com/torlangballe/zutil/zfiles"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zslice"
@@ -100,7 +99,7 @@ func (FileServerCalls) ExpandFilePathsFromPicked(dirOpts DirOptions, paths *[]st
 	var all []string
 	for _, f := range dirOpts.PickedPaths {
 		if strings.HasSuffix(f, "/") {
-			files, err := zfiles.GetFilesFromPath(f, "", zfile.WalkOptionRecursive)
+			files, err := zfile.GetFilesFromPath(f, "", zfile.WalkOptionRecursive)
 			zlog.OnError(err, f)
 			all = append(all, files...)
 		} else {
