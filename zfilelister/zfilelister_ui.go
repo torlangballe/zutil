@@ -91,21 +91,19 @@ func NewFileListerView(opts DirOptions, rpcClient *zrpc.Client) *FileListerView 
 	v.errorLabel.Columns = 2
 	v.errorLabel.SetColor(zgeo.ColorRed)
 	v.Add(v.errorLabel, zgeo.TopLeft|zgeo.HorExpand)
-
-	zlog.Info("NewFileListerView:", v.DirOptions.PickedPaths)
-
+	// zlog.Info("NewFileListerView:", v.DirOptions.PickedPaths)
 	return v
 }
 
 func (v *FileListerView) goBack() {
 	zlog.Assert(v.DirOptions.PathStub != "")
-	zlog.Info("goBack:", v.DirOptions.PathStub)
+	// zlog.Info("goBack:", v.DirOptions.PathStub)
 	var rest string
 	v.DirOptions.PathStub = zstr.HeadUntilLast(v.DirOptions.PathStub, "/", &rest)
 	if rest == "" {
 		v.DirOptions.PathStub = ""
 	}
-	zlog.Info("goBack2:", v.DirOptions.PathStub)
+	// zlog.Info("goBack2:", v.DirOptions.PathStub)
 	v.update()
 }
 
@@ -116,7 +114,7 @@ func (v *FileListerView) handleRowPressed(id string) bool {
 		return false
 	}
 	v.DirOptions.PathStub = zfile.JoinPathParts(v.DirOptions.PathStub, name)
-	zlog.Info("pressed:", id, path, v.DirOptions.PathStub)
+	// zlog.Info("pressed:", id, path, v.DirOptions.PathStub)
 	v.update()
 	return true
 }
@@ -133,7 +131,7 @@ func (v *FileListerView) pathOfID(id string) string {
 }
 
 func (v *FileListerView) updateRow(grid *zgridlist.GridListView, id string) {
-	zlog.Info("updateRow1", id, v.CurrentPaths, v.DirOptions.PickedPaths)
+	// zlog.Info("updateRow1", id, v.CurrentPaths, v.DirOptions.PickedPaths)
 	row := v.grid.CellView(id).(*zcontainer.StackView)
 	path := v.pathOfID(id)
 
@@ -201,7 +199,7 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 
 func (v *FileListerView) update() {
 	title := zfile.JoinPathParts(v.DirOptions.StoreName, v.DirOptions.PathStub)
-	zlog.Info("update:", title)
+	// zlog.Info("update:", title)
 	v.title.SetText(title)
 	v.back.SetUsable(v.DirOptions.PathStub != "")
 	v.DirFunc(v.DirOptions, func(paths []string, err error) {
@@ -234,7 +232,7 @@ func NewRemoteFileListerView(urlPrefix, urlStub string, opts DirOptions, rpcClie
 		go func() {
 			var paths []string
 			err := flister.rpcClient.Call("FileServerCalls.GetDirectory", dirOpts, &paths)
-			zlog.Info("NewRemoteFileListerView.GetDir:", paths, err)
+			// zlog.Info("NewRemoteFileListerView.GetDir:", paths, err)
 			if err != nil {
 				got(nil, err)
 				return
