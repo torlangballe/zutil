@@ -272,7 +272,7 @@ func (v *FrameEditorView) addBox() {
 		}
 	}
 	box := BoxFromRect(rect)
-	box.Color = zslice.Random(defaultColors)
+	box.Color, _ = zslice.Random(defaultColors)
 	boxCount++
 	box.Name = fmt.Sprint("Box", boxCount)
 	title := "Add New Box"
