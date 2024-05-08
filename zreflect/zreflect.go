@@ -358,6 +358,15 @@ func FieldForIndex(istruct any, flatten func(f reflect.StructField) bool, index 
 	return found
 }
 
+func StructFieldNames(istruct any, flatten func(f reflect.StructField) bool) []string {
+	var names []string
+	ForEachField(istruct, flatten, func(each FieldInfo) bool {
+		names = append(names, each.StructField.Name)
+		return true
+	})
+	return names
+}
+
 func FieldForName(istruct any, flatten func(f reflect.StructField) bool, name string) (FieldInfo, bool) {
 	var finfo FieldInfo
 	var found bool
