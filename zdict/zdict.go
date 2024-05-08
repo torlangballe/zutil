@@ -235,8 +235,9 @@ func (d Dict) ToStruct(structPtr any) {
 			each.ReflectValue.Addr().Elem().SetBool(b)
 		case reflect.Map:
 			_, got1 := each.ReflectValue.Interface().(map[string]string)
-			_, got2 := val.(map[string]string)
-			// zlog.Info("Got1&2", sdict, ddict, got1, got2)
+			_, got2 := val.(map[string]any)
+			// do for anything!!!
+			zlog.Info("Got1&2", each.ReflectValue.Type(), reflect.TypeOf(val), got1, got2)
 			if got1 && got2 {
 				each.ReflectValue.Set(reflect.ValueOf(val))
 			}
