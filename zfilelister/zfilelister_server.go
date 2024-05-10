@@ -13,10 +13,12 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zui/zapp"
+	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfilecache"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zslice"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -44,6 +46,7 @@ func NewFileServer(router *mux.Router, cacheBaseFolder string) *FileServer {
 	if !addedIconsFS {
 		zapp.AllWebFS.Add(iconsFS, "zfilelister-icons."+cacheBaseFolder)
 	}
+	zlog.Info("NewFileServer:", cacheBaseFolder)
 	s := &FileServer{}
 	s.IconCache = zfilecache.Init(router, cacheBaseFolder, "caches", "filelister-icons")
 	s.IconCache.DeleteAfter = ztime.Day * 7
@@ -59,7 +62,7 @@ func NewFileServer(router *mux.Router, cacheBaseFolder string) *FileServer {
 func (s *FileServer) AddFolder(baseFolder, storeName, servePath string) {
 	folder := zfile.JoinPathParts(baseFolder, storeName)
 	zfile.MakeDirAllIfNotExists(folder)
-	urlBase := zfile.JoinPathParts(urlPrefix + storeName)
+	urlBase := zfile.JoinPathParts(urlPrefix, storeName)
 	s.folders[storeName] = baseFolder
 	zlog.Info("zfilelister.AddFolder:", urlBase, servePath, folder)
 	// zrest.AddFileHandler(s.router, urlBase, folder, s.handleServeFile)
@@ -156,7 +159,7 @@ func (s *FileServer) handleServeFile(w http.ResponseWriter, filepath *string, ur
 
 func (s *FileServer) interceptCache(w http.ResponseWriter, req *http.Request, fpath *string) bool {
 	const prefix = "images/zcore/zfilelister/icons/"
-	// zlog.Info("FS:intercept:", req.URL, *fpath)
+	// fmt.Println("FS:intercept:", req.URL, *fpath)
 	ext := path.Ext(*fpath)
 	var path string
 	if ext == "" && strings.HasSuffix(req.URL.Path, "/") {
@@ -173,7 +176,6 @@ func (s *FileServer) interceptCache(w http.ResponseWriter, req *http.Request, fp
 		path = prefix + ext[1:] + ".png"
 	}
 	file, err := iconsFS.Open(path)
-	zlog.Info("FS:intercept:", path, req.URL, *fpath, err)
 	if err != nil && path != docPath {
 		file, err = iconsFS.Open(docPath)
 	}
@@ -185,20 +187,48 @@ func (s *FileServer) interceptCache(w http.ResponseWriter, req *http.Request, fp
 	return true
 }
 
+var fileReplacer = strings.NewReplacer(
+	"\\", "_",
+	"/", "_",
+	":", "_",
+	" ", "_",
+)
+
 func (s *FileServer) serveThumb(w http.ResponseWriter, req *http.Request, fpath *string) bool {
 	var rest string
-	prefix := zfile.JoinPathParts(s.IconCache.WorkDir, cachePrefix) + "/"
-	// zlog.Info("serveThumb1:", fpath)
-
 	size, _ := zgeo.SizeFromString(req.URL.Query().Get("size"))
-	if zstr.HasPrefix(*fpath, prefix, &rest) {
+	if size.IsNull() {
+		zrest.ReturnAndPrintError(w, req, http.StatusBadRequest, "no size parameter", req.URL.String())
+		return false
+	}
+	name := fileReplacer.Replace(*fpath)
+	if !s.IconCache.IsCached(name) {
+		prefix := zfile.JoinPathParts(s.IconCache.WorkDir, cachePrefix) + "/"
+		if !zstr.HasPrefix(*fpath, prefix, &rest) {
+			return false
+		}
+		var data []byte
 		name, _ := zstr.SplitInTwo(rest, "/")
 		baseFolder := s.folders[name]
 		imagePath := zfile.JoinPathParts(baseFolder, rest)
-		// img, format, err := zimage.GoImageFromFile(file)
-		zlog.Info("serveThumb1:", rest, size)
-
-		zlog.Info("serveThumb:", imagePath, "toicon:", *fpath)
+		img, _, err := zimage.GoImageFromFile(imagePath)
+		// zlog.Info("serveThumb:", req.URL)
+		if err == nil {
+			img, err = zimage.GoImageShrunkInto(img, size, true)
+		}
+		if err == nil {
+			data, err = zimage.GoImageJPEGData(img, 95)
+		}
+		if err == nil {
+			_, err = s.IconCache.CacheFromData(data, name)
+		}
+		if err != nil {
+			zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "error reading/shrinking/jpegging/caching image", imagePath)
+			return false
+		}
 	}
-	return false
+	file, _ := s.IconCache.GetPathForName(name)
+	zlog.Info("serveThumb:", req.URL, file, zfile.Exists(file))
+	http.ServeFile(w, req, file)
+	return true
 }

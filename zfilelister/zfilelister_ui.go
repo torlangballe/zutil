@@ -104,7 +104,7 @@ func (v *FileListerView) goBack() {
 		v.DirOptions.PathStub = ""
 	}
 	// zlog.Info("goBack2:", v.DirOptions.PathStub)
-	v.update()
+	v.updatePage()
 }
 
 func (v *FileListerView) handleRowPressed(id string) bool {
@@ -115,13 +115,13 @@ func (v *FileListerView) handleRowPressed(id string) bool {
 	}
 	v.DirOptions.PathStub = zfile.JoinPathParts(v.DirOptions.PathStub, name)
 	// zlog.Info("pressed:", id, path, v.DirOptions.PathStub)
-	v.update()
+	v.updatePage()
 	return true
 }
 
 func (v *FileListerView) ReadyToShow(beforeWindow bool) {
 	if beforeWindow {
-		v.update()
+		v.updatePage()
 	}
 }
 
@@ -131,19 +131,19 @@ func (v *FileListerView) pathOfID(id string) string {
 }
 
 func (v *FileListerView) updateRow(grid *zgridlist.GridListView, id string) {
-	// zlog.Info("updateRow1", id, v.CurrentPaths, v.DirOptions.PickedPaths)
 	row := v.grid.CellView(id).(*zcontainer.StackView)
 	path := v.pathOfID(id)
 
-	iurl := v.GetImageURL(path)
+	fullFolderPath := zfile.JoinPathParts(v.PathStub, path)
 	f, _ := row.FindViewWithName(iconID, false)
 	iv := f.(*zimageview.ImageView)
+	iurl := v.GetImageURL(fullFolderPath)
+	// zlog.Info("updateRow image", path, fullFolderPath, iurl)
 	iv.SetImage(nil, iurl, nil)
 
 	f, _ = row.FindViewWithName(titleID, false)
 	label := f.(*zlabel.Label)
 	isFolder := (zstr.LastByteAsString(path) == "/")
-	fullFolderPath := zfile.JoinPathParts(v.PathStub, path)
 	path = strings.TrimRight(path, "/")
 	fullpath := zfile.JoinPathParts(v.PathStub, path)
 	label.SetText(path)
@@ -152,15 +152,18 @@ func (v *FileListerView) updateRow(grid *zgridlist.GridListView, id string) {
 	check := f.(*zcheckbox.CheckBox)
 	on := zbool.False
 	for _, p := range v.DirOptions.PickedPaths {
+		// zlog.Info("updateRow", fullFolderPath, p)
 		if p == fullFolderPath {
-			// zlog.Info("updateRow on", id)
-			on = zbool.True
-			break
-		} else if isFolder && !on.IsTrue() && strings.HasPrefix(p, fullpath) {
-			on = zbool.Unknown
+			if on.IsFalse() {
+				// zlog.Info("updateRow on", id)
+				on = zbool.True
+			}
+		} else if isFolder && strings.HasPrefix(p, fullpath) { // !on.IsTrue() &&
 			// zlog.Info("updateRow udef", id)
+			on = zbool.Unknown
 		}
 	}
+	// zlog.Info("updateRow set", fullFolderPath, on)
 	check.SetValue(on)
 }
 
@@ -174,14 +177,23 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 	check.SetValueHandler(func() {
 		on := check.On()
 		path := v.pathOfID(id)
+		isFolder := (zstr.LastByteAsString(path) == "/")
 		fullpath := zfile.JoinPathParts(v.PathStub, path)
-		zslice.RemoveIf(&v.DirOptions.PickedPaths, func(i int) bool {
-			return strings.HasPrefix(v.DirOptions.PickedPaths[i], fullpath)
+		zslice.DeleteFromFunc(&v.DirOptions.PickedPaths, func(path string) bool {
+			if path == fullpath {
+				return !on // remove self if just turned off
+			}
+			if strings.HasPrefix(fullpath, path) {
+				return true
+			}
+			if isFolder && strings.HasPrefix(path, fullpath) {
+				zlog.Info("DelChild:", path, fullpath)
+				return true
+			}
+			return false
 		})
 		if on {
 			v.DirOptions.PickedPaths = append(v.DirOptions.PickedPaths, fullpath) // we can add it, as it will be removed above
-		} else {
-			v.DirOptions.PickedPaths = zstr.RemovedFromSlice(v.DirOptions.PickedPaths, fullpath)
 		}
 	})
 	s.Add(check, zgeo.CenterLeft)
@@ -197,7 +209,7 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 	return s
 }
 
-func (v *FileListerView) update() {
+func (v *FileListerView) updatePage() {
 	title := zfile.JoinPathParts(v.DirOptions.StoreName, v.DirOptions.PathStub)
 	// zlog.Info("update:", title)
 	v.title.SetText(title)
