@@ -87,15 +87,12 @@ func Behead(slice any) {
 	RemoveAt(slice, 0)
 }
 
-func RemoveIf(slice any, remove func(i int) bool) {
-	val := reflect.ValueOf(slice)
-	if val.Kind() == reflect.Pointer {
-		val = val.Elem()
-	}
-	for i := 0; i < val.Len(); i++ {
-		if remove(i) {
-			RemoveAt(slice, i)
-			i--
+func DeleteFromFunc[S any](s *[]S, del func(s S) bool) {
+	for i := 0; i < len(*s); {
+		if del((*s)[i]) {
+			RemoveAt(s, i)
+		} else {
+			i++
 		}
 	}
 }
@@ -174,3 +171,21 @@ func Random[S any](slice []S) (S, int) {
 	i := rand.Int31n(int32(len(slice)))
 	return slice[i], int(i)
 }
+
+// func AppendAnyToAny(toPtr any, from any) error {
+// 	fval := reflect.ValueOf(from)
+// 	tval := reflect.ValueOf(toPtr).Elem()
+// 	if fval.Kind() != reflect.Slice {
+// 		return errors.New("from not slice")
+// 	}
+// 	if tval.Kind() != reflect.Slice {
+// 		return errors.New("toPtr not to slice")
+// 	}
+// 	tv := tval
+// 	for i := 0; i < fval.Len(); i++ {
+// 		e := MakeAnElementOfSliceRValType(tval)
+// 		zreflect.SetAnyToAny(e.Addr(), fval.Index(i))
+// 		tv = reflect.Append(tv, e)
+// 	}
+// 	tval.Set(tv)
+// }
