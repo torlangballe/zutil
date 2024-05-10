@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -40,8 +39,8 @@ var (
 	PrintDate               = true
 	lastGoRoutineCount      int
 	lastGoRoutineOutputTime time.Time
-	rateLimiters            zmap.LockMap[LimitID, time.Time]
-	EnablerList             zmap.LockMap[string, *Enabler]
+	rateLimiters            sync.Map
+	EnablerList             sync.Map // map[string]*Enabler
 
 	isInTests = (strings.HasSuffix(os.Args[0], ".test"))
 )
@@ -162,11 +161,14 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 		if got {
 			parts = append(parts[:i], parts[i+1:]...) // can't use zslice.RemoveAt() as it would create cyclical import
 			i--
-			t, _ := rateLimiters.Get(rl)
-			if time.Since(t) < time.Second {
-				return nil
+			tl, _ := rateLimiters.Load(rl)
+			if tl != nil {
+				t := tl.(time.Time)
+				if time.Since(t) < time.Second {
+					return nil
+				}
 			}
-			rateLimiters.Set(rl, time.Now())
+			rateLimiters.Store(rl, time.Now())
 		}
 		enable, got := p.(Enabler)
 		if got {
@@ -442,5 +444,5 @@ func Func() {
 }
 
 func RegisterEnabler(name string, b *Enabler) {
-	EnablerList.Set(name, b)
+	EnablerList.Store(name, b)
 }

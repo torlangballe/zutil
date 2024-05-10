@@ -116,7 +116,9 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string,
 		addDownloadRow(frame, ip, "heap", "heap")
 	}
 	frame, _ = makeFrame(&v.StackView, "Enable GUI named log sections")
-	zlog.EnablerList.ForEach(func(name string, e *zlog.Enabler) bool {
+	zlog.EnablerList.Range(func(k, v any) bool {
+		name := k.(string)
+		e := v.(*zlog.Enabler)
 		check, _, stack := zcheckbox.NewWithLabel(false, name, name+".zlog.Enabler")
 		frame.Add(stack, zgeo.CenterLeft)
 		check.SetValueHandler(func() {
