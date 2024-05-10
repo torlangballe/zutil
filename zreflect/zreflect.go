@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
 
-var timeType = reflect.TypeOf(time.Time{})
+var (
+	timeType = reflect.TypeOf(time.Time{})
+)
 
 type TypeKind string
 
@@ -94,9 +94,7 @@ func KindFromReflectKindAndType(kind reflect.Kind, rtype reflect.Type) TypeKind 
 }
 
 func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, val reflect.Value, options Options) (item Item, err error) {
-	// zlog.Info("itterate:", level, fieldName, typeName, tagName)
 	item.FieldName = fieldName
-	// zlog.Assert(!val.IsZero(), val)
 	vtype := val.Type()
 	if typeName == "" {
 		typeName = vtype.Name()
@@ -104,14 +102,13 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 	item.TypeName = typeName
 	item.Package = vtype.PkgPath()
 	if !val.CanInterface() {
-		zlog.Info("zreflect.itterate: can't interface to:", fieldName)
+		fmt.Println("zreflect.itterate: can't interface to:", fieldName)
 		return
 	}
 	if !val.IsValid() {
 		err = errors.New("marshalValue: val.IsValid() failed")
 		return
 	}
-	// zlog.Info("zref.Itterate:", fieldName, val.Kind())
 	switch val.Kind() {
 	case reflect.Interface:
 		item.Interface = val.Interface()
@@ -132,11 +129,8 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 		item.IsPointer = true
 		item.Kind = pItem.Kind
 		item.Children = pItem.Children
-		// zlog.Info("ptr:", t.Name(), fieldName, t.PkgPath(), item.IsPointer)
-		//		item.Address = val.Addr().Interface()
 
 	case reflect.Slice:
-		// zlog.Info("slice1:", val.Len(), fieldName)
 		t := reflect.TypeOf(val.Interface()).Elem()
 		v := reflect.Zero(t)
 		length := val.Len()
@@ -148,7 +142,6 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 			item.Children = item.Children[:0]
 		}
 		item.Value = val
-		// zlog.Info("slice:", item.Value.Len(), t.Name(), fieldName, t.PkgPath(), v.Kind())
 		item.IsSlice = true
 		item.Kind = KindSlice
 		item.Interface = val.Interface()
@@ -158,7 +151,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 				v := val.Index(i)
 				sliceItem, serr := itterate(level+1, "", t.Name(), "", isAnonymous, v, options)
 				if serr != nil {
-					zlog.Error(serr, "slice item itterate")
+					fmt.Println(serr, "slice item itterate")
 					continue
 				}
 				item.Children = append(item.Children, sliceItem)
@@ -193,10 +186,6 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 				tag := string(f.Tag) // http://golang.org/pkg/reflect/#StructTag
 				tname := fval.Type().Name()
 				fname := f.Name
-				// if unnestAnonymous && fieldName == "" {
-				// 	fname = ""
-				// }
-				// zlog.Info("struct:", item.Kind, fieldName, "/", f.Type, f.Name, f.Type.PkgPath(), tag) //, c.Tag, c.Value, c.Value.Interface(), fval.CanAddr())
 				l := level
 				if !f.Anonymous {
 					l++
@@ -210,15 +199,10 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 				} else {
 					if c.Value.CanAddr() {
 						c.Address = c.Value.Addr().Interface()
-						//							zlog.Info("Addr:", c.Value, c.Address)
 					}
 					if options.UnnestAnonymous && f.Anonymous {
-						// zlog.Info("add anon", i, len(item.Children), len(c.Children))
 						item.Children = append(item.Children, c.Children...)
 					} else {
-						// if c.Kind == KindSlice {
-						// 	zlog.Info("zreflect add slice child", i, c.FieldName, c.Interface, c.Value.Len, fval.Len())
-						// }
 						item.Children = append(item.Children, c)
 					}
 				}
@@ -260,7 +244,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 		item.Interface = val.Interface()
 
 	default:
-		zlog.Info("marshal.marshalValue: Carefull, unknown type!", val.Kind())
+		fmt.Println("marshal.marshalValue: Carefull, unknown type!", val.Kind())
 		item.Kind = KindUndef
 	}
 	switch val.Kind() {
@@ -285,10 +269,12 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 func ItterateStruct(istruct any, options Options) (item Item, err error) {
 	rval := reflect.ValueOf(istruct)
 	if !rval.IsValid() { //|| rval.IsZero() { //  && rval.Kind() != reflect.StructKind
-		zlog.Info("ItterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
+		fmt.Println("ItterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
 		return
 	}
-	zlog.Assert(rval.Kind() == reflect.Ptr, "not pointer:", rval.Kind(), rval.Type(), rval)
+	if rval.Kind() != reflect.Ptr {
+		panic(zstr.Spaced("not pointer:", rval.Kind(), rval.Type(), rval))
+	}
 	return itterate(0, "", "", "", false, rval.Elem(), options)
 }
 
@@ -307,28 +293,24 @@ func FlattenIfAnonymous(f reflect.StructField) bool {
 }
 
 func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, istart int, got func(each FieldInfo) bool) (stoppedAt int, quit bool) {
-	// zlog.Info("forEachField1", rval.Type(), rval.Kind())
 	if rval.Kind() == reflect.Pointer {
 		rval = rval.Elem()
 	}
 	if !rval.IsValid() {
-		zlog.Error("forEachField: rval not valid")
+		fmt.Println("forEachField: rval not valid")
 		return
 	}
 	if rval.Kind() == reflect.Slice || rval.Kind() == reflect.Map {
 		return
 	}
 	j := istart
-	// zlog.Info("zreflect.ForEachStart:", rval.Type(), rval.Kind(), rval.NumField())
 	for i := 0; i < rval.NumField(); i++ {
 		fv := rval.Field(i)
 		f := rval.Type().Field(i)
-		// zlog.Info("zreflect.ForEach:", i, j, f.Name, rval.Kind(), flatten != nil)
 		if !fv.CanInterface() {
 			j++
 			continue
 		}
-		// zlog.Info("zreflect.ForEach:", i, j, f.Name, f.IsExported())
 		if rval.Kind() == reflect.Struct && flatten != nil && flatten(f) {
 			var quit bool
 			j, quit = forEachField(fv, flatten, j, got)
@@ -402,33 +384,6 @@ func GetTagAsMap(stag string) map[string][]string {
 	return nil
 }
 
-// // TODO: Use FieldForName instead
-// func FindFieldWithNameInStruct(name string, structure any, anonymous bool) (reflect.Value, bool) {
-// 	val := reflect.ValueOf(structure)
-// 	if val.Kind() == reflect.Pointer {
-// 		// zlog.Info("FindFieldWithNameInStruct 2emel")
-// 		val = val.Elem()
-// 	}
-// 	// zlog.Info("FindFieldWithNameInStruct:", val.Kind(), val.Kind() == reflect.Pointer, val.Type())
-// 	vtype := val.Type()
-// 	n := vtype.NumField()
-// 	for i := 0; i < n; i++ {
-// 		f := vtype.Field(i)
-// 		fval := val.Field(i)
-// 		// zlog.Info("FindFieldWithNameInStruct:", name, f.Name)
-// 		if f.Name == name {
-// 			return fval, true
-// 		}
-// 		if anonymous && fval.Kind() == reflect.Struct && f.Anonymous {
-// 			v, found := FindFieldWithNameInStruct(name, val.Field(i).Interface(), anonymous)
-// 			if found {
-// 				return v, true
-// 			}
-// 		}
-// 	}
-// 	return reflect.Value{}, false
-// }
-
 func DeepCopy(destPtr, source any) error {
 	buf := bytes.Buffer{}
 	err := gob.NewEncoder(&buf).Encode(source)
@@ -493,36 +448,29 @@ func HashAnyToInt64(a interface{}, add string) int64 {
 	return zint.HashTo64(str)
 }
 
-// SetAny tries to set anyPtr using string for int, float, string and bool types
-func SetAnyFomString(anyPtr any, fromStr string) error {
-	aval := reflect.ValueOf(anyPtr).Elem()
-	kind := KindFromReflectKindAndType(aval.Kind(), aval.Type())
-	switch kind {
-	case KindInt, KindFloat:
-		if kind == KindFloat {
-			n, err := strconv.ParseFloat(fromStr, 64)
-			if err != nil {
-				return zlog.Error(err, fromStr)
-			}
-			zfloat.SetAny(aval.Interface(), n)
+func SetStringToAny(toPtr any, from string) {
+	switch t := toPtr.(type) {
+	case *bool:
+		if from == "true" || from == "TRUE" || from == "1" {
+			*t = true
 		} else {
-			n, err := strconv.ParseInt(fromStr, 10, 64)
-			if err != nil {
-				return zlog.Error(err, fromStr)
-			}
-			zint.SetAny(aval.Interface(), n)
+			*t = false
 		}
-
-	case KindString:
-		aval.SetString(fromStr)
-
-	case KindBool:
-		val, err := zbool.FromStringWithError(fromStr)
+	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64:
+		n, err := strconv.ParseInt(from, 10, 64)
 		if err != nil {
-			return err
+			fmt.Println("SetAny1:", err)
 		}
-		bptr := aval.Interface().(*bool)
-		*bptr = val
+		zint.SetAny(toPtr, n)
+	case *float32, *float64:
+		n, err := strconv.ParseFloat(from, 64)
+		if err != nil {
+			fmt.Println("SetAny2:", err, from)
+		}
+		zfloat.SetAny(toPtr, n)
+	case *string:
+		*t = from
+	default:
+		fmt.Println("bad type:", reflect.TypeOf(toPtr))
 	}
-	return nil
 }
