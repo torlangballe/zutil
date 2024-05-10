@@ -9,6 +9,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zutil/zfloat"
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
@@ -207,9 +210,31 @@ func (d Dict) ToStruct(structPtr any) {
 		if val == nil {
 			return true
 		}
+		switch each.ReflectValue.Kind() {
+		case reflect.String:
+			str, got := val.(string)
+			zlog.Assert(got, reflect.TypeOf(val), name)
+			each.ReflectValue.Addr().Elem().SetString(str)
+		case reflect.Float32, reflect.Float64:
+			f, err := zfloat.GetAny(val)
+			zlog.AssertNotError(err, name, each.ReflectValue.Kind())
+			each.ReflectValue.Addr().Elem().SetFloat(f)
+		case reflect.Int:
+			n, err := zint.GetAny(val)
+			zlog.AssertNotError(err)
+			each.ReflectValue.Addr().Elem().SetInt(n)
+		case reflect.Bool:
+			b, isBool := val.(bool)
+			if !isBool {
+				str, _ := val.(string)
+				if str != "" {
+					b = zbool.FromString(str, false)
+				}
+			}
+			each.ReflectValue.Addr().Elem().SetBool(b)
+		}
 		return true
 	})
-
 }
 
 func FromURLValues(values url.Values) Dict {
