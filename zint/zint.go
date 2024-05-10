@@ -240,71 +240,77 @@ func Abs(a int) int {
 	return a
 }
 
-func SetAny(num interface{}, i int64) error {
-	switch num.(type) {
+func SetAny(numPtr any, i int64) error {
+	switch numPtr.(type) {
 	case *int:
-		*num.(*int) = int(i)
+		*numPtr.(*int) = int(i)
 	case *int8:
-		*num.(*int8) = int8(i)
+		*numPtr.(*int8) = int8(i)
 	case *int16:
-		*num.(*int16) = int16(i)
+		*numPtr.(*int16) = int16(i)
 	case *int32:
-		*num.(*int32) = int32(i)
+		*numPtr.(*int32) = int32(i)
 	case *int64:
-		*num.(*int64) = int64(i)
+		*numPtr.(*int64) = int64(i)
 	case *uint8:
-		*num.(*uint8) = uint8(i)
+		*numPtr.(*uint8) = uint8(i)
 	case *uint16:
-		*num.(*uint16) = uint16(i)
+		*numPtr.(*uint16) = uint16(i)
 	case *uint32:
-		*num.(*uint32) = uint32(i)
+		*numPtr.(*uint32) = uint32(i)
 	case *uint64:
-		*num.(*uint64) = uint64(i)
+		*numPtr.(*uint64) = uint64(i)
+	case *float32:
+		*numPtr.(*float32) = float32(i)
+	case *float64:
+		*numPtr.(*float64) = float64(i)
+	case *string:
+		*numPtr.(*string) = strconv.FormatInt(i, 10)
 	default:
-		err := errors.New(fmt.Sprint("bad type:", reflect.TypeOf(num))) // don't use zlog, will be import cycle
+		err := errors.New(fmt.Sprint("bad type:", reflect.TypeOf(numPtr))) // don't use zlog, will be import cycle
 		fmt.Println("zint.SetAny err:", err)
 		return err
 	}
 	return nil
 }
 
-func GetAny(i interface{}) (int64, error) {
+func GetAny(i any) (int64, error) {
 	if i == nil {
 		return 0, errors.New("is nil")
 	}
-	switch i.(type) {
+	switch n := i.(type) {
 	case bool:
-		if i.(bool) {
+		if n {
 			return 1, nil
 		}
 		return 0, nil
 	case int:
-		return int64(i.(int)), nil
+		return int64(n), nil
 	case int8:
-		return int64(i.(int8)), nil
+		return int64(n), nil
 	case int16:
-		return int64(i.(int16)), nil
+		return int64(n), nil
 	case int32:
-		return int64(i.(int32)), nil
+		return int64(n), nil
 	case int64:
-		return int64(i.(int64)), nil
+		return n, nil
 	case uint:
-		return int64(i.(uint)), nil
+		return int64(n), nil
 	case uint8:
-		return int64(i.(uint8)), nil
+		return int64(n), nil
 	case uint16:
-		return int64(i.(uint16)), nil
+		return int64(n), nil
 	case uint32:
-		return int64(i.(uint32)), nil
+		return int64(n), nil
 	case uint64:
-		return int64(i.(uint64)), nil
+		return int64(n), nil
 	case float32:
-		return int64(i.(float32)), nil
+		return int64(n), nil
 	case float64:
-		return int64(i.(float64)), nil
+		return int64(n), nil
 	case string:
-		n, err := strconv.ParseInt(i.(string), 10, 64)
-		return n, err
+		sn, err := strconv.ParseInt(n, 10, 64)
+		return sn, err
 	}
 	val := reflect.ValueOf(i)
 	switch val.Kind() {
@@ -313,29 +319,9 @@ func GetAny(i interface{}) (int64, error) {
 			return 1, nil
 		}
 		return 0, nil
-	case reflect.Int:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return int64(val.Int()), nil
-	case reflect.Int8:
-		return int64(val.Int()), nil
-	case reflect.Int16:
-		return int64(val.Int()), nil
-	case reflect.Int32:
-		return int64(val.Int()), nil
-	case reflect.Int64:
-		return int64(val.Int()), nil
-	case reflect.Uint:
-		return int64(val.Int()), nil
-	case reflect.Uint8:
-		return int64(val.Int()), nil
-	case reflect.Uint16:
-		return int64(val.Int()), nil
-	case reflect.Uint32:
-		return int64(val.Int()), nil
-	case reflect.Uint64:
-		return int64(val.Int()), nil
-	case reflect.Float32:
-		return int64(val.Float()), nil
-	case reflect.Float64:
+	case reflect.Float32, reflect.Float64:
 		return int64(val.Float()), nil
 	case reflect.String:
 		n, err := strconv.ParseInt(val.String(), 10, 64)
@@ -346,7 +332,7 @@ func GetAny(i interface{}) (int64, error) {
 }
 
 // GetItem makes Slice worth with MenuView MenuItems interface
-func (s Slice) GetItem(i int) (id, name string, value interface{}) {
+func (s Slice) GetItem(i int) (id, name string, value any) {
 	if i >= len(s) {
 		return "", "", nil
 	}

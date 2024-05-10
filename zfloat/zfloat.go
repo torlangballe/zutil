@@ -20,109 +20,89 @@ func RangeF(min, max float64) Range {
 	return Range{Min: min, Max: max}
 }
 
-func GetAny(i interface{}) (float64, error) {
-	switch i.(type) {
+func GetAny(i any) (float64, error) {
+	switch n := i.(type) {
 	case bool:
-		if i.(bool) {
+		if n {
 			return 1, nil
 		}
 		return 0, nil
 	case int:
-		return float64(i.(int)), nil
+		return float64(n), nil
 	case int8:
-		return float64(i.(int8)), nil
+		return float64(n), nil
 	case int16:
-		return float64(i.(int16)), nil
+		return float64(n), nil
 	case int32:
-		return float64(i.(int32)), nil
+		return float64(n), nil
 	case int64:
-		return float64(i.(int64)), nil
+		return float64(n), nil
 	case uint:
-		return float64(i.(uint)), nil
+		return float64(n), nil
 	case uint8:
-		return float64(i.(uint8)), nil
+		return float64(n), nil
 	case uint16:
-		return float64(i.(uint16)), nil
+		return float64(n), nil
 	case uint32:
-		return float64(i.(uint32)), nil
+		return float64(n), nil
 	case uint64:
-		return float64(i.(uint64)), nil
+		return float64(n), nil
 	case float32:
-		return float64(i.(float32)), nil
+		return float64(n), nil
 	case float64:
-		return float64(i.(float64)), nil
+		return n, nil
 	case string:
-		f, err := strconv.ParseFloat(i.(string), 64)
+		f, err := strconv.ParseFloat(n, 64)
 		return f, err
 	}
 	val := reflect.ValueOf(i)
-	switch val.Kind() {
+	switch val.Kind() { // not sure this does anything type switch above does...
 	case reflect.Bool:
-		if i.(bool) {
+		if val.Bool() {
 			return 1, nil
 		}
 		return 0, nil
-	case reflect.Int:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return float64(val.Int()), nil
-	case reflect.Int8:
-		return float64(val.Int()), nil
-	case reflect.Int16:
-		return float64(val.Int()), nil
-	case reflect.Int32:
-		return float64(val.Int()), nil
-	case reflect.Int64:
-		return float64(val.Int()), nil
-	case reflect.Uint:
-		return float64(val.Int()), nil
-	case reflect.Uint8:
-		return float64(val.Int()), nil
-	case reflect.Uint16:
-		return float64(val.Int()), nil
-	case reflect.Uint32:
-		return float64(val.Int()), nil
-	case reflect.Uint64:
-		return float64(val.Int()), nil
-	case reflect.Float32:
-		return float64(val.Float()), nil
-	case reflect.Float64:
+	case reflect.Float32, reflect.Float64:
 		return float64(val.Float()), nil
 	case reflect.String:
 		n, err := strconv.ParseFloat(val.String(), 64)
 		return n, err
-	default:
-		return 0, errors.New(fmt.Sprint("bad type:", reflect.TypeOf(i)))
 	}
+	return 0, errors.New(fmt.Sprint("bad type:", reflect.TypeOf(i)))
 }
 
-func SetAny(num interface{}, f float64) error {
-	switch atype := num.(type) {
+func SetAny(num any, f float64) error {
+	switch n := num.(type) {
 	case *float32:
-		*atype = float32(f)
+		*n = float32(f)
 	case *float64:
-		*num.(*float64) = f
-	case bool:
-		*num.(*bool) = (f != 0)
+		*n = f
+	case *string:
+		*n = strconv.FormatFloat(f, 'f', -1, 64)
+	case *bool:
+		*n = (f != 0)
 	case *int:
-		*num.(*int) = int(f)
+		*n = int(f)
 	case *int8:
-		*num.(*int8) = int8(f)
+		*n = int8(f)
 	case *int16:
-		*num.(*int16) = int16(f)
+		*n = int16(f)
 	case *int32:
-		*num.(*int32) = int32(f)
+		*n = int32(f)
 	case *int64:
-		*num.(*int64) = int64(f)
+		*n = int64(f)
 	case *uint:
-		*num.(*uint) = uint(f)
+		*n = uint(f)
 	case *uint8:
-		*num.(*uint8) = uint8(f)
+		*n = uint8(f)
 	case *uint16:
-		*num.(*uint16) = uint16(f)
+		*n = uint16(f)
 	case *uint32:
-		*num.(*uint32) = uint32(f)
+		*n = uint32(f)
 	case *uint64:
-		*num.(*uint64) = uint64(f)
-
+		*n = uint64(f)
 	default:
 		return errors.New(fmt.Sprint("bad type:", reflect.TypeOf(num)))
 	}
@@ -193,7 +173,7 @@ func Maximize(a *float64, b float64) bool {
 }
 
 // GetItem makes Slice worth with MenuView MenuItems interface
-func (s Slice) GetItem(i int) (id, name string, value interface{}) {
+func (s Slice) GetItem(i int) (id, name string, value any) {
 	if i >= len(s) {
 		return "", "", nil
 	}
