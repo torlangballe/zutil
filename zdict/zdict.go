@@ -9,9 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/torlangballe/zutil/zbool"
-	"github.com/torlangballe/zutil/zfloat"
-	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
@@ -210,40 +207,7 @@ func (d Dict) ToStruct(structPtr any) {
 		if val == nil {
 			return true
 		}
-		// zlog.Info("Dict2Struct1:", name, each.ReflectValue.Kind())
-		switch each.ReflectValue.Kind() {
-		case reflect.String:
-			str, got := val.(string)
-			zlog.Assert(got, reflect.TypeOf(val), name)
-			each.ReflectValue.Addr().Elem().SetString(str)
-		case reflect.Float32, reflect.Float64:
-			f, err := zfloat.GetAny(val)
-			zlog.AssertNotError(err, name, each.ReflectValue.Kind())
-			each.ReflectValue.Addr().Elem().SetFloat(f)
-		case reflect.Int:
-			n, err := zint.GetAny(val)
-			zlog.AssertNotError(err)
-			each.ReflectValue.Addr().Elem().SetInt(n)
-		case reflect.Bool:
-			b, isBool := val.(bool)
-			if !isBool {
-				str, _ := val.(string)
-				if str != "" {
-					b = zbool.FromString(str, false)
-				}
-			}
-			each.ReflectValue.Addr().Elem().SetBool(b)
-		case reflect.Map:
-			_, got1 := each.ReflectValue.Interface().(map[string]string)
-			_, got2 := val.(map[string]any)
-			// do for anything!!!
-			zlog.Info("Got1&2", each.ReflectValue.Type(), reflect.TypeOf(val), got1, got2)
-			if got1 && got2 {
-				each.ReflectValue.Set(reflect.ValueOf(val))
-			}
-		}
 		return true
-		// zlog.Info("Dict2Struct:", name, val, fval.Interface())
 	})
 
 }
