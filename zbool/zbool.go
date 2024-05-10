@@ -1,6 +1,13 @@
 package zbool
 
-import "github.com/torlangballe/zutil/zlog"
+import (
+	"errors"
+	"fmt"
+	"reflect"
+	"strconv"
+
+	"github.com/torlangballe/zutil/zint"
+)
 
 // BoolInd is a bool which also has an indeterminate, or unknown  state
 type BoolInd int
@@ -20,6 +27,13 @@ func ToBoolInd(b bool) BoolInd {
 
 func (b BoolInd) Bool() bool {
 	return b == True
+}
+
+func (b BoolInd) String() string {
+	if b.IsUnknown() {
+		return "undef"
+	}
+	return ToString(b.Bool())
 }
 
 func (b BoolInd) IsTrue() bool {
@@ -52,7 +66,7 @@ func FromString(str string, def bool) bool {
 func FromStringWithError(str string) (bool, error) {
 	bind := FromStringWithInd(str, Unknown)
 	if bind == Unknown {
-		return false, zlog.NewError("bad type:", str)
+		return false, errors.New("bad type: " + str)
 	}
 	return bind.Bool(), nil
 }
@@ -90,4 +104,33 @@ func ToString(b bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+func FromAny(a any) bool {
+	switch t := a.(type) {
+	case bool:
+		return t
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return t != 0
+	case string:
+		n, _ := strconv.ParseFloat(t, 64)
+		return n != 0
+	}
+	return false
+}
+
+func SetAny(toPtr any, from bool) {
+	switch t := toPtr.(type) {
+	case *bool:
+		*t = from
+	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64, *float32, *float64:
+		v := 0.0
+		if from {
+			v = 1
+		}
+		zint.SetAny(toPtr, int64(v))
+	case *string:
+		*t = ToString(from)
+	}
+	fmt.Println("bad type:", reflect.TypeOf(toPtr))
 }
