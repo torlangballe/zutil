@@ -57,7 +57,7 @@ func NewFileListerView(opts DirOptions, rpcClient *zrpc.Client) *FileListerView 
 	v.Init(v, true, opts.StoreName+".FileLister")
 
 	if opts.IconSize.IsNull() {
-		opts.IconSize = zgeo.SizeD(24, 16)
+		opts.IconSize = zgeo.SizeD(36, 24)
 	}
 	v.DirOptions = opts
 	v.DirOptions.PickedPaths = slices.Clone(opts.PickedPaths)

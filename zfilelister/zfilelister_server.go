@@ -64,7 +64,7 @@ func (s *FileServer) AddFolder(baseFolder, storeName, servePath string) {
 	zfile.MakeDirAllIfNotExists(folder)
 	urlBase := zfile.JoinPathParts(urlPrefix, storeName)
 	s.folders[storeName] = baseFolder
-	zlog.Info("zfilelister.AddFolder:", urlBase, servePath, folder)
+	zlog.Info("zfilelister.AddFolder:", storeName, urlBase, servePath, folder)
 	// zrest.AddFileHandler(s.router, urlBase, folder, s.handleServeFile)
 }
 
@@ -208,11 +208,10 @@ func (s *FileServer) serveThumb(w http.ResponseWriter, req *http.Request, fpath 
 			return false
 		}
 		var data []byte
-		name, _ := zstr.SplitInTwo(rest, "/")
-		baseFolder := s.folders[name]
+		storeName, _ := zstr.SplitInTwo(rest, "/")
+		baseFolder := s.folders[storeName]
 		imagePath := zfile.JoinPathParts(baseFolder, rest)
 		img, _, err := zimage.GoImageFromFile(imagePath)
-		// zlog.Info("serveThumb:", req.URL)
 		if err == nil {
 			img, err = zimage.GoImageShrunkInto(img, size, true)
 		}
@@ -220,10 +219,12 @@ func (s *FileServer) serveThumb(w http.ResponseWriter, req *http.Request, fpath 
 			data, err = zimage.GoImageJPEGData(img, 95)
 		}
 		if err == nil {
-			_, err = s.IconCache.CacheFromData(data, name)
+			var n2 string
+			n2, err = s.IconCache.CacheFromData(data, name)
+			zlog.Info("serveThumb cache it:", req.URL, n2, err)
 		}
 		if err != nil {
-			zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "error reading/shrinking/jpegging/caching image", imagePath)
+			zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "error reading/shrinking/jpegging/caching image", baseFolder, imagePath, err, imagePath)
 			return false
 		}
 	}
