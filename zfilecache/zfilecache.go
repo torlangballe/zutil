@@ -138,7 +138,7 @@ func (c *Cache) CacheFromData(data []byte, name string) (string, error) {
 	}
 	path, dir := c.GetPathForName(name)
 	prof.Log("After get path")
-	// zlog.Warn("CacheFromData:", path)
+	// zlog.Warn("CacheFromData:", name, path)
 	err = zfile.MakeDirAllIfNotExists(dir)
 	if err != nil {
 		return "", zlog.Error(err, "make dir", dir)
