@@ -1009,6 +1009,10 @@ func GetParametersFromArgString(str, sep, set string) map[string]string {
 	return m
 }
 
+func GetParametersFromURLArgString(str string) map[string]string {
+	return GetParametersFromArgString(str, "&", "=")
+}
+
 func Reverse(ss *[]string) {
 	last := len(*ss) - 1
 	for i := 0; i < len(*ss)/2; i++ {
