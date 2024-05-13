@@ -1,11 +1,16 @@
 package zgeo
 
 import (
+	"database/sql/driver"
+	"errors"
 	"fmt"
 	"image"
 	"math"
+	"strconv"
 
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
+	"github.com/torlangballe/zutil/zstr"
 )
 
 type Pos struct {
@@ -23,6 +28,30 @@ func PosD(x, y float64) Pos {
 
 func (p Pos) String() string {
 	return fmt.Sprintf("%g,%g", p.X, p.Y)
+}
+
+func PosFromString(str string) (Pos, error) {
+	var sx, sy string
+	if !zstr.SplitN(str, ",", &sx, &sy) {
+		return Pos{}, errors.New("no ',' splitting zgeo.Pos string: " + str)
+	}
+	w, err := strconv.ParseFloat(sx, 64)
+	if err != nil {
+		return Pos{}, zlog.Error(err, zlog.StackAdjust(1), "parse x", sx)
+	}
+	h, err := strconv.ParseFloat(sx, 64)
+	if err != nil {
+		return Pos{}, zlog.Error(err, zlog.StackAdjust(1), "parse y", sy)
+	}
+	return PosD(w, h), nil
+}
+
+func (p Pos) ZUIString() string {
+	return p.String()
+}
+
+func (p *Pos) ZUISetFromString(str string) {
+	*p, _ = PosFromString(str)
 }
 
 func (p Pos) Vertice(vertical bool) float64 {
@@ -251,4 +280,21 @@ func (p Pos) Round() Pos {
 type IPos struct {
 	X int
 	Y int
+}
+
+func (p Pos) Value() (driver.Value, error) {
+	return []byte(p.String()), nil
+}
+
+func (p *Pos) Scan(value interface{}) error {
+	str, ok := value.(string)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	pos, err := PosFromString(str)
+	if err != nil {
+		return err
+	}
+	*p = pos
+	return nil
 }
