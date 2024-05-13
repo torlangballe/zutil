@@ -272,7 +272,7 @@ func SizeFromString(str string) (Size, error) { // we don't use String() since t
 	if err != nil {
 		return Size{}, zlog.Error(err, zlog.StackAdjust(1), "parse h", sh)
 	}
-	return Size{w, h}, nil
+	return SizeD(w, h), nil
 }
 
 func (s Size) ZUIString() string {
