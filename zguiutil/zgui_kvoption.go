@@ -42,7 +42,7 @@ func CreateViewForKVOption[V comparable](option *zkeyvalue.Option[V]) zview.View
 	switch kind {
 	case zreflect.KindInt, zreflect.KindFloat:
 		t := makeText(false, v, 10)
-		t.SetChangedHandler(func() {
+		t.SetValueHandler(func() {
 			str := t.Text()
 			n, err := strconv.ParseFloat(str, 64)
 			zlog.OnError(err, str)
@@ -65,7 +65,7 @@ func CreateViewForKVOption[V comparable](option *zkeyvalue.Option[V]) zview.View
 		}
 		// zlog.Info("CreateView:", isPass, option.Key)
 		t := makeText(isPass, v, 40)
-		t.SetChangedHandler(func() {
+		t.SetValueHandler(func() {
 			text := t.Text()
 			option.SetAny(text, true)
 		})

@@ -103,8 +103,8 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	validate := func() {
 		validateFields(usernameField, passwordField, login, register)
 	}
-	usernameField.SetChangedHandler(validate)
-	passwordField.SetChangedHandler(validate)
+	usernameField.SetValueHandler(validate)
+	passwordField.SetValueHandler(validate)
 
 	_, s1, _, _ := zguiutil.Labelize(usernameField, UserNameType(), columnWith, zgeo.CenterLeft, "")
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
