@@ -6,6 +6,15 @@
 //
 // See also zrpc_reverse_*.go for a reverse variant, where zrpc is used to ask the server if
 // it has any calls it wants to perform on the client, who can also register types/methods.
+
+// RequestTemporaryServe() requests a temporary byte stream set up with
+// AddToTemporaryServe() server-side using a random 64 bit id.
+// This can be used for anything, but is currently used if
+// If fields in a zrpc arg struct contain "zrpc:"http".
+// They are then cleared and replaced with a random id, on giving end.
+// Receiving end requests them with id in []byte field, and replaces with bytes streamed.
+// This technique is used for clients and reverse clients.
+
 package zrpc
 
 import (
@@ -71,6 +80,8 @@ type TransportError string
 type CallsBase struct{} // CallsBase is just a dummy type one can derive from when defining a type to add methods to for registation. You don't need to use it.
 // type RPCCalls CallsBase // RPCCalls is the type with zrpc's own build-in methods.
 type Unused struct{} // Any is used in function definition args/result when argument is not used
+
+const tempDataMethod = "zrpc-tempdata"
 
 var ExecuteTimedOutError = TransportError("Execution timed out")
 

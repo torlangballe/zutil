@@ -4,15 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"go/token"
+	"math/rand"
 	"reflect"
+	"strconv"
 	"time"
 
+	"github.com/torlangballe/zutil/zcache"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 )
 
 type TokenAuthenticator interface {
-	IsTokenValid(token string) (bool, int64) 
+	IsTokenValid(token string) (bool, int64)
 }
 
 type Executor struct {
@@ -21,14 +25,17 @@ type Executor struct {
 	IPAddressWhitelist map[string]bool        // if non-empty, only ip-addresses in map are allowed to be called from
 }
 
+// temporaryDataServe stores temporary bytes to serve as a separate http reqest
+var temporaryDataServe = zcache.NewExpiringMap[int64, []byte](2)
+
+var EnableLogExecute zlog.Enabler
+
 func NewExecutor() *Executor {
 	e := &Executor{}
 	e.callMethods = map[string]*methodType{}
 	e.IPAddressWhitelist = map[string]bool{}
 	return e
 }
-
-var EnableLogExecute zlog.Enabler
 
 // Register registers instances of types that have methods in them suitable for being an rpc call.
 // func (t type) Method(<ci ClientInfo>, input, <*result>) error
@@ -125,7 +132,7 @@ func (e *Executor) methodNeedsAuth(name string) bool {
 	return !m.AuthNotNeeded
 }
 
-func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg json.RawMessage) (rp receivePayload, err error) {
+func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg json.RawMessage, requestHTTPDataClient *Client) (rp receivePayload, err error) {
 	// zlog.Info("callMethod:", mtype.Method.Name)
 	start := time.Now()
 	defer func() {
@@ -146,6 +153,12 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 		zlog.Error(err, "Unmarshal:", mtype.Method, argv.Kind(), argv.Type(), zlog.Full(*mtype))
 		return rp, err
 	}
+
+	if requestHTTPDataClient != nil {
+		// zlog.Info("zrpc.requestHTTPDataFields in revcall:", mtype.Method, reflect.TypeOf(argv.Interface()))
+		requestHTTPDataFields(argv.Interface(), requestHTTPDataClient)
+	}
+
 	if argIsValue {
 		argv = argv.Elem()
 	}
@@ -182,17 +195,17 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 	return rp, nil
 }
 
-func (e *Executor) callMethodName(ctx context.Context, ci ClientInfo, name string, rawArg json.RawMessage) (rp receivePayload, err error) {
+func (e *Executor) callMethodName(ctx context.Context, ci ClientInfo, name string, rawArg json.RawMessage, requestHTTPDataClient *Client) (rp receivePayload, err error) {
 	for n, m := range e.callMethods {
 		// zlog.Info("callMethName:", n, name, n == name)
 		if n == name {
-			return e.callMethod(ctx, ci, m, rawArg)
+			return e.callMethod(ctx, ci, m, rawArg, requestHTTPDataClient)
 		}
 	}
 	return rp, zlog.NewError("no method registered:", name)
 }
 
-func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.Time, args json.RawMessage) (receivePayload, error) {
+func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.Time, args json.RawMessage, requestHTTPDataClient *Client) (receivePayload, error) {
 	var rp receivePayload
 	var err error
 	// zlog.Info("zrpc callWithDeadline:", method, zlog.Pointer(e))
@@ -203,7 +216,7 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 		ctx, cancel := context.WithDeadline(context.Background(), expires)
 		defer cancel()
 		ci.Context = ctx
-		rp, err = e.callMethodName(ctx, ci, method, args)
+		rp, err = e.callMethodName(ctx, ci, method, args, requestHTTPDataClient)
 		// zlog.Info("zrpc callWithDeadline: callMethod done:", method, err, method, zlog.Pointer(e))
 		if err != nil {
 			zlog.Error(err, "call", zlog.Pointer(e))
@@ -216,4 +229,26 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 		}
 	}
 	return rp, err
+}
+
+func registerHTTPDataFields(s any) {
+	zreflect.ForEachField(s, zreflect.FlattenAll, func(each zreflect.FieldInfo) bool {
+		parts, _ := zreflect.GetTagValuesForKey(each.StructField.Tag, "zrpc")
+		if zstr.StringsContain(parts, "http") {
+			if !each.ReflectValue.CanSet() {
+				zlog.Error("can't set zrpc:http field. RPC call needs pointer passed as arg:", each.StructField.Name)
+				return true
+			}
+			id := AddToTemporaryServe(each.ReflectValue.Bytes())
+			idBytes := []byte(strconv.FormatInt(id, 10))
+			each.ReflectValue.Set(reflect.ValueOf(idBytes))
+		}
+		return true
+	})
+}
+
+func AddToTemporaryServe(data []byte) int64 {
+	id := rand.Int63()
+	temporaryDataServe.Set(id, data)
+	return id
 }

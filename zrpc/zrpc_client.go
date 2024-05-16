@@ -3,12 +3,17 @@ package zrpc
 import (
 	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
+	"reflect"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
+	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -57,7 +62,7 @@ var (
 func NewClient(prefixURL string, id string) *Client {
 	c := &Client{}
 	c.PrefixURL = prefixURL
-	c.callURL = zstr.Concat("/", prefixURL, zrest.AppURLPrefix, "zrpc")
+	c.callURL = c.MakeCallURL("zrpc")
 	if id == "" {
 		id = zstr.GenerateRandomHexBytes(12)
 	}
@@ -65,6 +70,10 @@ func NewClient(prefixURL string, id string) *Client {
 	c.ID = id
 	c.TimeoutSecs = 100
 	return c
+}
+
+func (c *Client) MakeCallURL(name string) string {
+	return zstr.Concat("/", c.PrefixURL, zrest.AppURLPrefix, name)
 }
 
 // // Copy makes a copy of a client, to alter timeout or other fields.
@@ -132,6 +141,12 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 		err = json.Unmarshal(rp.Result, result)
 		if err != nil {
 			zlog.Error(err, c.AuthToken, "unmarshal")
+			return nil, TransportError(err.Error())
+		}
+		// zlog.Info("zrpc.requestHTTPDataFields:", cp.Method, reflect.TypeOf(result))
+		err = requestHTTPDataFields(result, c)
+		if err != nil {
+			zlog.Error(err, "requestHTTPDataFields")
 			return nil, TransportError(err.Error())
 		}
 	}
@@ -210,4 +225,82 @@ func (c *Client) RegisterPollGetter(resID string, get func()) {
 	// zlog.Info("RegisterPollGetter", resID)
 	RegisterResources(resID)
 	c.pollGetters.Set(resID, get)
+}
+
+func requestHTTPDataFields(s any, requestHTTPDataClient *Client) error {
+	var wg sync.WaitGroup
+	var outErr error
+	rv := reflect.ValueOf(s)
+	if rv.Kind() != reflect.Pointer || rv.Elem().Kind() != reflect.Struct {
+		return nil
+	}
+	zreflect.ForEachField(s, zreflect.FlattenAll, func(each zreflect.FieldInfo) bool {
+		parts, _ := zreflect.GetTagValuesForKey(each.StructField.Tag, "zrpc")
+		// zlog.Info("zrpc.requestHTTPDataFields1:", each.StructField.Name)
+		if zstr.StringsContain(parts, "http") {
+			if !each.ReflectValue.CanSet() {
+				zlog.Error("client: can't set zrpc:http field:", each.StructField.Name)
+				return true
+			}
+			data, _ := each.ReflectValue.Interface().([]byte)
+			if data == nil {
+				outErr = zlog.Error("client: field isn't []byte:", each.StructField.Name)
+				return true
+			}
+			if len(data) == 0 {
+				zlog.Info("requestHTTPDataFields: empty data:", each.StructField.Name)
+				return true
+			}
+			if len(data) > 20 {
+				zlog.Info("zrpc.requestHTTPDataFields: data too big, was it sent in []byte?", each.StructField.Name)
+				return true
+				// id := AddToTemporaryServe(each.ReflectValue.Bytes())
+				// idBytes := []byte(strconv.FormatInt(id, 10))
+				// each.ReflectValue.Set(reflect.ValueOf(idBytes))
+			}
+			str := string(data)
+			id, err := strconv.ParseInt(str, 10, 64)
+			if err != nil {
+				outErr = zlog.Error("client: id wasn't valid:", str, err, each.StructField.Name)
+				return true
+			}
+			wg.Add(1)
+			go func(id int64, rval reflect.Value) {
+				reader, err := requestHTTPDataClient.RequestTemporaryServe(id)
+				defer wg.Done()
+				if err != nil {
+					outErr = zlog.Error("RequestTemporaryServe err:", err, id, each.StructField.Name)
+					return
+				}
+				buf, err := io.ReadAll(reader)
+				if err != nil {
+					outErr = zlog.Error("RequestTemporaryServe err:", err, id, each.StructField.Name)
+					return
+				}
+				rval.SetBytes(buf)
+				zlog.Info("zrpc: Request http data field:", id, each.StructField.Name, len(buf))
+			}(id, each.ReflectValue)
+		}
+		wg.Wait()
+		return true
+	})
+	return outErr
+}
+
+func (c *Client) RequestTemporaryServe(id int64) (io.ReadCloser, error) {
+	params := zhttp.MakeParameters()
+	params.Method = http.MethodGet
+	params.TimeoutSecs = 20
+	if c.AuthToken != "" {
+		params.Headers["X-Token"] = c.AuthToken
+	}
+	args := map[string]string{"id": strconv.FormatInt(id, 10)}
+	surl := c.MakeCallURL(tempDataMethod)
+	surl, _ = zhttp.MakeURLWithArgs(surl, args)
+	// zlog.Warn("CALL:", surl)
+	resp, err := zhttp.GetResponse(surl, params)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
 }

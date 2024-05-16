@@ -175,8 +175,9 @@ func (rc *ReverseClient) Call(method string, args, resultPtr any) error {
 }
 
 func (rc *ReverseClient) CallWithTimeout(timeoutSecs float64, method string, args, resultPtr any) error {
-	// zlog.Warn("zrpc.RevCall:", method, rc.rid)
+	// zlog.Warn("zrpc.RevCall:", method, reflect.TypeOf(args), reflect.ValueOf(args).IsZero(), reflect.ValueOf(args).Kind())
 	var pc pendingCall
+	registerHTTPDataFields(args)
 	pc.CallPayload = CallPayload{Method: method, Args: args}
 	pc.placed = time.Now()
 	pc.Expires = time.Now().Add(ztime.SecondsDur(timeoutSecs))

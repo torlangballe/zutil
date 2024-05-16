@@ -21,8 +21,9 @@ func NewServer(router *mux.Router, a TokenAuthenticator) *Executor {
 	e := NewExecutor()
 	// zlog.Info("zrpc.NewServer e:", zlog.Pointer(e))
 	e.Authenticator = a
+
 	zrest.AddHandler(router, "zrpc", e.doServeHTTP).Methods("POST", "OPTIONS")
-	//!!! e.Register(e)
+	zrest.AddHandler(router, tempDataMethod, e.doServeTempDataHTTP).Methods("GET", "OPTIONS")
 	return e
 }
 
@@ -31,6 +32,38 @@ func NewServer(router *mux.Router, a TokenAuthenticator) *Executor {
 func (e *Executor) SetAuthNotNeededForMethod(name string) {
 	// zlog.Info("SetAuthNotNeededForMethod:", e != nil, name)
 	e.callMethods[name].AuthNotNeeded = true
+}
+
+func (e *Executor) doServeTempDataHTTP(w http.ResponseWriter, req *http.Request) {
+	zrest.AddCORSHeaders(w, req)
+	if req.Method == http.MethodOptions {
+		return
+	}
+	defer req.Body.Close()
+	if req.Method == "OPTIONS" {
+		return
+	}
+	id := zrest.GetInt64Val(req.URL.Query(), "id", 0)
+	if id == 0 {
+		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "doServeTempDataHTTP: no id")
+		return
+	}
+	token := req.Header.Get("X-Token")
+	valid, _ := e.Authenticator.IsTokenValid(token)
+	if !valid {
+		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "doServeTempDataHTTP auth error:", token)
+		return
+	}
+	data, got := temporaryDataServe.Get(id)
+	if !got {
+		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "doServeTempDataHTTP: No data available for id:", id)
+		return
+	}
+	n, err := w.Write(data)
+	if err != nil || n < len(data) {
+		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "doServeTempDataHTTP: No data available for id: ", id, n)
+		return
+	}
 }
 
 // doServeHTTP responds to a /zrpc request. It gets the method and arguments by parsing the json body.
@@ -93,7 +126,10 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 			timeoutSecs, _ := strconv.ParseFloat(stimeout, 64)
 			ci.SendDate, _ = time.Parse(ztime.JavascriptISO, sdate)
 			expires := time.Now().Add(ztime.SecondsDur(timeoutSecs))
-			rp, err = e.callWithDeadline(ci, cp.Method, expires, cp.Args)
+			rp, err = e.callWithDeadline(ci, cp.Method, expires, cp.Args, nil)
+			if rp.Result != nil && err == nil {
+				// registerHTTPDataFields(rp.Result)
+			}
 		}
 	}
 	encoder := json.NewEncoder(w)
@@ -101,5 +137,6 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		zlog.Error(err, "encode rpc result", rp)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }

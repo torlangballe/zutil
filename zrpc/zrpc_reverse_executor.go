@@ -105,7 +105,7 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 			ci.ClientID = r.client.ID
 			ci.Token = r.client.AuthToken
 
-			receive, err := r.Executor.callWithDeadline(ci, cp.Method, cp.Expires, cp.Args)
+			receive, err := r.Executor.callWithDeadline(ci, cp.Method, cp.Expires, cp.Args, r.client)
 			zlog.Info(EnableLogExecutor, "zrpc ReverseExecutor: callMethod:", cp.Method, err, time.Since(start))
 			if err != nil {
 				rr.clientReceivePayload.Error = err.Error()
