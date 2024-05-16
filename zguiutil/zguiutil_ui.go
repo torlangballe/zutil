@@ -10,6 +10,7 @@ import (
 	"github.com/torlangballe/zui/zcontainer"
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zstyle"
+	"github.com/torlangballe/zui/ztext"
 	"github.com/torlangballe/zui/ztextinfo"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zbool"
@@ -144,4 +145,36 @@ func AddLabeledViewToGrid(grid *zcontainer.GridView, title string, view zview.Vi
 	grid.Add(label, zgeo.CenterRight, zgeo.SizeNull)
 
 	grid.Add(view, zgeo.CenterLeft|zgeo.HorExpand, zgeo.SizeNull)
+}
+
+// CreateLockIconForView creates a lock icon label which enables/disables view.
+// It starts disabled if not empty, and handles changes to views emptiness.
+func CreateLockIconForView(view zview.View) zview.View {
+	label := zlabel.New("🔒")
+	clear := true
+	to, _ := view.(ztext.TextOwner)
+	if to != nil && to.Text() == "" {
+		clear = false
+	}
+	if clear {
+		view.Native().SetUsable(false)
+	}
+	label.SetPressedHandler(func() {
+		u := view.Native().Usable()
+		view.Native().SetUsable(!u)
+	})
+	vh, _ := view.(zview.ValueHandler)
+	if vh != nil {
+		vh.SetValueHandler(func() {
+			clear := true
+			to, _ := view.(ztext.TextOwner)
+			if to != nil && to.Text() == "" {
+				clear = false
+			}
+			if clear {
+				view.Native().SetUsable(false)
+			}
+		})
+	}
+	return label
 }
