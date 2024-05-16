@@ -16,6 +16,8 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
+// https://utcc.utoronto.ca/~cks/space/blog/programming/GoAddressableValues
+
 var (
 	timeType = reflect.TypeOf(time.Time{})
 )
@@ -292,13 +294,16 @@ func FlattenIfAnonymous(f reflect.StructField) bool {
 	return f.Anonymous
 }
 
+func FlattenAll(f reflect.StructField) bool {
+	return true
+}
+
 func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, istart int, got func(each FieldInfo) bool) (stoppedAt int, quit bool) {
 	if rval.Kind() == reflect.Pointer {
 		rval = rval.Elem()
 	}
 	if !rval.IsValid() {
-		fmt.Println("forEachField: rval not valid")
-		return
+		panic("forEachField: rval not valid")
 	}
 	if rval.Kind() == reflect.Slice || rval.Kind() == reflect.Map {
 		return
@@ -311,7 +316,7 @@ func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, 
 			j++
 			continue
 		}
-		if rval.Kind() == reflect.Struct && flatten != nil && flatten(f) {
+		if fv.Kind() == reflect.Struct && flatten != nil && flatten(f) {
 			var quit bool
 			j, quit = forEachField(fv, flatten, j, got)
 			if quit {
@@ -363,7 +368,7 @@ func FieldForName(istruct any, flatten func(f reflect.StructField) bool, name st
 	return finfo, found
 }
 
-// GetTagAsFields returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
+// GetTagAsMap returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
 var tagRegEx, _ = regexp.Compile(`(\w+)\s*:"([^"]*)"\s*`) // http://regoio.herokuapp.com
 
 func GetTagAsMap(stag string) map[string][]string {
@@ -382,6 +387,19 @@ func GetTagAsMap(stag string) map[string][]string {
 		}
 	}
 	return nil
+}
+
+func GetTagValuesForKey(stag reflect.StructTag, key string) (vals []string, ignore bool) {
+	str, got := stag.Lookup(key)
+	// fmt.Println("GetTagValuesForKey", str, got, stag, key)
+	if !got {
+		return nil, false
+	}
+	vals = zstr.SplitStringWithDoubleAsEscape(str, ",")
+	if len(vals) == 1 && vals[0] == "-" {
+		return nil, true
+	}
+	return vals, false
 }
 
 func DeepCopy(destPtr, source any) error {
