@@ -22,9 +22,10 @@ type (
 
 type UpsertInfo[S any] struct {
 	Rows [][]S
-	// OffsetQuery  string
+	// Insert zbool.BoolInd
 }
 
+// InsertInfo can be simlified? Not used as upsert, oly insert
 type InsertInfo[S any] struct {
 	UpsertInfo[S]
 	DefCols []string
@@ -108,32 +109,6 @@ func ConvertFieldName(i zreflect.Item) string {
 	return strings.ToLower(i.FieldName)
 }
 
-// func getItems(istruct interface{}, skip []string) (items []zreflect.Item) {
-// 	options := zreflect.Options{UnnestAnonymous: true}
-// 	all, _ := zreflect.ItterateStruct(istruct, options)
-// 	// zlog.Info("GetItems1", len(all.Children))
-// outer:
-// 	for _, i := range all.Children {
-// 		var column string
-// 		vars := zreflect.GetTagAsMap(i.Tag)["db"]
-// 		if len(vars) != 0 {
-// 			column = vars[0]
-// 			if column == "-" {
-// 				continue outer
-// 			}
-// 		}
-// 		if column == "" {
-// 			column = ConvertFieldName(i)
-// 		}
-// 		// zlog.Info("GetItems:", i.FieldName, i.Tag, column)
-// 		if zstr.IndexOf(column, skip) == -1 {
-// 			// zlog.Info("usql getItem:", i.FieldName)
-// 			items = append(items, i)
-// 		}
-// 	}
-// 	return
-// }
-
 func ColumnNamesStringFromStruct(istruct interface{}, skip []string, prefix string) string {
 	fs := ColumnNamesFromStruct(istruct, skip, prefix)
 	return strings.Join(fs, ",")
@@ -172,6 +147,18 @@ func FieldForColumnName(s interface{}, skip []string, prefix, column string) (Co
 		return true
 	})
 	return finfo, found
+}
+
+func FieldIndexForColumnName(s interface{}, skip []string, prefix, column string) int {
+	var index = -1
+	ForEachColumn(s, skip, prefix, func(each ColumnInfo) bool {
+		if each.Column == column {
+			index = each.FieldInfo.FieldIndex
+			return false
+		}
+		return true
+	})
+	return index
 }
 
 type ColumnInfo struct {
