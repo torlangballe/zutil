@@ -18,6 +18,11 @@ type Pos struct {
 	Y float64 `json:"y"`
 }
 
+var (
+	PosUndef = PosD(UndefValue, UndefValue)
+	PosNull  Pos
+)
+
 func PosF(x, y float32) Pos {
 	return PosD(float64(x), float64(y))
 }
@@ -290,6 +295,10 @@ func (p *Pos) Scan(value interface{}) error {
 	str, ok := value.(string)
 	if !ok {
 		return errors.New("type assertion to []byte failed")
+	}
+	if str == "" {
+		*p = PosUndef
+		return nil
 	}
 	pos, err := PosFromString(str)
 	if err != nil {
