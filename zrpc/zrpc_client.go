@@ -278,7 +278,7 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client) error {
 					return
 				}
 				rval.SetBytes(buf)
-				zlog.Info("zrpc: Request http data field:", id, each.StructField.Name, len(buf))
+				// zlog.Info("zrpc: Request http data field:", id, each.StructField.Name, len(buf))
 			}(id, each.ReflectValue)
 		}
 		wg.Wait()
