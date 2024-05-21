@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/lib/pq"
-	"github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
@@ -296,20 +295,20 @@ func getSpecialColumns(row any) (primaryCol, uidCol string, pval, uval any, err 
 	return primaryCol, uidCol, pval, uval, err
 }
 
-func setUserIDInRows[S any](rows []S, uidColumn, token string) error {
+func setUserIDInRows[S any](rows []S, uidColumn, token string) (int64, error) {
 	userID, err := GetUserIDFromTokenFunc(token)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	finfo, found := FieldForColumnName(rows[0], nil, "", uidColumn)
 	if !found {
-		return errors.New("No userid column or UserIDSetter")
+		return 0, errors.New("No userid column or UserIDSetter")
 	}
 	for i := range rows {
-		finfo := zreflect.FieldForIndex(&rows[i], zfields.FlattenIfAnonymousOrZUITag, finfo.FieldIndex)
+		finfo := zreflect.FieldForIndex(&rows[i], nil, finfo.FieldIndex)
 		finfo.ReflectValue.SetInt(userID)
 	}
-	return nil
+	return userID, nil
 }
 
 func UpdateRows[S any](table string, rows []S, userToken string) error {
@@ -351,6 +350,7 @@ func UpdateRows[S any](table string, rows []S, userToken string) error {
 }
 
 func InsertRows[S any](table string, rows []S, skipColumns []string, userToken string) (int64, error) {
+	// zlog.Info("InsertRows1:", table, len(rows))
 	if len(rows) == 0 {
 		return 0, nil
 	}
@@ -359,7 +359,7 @@ func InsertRows[S any](table string, rows []S, skipColumns []string, userToken s
 		return 0, err
 	}
 	if userToken != "" && uidCol != "" {
-		err = setUserIDInRows[S](rows, uidCol, userToken)
+		_, err = setUserIDInRows[S](rows, uidCol, userToken)
 		if err != nil {
 			return 0, err
 		}
@@ -369,6 +369,7 @@ func InsertRows[S any](table string, rows []S, skipColumns []string, userToken s
 	params := FieldParametersFromStruct(rows[0], skip, 1)
 	query := "INSERT INTO " + table + " (" + ColumnNamesStringFromStruct(rows[0], skip, "") + ") VALUES (" + params + ") RETURNING " + idCol
 	query = CustomizeQuery(query, Main.Type)
+	// zlog.Info("InsertRows:", table, len(rows), query)
 	for _, row := range rows {
 		vals := FieldValuesFromStruct(row, skip)
 		dbRow := Main.DB.QueryRow(query, vals...)
@@ -380,10 +381,65 @@ func InsertRows[S any](table string, rows []S, skipColumns []string, userToken s
 	return lastID, nil
 }
 
+func UpsertRow[S any](table, conflictCol string, row S, skipColumns []string, idCol, userToken, where string) (id int64, native string, err error) {
+	var sets []string
+	params := FieldParametersFromStruct(row, skipColumns, 1)
+	vals := FieldValuesFromStruct(row, skipColumns)
+	for _, n := range ColumnNamesFromStruct(row, skipColumns, "") {
+		sets = append(sets, n+"=EXCLUDED."+n)
+	}
+	query := "INSERT INTO " + table + " (" + ColumnNamesStringFromStruct(row, skipColumns, "") + ") VALUES (" + params + ")\n"
+	query += "ON CONFLICT (" + conflictCol + ")\n"
+	query += "DO UPDATE SET " + strings.Join(sets, ",") + "\n"
+	if where != "" {
+		query += "WHERE " + where + "\n"
+	}
+	query += " RETURNING " + idCol + "," + conflictCol + "\n"
+
+	dbRow := Main.DB.QueryRow(query, vals...)
+	err = dbRow.Scan(&id, &native)
+	if err == sql.ErrNoRows {
+		err = nil
+	}
+	if zlog.OnError(err, ReplaceDollarArguments(query, vals...)) {
+		return 0, "", err
+	}
+	return id, native, nil
+}
+
+func UpsertRows[S any](table, conflictCol string, rows []S, skipColumns []string, userToken string) (map[string]int64, error) {
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	var where string
+	idCol, uidCol, _, _, err := getSpecialColumns(rows[0])
+	if err != nil {
+		return nil, err
+	}
+	if userToken != "" && uidCol != "" {
+		userID, err := setUserIDInRows[S](rows, uidCol, userToken)
+		if err != nil {
+			return nil, err
+		}
+		where = fmt.Sprintf("%s.%s=%d", table, uidCol, userID)
+	}
+	zstr.AddToSet(&skipColumns, idCol)
+
+	m := map[string]int64{}
+	for _, row := range rows {
+		id, native, err := UpsertRow(table, conflictCol, row, skipColumns, idCol, userToken, where)
+		if err != nil {
+			return nil, err
+		}
+		m[native] = id
+	}
+	return m, nil
+}
+
 func (SQLCalls) ExecuteQuery(query string, rowsAffected *int64) error {
 	query = CustomizeQuery(query, Main.Type)
 	result, err := Main.DB.Exec(query)
-	zlog.Info("Exec:", query, err)
+	// zlog.Info("Exec:", query, err)
 	if err != nil {
 		return err
 	}
