@@ -1,9 +1,12 @@
 package zgeo
 
 import (
+	"database/sql/driver"
 	"math"
 
+	"github.com/torlangballe/zutil/zjson"
 	"github.com/torlangballe/zutil/zmath"
+	"github.com/torlangballe/zutil/zsql"
 )
 
 //  Created by Tor Langballe on /21/10/15.
@@ -27,12 +30,11 @@ const (
 
 type PathNode struct {
 	Type   PathPartType
-	Points []Pos
+	Points []Pos `json:",omitempty"`
 }
 
 type Path struct {
-	Dashes []int
-	nodes  []PathNode
+	Nodes []PathNode `json:",omitempty"`
 }
 
 func PathNew() *Path {
@@ -41,7 +43,7 @@ func PathNew() *Path {
 
 func (p *Path) Copy() *Path {
 	n := PathNew()
-	n.nodes = append(n.nodes, p.nodes...)
+	n.Nodes = append(n.Nodes, p.Nodes...)
 	return n
 }
 
@@ -58,15 +60,15 @@ func NewOvalPath(rect Rect) *Path {
 }
 
 func (p *Path) Empty() {
-	p.nodes = p.nodes[:]
+	p.Nodes = p.Nodes[:]
 }
 
 func (p *Path) IsEmpty() bool {
-	return len(p.nodes) == 0
+	return len(p.Nodes) == 0
 }
 
 func (p *Path) NodeCount() int {
-	return len(p.nodes)
+	return len(p.Nodes)
 }
 
 func (p *Path) Rect() Rect {
@@ -99,9 +101,9 @@ func (p *Path) AddOval(inrect Rect) {
 }
 
 func (p *Path) GetPos() (Pos, bool) {
-	l := len(p.nodes)
+	l := len(p.Nodes)
 	if l != 0 {
-		p := p.nodes[l-1].Points
+		p := p.Nodes[l-1].Points
 		pl := len(p)
 		if pl != 0 {
 			return p[pl-1], true
@@ -111,8 +113,8 @@ func (p *Path) GetPos() (Pos, bool) {
 }
 
 func (p *Path) MoveOrLineTo(pos Pos) bool {
-	plen := len(p.nodes)
-	if plen == 0 || p.nodes[plen-1].Type == PathClose {
+	plen := len(p.Nodes)
+	if plen == 0 || p.Nodes[plen-1].Type == PathClose {
 		p.MoveTo(pos)
 		return false
 	}
@@ -121,24 +123,24 @@ func (p *Path) MoveOrLineTo(pos Pos) bool {
 }
 
 func (p *Path) MoveTo(pos Pos) {
-	p.nodes = append(p.nodes, PathNode{PathMove, []Pos{pos}})
+	p.Nodes = append(p.Nodes, PathNode{PathMove, []Pos{pos}})
 }
 
 func (p *Path) LineTo(pos Pos) {
-	p.nodes = append(p.nodes, PathNode{PathLine, []Pos{pos}})
+	p.Nodes = append(p.Nodes, PathNode{PathLine, []Pos{pos}})
 }
 
 func (p *Path) QuadCurveTo(a, b Pos) {
-	p.nodes = append(p.nodes, PathNode{PathQuadCurve, []Pos{a, b}})
+	p.Nodes = append(p.Nodes, PathNode{PathQuadCurve, []Pos{a, b}})
 }
 
 func (p *Path) BezierTo(c1 Pos, c2 Pos, end Pos) {
 	// zlog.Info("p.BezierTo")
-	p.nodes = append(p.nodes, PathNode{PathCurve, []Pos{c1, c2, end}})
+	p.Nodes = append(p.Nodes, PathNode{PathCurve, []Pos{c1, c2, end}})
 }
 
 func (p *Path) Close() {
-	p.nodes = append(p.nodes, PathNode{PathClose, []Pos{}})
+	p.Nodes = append(p.Nodes, PathNode{PathClose, []Pos{}})
 }
 
 func polarPoint(r float64, phi float64) Pos {
@@ -168,7 +170,7 @@ func (p *Path) ArcTo(rect Rect, degStart, degDelta float64, clockwise bool) {
 	aDelta := zmath.DegToRad(degDelta)
 	p0 := polarPoint(circleRadius, aStart).Plus(circleCenter)
 	needLineTo := false
-	if p.IsEmpty() || p.nodes[len(p.nodes)-1].Type == PathClose {
+	if p.IsEmpty() || p.Nodes[len(p.Nodes)-1].Type == PathClose {
 		p.MoveTo(p0)
 		needLineTo = true
 	} else {
@@ -195,12 +197,12 @@ func (p *Path) ArcTo(rect Rect, degStart, degDelta float64, clockwise bool) {
 
 func (p *Path) Transformed(m *Matrix) (newPath *Path) {
 	newPath = PathNew()
-	for _, n := range p.nodes {
+	for _, n := range p.Nodes {
 		nn := PathNode{}
 		for _, p := range n.Points {
 			nn.Points = append(n.Points, m.MulPos(p))
 		}
-		newPath.nodes = append(newPath.nodes, nn)
+		newPath.Nodes = append(newPath.Nodes, nn)
 	}
 	return
 }
@@ -209,7 +211,7 @@ func (p *Path) AddPath(addPath *Path, join bool, m *Matrix) {
 	if m != nil {
 		addPath = addPath.Transformed(m)
 	}
-	p.nodes = append(p.nodes, addPath.nodes...)
+	p.Nodes = append(p.Nodes, addPath.Nodes...)
 }
 
 func (p *Path) Rotated(deg float64, origin *Pos) *Path {
@@ -226,7 +228,7 @@ func (p *Path) Rotated(deg float64, origin *Pos) *Path {
 }
 
 func (p *Path) ForEachPart(forPart func(part PathNode)) {
-	for _, ppt := range p.nodes {
+	for _, ppt := range p.Nodes {
 		forPart(ppt)
 	}
 }
@@ -285,4 +287,42 @@ func (p *Path) ArcDegFromCenter(center Pos, radius Size, degStart float64, degEn
 
 func (p *Path) Circle(center Pos, radius Size) {
 	p.ArcDegFromCenter(center, radius, 0, 360)
+}
+
+func (p Path) Value() (driver.Value, error) {
+	return zsql.Value(p)
+}
+
+func (p *Path) Scan(value interface{}) error {
+	return zsql.Scan(p, value)
+}
+
+var pathPartMap = map[string]PathPartType{
+	"move":  PathMove,
+	"line":  PathLine,
+	"curve": PathCurve,
+	"close": PathClose,
+	"quad":  PathQuadCurve,
+}
+
+var pathLineMap = map[string]PathLineType{
+	"square": PathLineSquare,
+	"round":  PathLineRound,
+	"butt":   PathLineButt,
+}
+
+func (p *PathPartType) UnmarshalJSON(b []byte) error {
+	return zjson.UnmarshalEnum(p, b, pathPartMap)
+}
+
+func (p *PathPartType) MarshalJSON() ([]byte, error) {
+	return zjson.MarshalEnum(*p, pathPartMap)
+}
+
+func (p *PathLineType) UnmarshalJSON(b []byte) error {
+	return zjson.UnmarshalEnum(p, b, pathLineMap)
+}
+
+func (p *PathLineType) MarshalJSON() ([]byte, error) {
+	return zjson.MarshalEnum(*p, pathLineMap)
 }
