@@ -1,36 +1,24 @@
-//go:build !js
-
 package zjson
 
 import (
-	"encoding/json"
-	"io"
-	"os"
-
-	"github.com/torlangballe/zutil/zfile"
+	"github.com/torlangballe/zutil/zlog"
 )
 
-func UnmarshalFromFile(to interface{}, fpath string, allowNoFile bool) error {
-	if allowNoFile && zfile.NotExists(fpath) {
-		return nil
+func MarshalEnum[S comparable](from S, m map[string]S) ([]byte, error) {
+	for k, v := range m {
+		if v == from {
+			return []byte(k), nil
+		}
 	}
-	file, err := os.Open(fpath)
-	if err != nil {
-		return err
-	}
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(to)
-	if err != nil {
-		return err
-	}
-	return nil
+	return nil, zlog.Error("No value:", from)
 }
 
-// MarshalToFile marshals from into a json byte stream that is writted to fpath.
-// It happens atomically using a temporary file
-func MarshalToFile(from interface{}, fpath string) error {
-	return zfile.WriteToFileAtomically(fpath, func(file io.Writer) error {
-		encoder := json.NewEncoder(file)
-		return encoder.Encode(from)
-	})
+func UnmarshalEnum[S comparable](to *S, data []byte, m map[string]S) error {
+	key := string(data)
+	v, got := m[key]
+	if !got {
+		return zlog.Error("No value for key:", key)
+	}
+	*to = v
+	return nil
 }
