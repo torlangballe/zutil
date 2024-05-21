@@ -307,3 +307,24 @@ func (p *Pos) Scan(value interface{}) error {
 	*p = pos
 	return nil
 }
+
+func TSL(s, lang string) string {
+	return s
+}
+
+func GetHemisphereDirectionsFromGeoAlignment(alignment Alignment, separator, langCode string) string {
+	var str = ""
+	if alignment&Top != 0 {
+		str = TSL("North", langCode) // General name for north as in north-east wind etc
+	}
+	if alignment&Bottom != 0 {
+		str = zstr.Concat(separator, str, TSL("South", langCode)) // General name for south as in south-east wind etc
+	}
+	if alignment&Left != 0 {
+		str = zstr.Concat(separator, str, TSL("West", langCode)) // General name for west as in north-west wind etc
+	}
+	if alignment&Right != 0 {
+		str = zstr.Concat(separator, str, TSL("East", langCode)) // General name for north as in north-east wind etc
+	}
+	return str
+}

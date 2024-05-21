@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -455,23 +454,6 @@ func WordsMemorySizeAsstring(b int64, langCode string, maxSignificant int, isBit
 	return str
 }
 */
-
-func GetHemisphereDirectionsFromGeoAlignment(alignment zgeo.Alignment, separator, langCode string) string {
-	var str = ""
-	if alignment&zgeo.Top != 0 {
-		str = TSL("North", langCode) // General name for north as in north-east wind etc
-	}
-	if alignment&zgeo.Bottom != 0 {
-		str = zstr.Concat(separator, str, TSL("South", langCode)) // General name for south as in south-east wind etc
-	}
-	if alignment&zgeo.Left != 0 {
-		str = zstr.Concat(separator, str, TSL("West", langCode)) // General name for west as in north-west wind etc
-	}
-	if alignment&zgeo.Right != 0 {
-		str = zstr.Concat(separator, str, TSL("East", langCode)) // General name for north as in north-east wind etc
-	}
-	return str
-}
 
 func IsNonTitleableWord(word, langCode string) bool {
 	switch langCode {
