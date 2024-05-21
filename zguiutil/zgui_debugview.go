@@ -121,7 +121,7 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string,
 		e := v.(*zlog.Enabler)
 		check, _, stack := zcheckbox.NewWithLabel(false, name, name+".zlog.Enabler")
 		frame.Add(stack, zgeo.CenterLeft)
-		check.SetValueHandler(func(edited bool) {
+		check.SetValueHandler("", func(edited bool) {
 			*e = zlog.Enabler(check.On())
 		})
 		return true

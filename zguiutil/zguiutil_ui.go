@@ -17,6 +17,7 @@ import (
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztimer"
 )
 
@@ -165,14 +166,13 @@ func CreateLockIconForView(view zview.View) zview.View {
 	})
 	vh, _ := view.(zview.ValueHandler)
 	if vh != nil {
-		vh.SetValueHandler(func(edited bool) {
+		vh.SetValueHandler("zguiutil.Lock", func(edited bool) {
 			to, _ := view.(ztext.TextOwner)
+			zlog.Info("Lock text changed:", edited, to.Text())
 			if edited || to != nil && to.Text() == "" {
 				return
 			}
-			if clear {
-				view.Native().SetUsable(false)
-			}
+			view.Native().SetUsable(false)
 		})
 	}
 	return label

@@ -42,7 +42,7 @@ func CreateViewForKVOption[V comparable](option *zkeyvalue.Option[V]) zview.View
 	switch kind {
 	case zreflect.KindInt, zreflect.KindFloat:
 		t := makeText(false, v, 10)
-		t.SetValueHandler(func(edited bool) {
+		t.SetValueHandler("", func(edited bool) {
 			str := t.Text()
 			n, err := strconv.ParseFloat(str, 64)
 			zlog.OnError(err, str)
@@ -65,7 +65,7 @@ func CreateViewForKVOption[V comparable](option *zkeyvalue.Option[V]) zview.View
 		}
 		// zlog.Info("CreateView:", isPass, option.Key)
 		t := makeText(isPass, v, 40)
-		t.SetValueHandler(func(edited bool) {
+		t.SetValueHandler("", func(edited bool) {
 			text := t.Text()
 			option.SetAny(text, true)
 		})
@@ -78,7 +78,7 @@ func CreateViewForKVOption[V comparable](option *zkeyvalue.Option[V]) zview.View
 	case zreflect.KindBool:
 		on := rval.Bool()
 		check := zcheckbox.New(zbool.FromBool(on))
-		check.SetValueHandler(func(edited bool) {
+		check.SetValueHandler("", func(edited bool) {
 			option.SetAny(on, true)
 		})
 		zkeyvalue.AddOptionChangedHandler(id, option.Key, func() {
