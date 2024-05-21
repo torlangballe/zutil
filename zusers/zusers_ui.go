@@ -100,7 +100,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	login.MakeReturnKeyDefault()
 	login.SetUsable(false)
 
-	validate := func() {
+	validate := func(edited bool) {
 		validateFields(usernameField, passwordField, login, register)
 	}
 	usernameField.SetValueHandler(validate)

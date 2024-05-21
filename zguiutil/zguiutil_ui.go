@@ -165,11 +165,10 @@ func CreateLockIconForView(view zview.View) zview.View {
 	})
 	vh, _ := view.(zview.ValueHandler)
 	if vh != nil {
-		vh.SetValueHandler(func() {
-			clear := true
+		vh.SetValueHandler(func(edited bool) {
 			to, _ := view.(ztext.TextOwner)
-			if to != nil && to.Text() == "" {
-				clear = false
+			if edited || to != nil && to.Text() == "" {
+				return
 			}
 			if clear {
 				view.Native().SetUsable(false)

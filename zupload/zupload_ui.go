@@ -87,7 +87,7 @@ func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string
 	text, _ := zkeyvalue.DefaultStore.GetString(textKey)
 	tstyle := ztext.Style{KeyboardType: zkeyboard.TypeURL}
 	v.mainText = ztext.NewView(text, tstyle, 30, 1)
-	v.mainText.SetValueHandler(func() {
+	v.mainText.SetValueHandler(func(edited bool) {
 		zkeyvalue.DefaultStore.SetString(v.mainText.Text(), textKey, true)
 		v.updateWidgets()
 	})
@@ -99,7 +99,7 @@ func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string
 	tstyle = ztext.Style{KeyboardType: zkeyboard.TypePassword}
 	v.password = ztext.NewView(pass, tstyle, 10, 1)
 	v.password.SetPlaceholder("password")
-	v.password.SetValueHandler(func() {
+	v.password.SetValueHandler(func(edited bool) {
 		zkeyvalue.DefaultStore.SetString(v.password.Text(), passKey, true)
 		v.updateWidgets()
 	})

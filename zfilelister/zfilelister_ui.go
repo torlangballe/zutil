@@ -174,7 +174,7 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 
 	check := zcheckbox.New(zbool.False)
 	check.SetObjectName(checkID)
-	check.SetValueHandler(func() {
+	check.SetValueHandler(func(edited bool) {
 		on := check.On()
 		path := v.pathOfID(id)
 		isFolder := (zstr.LastByteAsString(path) == "/")
