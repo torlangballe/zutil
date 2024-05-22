@@ -232,6 +232,10 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 }
 
 func registerHTTPDataFields(s any) {
+	rval := reflect.ValueOf(s)
+	if !(rval.Kind() == reflect.Struct || rval.Kind() == reflect.Pointer && rval.Elem().Kind() == reflect.Struct) {
+		return
+	}
 	zreflect.ForEachField(s, zreflect.FlattenAll, func(each zreflect.FieldInfo) bool {
 		parts, _ := zreflect.GetTagValuesForKey(each.StructField.Tag, "zrpc")
 		if zstr.StringsContain(parts, "http") {
