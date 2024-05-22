@@ -36,7 +36,7 @@ var (
 )
 
 func init() {
-	zimage.MainScreenScale = MainScale()
+	zimage.MainScreenScaleFunc = MainScale
 }
 
 func GetMain() Screen {
