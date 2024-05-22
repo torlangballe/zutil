@@ -492,12 +492,28 @@ func GenerateRandomHexBytes(byteCount int) string {
 	return hex.EncodeToString(data)
 }
 
-// func CreateGUUID() string {
-// 	return strings.ToUpper(GenerateUUID())
-// }
-
 func GenerateUUID() string {
 	return uuidv4.GenerateUUID4()
+}
+
+func IsRuneASCIIAlpha(b rune) bool {
+	return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
+}
+
+func IsRuneASCIINumeric(b rune) bool {
+	return b >= '0' && b <= '9'
+}
+
+func IsRuneASCIIAlphaNumeric(b rune) bool {
+	return IsRuneASCIIAlpha(b) || IsRuneASCIINumeric(b)
+}
+
+func IsRuneHex(b rune) bool {
+	return IsRuneASCIINumeric(b) || b >= 'A' && b <= 'F' || b >= 'a' && b <= 'f'
+}
+
+func IsRuneValidInUUID(b rune) bool {
+	return IsRuneHex(b) || b == '-'
 }
 
 func MD5Hex(data []byte) string {
@@ -743,6 +759,12 @@ func ReplaceWithFunc(str string, replace func(rune) string) string {
 	return out
 }
 
+func CreateFilterFunc(keep func(r rune) bool) func(string) string {
+	return func(s string) string {
+		return FilterWithFunc(s, keep)
+	}
+}
+
 func FilterWithFunc(str string, keep func(r rune) bool) string {
 	var out string
 
@@ -771,7 +793,7 @@ func Replace(str *string, find, with string) bool {
 // 	return r
 // }
 
-func ToAsciiCode(r rune) rune {
+func ToASCIICode(r rune) rune {
 	switch {
 	case r <= 127:
 		return r
@@ -1186,6 +1208,13 @@ var FileEscapeReplacer = strings.NewReplacer(
 	"\\", "%5c", // `\` messes up this file's code formating
 	"/", "%2f",
 	":", "%3a",
+)
+
+var WhitespaceRemover = strings.NewReplacer(
+	"\n", "",
+	"\t", "",
+	"\r", "",
+	" ", "",
 )
 
 func ReplaceLinefeeds(str, with string) string {
