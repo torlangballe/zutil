@@ -626,6 +626,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 				continue
 			}
 			runLeft := capacities[r.ExecutorID].unusedRatio()
+			runLeft += r.Job.Cost / capacities[r.ExecutorID].capacity
 			rDiff := s.setup.LoadBalanceIfCostDifference / capacities[r.ExecutorID].capacity
 			for exID, cap := range capacities {
 				if exID == r.ExecutorID {
@@ -636,6 +637,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 				diff := math.Max(rDiff, eDiff)
 				// zlog.Warn(r.Job.ID, exID, "Diffs:", eLeft, runLeft, cap.spare())
 				// zlog.Warn("startAndStopRuns LB?", capacities[r.ExecutorID].load, r.Job.ID, r.ExecutorID, hasUnrun, runLeft, eLeft, s.LoadBalanceIfCostDifference)
+				// zlog.Warn("Balance at?:", r.Job.ID, "eLeft:", eLeft, "bestLeft:", bestLeft, "runLeft:", runLeft, "diff:", diff)
 				if eLeft-runLeft < diff { //s.LoadBalanceIfCostDifference {
 					continue
 				}
@@ -643,7 +645,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 					bestLeft = eLeft
 					bestExID = exID
 					if r.Job.Cost < cap.spare() && (bestRunTime.IsZero() || r.RanAt.Sub(bestRunTime) < 0) {
-						// zlog.Warn("Balance at:", r.Job.ID, eLeft, runLeft)
+						// zlog.Warn("Balance at:", r.Job.ID, "eLeft:", eLeft, "bestLeft:", bestLeft, "runLeft:", runLeft, "diff:", diff)
 						if s.setup.StopJobIfSinceMilestoneLessThan != 0 && !r.MilestoneAt.IsZero() && time.Since(r.MilestoneAt) > s.setup.StopJobIfSinceMilestoneLessThan {
 							zlog.Info("zscheduler:Not adding job to bestBalance since not near milestone:", r.Job.DebugName, r.MilestoneAt)
 						} else {
