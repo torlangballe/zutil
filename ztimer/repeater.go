@@ -11,6 +11,8 @@ import (
 )
 
 var (
+	GoingCount int
+
 	repeaters      = map[string]int{}
 	repeatersMutex sync.Mutex
 )
@@ -55,10 +57,7 @@ func RepeatNow(secs float64, perform func() bool) *Repeater {
 	return r
 }
 
-var count int
 var stopped int
-var going int
-var all int
 
 func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	// zlog.Info("Repeat:", secs, zlog.GetCallingStackString())
@@ -71,9 +70,7 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	// zlog.Info("Repeater.Set():", r.stack)
 	repeaters[r.stack]++
 	repeatersMutex.Unlock()
-	count++
-	going++
-	all++
+	GoingCount++
 	r.stop = make(chan bool, 5)
 	go func() {
 		defer zlog.HandlePanic(true)
@@ -103,12 +100,11 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 				doing = false
 			case <-r.stop:
 				stopped++
-				going--
+				GoingCount--
 				repeatersMutex.Lock()
 				// zlog.Info("Repeater <-r.stop:", r.stack, repeaters[r.stack])
 				repeaters[r.stack]--
 				repeatersMutex.Unlock()
-				count--
 				if r.ticker != nil {
 					r.ticker.Stop()
 					r.ticker = nil
@@ -131,7 +127,7 @@ func (r *Repeater) IsStopped() bool {
 
 func DumpRepeaters() {
 	repeatersMutex.Lock()
-	zlog.Info("Repeaters: total:", count, "all ever:", all, "going:", going, "stopped:", stopped, "unique:", len(repeaters))
+	zlog.Info("Repeaters:", "going:", GoingCount, "stopped:", stopped, "unique:", len(repeaters))
 	for s, n := range repeaters {
 		if n > 5 {
 			fmt.Println("RepeaterCount (>5):", n, ":", s)
