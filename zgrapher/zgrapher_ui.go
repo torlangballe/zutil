@@ -49,12 +49,6 @@ type GraphView struct {
 func NewGraphView(id, grapherName string, pixelHeight int) *GraphView {
 	v := &GraphView{}
 	v.Init(v, id, grapherName, pixelHeight)
-	v.AddOnRemoveFunc(func() {
-		// zlog.Info("GraphView remove", id, grapherName)
-		for _, img := range v.drawn {
-			img.Release()
-		}
-	})
 	return v
 }
 
@@ -78,6 +72,13 @@ func (v *GraphView) Init(view zview.View, id, grapherName string, height int) {
 	v.repeater = ztimer.RepeaterNew()
 	v.timer = ztimer.TimerNew()
 	v.ShowTicksText = true
+	v.AddOnRemoveFunc(func() {
+		// zlog.Info("GraphView remove", id, grapherName)
+		v.repeater.Stop()
+		for _, img := range v.drawn {
+			img.Release()
+		}
+	})
 }
 
 func (v *GraphView) Update(secsPerPixel int, windowMinutes int, ticks int, on bool) bool {
