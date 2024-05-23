@@ -31,6 +31,10 @@ func PosD(x, y float64) Pos {
 	return Pos{X: x, Y: y}
 }
 
+func PosBoth(n float64) Pos {
+	return PosD(n, n)
+}
+
 func (p Pos) String() string {
 	return fmt.Sprintf("%g,%g", p.X, p.Y)
 }
