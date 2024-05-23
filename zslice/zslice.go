@@ -148,6 +148,14 @@ func AddToSet[T comparable](s *[]T, a T) {
 	}
 }
 
+func Union[T comparable](a, b []T) []T {
+	n := slices.Clone(a)
+	for _, ib := range b {
+		AddToSet(&n, ib)
+	}
+	return n
+}
+
 func SetsOverlap[S comparable](a, b []S) bool {
 	for _, ib := range b {
 		if slices.Contains(a, ib) {
