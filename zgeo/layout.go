@@ -4,20 +4,22 @@ import (
 	"math"
 
 	"github.com/torlangballe/zutil/zfloat"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zslice"
 )
 
 type LayoutCell struct {
-	Alignment      Alignment // Alignment is how cell is placed within parent rect and siblings. If AlignmentNone, it is not placed at all
-	Margin         Size      // Margin is the size around object in cell
-	MaxSize        Size      // MaxSize is maximum size of object before margin. Can be only W or H
-	MinSize        Size      // MinSize is minimum size of object before margin. Can be only W or H
-	Collapsed      bool      // Collapsed is a cell that currently is not shown or takes up space.
-	Free           bool      // Free Cells are placed using simple aligning to parent rect, not stacked etc
-	OriginalSize   Size      // Original size of object before layout
-	Divider        float64   // This cell is a divider, wants its value subtracted from item before it, added to item after
-	RelativeToName string    // If Free, and set, it is aligned to other cell with name
-	Name           string    // A name for debugging/aligning
+	Alignment        Alignment // Alignment is how cell is placed within parent rect and siblings. If AlignmentNone, it is not placed at all
+	Margin           Size      // Margin is the size around object in cell
+	MaxSize          Size      // MaxSize is maximum size of object before margin. Can be only W or H
+	MinSize          Size      // MinSize is minimum size of object before margin. Can be only W or H
+	Collapsed        bool      // Collapsed is a cell that currently is not shown or takes up space.
+	Free             bool      // Free Cells are placed using simple aligning to parent rect, not stacked etc
+	OriginalSize     Size      // Original size of object before layout
+	Divider          float64   // This cell is a divider, wants its value subtracted from item before it, added to item after
+	RelativeToName   string    // If Free, and set, it is aligned to other cell with name
+	ShowIfExtraSpace float64   // If set, show only if enough extra space left over
+	Name             string    // A name for debugging/aligning
 }
 
 // stackCell is used to  calculate a box of *size* for each cell to layout in a stack.
@@ -97,6 +99,9 @@ func getStackCells(debugName string, vertical bool, cells []LayoutCell) (scells 
 // calcPreAddedTotalWidth gets the total width of objects, spacing and margin
 func calcPreAddedTotalWidth(debugName string, scells []stackCell, spacing float64) (w, space, marg float64) {
 	for i, sc := range scells {
+		if sc.ShowIfExtraSpace != 0 {
+			continue
+		}
 		w += sc.size.W
 		marg += sc.Margin.W
 		if sc.Alignment&HorCenter != 0 {
@@ -144,6 +149,29 @@ func getPossibleAdjustments(diff float64, scells []stackCell) []float64 {
 func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vertical bool, spacing float64) {
 	width, _, _ := calcPreAddedTotalWidth(debugName, scells, spacing) // space, marg
 	diff := r.Size.W - width
+
+	var changed bool
+	for i := 0; i < len(scells); i++ {
+		sc := scells[i]
+		if sc.ShowIfExtraSpace != 0 {
+			if sc.ShowIfExtraSpace <= diff {
+				zlog.Info(i, "Add ShowIfExtraSpaces:", sc.Name, sc.ShowIfExtraSpace, diff)
+				scells[i].ShowIfExtraSpace = 0
+				changed = true
+			} else {
+				zlog.Info(i, "Add ShowIfExtraSpaces Remove:", sc.Name, sc.ShowIfExtraSpace, diff)
+				zslice.RemoveAt(&scells, i)
+				i--
+			}
+		}
+	}
+	if changed {
+		old := width
+		width, _, _ = calcPreAddedTotalWidth(debugName, scells, spacing) // space, marg
+		diff = r.Size.W - width
+		zlog.Info("Added ShowIfExtraSpaces:", old, width, diff)
+	}
+
 	adjustableCount := 0.0
 	adj := getPossibleAdjustments(diff, scells)
 	for _, a := range adj {
