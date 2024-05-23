@@ -213,7 +213,7 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 	if priority == DebugLevel {
 		finfo += CallingFunctionString(pos) + ": "
 	} else if priority == ErrorLevel {
-		finfo += FileLineAndCallingFunctionString(pos) + ": "
+		finfo += FileLineAndCallingFunctionString(pos, false) + ": "
 	}
 	if priority == FatalLevel {
 		finfo += "\nFatal:" + CallingStackString() + "\n"
@@ -253,7 +253,7 @@ func CallingStackString() string {
 func CallingStackStringAt(index int) string {
 	var parts []string
 	for i := 3 + index; ; i++ {
-		s := FileLineAndCallingFunctionString(i)
+		s := FileLineAndCallingFunctionString(i, false)
 		if s == "" {
 			break
 		}
@@ -306,16 +306,18 @@ func CallingFunctionString(pos int) string {
 	return zstr.TailUntil(function, "/")
 }
 
-func FileLineAndCallingFunctionString(pos int) string {
+func FileLineAndCallingFunctionString(pos int, shortFile bool) string {
 	function, file, line := CallingFunctionInfo(pos)
 	if function == "" {
 		return ""
 	}
 	_, function = path.Split(function)
-
-	wd, _ := os.Getwd()
-	file = makePathRelativeTo(file, wd)
-
+	if shortFile {
+		_, file = path.Split(file)
+	} else {
+		wd, _ := os.Getwd()
+		file = makePathRelativeTo(file, wd)
+	}
 	return fmt.Sprintf("%s:%d %s()", file, line, function)
 }
 
