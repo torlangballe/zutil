@@ -3,6 +3,7 @@ package ztimer
 //  Created by Tor Langballe on /18/11/15.
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -54,10 +55,10 @@ func RepeatNow(secs float64, perform func() bool) *Repeater {
 	return r
 }
 
-// var count int
-// var stopped int
-// var going int
-// var all int
+var count int
+var stopped int
+var going int
+var all int
 
 func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	// zlog.Info("Repeat:", secs, zlog.GetCallingStackString())
@@ -65,13 +66,14 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 		r.Stop()
 	}
 	r.ticker = time.NewTicker(secs2Dur(secs))
-	// repeatersMutex.Lock()
-	// r.stack = zlog.FileLineAndCallingFunctionString(4)
-	// repeaters[r.stack]++
-	// repeatersMutex.Unlock()
-	// count++
-	// going++
-	// all++
+	repeatersMutex.Lock()
+	r.stack = zlog.FileLineAndCallingFunctionString(4, true)
+	// zlog.Info("Repeater.Set():", r.stack)
+	repeaters[r.stack]++
+	repeatersMutex.Unlock()
+	count++
+	going++
+	all++
 	r.stop = make(chan bool, 5)
 	go func() {
 		defer zlog.HandlePanic(true)
@@ -100,11 +102,13 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 				}
 				doing = false
 			case <-r.stop:
-				// stopped++
-				// repeatersMutex.Lock()
-				// repeaters[r.stack]--
-				// repeatersMutex.Unlock()
-				// count--
+				stopped++
+				going--
+				repeatersMutex.Lock()
+				// zlog.Info("Repeater <-r.stop:", r.stack, repeaters[r.stack])
+				repeaters[r.stack]--
+				repeatersMutex.Unlock()
+				count--
 				if r.ticker != nil {
 					r.ticker.Stop()
 					r.ticker = nil
@@ -126,12 +130,14 @@ func (r *Repeater) IsStopped() bool {
 }
 
 func DumpRepeaters() {
-	// repeatersMutex.Lock()
-	// zlog.Info("All Repeaters: Count:", count, "all:", all, "going:", going, "stopped:", stopped, "len:", len(repeaters))
-	// for s, n := range repeaters {
-	// 	zlog.Info("Repeaters", n, ":", s)
-	// }
-	// repeatersMutex.Unlock()
+	repeatersMutex.Lock()
+	zlog.Info("Repeaters: total:", count, "all ever:", all, "going:", going, "stopped:", stopped, "unique:", len(repeaters))
+	for s, n := range repeaters {
+		if n > 5 {
+			fmt.Println("RepeaterCount (>5):", n, ":", s)
+		}
+	}
+	repeatersMutex.Unlock()
 }
 
 func RepeatAtMostEvery(secs float64, do func() bool) {
