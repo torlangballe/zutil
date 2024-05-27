@@ -4,7 +4,6 @@ import (
 	"math"
 
 	"github.com/torlangballe/zutil/zfloat"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zslice"
 )
 
@@ -155,21 +154,21 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 		sc := scells[i]
 		if sc.ShowIfExtraSpace != 0 {
 			if sc.ShowIfExtraSpace <= diff {
-				zlog.Info(i, "Add ShowIfExtraSpaces:", sc.Name, sc.ShowIfExtraSpace, diff)
+				// zlog.Info(i, "Add ShowIfExtraSpaces:", sc.Name, sc.ShowIfExtraSpace, diff)
 				scells[i].ShowIfExtraSpace = 0
 				changed = true
 			} else {
-				zlog.Info(i, "Add ShowIfExtraSpaces Remove:", sc.Name, sc.ShowIfExtraSpace, diff)
+				// zlog.Info(i, "Add ShowIfExtraSpaces Remove:", sc.Name, sc.ShowIfExtraSpace, diff)
 				zslice.RemoveAt(&scells, i)
 				i--
 			}
 		}
 	}
 	if changed {
-		old := width
+		// old := width
 		width, _, _ = calcPreAddedTotalWidth(debugName, scells, spacing) // space, marg
 		diff = r.Size.W - width
-		zlog.Info("Added ShowIfExtraSpaces:", old, width, diff)
+		// zlog.Info("Added ShowIfExtraSpaces:", old, width, diff)
 	}
 
 	adjustableCount := 0.0
