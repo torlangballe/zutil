@@ -145,13 +145,22 @@ func SortedKeys[K comparable, V any](m map[K]V, less func(a, b V) bool) []K {
 	return keys
 }
 
-func SortedValues[K comparable, V any](m map[K]V, less func(a, b V) bool) []V {
+func KeySortedValues[K comparable, V any](m map[K]V, less func(a, b V) bool) []V {
 	keys := SortedKeys(m, less)
 	vals := make([]V, len(keys))
 	for i, k := range keys {
 		vals[i] = m[k]
 	}
 	return vals
+}
+
+func AllValues[K comparable, V any](m map[K]V) []V {
+	keys := Keys(m)
+	out := make([]V, len(keys))
+	for i, key := range keys {
+		out[i] = m[key]
+	}
+	return out
 }
 
 // For each /-separated name in m, GetValueInRecursiveMap, if not at end or a map, will recursivly gets next part in that map.
