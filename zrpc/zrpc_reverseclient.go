@@ -106,9 +106,9 @@ func (r *ReverseClienter) ReversePoll(ci *ClientInfo, receiverID string, cp *Cal
 	// revCount := rand.Int31n(100)
 	// zlog.Warn("ReversePoll1", revCount)
 	// r.allReverseClients.ForAll(func(id string, rc *ReverseClient) {
-	// 	zlog.Warn("ReversePoll findOrAddReverseClient:", id)
+	// 	zlog.Warn("ReversePoll FindOrAddReverseClient:", id)
 	// })
-	rc := r.findOrAddReverseClient(receiverID, ci)
+	rc := r.FindOrAddReverseClient(receiverID, ci)
 	// zlog.Warn("ReversePoll", receiverID, r.allReverseClients.Count(), rc.pendingCallsSent.Count(), "runc:", revCount)
 	ticker := time.NewTicker(time.Duration(PollRestartSecs-1) * time.Second)
 	select {
@@ -134,7 +134,7 @@ func (r *ReverseClienter) ReversePoll(ci *ClientInfo, receiverID string, cp *Cal
 
 func (r *ReverseClienter) ReversePushResult(rp ReverseResult) error {
 	// zlog.Info("ReversePushResult:", rp.Token, rp.Error)
-	rc := r.findOrAddReverseClient(rp.ReverseReceiverID, nil)
+	rc := r.FindOrAddReverseClient(rp.ReverseReceiverID, nil)
 	if rc == nil {
 		return zlog.Error(rp.ReverseReceiverID)
 	}
@@ -148,11 +148,11 @@ func (r *ReverseClienter) ReversePushResult(rp ReverseResult) error {
 	return nil
 }
 
-func (r *ReverseClienter) findOrAddReverseClient(receiverID string, ci *ClientInfo) *ReverseClient {
+func (r *ReverseClienter) FindOrAddReverseClient(receiverID string, ci *ClientInfo) *ReverseClient {
 	rc, _ := r.allReverseClients.Get(receiverID)
 	if rc == nil {
 		if ci == nil { // if ci is nil, it's from ReversePoll, don't add otherwise
-			zlog.Error("findOrAddReverseClient ci=nil: no reverse client for id:", receiverID)
+			zlog.Error("FindOrAddReverseClient ci=nil: no reverse client for id:", receiverID)
 			return nil
 		}
 		// zlog.Warn("Add Rerverse Client:", receiverID, ci.Token)
