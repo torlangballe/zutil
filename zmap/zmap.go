@@ -92,7 +92,7 @@ func (l *LockMap[K, V]) RemoveAll() {
 	l.Map = sync.Map{}
 }
 
-func GetAnyKeyAsString(m interface{}) string {
+func GetAnyKeyAsString(m any) string {
 	mval := reflect.ValueOf(m)
 	keys := mval.MapKeys()
 	if len(keys) == 0 {
@@ -102,7 +102,7 @@ func GetAnyKeyAsString(m interface{}) string {
 	return str
 }
 
-func GetAnyValue(getPtr interface{}, m interface{}) error {
+func GetAnyValue(getPtr any, m any) error {
 	mval := reflect.ValueOf(m)
 	keys := mval.MapKeys()
 	if len(keys) == 0 {
@@ -113,7 +113,7 @@ func GetAnyValue(getPtr interface{}, m interface{}) error {
 	return nil
 }
 
-func GetKeysAsStrings(m interface{}) (keys []string) {
+func GetKeysAsStrings(m any) (keys []string) {
 	mval := reflect.ValueOf(m)
 	mkeys := mval.MapKeys()
 	for i := 0; i < len(mkeys); i++ {
