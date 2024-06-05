@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/ztime"
@@ -61,6 +62,12 @@ var (
 	procs           zmap.LockMap[int64, *proc]
 	lastProcPrint   time.Time
 )
+
+func init() {
+	zdebug.GetOngoingProcsCountFunc = func() int {
+		return procs.Count()
+	}
+}
 
 // PoolWorkOnItems runs jobs with do(), processing all in goroutines,
 // But up to max poolSize at a time.
@@ -135,11 +142,6 @@ func RepeatPrintInOutRequests() {
 				}
 				return true
 			})
-			count := procs.Count()
-			if count > 10 {
-				lastProcPrint = time.Now()
-				zlog.Info("Ongoing I/O Requests:", count)
-			}
 		}
 	})
 }
