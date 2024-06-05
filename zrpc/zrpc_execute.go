@@ -210,7 +210,7 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 	var err error
 	// zlog.Info("zrpc callWithDeadline:", method, zlog.Pointer(e))
 	if time.Since(expires) >= 0 {
-		zlog.Error("zrpc ReverseExecutor: callWithDeadline expired:", expires)
+		zlog.Error("zrpc Executor: callWithDeadline expired:", expires)
 		rp.TransportError = TransportError(zstr.Spaced("Call received after timeout.", method, time.Since(expires)))
 	} else {
 		ctx, cancel := context.WithDeadline(context.Background(), expires)
