@@ -27,7 +27,7 @@ type helpGetter interface {
 }
 
 func init() {
-	zdevice.InitNetworkBandwidth()
+	// zdevice.InitNetworkBandwidth()
 }
 
 func expandPath(s *Session, path *string) string {
