@@ -70,7 +70,7 @@ func GetAny(i any) (float64, error) {
 		n, err := strconv.ParseFloat(val.String(), 64)
 		return n, err
 	}
-	return 0, errors.New(fmt.Sprint("bad type:", reflect.TypeOf(i)))
+	return 0, errors.New(fmt.Sprint("zfloat.GetAny bad type:", reflect.TypeOf(i)))
 }
 
 func SetAny(num any, f float64) error {
@@ -104,7 +104,7 @@ func SetAny(num any, f float64) error {
 	case *uint64:
 		*n = uint64(f)
 	default:
-		return errors.New(fmt.Sprint("bad type:", reflect.TypeOf(num)))
+		return errors.New(fmt.Sprint("zfloat.SetAny bad type:", reflect.TypeOf(num)))
 	}
 	return nil
 }

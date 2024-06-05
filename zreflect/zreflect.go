@@ -489,6 +489,6 @@ func SetStringToAny(toPtr any, from string) {
 	case *string:
 		*t = from
 	default:
-		fmt.Println("bad type:", reflect.TypeOf(toPtr))
+		fmt.Println("SetStringToAny: bad type:", from, reflect.TypeOf(toPtr))
 	}
 }
