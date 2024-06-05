@@ -496,6 +496,11 @@ func GenerateUUID() string {
 	return uuidv4.GenerateUUID4()
 }
 
+// IsRuneASCIIPrintable returns true if b is ascii and not control-character (space returns true)
+func IsRuneASCIIPrintable(b rune) bool {
+	return b >= ' ' && b <= '~'
+}
+
 func IsRuneASCIIAlpha(b rune) bool {
 	return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
 }
@@ -762,6 +767,15 @@ func ReplaceWithFunc(str string, replace func(rune) string) string {
 func CreateFilterFunc(keep func(r rune) bool) func(string) string {
 	return func(s string) string {
 		return FilterWithFunc(s, keep)
+	}
+}
+
+func CreateMultiFilterFunc(funcs []func(r rune) bool) func(string) string {
+	return func(s string) string {
+		for _, fn := range funcs {
+			s = FilterWithFunc(s, fn)
+		}
+		return s
 	}
 }
 
