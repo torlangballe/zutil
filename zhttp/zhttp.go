@@ -725,3 +725,7 @@ func HasURLScheme(str string) bool {
 	}
 	return (u.Scheme != "")
 }
+
+func IsRuneValidForHeaderKey(r rune) bool {
+	return zstr.IsRuneASCIIAlphaNumeric(r) || r == '-'
+}
