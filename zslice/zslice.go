@@ -197,3 +197,14 @@ func Random[S any](slice []S) (S, int) {
 // 	}
 // 	tval.Set(tv)
 // }
+
+func SplitWithFunc[S any](slice []S, match func(s S) bool) (is []S, not []S) {
+	for _, s := range slice {
+		if match(s) {
+			is = append(is, s)
+		} else {
+			not = append(not, s)
+		}
+	}
+	return is, not
+}
