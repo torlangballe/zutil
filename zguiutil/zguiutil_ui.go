@@ -80,6 +80,7 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 	label.SetColor(zstyle.DefaultFGColor().WithOpacity(0.8))
 	stack = zcontainer.StackViewHor("$labelize.stack." + slabel) // give it special name so not easy to mis-search for in recursive search
 	stack.SetSpacing(30)
+	stack.SetMargin(zgeo.RectFromXY2(0, 0, -3, 0))
 	cell := stack.Add(label, zgeo.CenterLeft)
 	if minLabelWidth != 0 {
 		cell.MinSize.W = minLabelWidth
