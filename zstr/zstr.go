@@ -37,6 +37,10 @@ type TitleOwner interface {
 	GetTitle() string
 }
 
+type NameGetter interface {
+	GetName() string
+}
+
 type KeyValue struct {
 	Key   string
 	Value string
@@ -961,7 +965,7 @@ func PadCamelCase(str, pad string) string {
 				if len(big) == 1 {
 					out += big
 				} else {
-					if big == "URL" {
+					if big == "URL" || big == "ID" {
 						out += big
 					} else {
 						out += big[:len(big)-1]
