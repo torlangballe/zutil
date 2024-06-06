@@ -31,12 +31,16 @@ func ReplaceDollarArguments(squery string, args ...interface{}) string {
 	return squery
 }
 
-func SetupPostgres(userName, dbName, address string) (db *sql.DB, err error) {
+func SetupPostgres(userName, dbName, address string, ssl bool) (db *sql.DB, err error) {
+	sslmode := "disable"
+	if ssl {
+		sslmode = "require"
+	}
 	pqStr := fmt.Sprintf(
 		"host=%s port=%d sslmode=%s dbname=%s user=%s", //  password=%s
 		address,
 		5432,
-		"disable",
+		sslmode,
 		dbName,
 		userName,
 	)
