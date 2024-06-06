@@ -50,6 +50,10 @@ func ItemsFromRowGetterSlice(slice any) *Items {
 	return &items
 }
 
+func (item Item) GetName() string {
+	return item.Name
+}
+
 func (item Item) Equal(to Item) bool {
 	if item.Name != to.Name {
 		return false
