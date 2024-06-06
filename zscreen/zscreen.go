@@ -43,6 +43,7 @@ func GetMain() Screen {
 	// test:
 	// zlog.Info("ScreenMain:", zlog.GetCallingStackString())
 	for _, s := range GetAll() {
+		// zlog.Info("Screen:", s.ID, s.Rect, s.IsMain)
 		if s.IsMain {
 			return s
 		}
