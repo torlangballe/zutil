@@ -59,7 +59,8 @@ func makeTableOwner(users []AllUserInfo) *userTable {
 		old(ids)
 	}
 	ut.grid.ActionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {
-		def := ut.grid.CreateDefaultMenuItems(false)
+		selected := ut.grid.Grid.SelectedIDsOrHoverIDOrAll()
+		def := ut.grid.CreateDefaultMenuItems(selected, false)
 		return append(def,
 			zmenu.MenuedSCFuncAction("Unauthorize selected users", 'U', 0, func() {
 				ut.unauthorizeUsers(ut.grid.Grid.SelectedIDs())
