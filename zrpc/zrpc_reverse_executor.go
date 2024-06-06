@@ -63,7 +63,7 @@ func NewReverseExecutor(pollClient *Client, id string, executor *Executor) *Reve
 		id = pollClient.ID
 	}
 	r.client.ID = id
-	r.client.KeepTokenOnAuthenticationInvalid = true
+	//!!! r.client.KeepTokenOnAuthenticationInvalid = true
 	r.Executor = executor
 	go startCallingPollForReverseCalls(r)
 	return r
@@ -78,6 +78,11 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 		}
 		if !r.on {
 			zlog.Info(EnableLogExecutor, "startCallingPollForReverseCalls off", zlog.Pointer(r), r.client.ID)
+			time.Sleep(time.Millisecond * 50)
+			continue
+		}
+		if r.client.AuthToken == "" {
+			// zlog.Info("startCallingPollForReverseCalls token is empty") // EnableLogExecutor,
 			time.Sleep(time.Millisecond * 50)
 			continue
 		}
