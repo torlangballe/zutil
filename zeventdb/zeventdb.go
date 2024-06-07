@@ -34,19 +34,19 @@ type Database struct {
 	FieldInfos     []zsql.FieldInfo
 	StructType     reflect.Type
 	waitAfterError bool
-	istruct        interface{}
+	istruct        any
 	Lock           sync.Mutex
 }
 
 type CompareItem struct {
 	Name   string
-	Values []interface{}
+	Values []any
 }
 
 const TimeStampFormat = "2006-01-02 15:04:05.999999999"
 
 var (
-	itemsToStore []interface{}
+	itemsToStore []any
 	storeLock    sync.Mutex
 )
 
@@ -54,7 +54,7 @@ var (
 // It creates a table *tableName* using the structure istruct as its column names.
 // The field with db:",primary" set, is the primary key.
 // If there is more than one time.Time type, set db:",eventtime" tag to make it the event's time.
-func CreateDB(relPath string, tableName string, istruct interface{}, deleteDays, deleteFreqSecs float64, indexFields []string) (db *Database, err error) {
+func CreateDB(relPath string, tableName string, istruct any, deleteDays, deleteFreqSecs float64, indexFields []string) (db *Database, err error) {
 	absPath := zfile.WorkingDirPathToAbsolute(relPath)
 	// if !zfile.Exists(absPath) {
 	// 	file, err := os.Create(absPath) // Create SQLite file
@@ -116,7 +116,6 @@ func CreateDB(relPath string, tableName string, istruct interface{}, deleteDays,
 func (db *Database) repeatPurge(deleteDays, deleteFreqSecs float64, tableName string) {
 	ztimer.RepeatNow(deleteFreqSecs, func() bool {
 		start := time.Now()
-		// zlog.Info("🟩EventDB purged start")
 		at := start.Add(-time.Duration(float64(ztime.Day) * deleteDays))
 		query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", tableName)
 		db.Lock.Lock()
@@ -130,7 +129,7 @@ func (db *Database) repeatPurge(deleteDays, deleteFreqSecs float64, tableName st
 	})
 }
 
-func (db *Database) Add(istruct interface{}, flush bool) {
+func (db *Database) Add(istruct any, flush bool) {
 	storeLock.Lock()
 	itemsToStore = append(itemsToStore, istruct)
 	storeLock.Unlock()
@@ -175,7 +174,7 @@ func (db *Database) writeItems() bool {
 		") VALUES "
 
 	var count int
-	var vals []interface{}
+	var vals []any
 	for i, item := range itemsToStore {
 		if i != 0 {
 			query += ", "
@@ -211,57 +210,6 @@ func (db *Database) writeItems() bool {
 	//	}
 }
 
-/*
-func (db *Database) repeatWriteItems() {
-	for {
-		var item interface{}
-		zlog.Info("DB.writing?", len(itemsToStore))
-		storeLock.Lock()
-		if len(itemsToStore) > 0 {
-			item = itemsToStore[0]
-			itemsToStore = itemsToStore[1:]
-		}
-		storeLock.Unlock()
-		if item == nil {
-			time.Sleep(time.Second)
-			continue
-		}
-		db.writeItem(item)
-	}
-}
-
-func (db *Database) writeItem(istruct interface{}) {
-	skip := []string{db.PrimaryField}
-	params := ""
-	for i := 0; i < len(db.FieldInfos)-1; i++ {
-		if params != "" {
-			params += ","
-		}
-		params += "?"
-	}
-
-	query := "INSERT INTO " + db.TableName + " (" + zsql.FieldNamesStringFromStruct(istruct, skip, "") +
-		") VALUES (" + params + ")"
-	vals := zsql.FieldValuesFromStruct(istruct, skip)
-
-	// zlog.Info("ADD-QUERY:", query, vals)
-
-	db.Lock.Lock()
-	defer db.Lock.Unlock()
-	r, err := db.DB.Exec(query, vals...)
-	if err != nil {
-		zlog.Error(err, "query", query, vals)
-		return
-	}
-	id, err := r.LastInsertId()
-	// zlog.Info("Add2DB:", id)
-	if err != nil {
-		zlog.Error(err, "get lastinsert", query, vals, id)
-		return
-	}
-}
-*/
-
 func getTimeCompare(db *Database, t time.Time, start bool) string {
 	// zlog.Info("zeventsdb get time compare:", t, start)
 	op := ">"
@@ -272,7 +220,7 @@ func getTimeCompare(db *Database, t time.Time, start bool) string {
 	return w
 }
 
-func addComps(wheres *[]string, values *[]interface{}, comps []CompareItem) {
+func addComps(wheres *[]string, values *[]any, comps []CompareItem) {
 	for _, c := range comps {
 		var w string
 		var like bool
@@ -327,7 +275,7 @@ func addComps(wheres *[]string, values *[]interface{}, comps []CompareItem) {
 	}
 }
 
-func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, start, end time.Time, startID, endID int64, decending bool, keepID int64, count int) error {
+func (db *Database) Get(resultsSlicePtr any, equalItems zdict.Items, start, end time.Time, startID, endID int64, decending bool, keepID int64, count int) error {
 	var comps []CompareItem
 	for _, e := range equalItems {
 		found := false
@@ -339,11 +287,11 @@ func (db *Database) Get(resultsSlicePtr interface{}, equalItems zdict.Items, sta
 			}
 		}
 		if !found {
-			c := CompareItem{Name: e.Name, Values: []interface{}{e.Value}}
+			c := CompareItem{Name: e.Name, Values: []any{e.Value}}
 			comps = append(comps, c)
 		}
 	}
-	var values []interface{}
+	var values []any
 	var wheres []string
 	addComps(&wheres, &values, comps)
 	resultStructVal := reflect.New(db.StructType)
