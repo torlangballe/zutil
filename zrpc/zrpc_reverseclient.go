@@ -213,7 +213,7 @@ func RemoveReverseClient(r *ReverseClienter, receiverID string) {
 	r.allReverseClients.Remove(receiverID)
 }
 
-func CallAll[R any](r *ReverseClienter, timeoutSecs float64, method, idWildcard string, args any) []MultiCallResult[R] {
+func ReverseCallAll[R any](r *ReverseClienter, timeoutSecs float64, method, idWildcard string, args any) []MultiCallResult[R] {
 	var out []MultiCallResult[R]
 	f, _ := args.(RowGetter)
 	FuncForAll(r, idWildcard, method, func(receiverID string, rc *ReverseClient, i int) {
@@ -234,9 +234,9 @@ func CallAll[R any](r *ReverseClienter, timeoutSecs float64, method, idWildcard 
 	return out
 }
 
-func CallAllSimple(timeoutSecs float64, method, idWildcard string, args any) []error {
+func ReverseCallAllSimple(timeoutSecs float64, method, idWildcard string, args any) []error {
 	var errs []error
-	results := CallAll[Unused](nil, timeoutSecs, method, idWildcard, args)
+	results := ReverseCallAll[Unused](nil, timeoutSecs, method, idWildcard, args)
 	for _, r := range results {
 		e := fmt.Errorf("%s: %w", r.ReceiverID, r.Error)
 		errs = append(errs, e)
