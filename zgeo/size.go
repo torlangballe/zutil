@@ -200,17 +200,18 @@ func (s Size) Contains(a Size) bool {
 	return s.W >= a.W && s.H >= a.H
 }
 
-func (s Size) Plus(a Size) Size             { return Size{s.W + a.W, s.H + a.H} }
-func (s Size) Minus(a Size) Size            { return Size{s.W - a.W, s.H - a.H} }
-func (s Size) MinusD(a float64) Size        { return Size{s.W - a, s.H - a} }
-func (s Size) Times(a Size) Size            { return Size{s.W * a.W, s.H * a.H} }
-func (s Size) TimesD(a float64) Size        { return Size{s.W * a, s.H * a} }
-func (s Size) DividedBy(a Size) Size        { return Size{s.W / a.W, s.H / a.H} }
-func (s Size) DividedByD(a float64) Size    { return Size{s.W / a, s.H / a} }
-func (s Size) MultipliedBy(a Size) Size     { return Size{s.W * a.W, s.H * a.H} }
-func (s Size) MultipliedByD(a float64) Size { return Size{s.W * a, s.H * a} }
-func (s *Size) Subtract(a Size)             { s.W -= a.W; s.H -= a.H }
-func (s *Size) SubtractD(d float64)         { s.W -= d; s.H -= d }
+func (s Size) Plus(a Size) Size          { return Size{s.W + a.W, s.H + a.H} }
+func (s Size) Minus(a Size) Size         { return Size{s.W - a.W, s.H - a.H} }
+func (s Size) MinusD(a float64) Size     { return Size{s.W - a, s.H - a} }
+func (s Size) Times(a Size) Size         { return Size{s.W * a.W, s.H * a.H} }
+func (s Size) TimesD(a float64) Size     { return Size{s.W * a, s.H * a} }
+func (s Size) DividedBy(a Size) Size     { return Size{s.W / a.W, s.H / a.H} }
+func (s Size) DividedByD(a float64) Size { return Size{s.W / a, s.H / a} }
+
+// func (s Size) MultipliedBy(a Size) Size     { return Size{s.W * a.W, s.H * a.H} }
+// func (s Size) MultipliedByD(a float64) Size { return Size{s.W * a, s.H * a} }
+func (s *Size) Subtract(a Size)     { s.W -= a.W; s.H -= a.H }
+func (s *Size) SubtractD(d float64) { s.W -= d; s.H -= d }
 
 func (s Size) Copy() Size {
 	return s
