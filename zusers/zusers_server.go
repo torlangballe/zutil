@@ -4,6 +4,7 @@ package zusers
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/torlangballe/zutil/zcache"
@@ -39,6 +40,7 @@ var (
 	StoreAuthenticationError = fmt.Errorf("Store authentication failed: %w", AuthFailedError)
 	NoTokenError             = fmt.Errorf("no token for user: %w", AuthFailedError)
 	ForgotPassword           = ForgotPasswordData{ProductName: "This service"}
+	temporaryTokens          = zcache.NewExpiringMap[int64, int64](60) // temporaryTokens are tokens that map to a userid, granting that token access as that user for 60 seconds
 )
 
 func setupWithSQLServer(s *SQLServer, executor *zrpc.Executor) {
@@ -251,4 +253,18 @@ func RegisterDefaultAdminUserIfNone() {
 		userID, _, _ := MainServer.RegisterUser(nil, DefaultEmail, DefaultPassword, false)
 		MainServer.SetAdminForUser(userID, true)
 	}
+}
+
+func AddTemporatyToken(userID int64) (token int64) {
+	token = rand.Int63()
+	temporaryTokens.Set(token, userID)
+	return token
+}
+
+func PopTemporaryToken(token int64) (userID int64, got bool) {
+	userID, got = temporaryTokens.Get(token)
+	if got {
+		temporaryTokens.Remove(token)
+	}
+	return userID, got
 }
