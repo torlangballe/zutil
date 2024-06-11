@@ -349,19 +349,20 @@ func UpdateRows[S any](table string, rows []S, userToken string) error {
 	return nil
 }
 
-func InsertRows[S any](table string, rows []S, skipColumns []string, userToken string) (int64, error) {
+func InsertRows[S any](table string, rows []S, skipColumns []string, userToken string) ([]int64, error) {
 	// zlog.Info("InsertRows1:", table, len(rows))
+	var ids []int64
 	if len(rows) == 0 {
-		return 0, nil
+		return nil, nil
 	}
 	idCol, uidCol, _, _, err := getSpecialColumns(rows[0])
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	if userToken != "" && uidCol != "" {
 		_, err = setUserIDInRows[S](rows, uidCol, userToken)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 	}
 	var lastID int64
@@ -375,10 +376,11 @@ func InsertRows[S any](table string, rows []S, skipColumns []string, userToken s
 		dbRow := Main.DB.QueryRow(query, vals...)
 		err := dbRow.Scan(&lastID)
 		if err != nil {
-			return 0, zlog.Error(err, query, vals)
+			return ids, zlog.Error(err, query, vals)
 		}
+		ids = append(ids, lastID)
 	}
-	return lastID, nil
+	return ids, nil
 }
 
 func UpsertRow[S any](table, conflictCol string, row S, skipColumns []string, idCol, userToken, where string) (id int64, native string, err error) {
