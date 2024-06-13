@@ -3,6 +3,8 @@ package zgeo
 import (
 	"image"
 	"math"
+
+	"github.com/torlangballe/zutil/zint"
 )
 
 type Rect struct {
@@ -465,4 +467,21 @@ func (r Rect) NormalizedNegativeSize() Rect {
 		r.Size.H *= -1
 	}
 	return r
+}
+
+// CellsSpanInBox returns the number of *column* and *rows& *cellCount* cells of *cellSize* will span in *box*.
+// It lays them out in rows first. If *cellCount* is <= 0, it returns for filling the box.
+// size is the size these layed out cells will occupy.
+func CellsSpanInBox(box Rect, cellSize, spacing Size, cellCount int) (x, y int, area Rect) {
+	columns := int((box.Size.W + spacing.W) / (cellSize.W + spacing.W))
+	rows := int((box.Size.H + spacing.H) / (cellSize.H + spacing.H))
+	if cellCount > 0 {
+		zint.Minimize(&columns, cellCount)
+		neededRows := (cellCount + columns) / columns
+		zint.Minimize(&rows, neededRows)
+	}
+	m := Size{float64(columns), float64(rows)}
+	s := cellSize.Times(m).Plus(spacing.Times(m.MinusD(1)))
+	r := box.Align(s, Center, Size{})
+	return columns, rows, r
 }
