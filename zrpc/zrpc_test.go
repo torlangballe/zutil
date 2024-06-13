@@ -20,7 +20,7 @@ const port = 95
 var (
 	webClient   *Client
 	cloudRC     *ReverseClient
-	revClienter *ReverseClienter
+	revClienter *ReverseClientsOwner
 )
 
 func (CloudCall) HelloTo5(str string, result *int) error {
@@ -106,7 +106,7 @@ func testMultiWeb(t *testing.T) {
 	var getter RowGetter = func(receiverID string, index int) any {
 		return index
 	}
-	ms := CallAll[string](revClienter, 5, "WebCall.Color", "web-*", getter)
+	ms := ReverseCallAll[string](revClienter, 5, "WebCall.Color", "web-*", getter)
 	for _, m := range ms {
 		zlog.Warn("MS:", m.ReceiverID, m.Result, m.Error)
 	}
@@ -122,7 +122,7 @@ func TestAll(t *testing.T) {
 	router := mux.NewRouter()
 	cloudExecutor := NewServer(router, nil)
 	cloudExecutor.Register(CloudCall{})
-	revClienter = NewReverseClienter(cloudExecutor)
+	revClienter = NewReverseClientsOwner(cloudExecutor)
 	cloudRC = NewReverseClient(revClienter, "client", "", true)
 	cloudRC.TimeoutSecs = 2
 	address := fmt.Sprint(":", port)
