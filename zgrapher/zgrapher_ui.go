@@ -243,6 +243,9 @@ func getTimeInt(t time.Time, span time.Duration) (n, n2 int, important bool) {
 }
 
 func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
+	if !v.TickColor.Valid {
+		return
+	}
 	canvas.SetColor(v.TickColor)
 	end := time.Now().Local()
 	w := int(v.LocalRect().Size.W)
