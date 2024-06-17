@@ -16,6 +16,7 @@ const ProfilingURLPrefix = "debug/pprof/"
 var (
 	IsInTests                = (strings.HasSuffix(os.Args[0], ".test"))
 	GetOpenFileCountFunc     func() int
+	AverageCPUFunc           func() float64
 	GetOngoingProcsCountFunc func() int
 	AllProfileTypes          = []string{"heap", "profile", "block", "mutex"}
 )
@@ -34,7 +35,8 @@ func PrintMemoryStats() {
 		files = GetOpenFileCountFunc()
 	}
 	procsCount := GetOngoingProcsCountFunc()
-	fmt.Printf("MemAlloc@%s: %s TotalAlloc:%s Sys:%s RSS:%s NumGC:%d Gos:%d Files:%d Repeaters:%d Ongoing:%d\n", time.Now().Local().Format("15:04"), memStr(m.Alloc), memStr(m.TotalAlloc), memStr(m.Sys), memStr(rss), m.NumGC, goroutines, files, ztimer.GoingCount, procsCount)
+	cpu := AverageCPUFunc()
+	fmt.Printf("MemAlloc@%s: %s TotalAlloc:%s Sys:%s RSS:%s CPU:%d NumGC:%d Gos:%d Files:%d Repeaters:%d Ongoing:%d\n", time.Now().Local().Format("15:04"), memStr(m.Alloc), memStr(m.TotalAlloc), memStr(m.Sys), memStr(rss), cpu, m.NumGC, goroutines, files, ztimer.GoingCount, procsCount)
 }
 
 func PrintAllGoroutines() {

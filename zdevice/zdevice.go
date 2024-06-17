@@ -8,6 +8,8 @@ import (
 	ua "github.com/mileusna/useragent"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
+	"github.com/torlangballe/zutil/zdebug"
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -52,6 +54,12 @@ const (
 	ArchitectureTypeNone ArchitectureType = ""
 )
 
+func init() {
+	zdebug.AverageCPUFunc = func() float64 {
+		return zfloat.Average(CPUUsage(6))
+	}
+}
+
 // Platform is the surface-system we are running on.
 // For wasm in browser this is WebType, not underlying os browser is running on
 func Platform() OSType {
@@ -92,6 +100,9 @@ func Architecture() ArchitectureType {
 // CPUUsage returns a slice of 0-1 where 1 is 100% of how much each CPU is utilized. Order unknown, but hopefully doesn't change
 // if more than maxCores, it is recursivly halved, summing first half with last
 func CPUUsage(maxCores int) (out []float64) {
+	if runtime.GOOS == "js" {
+		return []float64{-1}
+	}
 	// if zdebug.IsInTests {
 	// 	return []float64{0.1, 0.2, 0.3, 0.4}
 	// }
