@@ -208,3 +208,11 @@ func SplitWithFunc[S any](slice []S, match func(s S) bool) (is []S, not []S) {
 	}
 	return is, not
 }
+
+func Map[S any](slice []S, mapFunc func(s S) S) []S {
+	out := make([]S, len(slice))
+	for i, s := range slice {
+		out[i] = mapFunc(s)
+	}
+	return out
+}
