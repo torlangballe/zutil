@@ -173,6 +173,11 @@ func (s *Size) Add(a Size) {
 	s.H += a.H
 }
 
+func (s *Size) AddD(a float64) {
+	s.W += a
+	s.H += a
+}
+
 func (s *Size) MultiplyD(a float64) {
 	s.W *= a
 	s.H *= a
