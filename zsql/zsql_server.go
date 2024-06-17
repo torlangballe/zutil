@@ -19,8 +19,9 @@ import (
 )
 
 type Base struct {
-	DB   *sql.DB
-	Type BaseType
+	DB             *sql.DB
+	Type           BaseType
+	statementCache map[string]*sql.Stmt
 }
 
 type SQLCalls struct{}
@@ -41,9 +42,12 @@ func InitMainSQLite(filePath string) error {
 
 func NewSQLite(filePath string) (*sql.DB, error) {
 	var err error
-	dir, _, sub, _ := zfile.Split(filePath)
+	dir, _, sub, ext := zfile.Split(filePath)
 	zfile.MakeDirAllIfNotExists(dir)
-	file := path.Join(dir, sub+".sqlite")
+	if ext != ".sqlite" {
+		ext = ".sqlite3"
+	}
+	file := path.Join(dir, sub+ext)
 
 	db, err := sql.Open("sqlite", file)
 	if err != nil {
@@ -496,4 +500,20 @@ func SelectColumnAsSliceOfAny[A any](base *Base, query string, result *[]A) erro
 
 func (SQLCalls) SelectInt64s(query string, result *[]int64) error {
 	return SelectColumnAsSliceOfAny(&Main, query, result)
+}
+
+func (b *Base) Exec(query string, args ...any) (sql.Result, error) {
+	var err error
+	if b.statementCache == nil {
+		b.statementCache = map[string]*sql.Stmt{}
+	}
+	s := b.statementCache[query]
+	if s == nil {
+		s, err = b.DB.Prepare(query)
+		if err != nil {
+			return nil, err
+		}
+		b.statementCache[query] = s
+	}
+	return s.Exec(args...)
 }
