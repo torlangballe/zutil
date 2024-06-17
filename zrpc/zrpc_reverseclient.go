@@ -87,7 +87,7 @@ func NewReverseClientsOwner(executor *Executor) *ReverseClientsOwner {
 func NewReverseClient(r *ReverseClientsOwner, receiverID string, userAuthToken string, permanent bool) *ReverseClient {
 	zlog.Assert(receiverID != "")
 	c := &ReverseClient{}
-	zlog.Warn("NewReverseClient", zlog.Pointer(c), receiverID)
+	// zlog.Warn("NewReverseClient", zlog.Pointer(c), receiverID)
 	c.rid = receiverID
 	c.TimeoutSecs = 100
 	c.LastPolled = time.Now()
@@ -111,7 +111,7 @@ func (r *ReverseClientsOwner) ReversePoll(ci *ClientInfo, receiverID string, cp 
 	// 	zlog.Warn("ReversePoll FindOrAddReverseClient:", id)
 	// })
 	rc := FindOrAddReverseClient(r, receiverID, ci.Token)
-	zlog.Warn(EnableLogReverseClient, zlog.Pointer(rc), "ReversePoll", receiverID, r.allReverseClients.Count(), rc.pendingCallsSent.Count())
+	// zlog.Warn(EnableLogReverseClient, zlog.Pointer(rc), "ReversePoll", receiverID, r.allReverseClients.Count(), rc.pendingCallsSent.Count())
 	ticker := time.NewTicker(time.Duration(PollRestartSecs-1) * time.Second)
 	select {
 	case <-ticker.C:
@@ -158,7 +158,7 @@ func FindOrAddReverseClient(r *ReverseClientsOwner, receiverID string, token str
 			zlog.Error("FindOrAddReverseClient token=='': no reverse client for id:", receiverID)
 			return nil
 		}
-		zlog.Warn("Add Rerverse Client:", zlog.Pointer(rc), receiverID)
+		// zlog.Warn("Add Rerverse Client:", zlog.Pointer(rc), receiverID)
 		rc = NewReverseClient(r, receiverID, token, false)
 		if r.HandleNewReverseReceiverFunc != nil {
 			go r.HandleNewReverseReceiverFunc(receiverID, rc)
