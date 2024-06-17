@@ -122,6 +122,10 @@ func IsBigTime(t time.Time) bool {
 }
 
 func GetNice(t time.Time, secs bool) string {
+	return GetNiceSubSecs(t, secs, 0)
+}
+
+func GetNiceSubSecs(t time.Time, secs bool, subSecs int) string {
 	var str string
 	if t.IsZero() {
 		return "null"
@@ -133,6 +137,9 @@ func GetNice(t time.Time, secs bool) string {
 	f := "15:04"
 	if secs {
 		f += ":05"
+		if subSecs > 0 {
+			f += "." + strings.Repeat("9", subSecs)
+		}
 	}
 	serverTime := zlocale.IsDisplayServerTime != nil && zlocale.IsDisplayServerTime.Get()
 	if serverTime {
