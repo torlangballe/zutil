@@ -292,3 +292,15 @@ func ToStrings64(floats []float64) (s []string) {
 	}
 	return
 }
+
+func Sum(all []float64) float64 {
+	var a float64
+	for _, f := range all {
+		a += f
+	}
+	return a
+}
+
+func Average(f []float64) float64 {
+	return Sum(f) / float64(len(f))
+}
