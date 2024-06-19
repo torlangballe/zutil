@@ -611,3 +611,7 @@ func TimeOfDaysSince2000(days int, loc *time.Location) time.Time {
 	t := t2000.AddDate(0, 0, days)
 	return t
 }
+
+func Equal(a, b time.Time) bool {
+	return a.Sub(b) == 0
+}
