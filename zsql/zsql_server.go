@@ -16,7 +16,14 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
+
+	_ "modernc.org/sqlite"
+	// _ "github.com/mattn/go-sqlite3"
 )
+
+// Compile mattn/go-sqlite3:
+// Install musl-cross (brew install FiloSottile/musl-cross/musl-cross).
+// Run CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++ GOARCH=amd64 GOOS=linux CGO_ENABLED=1 go build -ldflags "-linkmode external -extldflags -static".
 
 type Base struct {
 	DB             *sql.DB
@@ -44,9 +51,7 @@ func NewSQLite(filePath string) (*sql.DB, error) {
 	var err error
 	dir, _, sub, ext := zfile.Split(filePath)
 	zfile.MakeDirAllIfNotExists(dir)
-	if ext != ".sqlite" {
-		ext = ".sqlite3"
-	}
+	ext = ".sqlite3"
 	file := path.Join(dir, sub+ext)
 
 	db, err := sql.Open("sqlite", file)
