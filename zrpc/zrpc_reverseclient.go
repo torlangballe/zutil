@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"reflect"
 	"sync"
 	"time"
 
@@ -186,7 +185,7 @@ func (rc *ReverseClient) CallWithTimeout(timeoutSecs float64, method string, arg
 	token := zstr.GenerateRandomHexBytes(16)
 	pc.CallPayload.Token = token
 	pc.done = make(chan *clientReceivePayload, 10)
-	zlog.Warn("zrpc.RevCall pushed:", zlog.Pointer(rc), rc.rid, method, reflect.TypeOf(args), reflect.ValueOf(args).IsZero(), reflect.ValueOf(args).Kind())
+	// zlog.Warn("zrpc.RevCall pushed:", zlog.Pointer(rc), rc.rid, method, reflect.TypeOf(args), reflect.ValueOf(args).IsZero(), reflect.ValueOf(args).Kind())
 	rc.pendingCalls <- pc
 	dur := ztime.SecondsDur(math.Min(timeoutSecs, PollRestartSecs))
 	ticker := time.NewTicker(dur)
