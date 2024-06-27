@@ -615,3 +615,53 @@ func TimeOfDaysSince2000(days int, loc *time.Location) time.Time {
 func Equal(a, b time.Time) bool {
 	return a.Sub(b) == 0
 }
+
+var timeHMStringToClockEmojiiMap = map[string]rune{
+	"8:30":  '🕣',
+	"10:30": '🕥',
+	"12:30": '🕧',
+	"11:30": '🕦',
+	"5:30":  '🕠',
+	"2:30":  '🕝',
+	"7:30":  '🕢',
+	"4:30":  '🕟',
+	"1:30":  '🕜',
+	"9:30":  '🕤',
+	"6:30":  '🕡',
+	"3:30":  '🕞',
+	"10:00": '🕙',
+	"11:00": '🕚',
+	"1:00":  '🕐',
+	"9:00":  '🕘',
+	"6:00":  '🕕',
+	"3:00":  '🕒',
+	"8:00":  '🕗',
+	"5:00":  '🕔',
+	"2:00":  '🕑',
+	"7:00":  '🕖',
+	"4:00":  '🕓',
+	"12:00": '🕛',
+}
+
+func TimeToNearestEmojii(t time.Time) rune {
+	h := t.Hour()
+	m := t.Minute()
+	if m <= 15 {
+		m = 0
+	} else if m > 45 {
+		m = 0
+		h++
+	} else {
+		m = 30
+	}
+	h %= 12
+	if h == 0 {
+		h = 12
+	}
+	str := fmt.Sprintf("%d:%02d", h, m)
+	r := timeHMStringToClockEmojiiMap[str]
+	if r == 0 {
+		r = timeHMStringToClockEmojiiMap["10:30"]
+	}
+	return r
+}
