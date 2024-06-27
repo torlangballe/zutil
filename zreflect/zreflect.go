@@ -492,3 +492,9 @@ func SetStringToAny(toPtr any, from string) {
 		fmt.Println("SetStringToAny: bad type:", from, reflect.TypeOf(toPtr))
 	}
 }
+
+func Swap[A any](a, b *A) {
+	t := *a
+	*a = *b
+	*b = t
+}
