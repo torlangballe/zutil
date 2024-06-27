@@ -209,15 +209,42 @@ func (c Color) OpacityInverted() Color {
 	return c.WithOpacity(1 - c.Opacity())
 }
 
+// Mixed() returns amount portion of withColor and 1-amount of c mixed.
+// amount is first multiplied by withColor's alpha.
+// The resulting alpha is the product of the two color alphas.
+// If either color is not valid, the other one is returned.
 func (c Color) Mixed(withColor Color, amount float32) Color {
+	if !withColor.Valid {
+		return c
+	}
+	if !c.Valid {
+		return withColor
+	}
 	wc := withColor.RGBAValue()
 	col := c.RGBAValue()
 	amount *= wc.A
 	r := (1-amount)*col.R + wc.R*amount
 	g := (1-amount)*col.G + wc.G*amount
 	b := (1-amount)*col.B + wc.B*amount
-	a := c.Colors.A * withColor.Colors.A
+	a := c.Colors.A //* withColor.Colors.A
 	return ColorNew(r, g, b, a)
+}
+
+// MixedColor creates a color with HS from withColor and BA from c.
+// It is then mixed into c, effectively changing its color.
+func (c Color) MixedColor(withColor Color, amount float32) Color {
+	if !withColor.Valid {
+		return c
+	}
+	if !c.Valid {
+		return withColor
+	}
+	colHSBA := c.HSBA()
+	withHSBA := withColor.HSBA()
+	colHSBA.H = withHSBA.H
+	colHSBA.S = withHSBA.S
+	withNewH := ColorNewHSBA(colHSBA)
+	return c.Mixed(withNewH, amount)
 }
 
 func (c Color) MultipliedBrightness(multiply float32) Color {
