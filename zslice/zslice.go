@@ -180,24 +180,6 @@ func Random[S any](slice []S) (S, int) {
 	return slice[i], int(i)
 }
 
-// func AppendAnyToAny(toPtr any, from any) error {
-// 	fval := reflect.ValueOf(from)
-// 	tval := reflect.ValueOf(toPtr).Elem()
-// 	if fval.Kind() != reflect.Slice {
-// 		return errors.New("from not slice")
-// 	}
-// 	if tval.Kind() != reflect.Slice {
-// 		return errors.New("toPtr not to slice")
-// 	}
-// 	tv := tval
-// 	for i := 0; i < fval.Len(); i++ {
-// 		e := MakeAnElementOfSliceRValType(tval)
-// 		zreflect.SetAnyToAny(e.Addr(), fval.Index(i))
-// 		tv = reflect.Append(tv, e)
-// 	}
-// 	tval.Set(tv)
-// }
-
 func SplitWithFunc[S any](slice []S, match func(s S) bool) (is []S, not []S) {
 	for _, s := range slice {
 		if match(s) {
