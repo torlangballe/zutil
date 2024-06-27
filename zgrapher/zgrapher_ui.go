@@ -4,6 +4,7 @@ package zgrapher
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -11,11 +12,14 @@ import (
 	"github.com/torlangballe/zui/zcanvas"
 	"github.com/torlangballe/zui/zcustom"
 	"github.com/torlangballe/zui/zimage"
+	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/ztextinfo"
 	"github.com/torlangballe/zui/zview"
+	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
@@ -29,21 +33,27 @@ type col struct {
 type GraphView struct {
 	GrapherBase
 	zcustom.CustomView
-	Job             Job
-	ImagePathPrefix string
-	MinWidth        float64
-	TickColor       zgeo.Color
-	TickYRange      zfloat.Range
-	On              bool
-	Ticks           int
-	ShowMarkerAt    time.Time
-	EndMarkerAt     time.Time
-	ShowTicksText   bool
+	Job                 Job
+	ImagePathPrefix     string
+	MinWidth            float64
+	TickColor           zgeo.Color
+	TickYRange          zfloat.Range
+	On                  bool
+	Ticks               int
+	ShowMarkerAt        time.Time
+	EndMarkerAt         time.Time
+	ShowTicksText       bool
+	HandleSimplePressed func(t time.Time)
+	HandleSelectedTime  func(from, to time.Time)
 
 	drawn       map[string]*zimage.Image
 	grapherName string
 	repeater    *ztimer.Repeater
 	timer       *ztimer.Timer
+
+	dragStartTime time.Time
+	dragEndTime   time.Time
+	dragStartX    float64
 }
 
 func NewGraphView(id, grapherName string, pixelHeight int) *GraphView {
@@ -79,6 +89,7 @@ func (v *GraphView) Init(view zview.View, id, grapherName string, height int) {
 			img.Release()
 		}
 	})
+	v.SetPressUpDownMovedHandler(v.handleGraphUpDownMoved)
 }
 
 func (v *GraphView) Update(secsPerPixel int, windowMinutes int, ticks int, on bool) bool {
@@ -184,6 +195,7 @@ func (v *GraphView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View
 	r.Size.W -= float64(v.Job.PixelWidth(&v.GrapherBase))
 	canvas.SetColor(zgeo.ColorNewGray(0, 0.05))
 	canvas.FillRect(r)
+
 	// zlog.Info("draw", v.SecondsPerPixel, v.Job.ID, rect, zlog.CallingStackString())
 	i := 0
 	offset := v.forEachPart(func(name string, r zgeo.Rect, first bool) {
@@ -196,6 +208,16 @@ func (v *GraphView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View
 		}
 		i++
 	})
+	if !v.dragStartTime.IsZero() && !v.dragEndTime.IsZero() {
+		xs := v.xForTime(v.dragStartTime)
+		xe := v.xForTime(v.dragEndTime)
+		r := rect.ExpandedD(-1)
+		r.SetMinX(xs)
+		r.SetMaxX(xe)
+		canvas.SetColor(zgeo.ColorNew(1, 1, 0, 0.5))
+		path := zgeo.PathNewRect(r, zgeo.SizeBoth(2))
+		canvas.DrawPath(path, zgeo.ColorBlack, 3, zgeo.PathLineRound, true)
+	}
 	if !v.ShowMarkerAt.IsZero() {
 		x := v.xForTime(v.ShowMarkerAt)
 		drawMarker(float64(x), rect, canvas, zgeo.ColorRed)
@@ -298,4 +320,54 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 			}
 		}
 	}
+}
+
+func (v *GraphView) ClearSelectedTime() {
+	v.dragStartTime = time.Time{}
+	v.dragEndTime = time.Time{}
+	v.Expose()
+}
+
+func (v *GraphView) handleGraphUpDownMoved(pos zgeo.Pos, down zbool.BoolInd) bool {
+	if zkeyboard.ModifiersAtPress != 0 {
+		return false
+	}
+	switch down {
+	case zbool.True:
+		if !v.dragStartTime.IsZero() {
+			v.ClearSelectedTime()
+			if v.HandleSelectedTime != nil {
+				v.HandleSelectedTime(time.Time{}, time.Time{})
+			}
+			return false
+		}
+		v.dragStartX = pos.X
+		v.dragStartTime = v.TimeForX(int(pos.X))
+		return true
+	case zbool.Unknown:
+		if !v.dragStartTime.IsZero() && math.Abs(pos.X-v.dragStartX) > 3 {
+			v.dragEndTime = v.TimeForX(int(pos.X))
+			v.Expose()
+		}
+		return true
+	case zbool.False:
+		if v.dragEndTime.IsZero() {
+			if v.HandleSimplePressed != nil {
+				v.HandleSimplePressed(v.dragStartTime)
+			}
+			v.dragStartTime = time.Time{}
+			return true
+		}
+		v.dragEndTime = v.TimeForX(int(pos.X))
+		if v.dragEndTime.Before(v.dragStartTime) {
+			zreflect.Swap(&v.dragStartTime, &v.dragEndTime)
+		}
+		// zlog.Info("Graph Select!", v.dragStartTime, v.dragEndTime)
+		if v.HandleSelectedTime != nil {
+			v.HandleSelectedTime(v.dragStartTime, v.dragEndTime)
+		}
+		v.Expose()
+		return true
+	}
+	return true
 }
