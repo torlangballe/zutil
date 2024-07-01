@@ -4,6 +4,7 @@ import (
 	"runtime"
 
 	"github.com/torlangballe/zui/zimage"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 )
@@ -49,7 +50,7 @@ func GetMain() Screen {
 		}
 	}
 	if runtime.GOOS != "linux" {
-		zlog.Error("No screen!", zlog.CallingStackString())
+		zlog.Error("No screen!", zdebug.CallingStackString())
 	}
 	s := Screen{}
 	s.SoftScale = 1

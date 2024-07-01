@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -17,9 +18,16 @@ type Timer struct {
 	secs  float64
 }
 
-// type Stopper interface {
-// 	Stop()
-// }
+var (
+	timersCount = map[float64]int{}
+	countMutex  sync.Mutex
+)
+
+func init() {
+	zdebug.TimersGoingCountFunc = func() int {
+		return GoingCount
+	}
+}
 
 func TimerNew() *Timer {
 	return &Timer{}
@@ -31,18 +39,13 @@ func StartIn(secs float64, perform func()) *Timer {
 	return t
 }
 
-var (
-	timersCount = map[float64]int{}
-	countMutex  sync.Mutex
-)
-
 func (t *Timer) StartIn(secs float64, perform func()) {
 	t.Stop()
 	countMutex.Lock()
 	timersCount[secs]++
 	t.secs = secs
 	if timersCount[secs]%1000 == 999 {
-		zlog.Error(timersCount[secs], "timers of", secs, "seconds started", zlog.CallingStackString())
+		zlog.Error(timersCount[secs], "timers of", secs, "seconds started", zdebug.CallingStackString())
 	}
 	countMutex.Unlock()
 

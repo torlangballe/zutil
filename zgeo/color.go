@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
@@ -412,7 +413,7 @@ func ColorFromString(str string) Color {
 			return ColorNew(r, g, b, a)
 		}
 	}
-	zlog.Error("bad color string", str, zlog.CallingStackString())
+	zlog.Error("bad color string", str, zdebug.CallingStackString())
 	return Color{}
 }
 

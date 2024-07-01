@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/gosnmp/gosnmp"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
@@ -300,7 +301,7 @@ func ServeHTTPInBackground(address string, certificatesStubPath string, handler 
 			address = host + ":" + sport
 		}
 	}
-	stack := zlog.CallingStackString()
+	stack := zdebug.CallingStackString()
 	s := &HTTPServer{}
 	s.Server = &http.Server{Addr: address}
 	s.Server.Handler = handler

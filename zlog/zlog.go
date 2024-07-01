@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/user"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -211,12 +211,12 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 		timeLock.Unlock()
 	}
 	if priority == DebugLevel {
-		finfo += CallingFunctionString(pos) + ": "
+		finfo += zdebug.CallingFunctionString(pos) + ": "
 	} else if priority == ErrorLevel {
-		finfo += FileLineAndCallingFunctionString(pos, false) + ": "
+		finfo += zdebug.FileLineAndCallingFunctionString(pos, false) + ": "
 	}
 	if priority == FatalLevel {
-		finfo += "\nFatal:" + CallingStackString() + "\n"
+		finfo += "\nFatal:" + zdebug.CallingStackString() + "\n"
 	}
 	err := NewError(parts...)
 	fmt.Println(finfo + col + err.Error() + endCol)
@@ -236,89 +236,6 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 		os.Exit(-1)
 	}
 	return err
-}
-
-func CallingFunctionInfo(pos int) (function, file string, line int) {
-	pc, file, line, ok := runtime.Caller(pos)
-	if ok {
-		function = runtime.FuncForPC(pc).Name()
-	}
-	return
-}
-
-func CallingStackString() string {
-	return CallingStackStringAt(1)
-}
-
-func CallingStackStringAt(index int) string {
-	var parts []string
-	for i := 3 + index; ; i++ {
-		s := FileLineAndCallingFunctionString(i, false)
-		if s == "" {
-			break
-		}
-		parts = append(parts, s)
-	}
-	return strings.Join(parts, "\n")
-}
-
-func makePathRelativeTo(path, rel string) string {
-	origPath := path
-	path = strings.TrimLeft(path, "/")
-	rel = strings.TrimLeft(rel, "/")
-	// fmt.Println("MakePathRelativeTo1:", path, rel)
-	for {
-		p := zstr.HeadUntil(path, "/")
-		r := zstr.HeadUntil(rel, "/")
-		if p != r || p == "" {
-			break
-		}
-		l := len(p)
-		path = zstr.Body(path, l+1, -1)
-		rel = zstr.Body(rel, l+1, -1)
-	}
-	// fmt.Println("MakePathRelativeTo:", path, rel)
-	count := strings.Count(rel, "/")
-	if count != 0 {
-		count++
-	}
-	str := strings.Repeat("../", count) + path
-	if count > 2 || len(str) > len(origPath) {
-		var rest string
-		if runtime.GOOS == "js" {
-			return origPath
-		}
-		usr, err := user.Current()
-		if err != nil {
-			return origPath
-		}
-		dir := usr.HomeDir + "/"
-		if zstr.HasPrefix(origPath, dir, &rest) {
-			return "~/" + rest
-		}
-		return origPath
-	}
-	return str
-}
-
-func CallingFunctionString(pos int) string {
-	function, _, _ := CallingFunctionInfo(pos)
-	return zstr.TailUntil(function, "/")
-}
-
-func FileLineAndCallingFunctionString(pos int, shortFile bool) string {
-	function, file, line := CallingFunctionInfo(pos)
-	if function == "" {
-		return ""
-	}
-	_, function = path.Split(function)
-	if shortFile {
-		_, file = path.Split(file)
-	} else {
-		wd, _ := os.Getwd()
-		file = makePathRelativeTo(file, wd)
-	}
-	return fmt.Sprintf("%s:%d %s()", file, line, function)
 }
 
 func Assert(success bool, parts ...any) {
@@ -404,7 +321,7 @@ func HandlePanic(exit bool) error {
 	r := recover()
 	if r != nil {
 		fmt.Println("**HandlePanic")
-		Error("\n🟥HandlePanic:", r, "\n", CallingStackString())
+		Error("\n🟥HandlePanic:", r, "\n", zdebug.CallingStackString())
 		str := fmt.Sprint(r)
 		PanicHandler(str, exit)
 		e, _ := r.(error)
@@ -442,7 +359,7 @@ func Limit(parts ...any) LimitID {
 }
 
 func Func() {
-	Info(CallingFunctionString(3))
+	Info(zdebug.CallingFunctionString(3))
 }
 
 func RegisterEnabler(name string, b *Enabler) {

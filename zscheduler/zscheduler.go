@@ -326,7 +326,7 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 		if s.stopped {
 			return
 		}
-		zlog.Error("Scheduler stop: no run with that id", jobID, "reason to stop was:", reason, zlog.CallingStackString())
+		zlog.Error("Scheduler stop: no run with that id", jobID, "reason to stop was:", reason, zdebug.CallingStackString())
 		zlog.Assert(outsideRequest)
 		return
 	}
@@ -1046,7 +1046,7 @@ func (s *Scheduler[I]) removeExecutor(exID I) {
 	// }
 	_, i := s.findExecutor(exID)
 	if i == -1 {
-		zlog.Error("remove: no executor with id", exID, zlog.CallingStackString())
+		zlog.Error("remove: no executor with id", exID, zdebug.CallingStackString())
 		return
 	}
 	zslice.RemoveAt(&s.executors, i)

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/torlangballe/zui/zfields"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zreflect"
@@ -191,7 +192,7 @@ func (s *Session) expandForList(stub string, list []string, prefix string) (newL
 	diff := zstr.SliceCommonExtremity(commands, true)
 	zstr.HasPrefix(diff, stub, &add)
 	if diff != "" {
-		zlog.Info("expandForList:", diff, add, stub, prefix, zlog.CallingStackString())
+		zlog.Info("expandForList:", diff, add, stub, prefix, zdebug.CallingStackString())
 		add = prefix + add
 		return add, len(add), true
 	}

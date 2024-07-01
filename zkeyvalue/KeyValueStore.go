@@ -58,7 +58,7 @@ func (s Store) GetObject(key string, objectPtr interface{}) (got bool) {
 	got = s.Raw.RawGetItem(key, &rawjson)
 	if got {
 		err := json.Unmarshal([]byte(rawjson), objectPtr)
-		if zlog.OnError(err, "unmarshal", string(rawjson), zlog.CallingStackString()) {
+		if zlog.OnError(err, "unmarshal", string(rawjson), zdebug.CallingStackString()) {
 			return
 		}
 	}

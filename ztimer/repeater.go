@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -66,7 +67,7 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	}
 	r.ticker = time.NewTicker(secs2Dur(secs))
 	repeatersMutex.Lock()
-	r.stack = zlog.FileLineAndCallingFunctionString(4, true)
+	r.stack = zdebug.FileLineAndCallingFunctionString(4, true)
 	// zlog.Info("Repeater.Set():", r.stack)
 	repeaters[r.stack]++
 	repeatersMutex.Unlock()

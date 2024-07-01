@@ -5,6 +5,7 @@ package zkeyvalue
 import (
 	"path"
 
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zjson"
 	"github.com/torlangballe/zutil/zlog"
@@ -40,7 +41,7 @@ func NewFileStore(fpath string) *Store {
 func (d *dictFile) Save() error {
 	d.lock.Lock()
 	err := zjson.MarshalToFile(d.dict, d.storeFile)
-	zlog.OnError(err, "Save", d.storeFile, zlog.CallingStackString())
+	zlog.OnError(err, "Save", d.storeFile, zdebug.CallingStackString())
 	d.lock.Unlock()
 	return err
 }
