@@ -151,20 +151,17 @@ func (s *Size) Minimize(a Size) {
 	}
 }
 
+// MinimizeNonZero sets s to minimum of s and a.
 func (s *Size) MinimizeNonZero(a Size) {
-	if a.W != 0 {
-		if s.W == UndefValue {
-			s.W = a.W
-		} else {
-			s.W = math.Min(s.W, a.W)
-		}
+	if s.W == 0 {
+		s.W = a.W
+	} else if a.W != 0 {
+		s.W = math.Min(s.W, a.W)
 	}
-	if a.H != 0 {
-		if s.H == UndefValue {
-			s.H = a.W
-		} else {
-			s.H = math.Min(s.H, a.H)
-		}
+	if s.H == 0 {
+		s.H = a.H
+	} else if a.H != 0 {
+		s.H = math.Min(s.H, a.H)
 	}
 }
 
