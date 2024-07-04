@@ -269,16 +269,17 @@ func (r Rect) AlignPro(s Size, align Alignment, marg, maxSize, minSize Size) Rec
 	if align&VertShrink != 0 && ha > hf {
 		ha = hf
 	}
-	if maxSize.W != 0 && maxSize.H != 0 { // TODO:  && align&Proportional != 0 {
+	if maxSize.Area() != 0 && align&Proportional != 0 {
 		s := Size{wa, ha}.ShrunkInto(maxSize)
 		wa = s.W
 		ha = s.H
-	}
-	if maxSize.W != 0.0 {
-		wa = math.Min(wa, float64(maxSize.W))
-	}
-	if maxSize.H != 0.0 {
-		ha = math.Min(ha, float64(maxSize.H))
+	} else {
+		if maxSize.W != 0.0 {
+			wa = math.Min(wa, float64(maxSize.W))
+		}
+		if maxSize.H != 0.0 {
+			ha = math.Min(ha, float64(maxSize.H))
+		}
 	}
 
 	if minSize.W != 0 && minSize.H != 0 && align&Proportional != 0 {
