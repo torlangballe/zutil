@@ -63,18 +63,11 @@ func (p *Pos) ZUISetFromString(str string) {
 	*p, _ = PosFromString(str)
 }
 
-func (p Pos) Vertice(vertical bool) float64 {
+func (p Pos) Element(vertical bool) float64 {
 	if vertical {
 		return p.Y
 	}
 	return p.X
-}
-
-func (p *Pos) VerticeP(vertical bool) *float64 {
-	if vertical {
-		return &p.Y
-	}
-	return &p.X
 }
 
 func (p *Pos) SetOne(vertical bool, v float64) {
