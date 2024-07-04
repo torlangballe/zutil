@@ -74,19 +74,26 @@ func (s *Size) Set(w, h float64) {
 }
 
 // Vertice returns the non-vertical s.W or vertical s.H
-func (s Size) Vertice(vertical bool) float64 {
+func (s Size) Element(vertical bool) float64 {
 	if vertical {
 		return s.H
 	}
 	return s.W
 }
 
-// VerticeP returns a pointer to the non-vertical s.W or vertical s.H
-func (s *Size) VerticeP(vertical bool) *float64 {
+// // VerticeP returns a pointer to the non-vertical s.W or vertical s.H
+// func (s *Size) VerticeP(vertical bool) *float64 {
+// 	if vertical {
+// 		return &s.H
+// 	}
+// 	return &s.W
+// }
+
+func (s *Size) SetElement(vertical bool, n float64) {
 	if vertical {
-		return &s.H
+		s.H = n
 	}
-	return &s.W
+	s.W = n
 }
 
 // Max returns the greater of W and H
