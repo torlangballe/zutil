@@ -1268,14 +1268,13 @@ func SplitStringWithDoubleAsEscape(str, split string) []string {
 	const unlikely = "•°©°•"
 	replacer := strings.NewReplacer(split+split, unlikely)
 	deplacer := strings.NewReplacer(unlikely, split)
-	// fmt.Println("SplitStringWithDoubleAsEscape:", str, split)
+	if len(str) > 400 || len(split) > 200 {
+		fmt.Println("SplitStringWithDoubleAsEscape:", str, split)
+	}
 	str = replacer.Replace(str)
 	parts := strings.Split(str, split)
 	for i, part := range parts {
 		parts[i] = deplacer.Replace(part)
-	}
-	if count%1000 == 999 {
-		fmt.Println("SplitStringWithDoubleAsEscape long:", str)
 	}
 	return parts
 }
