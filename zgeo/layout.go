@@ -97,23 +97,58 @@ func getStackCells(debugName string, vertical bool, cells []LayoutCell) (scells 
 
 // calcPreAddedTotalWidth gets the total width of objects, spacing and margin
 func calcPreAddedTotalWidth(debugName string, scells []stackCell, spacing float64) (w, space, marg float64) {
+	// zlog.Info("calcPreAddedTotalWidth1:", debugName, spacing)
 	for i, sc := range scells {
 		if sc.ShowIfExtraSpace != 0 {
 			continue
 		}
 		w += sc.size.W
-		marg += sc.Margin.W
+		w += sc.Margin.W
 		if sc.Alignment&HorCenter != 0 {
-			marg += sc.Margin.W
+			w += sc.Margin.W
 		}
 		if i != 0 {
-			space += spacing
+			w += spacing
 		}
-		// zlog.Info("calcPreAddedTotalWidth:", sc.Name, sc.size, sc.Margin.W, spacing, w)
+		// zlog.Info("calcPreAddedTotalWidth:", debugName, sc.Name, sc.size, sc.Margin.W, w)
 	}
-	w += space + marg
-	// zlog.Info("calcPreAddedTotalWidth total:", w)
 	return
+}
+
+func calcMaxWidth(debugName string, scells []stackCell, spacing float64) float64 {
+	// if debugName == "On" {
+	// 	zlog.Info("calcMaxWidth cell1:", debugName)
+	// }
+	var w float64
+	for i, sc := range scells {
+		// if debugName == "$labelize.stack.Name Postfix" {
+		// zlog.Info("calcMaxWidth:", sc.Name, sc.MaxSize, sc.Alignment)
+		// }
+		if sc.MaxSize.W == 0 {
+			if sc.Alignment&HorExpand == 0 {
+				w += sc.size.W
+			} else {
+				w = 0
+				break
+			}
+		} else {
+			w += sc.MaxSize.W
+		}
+		w += sc.Margin.W
+		if sc.Alignment&HorCenter != 0 {
+			w += sc.Margin.W
+		}
+		if i != 0 {
+			w += spacing
+		}
+		// if debugName == "On" {
+		// 	zlog.Info("calcMaxWidth cell:", debugName, sc.Name, sc.MaxSize, sc.size, "s:", w, sc.Alignment, "marg:", sc.Margin.W)
+		// }
+	}
+	// if debugName == "On" {
+	// 	zlog.Info("calcMaxWidth returned:", debugName, w)
+	// }
+	return w
 }
 
 // getPossibleAdjustments returns how much each cell can shrink/expand, based on diff being + or -.
@@ -122,6 +157,7 @@ func getPossibleAdjustments(diff float64, scells []stackCell) []float64 {
 	adj := make([]float64, len(scells), len(scells))
 	for i, sc := range scells {
 		w := sc.size.W
+		// zlog.Info(i, "getPossibleAdjustments:", diff, sc.Name, sc.Alignment, w, sc.MaxSize.W)
 		if diff < 0 {
 			if sc.MinSize.W != 0 {
 				adj[i] = math.Min(0, sc.MinSize.W-w)
@@ -131,7 +167,10 @@ func getPossibleAdjustments(diff float64, scells []stackCell) []float64 {
 		}
 		if sc.Alignment&HorExpand != 0 {
 			if sc.MaxSize.W != 0 {
-				adj[i] = math.Max(0, sc.MaxSize.W-w)
+				adj[i] = math.Min(diff, math.Max(0, sc.MaxSize.W-w))
+				// if adj[i] > 3000 {
+				// zlog.Info(w, "ADJ!!:", diff, sc.Name, adj[i], sc.MaxSize.W)
+				// }
 			} else {
 				adj[i] = diff // we can take it all if needed
 			}
@@ -152,53 +191,54 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 	var changed bool
 	for i := 0; i < len(scells); i++ {
 		sc := scells[i]
+		// if debugName == "streamgrid" {
+		// 	zlog.Info(width, diff, "addLeftoverSpaceToWidths:", r, sc.Name, sc.size.W, sc.Margin.W, sc.MaxSize, sc.Alignment)
+		// }
 		if sc.ShowIfExtraSpace != 0 {
 			if sc.ShowIfExtraSpace <= diff {
-				// zlog.Info(i, "Add ShowIfExtraSpaces:", sc.Name, sc.ShowIfExtraSpace, diff)
 				scells[i].ShowIfExtraSpace = 0
 				changed = true
 			} else {
-				// zlog.Info(i, "Add ShowIfExtraSpaces Remove:", sc.Name, sc.ShowIfExtraSpace, diff)
 				zslice.RemoveAt(&scells, i)
 				i--
 			}
 		}
 	}
 	if changed {
-		// old := width
 		width, _, _ = calcPreAddedTotalWidth(debugName, scells, spacing) // space, marg
 		diff = r.Size.W - width
-		// zlog.Info("Added ShowIfExtraSpaces:", old, width, diff)
 	}
-
 	adjustableCount := 0.0
-	adj := getPossibleAdjustments(diff, scells)
+	adj := getPossibleAdjustments(diff, scells) // this gives us how much each cell might be able to be added to. Note this is more than diff, so after adjusting one, ALL adj must be subtracted by amount added.
 	for _, a := range adj {
 		if a != 0 {
 			adjustableCount++
 		}
 	}
-	// zlog.Info(adjustableCount, "addLeftoverSpaceToWidths:", debugName, r.Size.W, "diff:", diff, "spacing:", spacing, "w:", width)
-	// zlog.Info("Possible adj:", adj)
+	// if debugName == "streamgrid" {
+	// 	zlog.Info("addLeftoverSpaceToWidths2:", debugName, r.Size.W, width, diff, adj)
+	// }
 	ndiff := diff
-	//	viewsWidth := width - space - marg
 	for {
 		adjusted := false
 		for i, sc := range scells {
-			if adj[i] == 0 {
+			subtract := adj[i]
+			if subtract == 0 {
 				continue
 			}
 			w := math.Max(1, sc.size.W)
 			shouldAdjust := ndiff / adjustableCount
-			// zlog.Info("adj:", shouldAdjust, ndiff, sc.Name, adj[i])
-			//			if math.Abs(adj[i]) < math.Abs(shouldAdjust) {
-			amount := math.Min(adj[i], shouldAdjust)
+			// zlog.Info("adj:", sc.size, shouldAdjust, ndiff, sc.Name, subtract)
+			amount := math.Min(subtract, shouldAdjust)
 			if amount > 0 {
-				// zlog.Info("  addLeftoverSpaceToWidths adjust:", amount, sc.Name, adj[i], ndiff)
+				// zlog.Info("  addLeftoverSpaceToWidths adjust:", amount, sc.Name, subtract, ndiff)
 				adjusted = true
-				scells[i].size.W = w + adj[i]
-				ndiff -= adj[i]
-				adj[i] = 0
+				scells[i].size.W = w + subtract
+				for j := range adj {
+					adj[j] = max(adj[j]-subtract, 0)
+				}
+				ndiff -= subtract
+				//				adj[i] = 0
 			}
 		}
 		diff = ndiff
@@ -234,26 +274,23 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 	}
 	for i, sc := range scells {
 		if sc.Divider != 0 {
-			// zlog.Info("DIV0:", i, len(scells), sc.Divider, debugName, sc.Name)
 			div := sc.Divider
 			div2 := div
 			nsize := scells[i-1].size.W + div
 			if nsize < 20 {
 				div -= (nsize - 20)
 				div2 = 0
-				// zlog.Info("DIV1:", scells[i-1].Name, scells[i-1].size.W, scells[i+1].size.W, sc.Divider, div, "nsize2:", scells[i-1].size.W+div, scells[i+1].size.W-div2)
 			}
 			scells[i-1].size.W += div
 			scells[i+1].size.W -= div2
-			// zlog.Info("DIV2:", scells[i+1].Name, scells[i+1].size.W, scells[i+1].size.W, sc.Divider)
 			break
 		}
 	}
 }
 
-// layoutRectsInBoxes goes left to right, making a box of full hight and each scell's width.
-// it aligns the cell's original size within this with cells alignment.
-// any space not used by cells (see jump below), is added between left and center, and center and right.
+// layoutRectsInBoxes goes left to right, making a box of full hight and each scells' width.
+// It aligns the cell's original size within this with cells alignment.
+// Any space not used by cells, is added between left and center, and center and right.
 func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical bool, spacing float64, outRects []Rect) {
 	// zlog.Info("layoutRectsInBoxes1:", debugName)
 	// if !vertical {
@@ -305,7 +342,9 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 			a |= VertShrink
 		}
 		vr := box.AlignPro(sc.OriginalSize, a, sc.Margin, sc.MaxSize, sc.MinSize)
-		// zlog.Info("layoutRectsInBoxes:", box.Size, sc.OriginalSize, sc.Name, sc.Alignment, sc.MaxSize, vr)
+		// if debugName == "streamgrid" {
+		// 	zlog.Info(sc.size.W, sc.Margin.W, "layoutRectsInBoxes1:", r, sc.Name, box, sc.OriginalSize, sc.MaxSize, sc.MinSize, "vr:", vr)
+		// }
 		// zlog.Info("layout:", debugName, "rect:", r, sc.Name, "sc.size:", sc.size, sc.MinSize, "  align:", sc.Alignment, "box:", box, sc.OriginalSize, "=", vr)
 		x = box.Max().X + spacing // was vr.Max!!!
 		if vertical {
@@ -329,28 +368,30 @@ func LayoutCellsInStack(debugName string, rect Rect, vertical bool, spacing floa
 	outRects := make([]Rect, len(cells), len(cells))
 	fillFreeInOutRect(debugName, r, vertical, outRects, &scells)
 	addLeftoverSpaceToWidths(debugName, r, scells, vertical, spacing)
+
 	layoutRectsInBoxes(debugName, r, scells, vertical, spacing, outRects)
 	return outRects
 }
 
-func LayoutGetCellsStackedSize(debugName string, vertical bool, spacing float64, cells []LayoutCell) Size {
+func LayoutGetCellsStackedSize(debugName string, vertical bool, spacing float64, cells []LayoutCell) (s, max Size) {
 	scells := getStackCells(debugName, vertical, cells)
-	// for i, sc := range scells {
-	// 	zlog.Info("LayoutGetCellsStackedSize:", i, sc.Name, sc.OriginalSize, sc.size, sc.MinSize)
-	// }
 	w, _, _ := calcPreAddedTotalWidth(debugName, scells, spacing)
-	// for i, sc := range scells {
-	// 	zlog.Info(w, "LayoutGetCellsStackedSize preadded:", i, sc.Name, sc.OriginalSize, sc.size, sc.MinSize, sc.MaxSize)
-	// }
+	maxWidth := calcMaxWidth(debugName, scells, spacing)
+
 	h := 0.0
 	for _, sc := range scells {
 		zfloat.Maximize(&h, sc.size.H+sc.Margin.H*2)
 	}
-	s := Size{w, h}
+	s = SizeD(w, h)
+	max = SizeD(maxWidth, 0)
 	if vertical {
 		s = s.Swapped()
+		max = max.Swapped()
 	}
-	return s
+	// if debugName == "License.sub" {
+	// 	zlog.Info("LayoutGetCellsStackedSize done:", debugName, s, max)
+	// }
+	return s, max
 }
 
 // MaxCellsInLength returns how many cells with an cellSize and spacing with fit in inSize
