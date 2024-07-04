@@ -114,11 +114,11 @@ func (v *GraphView) Update(secsPerPixel int, windowMinutes int, ticks int, on bo
 	return false
 }
 
-func (v *GraphView) CalculatedSize(total zgeo.Size) zgeo.Size {
-	size := v.Job.PixelSize(&v.GrapherBase)
-	zfloat.Maximize(&size.W, v.MinWidth)
+func (v *GraphView) CalculatedSize(total zgeo.Size) (s, max zgeo.Size) {
+	s = v.Job.PixelSize(&v.GrapherBase)
+	zfloat.Maximize(&s.W, v.MinWidth)
 	// zlog.Info("CALC:", v.Hierarchy(), v.Job.WindowMinutes, v.SecondsPerPixel, size)
-	return size
+	return s, zgeo.Size{}
 }
 
 func (v *GraphView) forEachPart(got func(name string, r zgeo.Rect, first bool)) float64 {
