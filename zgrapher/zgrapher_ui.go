@@ -329,11 +329,11 @@ func (v *GraphView) ClearSelectedTime() {
 }
 
 func (v *GraphView) handleGraphUpDownMoved(pos zgeo.Pos, down zbool.BoolInd) bool {
-	if zkeyboard.ModifiersAtPress != 0 {
-		return false
-	}
 	switch down {
 	case zbool.True:
+		if zkeyboard.ModifiersAtPress != 0 {
+			return true
+		}
 		if !v.dragStartTime.IsZero() {
 			v.ClearSelectedTime()
 			if v.HandleSelectedTime != nil {
@@ -345,6 +345,9 @@ func (v *GraphView) handleGraphUpDownMoved(pos zgeo.Pos, down zbool.BoolInd) boo
 		v.dragStartTime = v.TimeForX(int(pos.X))
 		return true
 	case zbool.Unknown:
+		if zkeyboard.ModifiersAtPress != 0 {
+			return false
+		}
 		if !v.dragStartTime.IsZero() && math.Abs(pos.X-v.dragStartX) > 3 {
 			v.dragEndTime = v.TimeForX(int(pos.X))
 			v.Expose()
