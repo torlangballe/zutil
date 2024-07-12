@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -40,7 +41,7 @@ func RemoveAt(slice any, index int) error {
 	slicePtrValue := reflect.ValueOf(slice)
 	sliceValue := slicePtrValue.Elem()
 	if index < 0 || index >= sliceValue.Len() {
-		return zlog.Error("index out of range:", index)
+		return zlog.Error("index out of range:", index, zdebug.CallingStackString())
 	}
 	sliceValue.Set(reflect.AppendSlice(sliceValue.Slice(0, index), sliceValue.Slice(index+1, sliceValue.Len())))
 	return nil
@@ -154,6 +155,22 @@ func Union[T comparable](a, b []T) []T {
 		AddToSet(&n, ib)
 	}
 	return n
+}
+
+// Exclusion returns elements that are not BOTH in a and b
+func Exclusion[T comparable](a, b []T) []T { // todo: Done in slices already???
+	var x []T
+	n := slices.Clone(a)
+	for _, ib := range b {
+		i := slices.Index(n, ib)
+		if i == -1 {
+			x = append(x, ib)
+		} else {
+			RemoveAt(&n, i)
+			i--
+		}
+	}
+	return append(x, n...)
 }
 
 func SetsOverlap[S comparable](a, b []S) bool {
