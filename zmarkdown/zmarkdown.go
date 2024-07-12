@@ -290,11 +290,14 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 }
 
 func (m *MarkdownConverter) SetOSSpecificDocKeyValues(os zdevice.OSType) {
-	selectMod := zkeyboard.ModifierControl
+	metaMod := zkeyboard.ModifierControl
+	altName := "Alt"
 	if os == zdevice.MacOSType {
-		selectMod = zkeyboard.ModifierCommand
+		metaMod = zkeyboard.ModifierCommand
+		altName = "Option"
 	}
-	m.Variables["ZMultiSelectModifier"] = zkeyboard.GetModifiersString(selectMod)
+	m.Variables["ZMetaModifier"] = zkeyboard.GetModifiersString(metaMod)
+	m.Variables["ZAltModifier"] = altName
 }
 
 func outputValue(empty bool, k, v string) string {
