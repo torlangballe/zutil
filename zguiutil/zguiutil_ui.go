@@ -20,12 +20,13 @@ import (
 	"github.com/torlangballe/zutil/ztimer"
 )
 
-func NewBar(title string) *zcontainer.StackView {
+func NewBar(title string) (*zcontainer.StackView, *zlabel.Label) {
+	var label *zlabel.Label
 	bar := zcontainer.StackViewHor("bar")
 	bar.SetMargin(zgeo.RectFromXY2(6, 0, -6, -3))
 
 	if title != "" {
-		label := zlabel.New(title)
+		label = zlabel.New(title)
 		label.SetObjectName("title")
 		label.SetFont(zgeo.FontNew("Arial", 18, zgeo.FontStyleNormal))
 		label.SetColor(zstyle.DefaultFGColor())
@@ -45,7 +46,7 @@ func NewBar(title string) *zcontainer.StackView {
 		path := zgeo.PathNewRect(rect, zgeo.SizeNull)
 		canvas.DrawGradient(path, colors, rect.Min(), rect.BottomLeft(), nil)
 	})
-	return bar
+	return bar, label
 }
 
 func makeLabelizeLabel(text string, postfix string, talign zgeo.Alignment) *zlabel.Label {
