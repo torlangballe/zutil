@@ -47,6 +47,7 @@ const (
 	WindowsType OSType = "windows"
 	LinuxType   OSType = "linux"
 	WebType     OSType = "web"
+	NoneOSType  OSType = ""
 
 	ARM64Type            ArchitectureType = "arm64"
 	AMD64Type            ArchitectureType = "amd64"
