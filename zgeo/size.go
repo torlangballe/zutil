@@ -373,3 +373,8 @@ type FSize struct {
 	W float32 `json:"w"`
 	H float32 `json:"h"`
 }
+
+type BoolSize struct {
+	W bool `json:"w"`
+	H bool `json:"h"`
+}
