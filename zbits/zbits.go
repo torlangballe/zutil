@@ -6,6 +6,10 @@ import (
 	"github.com/torlangballe/zutil/zint"
 )
 
+func CopyBit(to *int64, from int64, mask int64) {
+	ChangeBit(to, mask, from&mask != 0)
+}
+
 func ChangeBit(all *int64, mask int64, on bool) {
 	if on {
 		*all |= mask
