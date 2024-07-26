@@ -28,7 +28,7 @@ type FontSetter interface {
 }
 
 // DefaultSize This is used
-var FontDefaultSize = 16.0
+var FontDefaultSize = 14.0
 var FontDefaultName = "Helvetica"
 
 func (s FontStyle) String() string {
