@@ -362,9 +362,7 @@ func LayoutCellsInStack(debugName string, rect Rect, vertical bool, spacing floa
 		r = r.Swapped() // we do everything as if it's a horizontal stack, swapping coordinates before and after if not
 	}
 	scells := getStackCells(debugName, vertical, cells)
-	// if debugName == "HeightsForMultipleTests" {
-	// 	zlog.Info("LayoutCellsInStack", rect, vertical, spacing, zlog.Full(scells))
-	// }
+
 	outRects := make([]Rect, len(cells), len(cells))
 	fillFreeInOutRect(debugName, r, vertical, outRects, &scells)
 	addLeftoverSpaceToWidths(debugName, r, scells, vertical, spacing)
