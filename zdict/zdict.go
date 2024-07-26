@@ -83,6 +83,14 @@ func (i *Items) Empty() {
 	*i = Items{}
 }
 
+func (d Dict) GetItems() Items {
+	var items Items
+	for k, v := range d {
+		items = append(items, Item{Name: k, Value: v})
+	}
+	return items
+}
+
 func (d Dict) Join(equal, sep string) string {
 	str := ""
 	for k, v := range d {
@@ -160,6 +168,12 @@ func (d Dict) AsShallowMap() map[string]any {
 		m[k] = v
 	}
 	return m
+}
+
+func (d *Dict) MergeIn(in Dict) {
+	for k, v := range in {
+		(*d)[k] = v
+	}
 }
 
 func FromShallowMap(m map[string]any) Dict {
