@@ -82,7 +82,16 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 	stack = zcontainer.StackViewHor("$labelize.stack." + slabel) // give it special name so not easy to mis-search for in recursive search
 	stack.SetSpacing(30)
 	stack.SetMargin(zgeo.RectFromXY2(0, 0, -3, 0))
-	cell := stack.Add(label, zgeo.CenterLeft)
+	a := zgeo.VertCenter
+	if alignment&zgeo.Vertical != 0 {
+		a = (a & ^zgeo.Vertical) | (alignment & zgeo.Vertical)
+	}
+	if a&zgeo.Horizontal == 0 {
+		a |= zgeo.Left
+	}
+	// zlog.Info("zgui.Labelzie:", view.Native().Hierarchy(), a, alignment)
+
+	cell := stack.Add(label, a)
 	if minLabelWidth != 0 {
 		cell.MinSize.W = minLabelWidth
 	}
