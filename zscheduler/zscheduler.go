@@ -16,21 +16,22 @@ import (
 )
 
 type Setup[I comparable] struct {
-	ExecutorAliveDuration                time.Duration                                     // ExecutorAliveDuration is how often an executor needs to say it's alive to be considered operatable. 0 means always alive.
-	SimultaneousStarts                   int                                               // SimultaneousStarts is how many jobs can start while anotherone is starting and hasn't reached rnuning state yet. See also MinDurationBetweenSimultaneousStarts.
-	MinDurationBetweenSimultaneousStarts time.Duration                                     // MinDurationBetweenSimultaneousStarts is how long to wait to do next start if SimultaneousStarts > 1.
-	LoadBalanceIfCostDifference          float64                                           // If LoadBalanceIfCostDifference > 0, once all jobs are running, switch job to an executor with more capacity left if difference > this.
-	KeepJobsBeyondAtEndUntilEnoughSlack  time.Duration                                     // If KeepJobsBeyondAtEndUntilEnoughSlack > 0, a job isn't stopped at Duration end if there's other jobs not in run state yet, yet are stopped if they go beyond this duration extra.
-	SlowStartJobFuncTimeout              time.Duration                                     // SlowStartJobFuncTimeout is how long starting a job with StartJobOnExecutorFunc can go until timeout.
-	SlowStopJobFuncTimeout               time.Duration                                     // SlowStopJobFuncTimeout is like SlowStartJobFuncTimeout/StopJobOnExecutorFunc but for stopping.
-	TotalMaxJobCount                     int                                               // The scheduler wont start another job if active jobs >= TotalMaxJobCount.
-	JobIsRunningOnSuccessfullStart       bool                                              // Set JobIsRunningOnSuccessfullStart to set a job as running once its start function completes successfully. Otherwise use the JobIsRunningCh channel.
-	ChangingJobRestartsIt                bool                                              // If ChangingJobRestartsIt is set, jobs are restarted when changed with ChangeExecutorCh.
-	GracePeriodForJobsOnExecutorCh       time.Duration                                     // GracePeriodForJobsOnExecutorCh is amount of slack from start to not stop jobs not reported in executor yet.
-	StartJobOnExecutorFunc               func(run Run[I], ctx context.Context) error       `zui:"-"` // StartJobOnExecutorFunc is called to start a job. It is done on a goroutine and is assumed to take a while or time out.
-	StopJobOnExecutorFunc                func(run Run[I], ctx context.Context) error       `zui:"-"` // Like StartJobOnExecutorFunc but for stopping.
-	HandleSituationFastFunc              func(run Run[I], s SituationType, details string) `zui:"-"` // This function is for handling start/stop/errors and more. Must very quickly do something or spawn a go routine
-	StopJobIfSinceMilestoneLessThan      time.Duration                                     // Only stop job if StopJobIfSinceMilestoneLessThan != 0, and time since run.MilestoneAt is less than it, up to KeepJobsBeyondAtEndUntilEnoughSlack (which also must be set)
+	ExecutorAliveDuration                 time.Duration                                     // ExecutorAliveDuration is how often an executor needs to say it's alive to be considered operatable. 0 means always alive.
+	SimultaneousStarts                    int                                               // SimultaneousStarts is how many jobs can start while anotherone is starting and hasn't reached rnuning state yet. See also MinDurationBetweenSimultaneousStarts.
+	MinDurationBetweenSimultaneousStarts  time.Duration                                     // MinDurationBetweenSimultaneousStarts is how long to wait to do next start if SimultaneousStarts > 1.
+	LoadBalanceIfCostDifference           float64                                           // If LoadBalanceIfCostDifference > 0, once all jobs are running, switch job to an executor with more capacity left if difference > this.
+	KeepJobsBeyondAtEndUntilEnoughSlack   time.Duration                                     // If KeepJobsBeyondAtEndUntilEnoughSlack > 0, a job isn't stopped at Duration end if there's other jobs not in run state yet, yet are stopped if they go beyond this duration extra.
+	SlowStartJobFuncTimeout               time.Duration                                     // SlowStartJobFuncTimeout is how long starting a job with StartJobOnExecutorFunc can go until timeout.
+	SlowStopJobFuncTimeout                time.Duration                                     // SlowStopJobFuncTimeout is like SlowStartJobFuncTimeout/StopJobOnExecutorFunc but for stopping.
+	TotalMaxJobCount                      int                                               // The scheduler wont start another job if active jobs >= TotalMaxJobCount.
+	JobIsRunningOnSuccessfullStart        bool                                              // Set JobIsRunningOnSuccessfullStart to set a job as running once its start function completes successfully. Otherwise use the JobIsRunningCh channel.
+	ChangingJobRestartsIt                 bool                                              // If ChangingJobRestartsIt is set, jobs are restarted when changed with ChangeExecutorCh.
+	GracePeriodForJobsOnExecutorCh        time.Duration                                     // GracePeriodForJobsOnExecutorCh is amount of slack from start to not stop jobs not reported in executor yet.
+	StartJobOnExecutorFunc                func(run Run[I], ctx context.Context) error       `zui:"-"` // StartJobOnExecutorFunc is called to start a job. It is done on a goroutine and is assumed to take a while or time out.
+	StopJobOnExecutorFunc                 func(run Run[I], ctx context.Context) error       `zui:"-"` // Like StartJobOnExecutorFunc but for stopping.
+	HandleSituationFastFunc               func(run Run[I], s SituationType, details string) `zui:"-"` // This function is for handling start/stop/errors and more. Must very quickly do something or spawn a go routine
+	StopJobIfSinceMilestoneLessThan       time.Duration                                     // Only stop job if StopJobIfSinceMilestoneLessThan != 0, and time since run.MilestoneAt is less than it, up to KeepJobsBeyondAtEndUntilEnoughSlack (which also must be set)
+	MinimumTimeBeforeRestartingErroredJob time.Duration
 	// MinimumTimeBetweenSpecificJobStarts  time.Duration
 }
 
@@ -596,6 +597,9 @@ func (s *Scheduler[I]) startAndStopRuns() {
 		capacities := s.calculateLoadOfUsableExecutors()
 		hasUnrun := s.hasUnrunJobs()
 		for i, r := range s.runs {
+			if time.Since(r.ErrorAt) < s.setup.MinimumTimeBeforeRestartingErroredJob { // if r.ErrorAt or MinimumTimeBeforeRestartingErroredJob is zero, won't continue
+				continue
+			}
 			e, _ := s.findExecutor(r.ExecutorID)
 			// if s.stopped {
 			// zlog.Warn(i, "FoundExe:", r.ExecutorID, e != nil)
