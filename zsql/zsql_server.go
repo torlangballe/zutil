@@ -54,10 +54,11 @@ func NewSQLite(filePath string) (*sql.DB, error) {
 	ext = ".sqlite3"
 	file := path.Join(dir, sub+ext)
 
-	db, err := sql.Open("sqlite", file)
+	db, err := sql.Open("sqlite", file+"?cache=shared")
 	if err != nil {
-		return nil, zlog.Error(err, "open file", file)
+		return nil, zlog.Error("open file", file, err)
 	}
+	db.SetMaxOpenConns(1)
 	return db, nil
 }
 
@@ -213,7 +214,7 @@ type FieldInfo struct {
 func FieldInfosFromStruct(istruct any, skip []string, btype BaseType) (infos []FieldInfo) {
 	items, err := zreflect.ItterateStruct(istruct, zreflect.Options{UnnestAnonymous: true})
 	if err != nil {
-		zlog.Fatal(err, "get items")
+		zlog.Fatal("get items", err)
 	}
 	for i, item := range items.Children {
 		// zlog.Info("FieldInfosFromStruct:", i, item)
@@ -385,7 +386,7 @@ func InsertRows[S any](table string, rows []S, skipColumns []string, userToken s
 		dbRow := Main.DB.QueryRow(query, vals...)
 		err := dbRow.Scan(&lastID)
 		if err != nil {
-			return ids, zlog.Error(err, query, vals)
+			return ids, zlog.Error(query, vals, err)
 		}
 		ids = append(ids, lastID)
 	}
@@ -470,7 +471,7 @@ func SelectSlicesOfAny[S any](base *Base, resultSlice *[]S, q QueryBase) error {
 	// zlog.Info("SelectSlicesOfAny:", query)
 	rows, err := base.DB.Query(query)
 	if err != nil {
-		return zlog.Error(err, "select", query)
+		return zlog.Error("select", query, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -478,7 +479,7 @@ func SelectSlicesOfAny[S any](base *Base, resultSlice *[]S, q QueryBase) error {
 		pointers := FieldPointersFromStruct(&s, q.SkipColumns)
 		err = rows.Scan(pointers...)
 		if err != nil {
-			return zlog.Error(err, "select", query)
+			return zlog.Error("select", query, err)
 		}
 		*resultSlice = append(*resultSlice, s)
 	}
@@ -489,7 +490,7 @@ func SelectColumnAsSliceOfAny[A any](base *Base, query string, result *[]A) erro
 	query = CustomizeQuery(query, base.Type)
 	rows, err := base.DB.Query(query)
 	if err != nil {
-		return zlog.Error(err, "select", query)
+		return zlog.Error("select", query, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
