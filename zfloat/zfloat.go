@@ -304,3 +304,8 @@ func Sum(all []float64) float64 {
 func Average(f []float64) float64 {
 	return Sum(f) / float64(len(f))
 }
+
+func KeepFractionDigits(f float64, digits int) float64 {
+	m := math.Pow10(digits)
+	return math.Trunc(f*m) / m
+}
