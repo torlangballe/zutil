@@ -320,7 +320,7 @@ func HandleResetPassword(args map[string]string) {
 		title := fmt.Sprint("Set new password for user ", email)
 		params := zfields.FieldViewParametersDefault()
 		params.Field.Flags |= zfields.FlagIsLabelize
-		zfields.PresentOKCancelStruct(&resetDialog, params, title, zpresent.AttributesNew(), func(ok bool) bool {
+		zfields.EditStruct(&resetDialog, params, title, zpresent.AttributesNew(), func(ok bool) bool {
 			if !ok {
 				return true
 			}
