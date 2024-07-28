@@ -46,11 +46,11 @@ func PosFromString(str string) (Pos, error) {
 	}
 	w, err := strconv.ParseFloat(sx, 64)
 	if err != nil {
-		return Pos{}, zlog.Error(err, zlog.StackAdjust(1), "parse x", sx)
+		return Pos{}, zlog.Error(zlog.StackAdjust(1), "parse x", sx, err)
 	}
 	h, err := strconv.ParseFloat(sx, 64)
 	if err != nil {
-		return Pos{}, zlog.Error(err, zlog.StackAdjust(1), "parse y", sy)
+		return Pos{}, zlog.Error(zlog.StackAdjust(1), "parse y", sy, err)
 	}
 	return PosD(w, h), nil
 }

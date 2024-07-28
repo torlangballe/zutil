@@ -95,7 +95,7 @@ func (n *NetStats) setupNetInfo(f string) error {
 		}
 	}
 	if err != nil {
-		return zlog.Error(err)
+		return zlog.Error("interface", err)
 	}
 	for _, it := range ifs {
 		addr, _ := it.Addrs()

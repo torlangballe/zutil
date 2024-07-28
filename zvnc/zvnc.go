@@ -25,7 +25,7 @@ func (c *Client) Close() {
 func Connect(address, password string, updateSecs float64, got func(i image.Image, err error)) (*Client, error) {
 	nc, err := net.DialTimeout("tcp", address, 25*time.Second)
 	if err != nil || nc == nil {
-		return nil, zlog.Error(err, "dial")
+		return nil, zlog.Error("dial", err)
 	}
 	// Negotiate connection with the server.
 	cchServer := make(chan vnc.ServerMessage)
@@ -66,7 +66,7 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 	var getScreen bool
 	cc, err = vnc.Connect(context.Background(), nc, ccfg)
 	if err != nil || cc == nil {
-		return nil, zlog.Error(err, "connect")
+		return nil, zlog.Error("connect", err)
 	}
 	go func() { // because vnc2video.Connect puts error on error channel during setup, we need to do for/select to pop it before calling:
 		// defer zlog.LogRecover()
@@ -84,7 +84,7 @@ func Connect(address, password string, updateSecs float64, got func(i image.Imag
 				return
 
 			case err := <-errorCh:
-				zlog.Error(err, "VNC error received on channel")
+				zlog.Error("VNC error received on channel", err)
 				if got != nil {
 					got(nil, err)
 				}

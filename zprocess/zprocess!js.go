@@ -58,7 +58,7 @@ func RunCommand(command string, timeoutSecs float64, args ...any) (string, error
 	// 	for _, a := range args {
 	// 		out += "'" + a + "' "
 	// 	}
-	// 	zlog.Error(err, "Run Command err", "'"+command+"'", out, str)
+	// 	zlog.Error("Run Command err", "'"+command+"'", out, str, err)
 	// }
 	if cancel != nil {
 		cancel()
@@ -101,18 +101,18 @@ func MakeCommand(command string, ctx context.Context, start bool, inPipe *io.Wri
 	}
 	outPipe, err = cmd.StdoutPipe()
 	if err != nil {
-		err = zlog.Error(err, "connect stdout pipe")
+		err = zlog.Error("connect stdout pipe", err)
 		return
 	}
 	errPipe, err = cmd.StderrPipe()
 	if err != nil {
-		err = zlog.Error(err, "connect stderr pipe")
+		err = zlog.Error("connect stderr pipe", err)
 		return
 	}
 	if inPipe != nil {
 		*inPipe, err = cmd.StdinPipe()
 		if err != nil {
-			err = zlog.Error(err, "connect stdin pipe")
+			err = zlog.Error("connect stdin pipe", err)
 			return
 		}
 	}
@@ -120,7 +120,7 @@ func MakeCommand(command string, ctx context.Context, start bool, inPipe *io.Wri
 		err = cmd.Start()
 	}
 	if err != nil {
-		err = zlog.Error(err, "run")
+		err = zlog.Error("run", err)
 		return
 	}
 	// zlog.Info("RunApp:", path, cmd.Process.Pid, args)
@@ -169,12 +169,12 @@ func GetPIDsForAppName(app string, excludeZombies bool) []int64 {
 			if excludeZombies {
 				proc, err := process.NewProcess(int32(p.Pid())) // Specify process id of parent
 				if err != nil {
-					zlog.Error(err, "new proc")
+					zlog.Error("new proc", err)
 					continue
 				}
 				statuses, err := proc.Status()
 				if err != nil {
-					zlog.Error(err, "get status")
+					zlog.Error("get status", err)
 					continue
 				}
 				if zstr.StringsContain(statuses, "Z") {
@@ -211,7 +211,7 @@ func terminateProcess(p *process.Process, force, children bool) (oerr error) {
 	}
 	// zlog.Info("TerminateAppsByName2", force, err)
 	if err != nil {
-		oerr = zlog.Wrap(err, "kill main process")
+		oerr = zlog.NewError("kill main process", err)
 	}
 	return
 }
@@ -230,10 +230,10 @@ func TerminateAppsByName(name string, force, children bool) (oerr error) {
 		p, err := process.NewProcess(int32(pid)) // Specify process id of parent
 		// zlog.Info("TerminateAppsByName2:", pid, p.Pid, name, err)
 		if err != nil {
-			oerr = zlog.Wrap(err, "new child process", pid)
+			oerr = zlog.NewError("new child process", pid, err)
 			continue
 			// it might try and kill child process after parent, and get error here
-			//			return zlog.Error(err, "new process", pid)
+			//			return zlog.Error("new process", pid, err)
 		}
 		err = terminateProcess(p, force, children)
 		if err != nil {
@@ -247,11 +247,11 @@ func TerminateAppsByName(name string, force, children bool) (oerr error) {
 func GetRunningProcessUserName() (string, error) {
 	proc, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {
-		return "", zlog.Error(err, "make process")
+		return "", zlog.Error("make process", err)
 	}
 	name, err := proc.Username()
 	if err != nil {
-		return "", zlog.Error(err, "get name")
+		return "", zlog.Error("get name", err)
 	}
 	return name, nil
 }

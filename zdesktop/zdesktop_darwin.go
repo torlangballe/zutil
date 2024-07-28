@@ -115,7 +115,7 @@ func OpenURLInBrowser(surl string, btype zdevice.BrowserType, args ...any) error
 		zlog.Info("OpenURLInBrowser:", str)
 	}
 	if err != nil {
-		return zlog.Error(err, "OpenURLInBrowser")
+		return zlog.Error("OpenURLInBrowser", err)
 	}
 	return err
 }
@@ -125,7 +125,7 @@ func RunURLInBrowser(surl string, btype zdevice.BrowserType, args ...any) (*exec
 	name := GetAppNameOfBrowser(btype, true)
 	cmd, _, _, _, err := zprocess.RunApp(name, nil, args...)
 	if err != nil {
-		return nil, zlog.Error(err, "RunURLInBrowser")
+		return nil, zlog.Error("RunURLInBrowser", err)
 	}
 	return cmd, err
 }
@@ -184,11 +184,11 @@ func CloseOldWindowWithSamePIDAndRect(pid int64, r zgeo.Rect) {
 func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect) (img image.Image, pid int64, err error) {
 	winID, _, _, pid, err := GetIDScaleAndRectForWindowTitle(title, app, oldPID)
 	if err != nil {
-		zlog.Error(err, "get id scale with old pid:", oldPID)
+		zlog.Error("get id scale with old pid:", oldPID, err)
 		winID, _, _, pid, err = GetIDScaleAndRectForWindowTitle(title, app, 0)
 	}
 	if err != nil {
-		return nil, 0, zlog.Error(err, "get id scale")
+		return nil, 0, zlog.Error("get id scale", err)
 	}
 	img, err = GetWindowImage(winID, insetRect)
 	return img, pid, err
@@ -241,7 +241,7 @@ func AddExecutableToLoginItems(exePath, name string, hidden bool) error {
 	command = fmt.Sprintf(command, exePath, name, hidden)
 	str, err := zprocess.RunAppleScript(command, 10)
 	if err != nil {
-		return zlog.Error(err, "🟨error adding executable", exePath, "to login items:", str)
+		return zlog.Error("🟨error adding executable", exePath, "to login items:", str, err)
 	}
 	return nil
 }

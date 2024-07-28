@@ -47,7 +47,7 @@ func InitNetworkBandwidth() {
 	ztimer.RepeatForever(sampleSecs, func() {
 		s, err := NetworkTraffic()
 		if err != nil {
-			zlog.Error(err)
+			zlog.Error("network", err)
 			return
 		}
 		if sampled {
@@ -121,7 +121,7 @@ func statToNetIO(info net.IOCountersStat) NetIO {
 func HardwareTypeAndVersion() (string, float32) {
 	str, err := zprocess.RunCommand("sysctl", 0, "-n", "hw.model")
 	if err != nil {
-		zlog.Error(err)
+		zlog.Error("run", err)
 		return "", 0
 	}
 	i := strings.IndexAny(str, zstr.Digits)
@@ -138,7 +138,7 @@ func Model() string {
 	if runtime.GOOS == "darwin" {
 		model, err := zprocess.RunCommand("sysctl", 0, "-n", "machdep.cpu.brand_string") // machdep.cpu.model
 		if err != nil {
-			zlog.Fatal(err, "get model")
+			zlog.Fatal("get model", err)
 			return ""
 		}
 		return model
@@ -149,7 +149,7 @@ func Model() string {
 func OSVersion() string {
 	gi, err := goInfo.GetInfo()
 	if err != nil {
-		zlog.Error(err, "get info")
+		zlog.Error("get info", err)
 		return ""
 	}
 	return gi.Core

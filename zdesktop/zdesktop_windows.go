@@ -41,7 +41,7 @@ func OpenURLInBrowser(surl string, btype zdevice.BrowserType, args ...string) er
 	args = append([]string{"/c", "start", name, surl}, args...)
 	_, err := zprocess.RunCommand("cmd", 4, args...)
 	if err != nil {
-		return zlog.Error(err, "OpenURLInBrowser")
+		return zlog.Error("OpenURLInBrowser", err)
 	}
 	return err
 }
@@ -86,7 +86,7 @@ func getWindowHandleFromTitle(title, app string) w32.HWND {
 	r1, _, e1 := syscall.Syscall(procEnumWindows.Addr(), 2, winCB, 0, 0)
 	if r1 != 0 {
 		if e1 != 0 {
-			zlog.Error(error(e1), "enum windows")
+			zlog.Error("enum windows", error(e1))
 			return 0
 		}
 	}
@@ -112,7 +112,7 @@ func GetImageForWindowTitle(title, app string, crop zgeo.Rect) (image.Image, err
 	// screenLock.Unlock()
 	// zlog.Info("IMAGE:", bounds, err)
 	// if err != nil {
-	// 	return nil, zlog.Error(err, "capture rect")
+	// 	return nil, zlog.Error("capture rect", err)
 	// }
 	// return nimage, nil
 	return nil

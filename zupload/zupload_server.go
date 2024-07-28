@@ -64,7 +64,7 @@ func CopySPC(url, password string, consume func(reader io.ReadCloser) error) err
 	client := scp.NewClientWithTimeout(address, &config, time.Minute*time.Duration(UploadTimeoutMinutes)*10)
 	err = client.Connect()
 	if err != nil {
-		return zlog.Error(err, "connect", address, password)
+		return zlog.Error("connect", address, password, err)
 	}
 	reader, writer := io.Pipe()
 	var wg sync.WaitGroup
@@ -77,7 +77,7 @@ func CopySPC(url, password string, consume func(reader io.ReadCloser) error) err
 	writer.Close()
 	wg.Wait()
 	if copyErr != nil {
-		return zlog.Error(copyErr, "copy", address, password)
+		return zlog.Error("copy", address, password, copyErr)
 	}
 	return err
 }
@@ -96,7 +96,7 @@ func copyURL(up UploadPayload) (result zdict.Dict, err error) {
 	params.Method = http.MethodGet
 	resp, err := zhttp.GetResponse(up.Text, params)
 	if err != nil {
-		return nil, zlog.Error(err, "get-response")
+		return nil, zlog.Error("get-response", err)
 	}
 	return callHandler(up, resp.Body)
 }
@@ -143,11 +143,11 @@ func CopyToTempFile(name string, reader io.ReadCloser) (zdict.Dict, error) {
 	defer reader.Close()
 	file, path, err := zfile.CreateTempFile(name)
 	if err != nil {
-		return nil, zlog.Error(err, name, "create file")
+		return nil, zlog.Error(name, "create file", err)
 	}
 	_, err = io.Copy(file, reader)
 	if err != nil {
-		return nil, zlog.Error(err, "copy", path)
+		return nil, zlog.Error("copy", path, err)
 	}
 	dict := zdict.Dict{UploadedTempFilePathKey: path}
 	return dict, nil

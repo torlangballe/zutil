@@ -73,7 +73,7 @@ func (UsersCalls) GetUserForToken(token string, user *User) error {
 	u, err := MainServer.GetUserForToken(token)
 	// zlog.Info("GetUserForToken:", err, token, zlog.CallingStackString())
 	if err != nil {
-		zlog.Error(err, "GetUserForToken", token)
+		zlog.Error("GetUserForToken", token, err)
 		return err
 	}
 	*user = u
@@ -115,7 +115,7 @@ func (UsersCalls) Authenticate(ci *zrpc.ClientInfo, a Authentication, ui *Client
 		zlog.Info("Login:", ui, err)
 	}
 	if err != nil {
-		zlog.Error(err, "authenticate", a, a.IsRegister)
+		zlog.Error("authenticate", a, a.IsRegister, err)
 		return err
 	}
 	return nil
@@ -138,7 +138,7 @@ func (UsersCalls) SendForgotPasswordPasswordMail(email string, r *zrpc.Unused) e
 	// err := m.SendWithSMTP(ForgotPassword.MailAuth)
 	err := m.Send(ForgotPassword.MailAuth)
 	if err == nil {
-		zlog.Error(err, "forgot password send error:", m, ForgotPassword.MailAuth)
+		zlog.Error("forgot password send error:", m, ForgotPassword.MailAuth, err)
 		resetCache.Put(random, email)
 	}
 	return err
@@ -156,7 +156,7 @@ func (UsersCalls) SetNewPasswordFromForgotPassword(ci *zrpc.ClientInfo, reset Re
 	}
 	u, err := MainServer.GetUserForUserName(email)
 	if err != nil {
-		zlog.Error(err, "no user")
+		zlog.Error("no user", err)
 		return zlog.NewError("No user for that reset link")
 	}
 	resetCache.Remove(reset.ResetToken)
@@ -205,14 +205,14 @@ func (UsersCalls) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change 
 	}
 	callingUser, err := MainServer.GetUserForToken(ci.Token)
 	if err != nil {
-		return zlog.Error(err, "getting admin user")
+		return zlog.Error("getting admin user", err)
 	}
 	if !callingUser.IsAdmin() {
-		return zlog.Error(err, "change user name / permissions: must be done my admin user")
+		return zlog.Error("change user name / permissions: must be done my admin user", err)
 	}
 	changeUser, err := MainServer.GetUserForID(change.UserID)
 	if err != nil {
-		return zlog.Error(err, "getting change user")
+		return zlog.Error("getting change user", err)
 	}
 	err = MainServer.ChangeUsersUserNameAndPermissions(ci, change)
 	if err != nil {
@@ -221,7 +221,7 @@ func (UsersCalls) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change 
 	if !zstr.SlicesHaveSameValues(change.Permissions, changeUser.Permissions) {
 		err = MainServer.UnauthenticateUser(change.UserID)
 		if err != nil {
-			zlog.Error(err, "UnauthenticateUser")
+			zlog.Error("UnauthenticateUser", err)
 		}
 	}
 	return nil
@@ -234,14 +234,14 @@ func (UsersCalls) UnauthenticateUser(ci *zrpc.ClientInfo, userID int64) error {
 	zlog.Info("US.UnauthenticateUser")
 	callingUser, err := MainServer.GetUserForToken(ci.Token)
 	if err != nil {
-		return zlog.Error(err, "getting admin user")
+		return zlog.Error("getting admin user", err)
 	}
 	if !callingUser.IsAdmin() {
-		return zlog.Error(err, "unauthenticating other user: must be done my admin user")
+		return zlog.Error("unauthenticating other user: must be done my admin user", err)
 	}
 	err = MainServer.UnauthenticateUser(userID)
 	if err != nil {
-		zlog.Error(err, "UnauthenticateUser")
+		zlog.Error("UnauthenticateUser", err)
 	}
 	return nil
 }

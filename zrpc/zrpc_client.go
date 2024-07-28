@@ -119,7 +119,7 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 	_, err = zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
 		limitID := zlog.Limit("zrpc.Post.Err." + method)
-		return nil, zlog.Error(err, limitID, "post", surl)
+		return nil, zlog.Error(limitID, "post", surl, err)
 	}
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also
 		zlog.Info("zprc AuthenticationInvalid:", method, c.AuthToken, c.KeepTokenOnAuthenticationInvalid)
@@ -140,13 +140,13 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 	if !rp.AuthenticationInvalid && result != nil {
 		err = json.Unmarshal(rp.Result, result)
 		if err != nil {
-			zlog.Error(err, c.AuthToken, "unmarshal")
+			zlog.Error(c.AuthToken, "unmarshal", err)
 			return nil, TransportError(err.Error())
 		}
 		// zlog.Info("zrpc.requestHTTPDataFields:", cp.Method, reflect.TypeOf(result))
 		err = requestHTTPDataFields(result, c)
 		if err != nil {
-			zlog.Error(err, "requestHTTPDataFields")
+			zlog.Error("requestHTTPDataFields", err)
 			return nil, TransportError(err.Error())
 		}
 	}
@@ -175,7 +175,7 @@ func (c *Client) PollForUpdatedResources(got func(resID string)) {
 		var resIDs []string
 		err := c.Call("ZRPCResourceCalls.GetUpdatedResourcesAndSetSent", nil, &resIDs)
 		if err != nil {
-			zlog.Error(err, "updateResources err:")
+			zlog.Error("updateResources err:", err)
 			return
 		}
 		// zlog.Info("PollForUpdatedResources", resIDs, registeredResources)

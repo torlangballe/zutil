@@ -126,11 +126,11 @@ func CreateSSLCertificateToFilePair(owner Organization, years int, certPath, pri
 
 	err = zfile.WriteBytesToFile(certPEMBytes, certPath)
 	if err != nil {
-		return time.Time{}, zlog.Error(err, "write cert", certPath)
+		return time.Time{}, zlog.Error("write cert", certPath, err)
 	}
 	err = zfile.WriteBytesToFile(certPrivKeyPEMBytes, privateKeyPath)
 	if err != nil {
-		return time.Time{}, zlog.Error(err, "write priv key", privateKeyPath)
+		return time.Time{}, zlog.Error("write priv key", privateKeyPath, err)
 	}
 	return expires, nil
 }

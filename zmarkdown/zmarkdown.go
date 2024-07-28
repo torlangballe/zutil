@@ -79,7 +79,7 @@ func ConvertFromHTMLToPDF(w io.Writer, surl string) error {
 	defer cancel()
 	err := chromedp.Run(ctx, pdfGrabber(w, surl))
 	if err != nil {
-		return zlog.Error(err)
+		return zlog.Error("run", err)
 	}
 	return nil
 }
@@ -87,7 +87,7 @@ func ConvertFromHTMLToPDF(w io.Writer, surl string) error {
 func (m *MarkdownConverter) ConvertToHTML(w io.Writer, name string) error {
 	fullmd, err := m.Flatten()
 	if err != nil {
-		return zlog.Error(err, "building doc", name)
+		return zlog.Error("building doc", name, err)
 	}
 	return m.ConvertToHTMLFromString(w, fullmd, name)
 }
@@ -174,7 +174,7 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 		spath := zstr.Concat("/", m.Dir, chapter)
 		str, err := zfile.ReadStringFromFileInFS(m.FileSystem, spath)
 		if err != nil {
-			zlog.Error(err, spath)
+			zlog.Error(spath, err)
 			continue
 		}
 		var hasHeader bool
@@ -216,7 +216,7 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 		spath := zstr.Concat("/", m.Dir, chapter)
 		str, err := zfile.ReadStringFromFileInFS(m.FileSystem, spath)
 		if err != nil {
-			zlog.Error(err, spath)
+			zlog.Error(spath, err)
 			continue
 		}
 		zstr.RangeStringLines(str, false, func(s string) bool {
@@ -264,7 +264,7 @@ func (m *MarkdownConverter) Flatten() (string, error) {
 			return true
 		})
 		if err != nil {
-			return "", zlog.Error(err, "read lines from base")
+			return "", zlog.Error("read lines from base", err)
 		}
 	}
 	out += footers
@@ -284,7 +284,7 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 	zrest.AddCORSHeaders(w, req)
 	err = m.ConvertToHTMLFromString(w, input, stub)
 	if err != nil {
-		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, err, "convert")
+		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "convert", err)
 		return
 	}
 }

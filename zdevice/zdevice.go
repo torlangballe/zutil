@@ -114,7 +114,7 @@ func CPUUsage(maxCores int) (out []float64) {
 	percpu := true
 	vals, err := cpu.Percent(0, percpu)
 	if err != nil {
-		zlog.Error(err)
+		zlog.Error("cpu.percent", err)
 		return
 	}
 
@@ -165,7 +165,7 @@ func MACAddress() ([]byte, error) {
 func MemoryAvailableUsedAndTotal() (available int64, used int64, total int64) {
 	vm, err := mem.VirtualMemory()
 	if err != nil {
-		zlog.Fatal(err, "get vm")
+		zlog.Fatal("get vm", err)
 	}
 	return int64(vm.Available), int64(vm.Used), int64(vm.Total)
 }

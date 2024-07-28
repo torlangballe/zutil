@@ -172,7 +172,7 @@ func (i *Installer) InstallProgramWithLauncher(args []string, copyBinary bool) e
 	err = zfile.WriteStringToFile(launchConfig, launcherPath)
 	zlog.Info("install launcher", launcherPath, zfile.Exists(launcherPath))
 	if err != nil {
-		return zlog.Error(err, "install launcher", launcherPath, zfile.Exists(launcherPath))
+		return zlog.Error("install launcher", launcherPath, zfile.Exists(launcherPath), err)
 	}
 	// if OnLinux() && userName != "root" && userName != "" {
 	// 	zfile.SetOwnerAndMainGroup(launcherPath, userName)

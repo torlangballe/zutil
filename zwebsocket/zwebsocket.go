@@ -60,8 +60,8 @@ func handleSocketRequest(w http.ResponseWriter, req *http.Request, ping bool, se
 	c := &connection{}
 	conn, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
-		zlog.Error(err, "upgrade")
-		got(server, "", nil, false, zlog.Error(err, "upgrade"))
+		zlog.Error("upgrade", err)
+		got(server, "", nil, false, zlog.Error("upgrade", err))
 		return
 	}
 	// fmt.Println("ws.handle2:", req.RemoteAddr)
@@ -76,7 +76,7 @@ func handleSocketRequest(w http.ResponseWriter, req *http.Request, ping bool, se
 		mt, message, err := conn.ReadMessage()
 		// fmt.Println("ws.handle3:", err, message, mt)
 		if err != nil {
-			got(server, id, nil, true, zlog.Error(err, "read message")) // we close on error, it might be only way to exit
+			got(server, id, nil, true, zlog.Error("read message", err)) // we close on error, it might be only way to exit
 			return
 		}
 		// fmt.Println("ws.read:", mt)
@@ -102,11 +102,11 @@ func handleSocketRequest(w http.ResponseWriter, req *http.Request, ping bool, se
 			// fmt.Println("ws.binary:", conn)
 			_, r, err := conn.NextReader()
 			if err != nil {
-				got(server, id, nil, false, zlog.Error(err, "next reader"))
+				got(server, id, nil, false, zlog.Error("next reader", err))
 			}
 			data, err := ioutil.ReadAll(r)
 			if err != nil {
-				got(server, id, nil, false, zlog.Error(err, "read all"))
+				got(server, id, nil, false, zlog.Error("read all", err))
 			}
 			got(server, id, data, false, nil)
 		}
@@ -184,7 +184,7 @@ func ClientNew(address string, requestHeader http.Header, receive func(message [
 	var err error
 	c, _, err := websocket.DefaultDialer.Dial(address, requestHeader)
 	if err != nil {
-		return nil, zlog.Error(err, "dial")
+		return nil, zlog.Error("dial", err)
 	}
 	client := &Client{Connection: c}
 	defer c.Close()
@@ -195,7 +195,7 @@ func ClientNew(address string, requestHeader http.Header, receive func(message [
 		for {
 			_, message, err := c.ReadMessage()
 			if err != nil {
-				zlog.Error(err, "read")
+				zlog.Error("read", err)
 			}
 			if receive != nil {
 				if !receive(message, err) {

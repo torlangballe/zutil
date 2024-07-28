@@ -123,7 +123,7 @@ func (h *Handler) loadTemplate(name string) error { // https://stackoverflow.com
 	t := h.mainTemplate.New(name).Funcs(fmap)
 	_, err := t.Parse(string(data))
 	if err != nil {
-		return zlog.Error(err, "(parse)")
+		return zlog.Error("(parse)", err)
 	}
 	return nil
 }
@@ -150,7 +150,7 @@ func (h *Handler) ExecuteTemplate(w http.ResponseWriter, req *http.Request, dump
 	}
 	err = h.mainTemplate.ExecuteTemplate(out, name, v)
 	if err != nil {
-		return zlog.Error(err, "exe error:", name, zlog.Full(v))
+		return zlog.Error("exe error:", name, zlog.Full(v), err)
 	}
 	return nil
 }

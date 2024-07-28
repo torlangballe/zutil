@@ -73,7 +73,7 @@ func (m Mail) SendWithSMTP(a Authentication) (err error) {
 		content := []byte(header + m.TextContent)
 		err = smtp.SendMail(server, auth, m.From.Email, emails, content)
 		if err != nil {
-			return zlog.Error(err, "send", m, a)
+			return zlog.Error("send", m, a)
 		}
 		return nil
 	}
@@ -89,7 +89,7 @@ func (m Mail) SendWithSMTP(a Authentication) (err error) {
 		berr := smtp.SendMail(server, auth, m.From.Email, []string{t.Email}, content)
 		if berr != nil {
 			err = berr
-			zlog.Error(err, "send single", a)
+			zlog.Error("send single", a, err)
 		}
 	}
 	return err

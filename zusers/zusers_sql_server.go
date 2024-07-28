@@ -52,7 +52,7 @@ func (s *SQLServer) setup() error {
 	squery = s.customizeQuery(squery)
 	_, err := s.DB.Exec(squery)
 	if err != nil {
-		zlog.Error(err, "create users", squery)
+		zlog.Error("create users", squery, err)
 		return err
 	}
 
@@ -69,7 +69,7 @@ func (s *SQLServer) setup() error {
 	squery = s.customizeQuery(squery)
 	_, err = s.DB.Exec(squery)
 	if err != nil {
-		zlog.Error(err, "create tokens", squery)
+		zlog.Error("create tokens", squery, err)
 		return err
 	}
 	squery = `CREATE INDEX IF NOT EXISTS idx_tokens_ids ON zuser_sessions (token, userid)`
@@ -77,7 +77,7 @@ func (s *SQLServer) setup() error {
 	_, err = s.DB.Exec(squery)
 	// zlog.Info("Createindex:", err)
 	if err != nil {
-		zlog.Error(err, "create token index", squery)
+		zlog.Error("create token index", squery, err)
 		return err
 	}
 	ztimer.Repeat(ztime.DurSeconds(time.Hour), func() bool {
@@ -138,14 +138,14 @@ func (s *SQLServer) GetUserIDFromToken(token string) (id int64, err error) {
 	row := s.DB.QueryRow(squery, token)
 	err = row.Scan(&id)
 	if err != nil {
-		// zlog.Error(err, squery, "token:", token, zlog.CallingStackString())
+		// zlog.Error(squery, "token:", token, err, zlog.CallingStackString())
 		return 0, AuthFailedError
 	}
 	squery = "UPDATE zuser_sessions SET used=$NOW WHERE token=$1"
 	squery = s.customizeQuery(squery)
 	_, err = s.DB.Exec(squery, token)
 	if err != nil {
-		zlog.Error(err, squery, token)
+		zlog.Error(squery, token, err)
 		return 0, AuthFailedError
 	}
 	return
@@ -203,7 +203,7 @@ func (s *SQLServer) ChangePasswordForUser(ci *zrpc.ClientInfo, id int64, passwor
 		zlog.Info("ChangePASS:", hash)
 		err = s.UnauthenticateUser(id)
 		if err != nil {
-			zlog.Error(err, "unauhth user", id)
+			zlog.Error("unauth user", id, err)
 		}
 		var session Session
 		session.ClientInfo = *ci
@@ -273,14 +273,14 @@ func (s *SQLServer) AddNewSession(session Session) error {
 	zlog.Info("SQL AddNewSession:", zlog.Full(session))
 	_, err := s.DB.Exec(squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
 	if err != nil {
-		zlog.Error(err, "insert", squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
+		zlog.Error("insert", err, squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
 		return err
 	}
 	squery = "UPDATE zusers SET login=$NOW WHERE id=$1"
 	squery = s.customizeQuery(squery)
 	_, err = s.DB.Exec(squery, session.UserID)
 	if err != nil {
-		zlog.Error(err, "update user", squery, session.UserID)
+		zlog.Error("update user", err, squery, session.UserID)
 		return err
 	}
 	return nil
@@ -292,7 +292,7 @@ func (s *SQLServer) AddNewUser(username, password, hash, salt string, perm []str
 	row := s.DB.QueryRow(squery, username, hash, salt, pq.Array(perm))
 	err = row.Scan(&id)
 	if err != nil {
-		zlog.Error(err, "insert error:")
+		zlog.Error("insert error:", err)
 		return
 	}
 	return
@@ -320,7 +320,7 @@ func (s *SQLServer) Login(ci *zrpc.ClientInfo, username, password string) (ui Cl
 	session.UserID = u.ID
 	err = s.AddNewSession(session)
 	if err != nil {
-		zlog.Error(err, "login", err)
+		zlog.Error("login", err)
 		err = AuthFailedError
 		return
 	}
@@ -379,7 +379,7 @@ func (s *SQLServer) GetOrCreateSessionForUserIDAndClientID(ci *zrpc.ClientInfo, 
 	session.UserID = userID
 	err = s.AddNewSession(session)
 	if err != nil {
-		zlog.Error(err, "GetOrCreateSessionForUserID")
+		zlog.Error("GetOrCreateSessionForUserID", err)
 		return "", AuthFailedError
 	}
 	return session.Token, nil

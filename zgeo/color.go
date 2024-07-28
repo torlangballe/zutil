@@ -291,7 +291,7 @@ func (c Color) Difference(a Color) float32 {
 func getHexAsValue(str string, len int) float32 {
 	n, err := strconv.ParseInt(str, 16, 32)
 	if err != nil {
-		zlog.Error(err, "parse")
+		zlog.Error("parse", err)
 		return -1
 	}
 	if len == 1 {

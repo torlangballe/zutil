@@ -19,7 +19,7 @@ type dictFile struct {
 func (d *dictFile) load() error {
 	err := zjson.UnmarshalFromFile(&d.dict, d.storeFile, true)
 	if err != nil {
-		return zlog.Error(err, "unmarshal")
+		return zlog.Error("unmarshal", err)
 	}
 	return nil
 }

@@ -106,7 +106,7 @@ func (t *Templater) Preprocess(m *MarkdownConverter, markdownText, title string)
 	}
 	err = template.Execute(&buf, m.Variables)
 	if err != nil {
-		zlog.Error(err, "markdown execute", m.Dir)
+		zlog.Error("markdown execute", m.Dir, err)
 		return errToStr(err, title, "template-execute")
 	}
 	return buf.String()

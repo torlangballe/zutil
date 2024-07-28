@@ -134,7 +134,7 @@ func SendBody(surl string, params Parameters, send, receive any) (*http.Response
 			} else {
 				bout, err = json.Marshal(send)
 				if err != nil {
-					return nil, zlog.Error(err, "marshal")
+					return nil, zlog.Error("marshal", err)
 				}
 				// zlog.Info("SendBody:", surl, string(bout))
 			}
@@ -224,7 +224,7 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 		request, err = http.NewRequestWithContext(params.Context, params.Method, surl, reader)
 	}
 	if err != nil {
-		err = zlog.Error(err, "new request", params.Context != nil)
+		err = zlog.Error("new request", params.Context != nil, err)
 		return
 	}
 	if params.ContentType != "" {
@@ -315,7 +315,7 @@ func processResponse(surl string, resp *http.Response, printBody bool, receive a
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		err = zlog.Error(err, "readall")
+		err = zlog.Error("readall", err)
 		return resp, err
 	}
 	if receive != nil {
@@ -329,7 +329,7 @@ func processResponse(surl string, resp *http.Response, printBody bool, receive a
 		}
 		err = json.Unmarshal(body, receive)
 		if err != nil {
-			err = zlog.Error(err, "unmarshal")
+			err = zlog.Error("unmarshal", err)
 			return resp, err
 		}
 	}

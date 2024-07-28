@@ -15,7 +15,7 @@ func (m Mail) SendGridSend(apiKey string) error {
 		client := sendgrid.NewSendClient(apiKey)
 		_, err := client.Send(message)
 		if err != nil {
-			return zlog.Error(err, "send")
+			return zlog.Error("send", err)
 		}
 		zlog.Info("send:", to.Address)
 	}

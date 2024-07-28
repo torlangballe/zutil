@@ -276,11 +276,11 @@ func SizeFromString(str string) (Size, error) { // we don't use String() since t
 	}
 	w, err := strconv.ParseFloat(sw, 64)
 	if err != nil {
-		return Size{}, zlog.Error(err, zlog.StackAdjust(1), "parse w", sw)
+		return Size{}, zlog.Error(zlog.StackAdjust(1), "parse w", sw, err)
 	}
 	h, err := strconv.ParseFloat(sh, 64)
 	if err != nil {
-		return Size{}, zlog.Error(err, zlog.StackAdjust(1), "parse h", sh)
+		return Size{}, zlog.Error(zlog.StackAdjust(1), "parse h", sh, err)
 	}
 	return SizeD(w, h), nil
 }

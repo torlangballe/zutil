@@ -123,7 +123,7 @@ func GetTimeVal(vals url.Values, name string) time.Time {
 	if err != nil {
 		t, err = time.Parse(time.RFC3339Nano, s)
 		if err != nil {
-			zlog.Error(err, s)
+			zlog.Error(s, err)
 		}
 	}
 	return t

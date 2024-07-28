@@ -77,7 +77,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	c.getURL = path
 	// err := os.MkdirAll(c.workDir+cacheName, 0775|os.ModeDir)
 	// if err != nil {
-	// 	zlog.Error(err, zlog.FatalLevel, "zfilecaches.Init mkdir failed")
+	// 	zlog.Error(zlog.FatalLevel, "zfilecaches.Init mkdir failed", err)
 	// }
 	// zlog.Info("zfilecache.AddHandler:", path)
 	zrest.AddSubHandler(router, path, c)
@@ -95,7 +95,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 			zlog.Info("DeleteCache:", dir, int(p*100), count, "/", total)
 		})
 		if err != nil {
-			zlog.Error(err, "delete old in cache", c.cacheName)
+			zlog.Error("delete old in cache", c.cacheName, err)
 		}
 		zlog.Info("Deleted in cache:", dir, time.Since(start))
 		return true
@@ -117,7 +117,7 @@ func (c *Cache) IsTokenValid(t string) bool {
 func (c *Cache) CacheFromReader(reader io.Reader, name string) (string, error) {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return "", zlog.Error(err, "read from reader")
+		return "", zlog.Error("read from reader", err)
 	}
 	return c.CacheFromData(data, name)
 }
@@ -141,7 +141,7 @@ func (c *Cache) CacheFromData(data []byte, name string) (string, error) {
 	// zlog.Warn("CacheFromData:", name, path)
 	err = zfile.MakeDirAllIfNotExists(dir)
 	if err != nil {
-		return "", zlog.Error(err, "make dir", dir)
+		return "", zlog.Error("make dir", dir, err)
 	}
 	if hashName && zfile.Exists(path) {
 		err = zfile.SetModified(path, time.Now())
@@ -150,14 +150,14 @@ func (c *Cache) CacheFromData(data []byte, name string) (string, error) {
 	prof.Log("After set mod")
 	file, err := os.Create(path)
 	if err != nil {
-		return "", zlog.Error(err, "create file", path)
+		return "", zlog.Error("create file", path, err)
 	}
 	prof.Log("After create")
 	defer file.Close()
 
 	_, err = file.Write(data)
 	if err != nil {
-		return "", zlog.Error(err, "write to file")
+		return "", zlog.Error("write to file", err)
 	}
 	prof.Log("After Write:", len(data))
 	prof.End("")

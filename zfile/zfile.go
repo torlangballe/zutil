@@ -421,7 +421,7 @@ func handleErr(err error, why, path string, file *os.File, close bool) error {
 	}
 	rerr := os.Remove(path)
 	if ferr != nil || rerr != nil {
-		zlog.Error(err, "{nolog}WriteToFileAtomically call write func", ferr, rerr)
+		zlog.Error("{nolog}WriteToFileAtomically call write func", ferr, rerr, err)
 	}
 	return err
 }
@@ -432,7 +432,7 @@ func WriteToFileAtomically(fpath string, write func(file io.Writer) error) error
 	tempPath := fpath + fmt.Sprintf("_%x_ztemp", rand.Int31())
 	file, err := os.Create(tempPath)
 	if err != nil {
-		zlog.Error(err, "create", fpath)
+		zlog.Error("create", fpath, err)
 		return err
 	}
 	err = write(file)
@@ -598,7 +598,7 @@ func DeleteOldInSubFolders(dir string, sleep time.Duration, before time.Time, de
 			return nil
 		})
 		if err != nil {
-			zlog.Error(err, "walking subdir", fold)
+			zlog.Error("walking subdir", fold, err)
 		}
 		if progress != nil && time.Since(t) > time.Second*10 {
 			t = time.Now()

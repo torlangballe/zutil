@@ -234,17 +234,17 @@ func GetCurrentIPAddress() (address string, err error) {
 func ForwardPortToRemote(port int, remoteAddress string) error {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		return zlog.Error(err, "listen")
+		return zlog.Error("listen", err)
 	}
 	zlog.Info("forwarder running on", port, "to", remoteAddress)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			return zlog.Error(err, "accept")
+			return zlog.Error("accept", err)
 		}
 		proxy, err := net.Dial("tcp", remoteAddress)
 		if err != nil {
-			zlog.Error(err, "dial target")
+			zlog.Error("dial target", err)
 			continue
 		}
 		go copyIO(conn, proxy)
@@ -333,7 +333,7 @@ func ServeHTTPInBackground(address string, certificatesStubPath string, handler 
 		}
 		if err != http.ErrServerClosed {
 			if err != nil {
-				zlog.Error(err, "serve http listen err:", address, certificatesStubPath, stack)
+				zlog.Error("serve http listen err:", address, certificatesStubPath, stack, err)
 				os.Exit(-1)
 			}
 		}
@@ -370,7 +370,7 @@ func SetEtcHostsEntries(forwards map[string]string, comment, sudoPassword string
 	zlog.Info("SetEtcHostsEntries:", commands)
 	str, err := zprocess.RunCommandWithSudo("sh", sudoPassword, "-c", commands)
 	if err != nil {
-		return zlog.NewError(err, str)
+		return zlog.NewError(str, err)
 	}
 	return err
 }
@@ -378,7 +378,7 @@ func SetEtcHostsEntries(forwards map[string]string, comment, sudoPassword string
 func BindPort() error {
 	str, err := zprocess.RunCommand("/usr/sbin/setcap", 5, "CAP_NET_BIND_SERVICE=+eip", "/opt/btech/qtt/bin/manager")
 	if err != nil {
-		return zlog.Error(err, str)
+		return zlog.Error(str, err)
 	}
 	return nil
 }

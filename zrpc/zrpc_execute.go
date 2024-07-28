@@ -150,7 +150,7 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 	}
 	err = json.Unmarshal(rawArg, argv.Interface())
 	if err != nil {
-		zlog.Error(err, "Unmarshal:", mtype.Method, argv.Kind(), argv.Type(), zlog.Full(*mtype))
+		zlog.Error("Unmarshal:", err, mtype.Method, argv.Kind(), argv.Type(), zlog.Full(*mtype))
 		return rp, err
 	}
 
@@ -185,7 +185,7 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 	errInter := returnValues[0].Interface()
 	if errInter != nil {
 		err := errInter.(error)
-		zlog.Error(err, EnableLogExecute, "Call Error", mtype.Method.Name)
+		zlog.Error(EnableLogExecute, "Call Error", mtype.Method.Name, err)
 		rp.Error = err.Error()
 		return rp, nil
 	}
@@ -219,7 +219,7 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 		rp, err = e.callMethodName(ctx, ci, method, args, requestHTTPDataClient)
 		// zlog.Info("zrpc callWithDeadline: callMethod done:", method, err, method, zlog.Pointer(e))
 		if err != nil {
-			zlog.Error(err, "call", zlog.Pointer(e))
+			zlog.Error("call", zlog.Pointer(e), err)
 			rp.Error = err.Error()
 		}
 		deadline, ok := ctx.Deadline()
