@@ -9,17 +9,27 @@ import (
 )
 
 type ContextError struct {
-	Title     string
-	SubError  *ContextError
-	KeyValues zdict.Dict
+	Title           string
+	SubContextError *ContextError
+	WrappedError    error `json:"-"`
+	KeyValues       zdict.Dict
+}
+
+func init() {
+	zlog.MakeContextErrorFunc = func(parts ...any) error {
+		return MakeContextError(nil, parts...)
+	}
 }
 
 func (e ContextError) Error() string {
-	str := e.Title
-	if e.SubError != nil {
-		str = zstr.Concat(" / ", str, e.SubError.Error())
-	}
-	return str
+	return e.Title
+	// str := e.Title
+	// if e.SubContextError != nil {
+	// 	str = zstr.Concat(" / ", str, e.SubContextError.Error())
+	// } else if e.WrappedError != nil {
+	// 	str = zstr.Concat(" / ", str, e.WrappedError.Error())
+	// }
+	// return str
 }
 
 func (e ContextError) GetTitle() string {
@@ -27,50 +37,42 @@ func (e ContextError) GetTitle() string {
 }
 
 func (e ContextError) Unwrap() error {
-	if e.SubError == nil {
-		return nil
+	if e.SubContextError != nil {
+		return *e.SubContextError
 	}
-	return errors.New(e.SubError.Title)
+	return e.WrappedError
+}
+
+func (e *ContextError) AddSub(dict zdict.Dict, parts ...any) {
+	sub := MakeContextError(dict, parts...)
+	e.SubContextError = &sub
+}
+
+func (e *ContextError) SetError(err error) {
+	if e.KeyValues == nil {
+		e.KeyValues = zdict.Dict{}
+	}
+	e.KeyValues["Error"] = err.Error()
 }
 
 func MakeContextError(dict zdict.Dict, parts ...any) ContextError {
 	var ie ContextError
 	var nparts []any
-	var hasSub bool
-	var subError error
+	ie.KeyValues = dict
 	for _, p := range parts {
-		e, got := p.(ContextError)
-		if got {
-			zlog.ErrorIf(hasSub, p, "multiple sub-items-errors")
-			copy := e
-			ie.SubError = &copy
-			hasSub = true
-			continue
-		}
 		err, got := p.(error)
 		if got {
-			subError = err
+			ie.WrappedError = err
+			ce, got := ContextErrorFromError(err)
+			if got {
+				zlog.ErrorIf(ie.SubContextError != nil, p, "multiple sub-items-errors")
+				ie.SubContextError = &ce
+				continue
+			}
+			ie.SetError(err)
 			continue
 		}
 		nparts = append(nparts, p)
-	}
-	ie.KeyValues = dict
-	if !hasSub && subError != nil {
-		var ce ContextError
-		if errors.As(subError, &ce) {
-			if len(nparts) == 0 {
-				ce.KeyValues.MergeIn(dict)
-				return ce
-			}
-			ie.SubError = &ce
-		} else {
-			estr := subError.Error()
-			if len(nparts) == 0 {
-				ie.Title = subError.Error()
-				return ie
-			}
-			ie.SubError = &ContextError{Title: estr}
-		}
 	}
 	ie.Title = zstr.Spaced(nparts...)
 	return ie
@@ -83,7 +85,7 @@ func ContextErrorFromError(err error) (ContextError, bool) {
 	}
 	if errors.As(err, &ce) {
 		var c ContextError
-		c.SubError = &ce
+		c.SubContextError = &ce
 		c.Title = err.Error()
 		zstr.HasSuffix(c.Title, " / "+ce.Error(), &c.Title)
 		return c, true
