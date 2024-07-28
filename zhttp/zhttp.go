@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zerrors"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zprocess"
@@ -399,9 +400,15 @@ func TruncateLongParametersInURL(surl string, onlyIfTotalCharsMoreThan, maxChars
 func GetRedirectedURL(surl string) (string, error) {
 	var log string
 	start := time.Now()
+	dict := zdict.Dict{
+		"URL": surl,
+	}
+	ie := zerrors.MakeContextError(dict, "Get Redirected URL")
 	req, err := http.NewRequest("HEAD", surl, nil)
 	if err != nil {
-		return surl, err
+		ie.SubContextError = &ie
+		ie.SetError(err)
+		return surl, ie
 	}
 	client := http.Client{}
 	client.Timeout = time.Second * 5
@@ -419,15 +426,22 @@ func GetRedirectedURL(surl string) (string, error) {
 		resp.Body.Close()
 	}
 	if err != nil {
+		text := err.Error()
+		if zstr.HasPrefix(text, `Head "`+surl+`": `, &text) {
+			err = errors.New(text)
+		}
+		ce := zerrors.MakeContextError(nil, "Get Head", err)
+		ie.SubContextError = &ce
+		err = ie
 		u, perr := url.Parse(surl)
 		if perr != nil {
-			zlog.Error(perr, surl)
+			zlog.Error(surl, perr)
 			return "", err
 		}
 		startDNS := time.Now()
 		ip, lerr := znet.DNSLookupToIP4(u.Host)
 		if lerr != nil {
-			zlog.Error(lerr, surl, time.Since(startDNS), "log:", log)
+			zlog.Error(surl, time.Since(startDNS), "log:", log, lerr)
 			return "", err
 		}
 		zlog.Info("GetRedirectedURL fail, lookup ok:", u.Host, ip, time.Since(startDNS), "log:", log)
