@@ -31,18 +31,25 @@ const (
 )
 
 var (
-	PrintPriority           = DebugLevel
-	outputHooks             = map[string]func(s string){}
-	UseColor                = false
-	PanicHandler            func(reason string, exit bool)
-	PrintGoRoutines         = false
-	PrintDate               = true
+	PrintPriority   = DebugLevel
+	outputHooks     = map[string]func(s string){}
+	UseColor        = false
+	PanicHandler    func(reason string, exit bool)
+	PrintGoRoutines = false
+	PrintDate       = true
+	EnablerList     sync.Map // map[string]*Enabler
+
 	lastGoRoutineCount      int
 	lastGoRoutineOutputTime time.Time
 	rateLimiters            sync.Map
-	EnablerList             sync.Map // map[string]*Enabler
 
-	isInTests = (strings.HasSuffix(os.Args[0], ".test"))
+	isInTests                  = (strings.HasSuffix(os.Args[0], ".test"))
+	hookingLock                sync.Mutex
+	hooking                    = false
+	timeLock                   sync.Mutex
+	linesPrintedSinceTimeStamp int
+
+	MakeContextErrorFunc func(parts ...any) error
 )
 
 func init() {
@@ -113,30 +120,28 @@ func expandTildeInFilepath(path string) string { // can't use one in zfile, cycl
 	return ""
 }
 
-var hookingLock sync.Mutex
-var hooking = false
-var timeLock sync.Mutex
-var linesPrintedSinceTimeStamp int
-
 func NewError(parts ...any) error {
-	var err error
-	if len(parts) > 0 {
-		err, _ = parts[0].(error)
-		if err != nil {
-			parts = parts[1:]
-		}
-	}
-	p := strings.TrimSpace(fmt.Sprintln(parts...))
-	pnew := zstr.ColorSetter.Replace(p)
-	if pnew != p {
-		p = pnew + zstr.EscNoColor
-	}
-	if err != nil {
-		err = fmt.Errorf("%w %s", err, p)
-	} else {
-		err = errors.New(p)
-	}
-	return err
+	return MakeContextErrorFunc(parts...)
+	// var err error
+	// for _, p := range parts {
+	// 	e, _ := p.(error)
+	// 	if e != nil {
+	// 		err = e
+	// 		break
+	// 	}
+	// }
+	// sparts := strings.TrimSpace(zstr.Spaced(parts...))
+	// pnew := zstr.ColorSetter.Replace(sparts)
+	// if pnew != sparts {
+	// 	sparts = pnew + zstr.EscNoColor
+	// }
+	// if err != nil {
+	// 	var ce zerrors.ContextError
+	// 	ce.Title = sparts
+	// 	ce.Sub = err
+	// 	return se
+	// }
+	// return errors.New(sparts)
 }
 
 func baseLog(priority Priority, pos int, parts ...any) error {
@@ -264,7 +269,8 @@ func ErrorIf(check bool, parts ...any) bool {
 
 func OnError(err error, parts ...any) bool {
 	if err != nil {
-		parts = append([]any{StackAdjust(1), err}, parts...)
+		parts = append([]any{StackAdjust(1)}, parts...)
+		parts = append(parts, err)
 		Error(parts...)
 		return true
 	}
@@ -282,20 +288,20 @@ func AddHook(id string, call func(s string)) {
 	outputHooks[id] = call
 }
 
-type WrappedError struct {
-	Text  string
-	Error error
-}
+// type WrappedError struct {
+// 	Text  string
+// 	Error error
+// }
 
-func (w *WrappedError) Unwrap() error {
-	return w.Error
-}
+// func (w *WrappedError) Unwrap() error {
+// 	return w.Error
+// }
 
-func Wrap(err error, parts ...any) error {
-	p := strings.TrimSpace(fmt.Sprintln(parts...))
-	return fmt.Errorf("%w %s", err, p)
+// func Wrap(err error, parts ...any) error {
+// 	p := strings.TrimSpace(fmt.Sprintln(parts...))
+// 	return fmt.Errorf("%w %s", err, p)
 
-}
+// }
 
 func PrintStartupInfo(version, commitHash, builtAt, builtBy, builtOn string) {
 	_, name := filepath.Split(os.Args[0])
