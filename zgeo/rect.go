@@ -58,6 +58,10 @@ func (r Rect) IsUndef() bool {
 	return r.Size.W == math.MaxFloat32
 }
 
+func (r Rect) String() string {
+	return r.Pos.String() + " " + r.Size.String()
+}
+
 func (r Rect) GoRect() image.Rectangle {
 	return image.Rectangle{Min: r.Min().GoPoint(), Max: r.Max().GoPoint()}
 }
