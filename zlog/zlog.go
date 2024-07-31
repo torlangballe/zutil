@@ -121,27 +121,13 @@ func expandTildeInFilepath(path string) string { // can't use one in zfile, cycl
 }
 
 func NewError(parts ...any) error {
-	return MakeContextErrorFunc(parts...)
-	// var err error
-	// for _, p := range parts {
-	// 	e, _ := p.(error)
-	// 	if e != nil {
-	// 		err = e
-	// 		break
-	// 	}
-	// }
-	// sparts := strings.TrimSpace(zstr.Spaced(parts...))
-	// pnew := zstr.ColorSetter.Replace(sparts)
-	// if pnew != sparts {
-	// 	sparts = pnew + zstr.EscNoColor
-	// }
-	// if err != nil {
-	// 	var ce zerrors.ContextError
-	// 	ce.Title = sparts
-	// 	ce.Sub = err
-	// 	return se
-	// }
-	// return errors.New(sparts)
+	e := MakeContextErrorFunc(parts...)
+	es := e.Error()
+	snew := zstr.ColorSetter.Replace(es)
+	if snew != es {
+		snew += zstr.EscNoColor
+	}
+	return errors.New(snew)
 }
 
 func baseLog(priority Priority, pos int, parts ...any) error {
