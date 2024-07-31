@@ -951,9 +951,18 @@ func LastByteAsString(str string) string {
 	return string(str[len(str)-1])
 }
 
+func IsUpper(b byte) bool {
+	return (strings.ToUpper(string(b)) == string(b))
+}
+
 func PadCamelCase(str, pad string) string {
 	big := ""
 	out := ""
+	if len(str) == 3 {
+		if IsUpper(str[0]) && !IsUpper(str[1]) && IsUpper(str[2]) {
+			return str
+		}
+	}
 	for _, r := range str {
 		if r == unicode.ToUpper(r) {
 			if big == "" && out != "" {
