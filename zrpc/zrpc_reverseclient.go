@@ -246,7 +246,7 @@ func ReverseCallAllSimple(timeoutSecs float64, method, idWildcard string, args a
 	return errs
 }
 
-// FuncForAll itterates through all r.allReverseClients (which are typically open browsers sessions)
+// FuncForAll iterates through all r.allReverseClients (which are typically open browsers sessions)
 // If their id matches idWildcard, and there isn't already a call registered for callID,
 // The do function is called with rc.ReverseClient, so the func can use the user's authentication token.
 // It is used by CallAll() above to do a an rpc call to all.

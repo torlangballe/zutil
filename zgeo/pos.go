@@ -178,7 +178,7 @@ func (p FPos) Pos() Pos {
 	return Pos{float64(p.X), float64(p.Y)}
 }
 
-// itterates through positions, making vector between them, optionally closing
+// iterates through positions, making vector between them, optionally closing
 func ForVectors(positions []Pos, close bool, handle func(s Pos, v Pos) bool) {
 	var i = 0
 

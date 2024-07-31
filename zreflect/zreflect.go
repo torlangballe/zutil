@@ -19,7 +19,7 @@ import (
 // https://utcc.utoronto.ca/~cks/space/blog/programming/GoAddressableValues
 
 var (
-	timeType = reflect.TypeOf(time.Time{})
+	TimeType = reflect.TypeOf(time.Time{})
 )
 
 type TypeKind string
@@ -75,7 +75,7 @@ func KindFromReflectKindAndType(kind reflect.Kind, rtype reflect.Type) TypeKind 
 	case reflect.Array:
 		return KindArray
 	case reflect.Struct:
-		if rtype == timeType {
+		if rtype == TimeType {
 			return KindTime
 		}
 		return KindStruct
@@ -95,7 +95,7 @@ func KindFromReflectKindAndType(kind reflect.Kind, rtype reflect.Type) TypeKind 
 	return KindUndef
 }
 
-func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, val reflect.Value, options Options) (item Item, err error) {
+func iterate(level int, fieldName, typeName, tagName string, isAnonymous bool, val reflect.Value, options Options) (item Item, err error) {
 	item.FieldName = fieldName
 	vtype := val.Type()
 	if typeName == "" {
@@ -104,7 +104,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 	item.TypeName = typeName
 	item.Package = vtype.PkgPath()
 	if !val.CanInterface() {
-		fmt.Println("zreflect.itterate: can't interface to:", fieldName)
+		fmt.Println("zreflect.iterate: can't interface to:", fieldName)
 		return
 	}
 	if !val.IsValid() {
@@ -125,7 +125,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 		} else {
 			v = reflect.Indirect(val)
 		}
-		pItem, perr := itterate(level, fieldName, t.Name(), tagName, isAnonymous, v, options)
+		pItem, perr := iterate(level, fieldName, t.Name(), tagName, isAnonymous, v, options)
 		err = perr
 		item.Interface = val.Interface()
 		item.IsPointer = true
@@ -139,7 +139,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 		if !v.CanAddr() {
 			v = reflect.New(t)
 		}
-		item, err = itterate(level, fieldName, t.Name(), tagName, isAnonymous, v, options)
+		item, err = iterate(level, fieldName, t.Name(), tagName, isAnonymous, v, options)
 		if length == 0 && !options.MakeSliceElementIfNone {
 			item.Children = item.Children[:0]
 		}
@@ -151,9 +151,9 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 		if options.Recursive { // !MakeSliceElementIfNone, wont happen if length is 0 anyway
 			for i := 0; i < length; i++ {
 				v := val.Index(i)
-				sliceItem, serr := itterate(level+1, "", t.Name(), "", isAnonymous, v, options)
+				sliceItem, serr := iterate(level+1, "", t.Name(), "", isAnonymous, v, options)
 				if serr != nil {
-					fmt.Println(serr, "slice item itterate")
+					fmt.Println(serr, "slice item iterate")
 					continue
 				}
 				item.Children = append(item.Children, sliceItem)
@@ -166,7 +166,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 
 	case reflect.Struct:
 		switch vtype {
-		case timeType:
+		case TimeType:
 			item.Kind = KindTime
 			item.Interface = val.Interface()
 			item.SimpleInterface = val.Interface()
@@ -192,7 +192,7 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 				if !f.Anonymous {
 					l++
 				}
-				c, e := itterate(l, fname, tname, tag, f.Anonymous, fval, options)
+				c, e := iterate(l, fname, tname, tag, f.Anonymous, fval, options)
 				if fval.CanAddr() {
 					c.Address = fval.Addr().Interface()
 				}
@@ -268,16 +268,16 @@ func itterate(level int, fieldName, typeName, tagName string, isAnonymous bool, 
 	return
 }
 
-func ItterateStruct(istruct any, options Options) (item Item, err error) {
+func IterateStruct(istruct any, options Options) (item Item, err error) {
 	rval := reflect.ValueOf(istruct)
 	if !rval.IsValid() { //|| rval.IsZero() { //  && rval.Kind() != reflect.StructKind
-		fmt.Println("ItterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
+		fmt.Println("IterateStruct: not valid", rval.IsValid(), rval.IsZero(), rval.Type(), rval.Kind())
 		return
 	}
 	if rval.Kind() != reflect.Ptr {
 		panic(zstr.Spaced("not pointer:", rval.Kind(), rval.Type(), rval))
 	}
-	return itterate(0, "", "", "", false, rval.Elem(), options)
+	return iterate(0, "", "", "", false, rval.Elem(), options)
 }
 
 type FieldInfo struct {

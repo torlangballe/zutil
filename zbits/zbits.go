@@ -32,7 +32,7 @@ func GetBoolFromBit(data byte, startFromEnd int) bool {
 
 /*
 func SetBitsFromStruct(index int, data []byte, structure interface{}, handleSlice func(i int, fieldName string, s interface{}) int) int {
-	items, err := zreflect.ItterateStruct(structure, zreflect.Options{UnnestAnonymous: true, Recursive: true})
+	items, err := zreflect.IterateStruct(structure, zreflect.Options{UnnestAnonymous: true, Recursive: true})
 	if err != nil {
 		zlog.Error("iterate", err)
 		return index

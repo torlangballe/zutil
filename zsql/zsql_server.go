@@ -212,7 +212,7 @@ type FieldInfo struct {
 }
 
 func FieldInfosFromStruct(istruct any, skip []string, btype BaseType) (infos []FieldInfo) {
-	items, err := zreflect.ItterateStruct(istruct, zreflect.Options{UnnestAnonymous: true})
+	items, err := zreflect.IterateStruct(istruct, zreflect.Options{UnnestAnonymous: true})
 	if err != nil {
 		zlog.Fatal("get items", err)
 	}

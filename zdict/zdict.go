@@ -198,7 +198,7 @@ func FromString(str, assigner, separator string) Dict {
 func FromStruct(structure any, lowerFirst bool) Dict {
 	d := Dict{}
 	options := zreflect.Options{UnnestAnonymous: true, Recursive: true}
-	rootItems, err := zreflect.ItterateStruct(structure, options)
+	rootItems, err := zreflect.IterateStruct(structure, options)
 	if err != nil {
 		panic(err)
 	}
