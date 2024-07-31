@@ -265,7 +265,7 @@ func (s Size) Round() Size {
 	return Size{math.Round(s.W), math.Round(s.H)}
 }
 
-func (s Size) String() string { // we don't use String() since we're doing that as set methods in zui
+func (s Size) String() string {
 	return fmt.Sprintf("%gx%g", s.W, s.H)
 }
 
