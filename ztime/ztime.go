@@ -138,7 +138,7 @@ func GetNiceSubSecs(t time.Time, secs bool, subSecs int) string {
 	if secs {
 		f += ":05"
 		if subSecs > 0 {
-			f += "." + strings.Repeat("9", subSecs)
+			f += "." + strings.Repeat("0", subSecs)
 		}
 	}
 	serverTime := zlocale.IsDisplayServerTime != nil && zlocale.IsDisplayServerTime.Get()
