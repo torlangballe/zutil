@@ -13,6 +13,7 @@ type ContextError struct {
 	SubContextError *ContextError
 	WrappedError    error `json:"-"`
 	KeyValues       zdict.Dict
+	errorStr        string
 }
 
 func init() {
@@ -22,7 +23,7 @@ func init() {
 }
 
 func (e ContextError) Error() string {
-	return e.Title
+	return e.errorStr
 	// str := e.Title
 	// if e.SubContextError != nil {
 	// 	str = zstr.Concat(" / ", str, e.SubContextError.Error())
@@ -55,6 +56,13 @@ func (e *ContextError) SetError(err error) {
 	e.KeyValues["Error"] = err.Error()
 }
 
+func (e *ContextError) SetKeyValue(key string, value any) {
+	if e.KeyValues == nil {
+		e.KeyValues = zdict.Dict{}
+	}
+	e.KeyValues[key] = value
+}
+
 func MakeContextError(dict zdict.Dict, parts ...any) ContextError {
 	var ie ContextError
 	var nparts []any
@@ -75,6 +83,7 @@ func MakeContextError(dict zdict.Dict, parts ...any) ContextError {
 		nparts = append(nparts, p)
 	}
 	ie.Title = zstr.Spaced(nparts...)
+	ie.errorStr = zstr.Spaced(parts...)
 	return ie
 }
 
