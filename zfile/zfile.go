@@ -536,10 +536,9 @@ func ReadLastLine(fpath string, pos int64) (line string, startpos, newpos int64,
 // every *checkHours*. If so, the file is copied to a file in the  same directory
 // with a suffix before extension. "path/file_suffix.log", and the file truncated.
 // This may be slow, but only way that seems to work with launchd logs on mac.
-func PeriodicFileBackup(filepath, suffixForOld string, checkHours float64, maxMB int) {
-	ztimer.RepeatNow(checkHours*3600, func() bool {
-		start := time.Now()
-		zlog.Info("🟩PeriodicFileBackup", checkHours*3600, filepath, Size(filepath), int64(maxMB*1024*1024))
+func PeriodicFileBackup(filepath, suffixForOld string, maxMB int) {
+	ztimer.RepeatNow(60*10, func() bool {
+		zlog.Info("🟩PeriodicFileBackup", filepath, Size(filepath), int64(maxMB*1024*1024))
 		if Size(filepath) >= int64(maxMB*1024*1024) {
 			zlog.Info("🟩PeriodicFileBackup need to do swap")
 			dir, _, stub, ext := Split(filepath)
@@ -549,18 +548,12 @@ func PeriodicFileBackup(filepath, suffixForOld string, checkHours float64, maxMB
 				fmt.Println(err, "remove old", filepath, newPath)
 				return true
 			}
-			err = CopyFile(newPath, filepath)
+			err = os.Rename(filepath, newPath)
 			if err != nil {
-				fmt.Println(err, "link old", filepath, newPath)
-				return true
-			}
-			err = os.Truncate(filepath, 0)
-			if err != nil && !errors.Is(err, os.ErrNotExist) {
-				fmt.Println(err, "remove filepath", filepath, newPath)
+				fmt.Println(err, "mv to backup", filepath, newPath)
 				return true
 			}
 		}
-		zlog.Info("🟩PeriodicFileBackup Done", time.Since(start))
 		return true
 	})
 }
