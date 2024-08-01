@@ -122,12 +122,7 @@ func expandTildeInFilepath(path string) string { // can't use one in zfile, cycl
 
 func NewError(parts ...any) error {
 	e := MakeContextErrorFunc(parts...)
-	es := e.Error()
-	snew := zstr.ColorSetter.Replace(es)
-	if snew != es {
-		snew += zstr.EscNoColor
-	}
-	return errors.New(snew)
+	return e
 }
 
 func baseLog(priority Priority, pos int, parts ...any) error {

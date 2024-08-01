@@ -18,7 +18,13 @@ type ContextError struct {
 
 func init() {
 	zlog.MakeContextErrorFunc = func(parts ...any) error {
-		return MakeContextError(nil, parts...)
+		ce := MakeContextError(nil, parts...)
+		str := zstr.ColorSetter.Replace(ce.Title)
+		if str != ce.Title {
+			str += zstr.EscNoColor
+			ce.Title = str
+		}
+		return ce
 	}
 }
 
