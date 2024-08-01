@@ -77,8 +77,8 @@ func MakeContextError(dict zdict.Dict, parts ...any) ContextError {
 		err, got := p.(error)
 		if got {
 			ie.WrappedError = err
-			ce, got := ContextErrorFromError(err)
-			if got {
+			ce, gotCE := ContextErrorFromError(err)
+			if gotCE {
 				zlog.ErrorIf(ie.SubContextError != nil, p, "multiple sub-items-errors")
 				ie.SubContextError = &ce
 				continue
