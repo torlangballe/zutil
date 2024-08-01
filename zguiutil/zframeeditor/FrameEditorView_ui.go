@@ -103,7 +103,7 @@ func NewFrameEditorView(boxes []Box, options Options, size zgeo.Size) *FrameEdit
 	}
 	v.boxTable.StoreChangedItemsFunc = func(boxes []Box) {
 		v.boxTable.SetItemsInSlice(boxes)
-		v.boxTable.UpdateViewFunc()
+		v.boxTable.UpdateViewFunc(true)
 		if v.UpdateFunc != nil {
 			v.UpdateFunc(boxes, false)
 		}
