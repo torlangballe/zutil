@@ -15,7 +15,7 @@ type User struct {
 	UserName     string    `zui:"minwidth:200,noautofill"` // this is email or username chosen by user
 	Salt         string    `zui:"-"`
 	PasswordHash string    `zui:"-"`
-	Permissions  []string  `zui:"minwidth:140,enum:Permissions,format:%n|permission"`
+	Permissions  []string  `zui:"minwidth:140,enum:Permissions,sep"`
 	Created      time.Time `zui:"static"`
 	Login        time.Time `zui:"static"`
 }
