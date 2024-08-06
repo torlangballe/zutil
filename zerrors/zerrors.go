@@ -2,6 +2,7 @@ package zerrors
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zlog"
@@ -18,12 +19,15 @@ type ContextError struct {
 
 func init() {
 	zlog.MakeContextErrorFunc = func(parts ...any) error {
-		ce := MakeContextError(nil, parts...)
-		str := zstr.ColorSetter.Replace(ce.Title)
-		if str != ce.Title {
-			str += zstr.EscNoColor
-			ce.Title = str
+		for i, part := range parts {
+			spart := fmt.Sprint(part)
+			str := zstr.ColorSetter.Replace(spart)
+			if str != spart {
+				parts[i] = str
+				parts = append(parts, zstr.EscNoColor)
+			}
 		}
+		ce := MakeContextError(nil, parts...)
 		return ce
 	}
 }
