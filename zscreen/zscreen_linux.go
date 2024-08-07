@@ -63,3 +63,5 @@ func GetAll() []Screen {
 	}
 	return screens
 }
+
+func SetMainResolutionWithinWidths(min, max zgeo.Size) {}
