@@ -55,7 +55,7 @@ func (t *Timer) StartIn(secs float64, perform func()) {
 		timersCount[secs]--
 		countMutex.Unlock()
 		t.timer = nil
-		defer zlog.HandlePanic(true)
+		defer zdebug.RecoverFromPanic(true)
 		perform()
 	})
 }

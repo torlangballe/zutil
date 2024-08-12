@@ -219,7 +219,12 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 	hookingLock.Unlock()
 	writeToSyslog(str)
 	if priority == FatalLevel {
-		os.Exit(-1)
+		Info("Log fatal exit!")
+		zdebug.StoreAndExitError(err, true)
+	}
+	return err
+}
+
 	}
 	return err
 }

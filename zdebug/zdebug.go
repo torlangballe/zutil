@@ -13,16 +13,31 @@ import (
 	"github.com/torlangballe/zutil/zwords"
 )
 
-const ProfilingURLPrefix = "debug/pprof/"
+const (
+	ProfilingURLPrefix     = "debug/pprof/"
+	RestartContextErrorKey = "zdebug.RestartContextError"
+)
 
 var (
-	IsInTests                = (strings.HasSuffix(os.Args[0], ".test"))
-	GetOpenFileCountFunc     func() int
-	AverageCPUFunc           func() float64
-	GetOngoingProcsCountFunc func() int
-	TimersGoingCountFunc     func() int
-	AllProfileTypes          = []string{"heap", "profile", "block", "mutex"}
+	IsInTests                     = (strings.HasSuffix(os.Args[0], ".test"))
+	GetOpenFileCountFunc          func() int
+	AverageCPUFunc                func() float64
+	GetOngoingProcsCountFunc      func() int
+	TimersGoingCountFunc          func() int
+	KeyValueSetObjectFunc         func(key string, o any)
+	KeyValueGetAndDeleteErrorFunc func(key string) error
+	CreateAndLogErrorFunc         func(parts ...any) error
+
+	AllProfileTypes = []string{"heap", "profile", "block", "mutex"}
+
+	HandleFatalFunc func(err error)
 )
+
+func init() {
+	HandleFatalFunc = func(err error) {
+		fmt.Println("fatal handler:", err)
+	}
+}
 
 func memStr(m uint64) string {
 	return zwords.GetMemoryString(int64(m), "", 1)
@@ -57,6 +72,21 @@ func CallingFunctionInfo(pos int) (function, file string, line int) {
 	if ok {
 		function = runtime.FuncForPC(pc).Name()
 	}
+	return
+}
+
+func CallingFunctionShortInfo(pos int) (function, shortFunction, file, shortFile string, line int) {
+	var ok bool
+	var pc uintptr
+	pc, file, line, ok = runtime.Caller(pos)
+	if !ok {
+		return
+	}
+	function = runtime.FuncForPC(pc).Name()
+	_, shortFunction = path.Split(function)
+	_, shortFile = path.Split(file)
+	wd, _ := os.Getwd()
+	file = makePathRelativeTo(file, wd)
 	return
 }
 
@@ -120,17 +150,43 @@ func CallingFunctionString(pos int) string {
 	return zstr.TailUntil(function, "/")
 }
 
-func FileLineAndCallingFunctionString(pos int, shortFile bool) string {
-	function, file, line := CallingFunctionInfo(pos)
+func FileLineAndCallingFunctionString(pos int, useShortFile bool) string {
+	function, shortFunction, file, shortFile, line := CallingFunctionShortInfo(pos)
 	if function == "" {
 		return ""
 	}
-	_, function = path.Split(function)
-	if shortFile {
-		_, file = path.Split(file)
-	} else {
-		wd, _ := os.Getwd()
-		file = makePathRelativeTo(file, wd)
+	if useShortFile {
+		file = shortFile
 	}
-	return fmt.Sprintf("%s:%d %s()", file, line, function)
+	return fmt.Sprintf("%s:%d %s()", file, line, shortFunction)
+}
+
+func RecoverFromPanic(exit bool) {
+	if runtime.GOOS == "js" {
+		return
+	}
+	r := recover()
+	if r == nil {
+		return
+	}
+	err, _ := r.(error)
+	if err == nil {
+		err = fmt.Errorf("%v", r)
+	}
+	StoreAndExitError(err, exit)
+}
+
+func StoreAndExitError(err error, exit bool) {
+	KeyValueSetObjectFunc(RestartContextErrorKey, err)
+	if exit {
+		os.Exit(-1)
+	}
+	HandleFatalFunc(err)
+}
+
+func LoadStoredSignalContextError() {
+	err := KeyValueGetAndDeleteErrorFunc(RestartContextErrorKey)
+	if err != nil {
+		HandleFatalFunc(err)
+	}
 }

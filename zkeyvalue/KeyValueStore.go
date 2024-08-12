@@ -7,6 +7,7 @@ import (
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zerrors"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
@@ -22,6 +23,8 @@ import (
 var (
 	DefaultStore        *Store
 	DefaultSessionStore *Store
+
+	// IsInTests bool
 )
 
 type RawStorer interface {
@@ -52,13 +55,31 @@ var (
 	GlobalKeyPostfix string // this is added to ALL key prefixes
 )
 
+func init() {
+	zdebug.KeyValueSetObjectFunc = func(key string, o any) {
+		if DefaultStore != nil {
+			DefaultStore.SetObject(o, key, true)
+		}
+	}
+	zdebug.KeyValueGetAndDeleteErrorFunc = func(key string) error {
+		if DefaultStore != nil {
+			var ce zerrors.ContextError
+			if DefaultStore.GetObject(key, &ce) {
+				DefaultStore.RemoveForKey(key, true)
+				return ce
+			}
+		}
+		return nil
+	}
+}
+
 func (s Store) GetObject(key string, objectPtr interface{}) (got bool) {
 	var rawjson string
 	s.postfixKey(&key)
 	got = s.Raw.RawGetItem(key, &rawjson)
 	if got {
 		err := json.Unmarshal([]byte(rawjson), objectPtr)
-		if zlog.OnError(err, "unmarshal", string(rawjson), zdebug.CallingStackString()) {
+		if zlog.OnError(err, "unmarshal", string(rawjson)) {
 			return
 		}
 	}

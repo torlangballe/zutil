@@ -74,7 +74,7 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	GoingCount++
 	r.stop = make(chan bool, 5)
 	go func() {
-		defer zlog.HandlePanic(true)
+		defer zdebug.RecoverFromPanic(true)
 		if now {
 			if !perform() {
 				return

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/ztime"
@@ -85,7 +86,7 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "OPTIONS" {
 		return
 	}
-	defer zlog.HandlePanic(false)
+	defer zdebug.RecoverFromPanic(false)
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&cp)
 	call := true

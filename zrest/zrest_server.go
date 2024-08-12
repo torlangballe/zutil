@@ -152,7 +152,7 @@ func GetFloatVal(vals url.Values, name string, def float64) float64 {
 
 func AddSubHandler(router *mux.Router, pattern string, h http.Handler) *mux.Route {
 	pattern = strings.TrimRight(AppURLPrefix+pattern, "/")
-	defer zlog.HandlePanic(false)
+	defer zdebug.RecoverFromPanic(false)
 	if router == nil {
 		// zlog.Info("AddSubHandler no router:", pattern)
 		if HasTelemetryFunc() {
@@ -200,7 +200,7 @@ func AddFileHandler(router *mux.Router, pattern, dir string, override func(w htt
 func AddHandler(router *mux.Router, pattern string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	pattern = AppURLPrefix + pattern
 	// zlog.Info("AddHandler:", pattern)
-	defer zlog.HandlePanic(false)
+	defer zdebug.RecoverFromPanic(false)
 	// if router == nil {
 	// 	if HasTelemetryFunc() {
 	// 		http.HandleFunc(pattern, func(w http.ResponseWriter, req *http.Request) {
