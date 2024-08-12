@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zerrors"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
@@ -25,7 +27,7 @@ import (
 // Client is a type used to perform rpc calls
 type Client struct {
 	AuthToken                        string  // AuthToken is the token sent with the rpc call to authenticate or identify (for reverse calls)
-	HandleAuthenticanFailedFunc      func()  // HandleAuthenticanFailedFunc is called if authentication fails
+	HandleAuthenticationFailedFunc   func()  // HandleAuthenticationFailedFunc is called if authentication fails
 	TimeoutSecs                      float64 // A new client with a different timeout can be created. This is total time of comminication to server, execution, and returning the result
 	KeepTokenOnAuthenticationInvalid bool    // if KeepTokenOnAuthenticationInvalid is true, the auth token isn't cleared on failure to authenticate
 	SkipVerifyCertificate            bool    // if true, no certificate checking is done for https calls
@@ -116,10 +118,12 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 	}
 	surl, _ := zhttp.MakeURLWithArgs(c.callURL, urlArgs)
 	// zlog.Warn("CALL:", surl)
+	dict := zdict.Dict{"RPC Method": method, "TimeoutSecs": timeoutSecs}
 	_, err = zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
 		limitID := zlog.Limit("zrpc.Post.Err." + method)
-		return nil, zlog.Error(limitID, "post", surl, err)
+		zlog.Info(limitID, "post", surl, err)
+		return nil, zerrors.MakeContextError(dict, "Post to Remote URL", err)
 	}
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also
 		zlog.Info("zprc AuthenticationInvalid:", method, c.AuthToken, c.KeepTokenOnAuthenticationInvalid)
@@ -127,15 +131,15 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 			c.AuthToken = ""
 		}
 		rp.TransportError = "authentication invalid"
-		if c.HandleAuthenticanFailedFunc != nil {
-			c.HandleAuthenticanFailedFunc()
+		if c.HandleAuthenticationFailedFunc != nil {
+			c.HandleAuthenticationFailedFunc()
 		}
 	}
 	if rp.TransportError != "" {
-		return nil, rp.TransportError
+		return nil, zerrors.MakeContextError(dict, rp.TransportError)
 	}
 	if rp.Error != "" {
-		return errors.New(rp.Error), nil
+		return zerrors.MakeContextError(dict, errors.New(rp.Error)), nil
 	}
 	if !rp.AuthenticationInvalid && result != nil {
 		err = json.Unmarshal(rp.Result, result)

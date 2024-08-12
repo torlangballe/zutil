@@ -146,7 +146,11 @@ func SendBody(surl string, params Parameters, send, receive any) (*http.Response
 	}
 	params.Body = bout
 	resp, _, err := SendBytesSetContentLength(surl, params)
-	return processResponse(surl, resp, params.PrintBody, receive, err)
+	err = processResponse(surl, resp, params, receive, err)
+	if err != nil {
+		err = makeContextErrorFromError(err, "Send Body", surl, params.Method)
+	}
+	return resp, err
 }
 
 // var normalClient = &http.Client{
@@ -262,8 +266,11 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 	if params.GetErrorFromBody && (resp != nil && (err != nil || resp.StatusCode != 200)) {
 		err = CheckErrorFromBody(resp)
 	}
-	if err != nil && resp != nil {
-		resp.Body.Close()
+	// zlog.Info("GetResponseFromReqClient:", err)
+	if err != nil {
+		if resp != nil {
+			resp.Body.Close()
+		}
 		return
 	}
 	if err == nil && resp != nil && resp.StatusCode >= 300 {
@@ -287,15 +294,19 @@ func GetResponse(surl string, params Parameters) (resp *http.Response, err error
 func Get(surl string, params Parameters, receive any) (resp *http.Response, err error) {
 	params.Method = http.MethodGet
 	resp, err = GetResponse(surl, params)
-	return processResponse(surl, resp, params.PrintBody, receive, err)
+	err = processResponse(surl, resp, params, receive, err)
+	if err != nil {
+		err = makeContextErrorFromError(err, "Get", surl, "GET")
+	}
+	return resp, err
 }
 
-func processResponse(surl string, resp *http.Response, printBody bool, receive any, err error) (*http.Response, error) {
+func processResponse(surl string, resp *http.Response, params Parameters, receive any, err error) error {
 	if resp == nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
-	if printBody {
+	if params.PrintBody {
 		fmt.Println("dump:", resp.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(resp)+"\n")
 	}
 	if receive != nil && reflect.ValueOf(receive).Kind() != reflect.Ptr {
@@ -312,29 +323,29 @@ func processResponse(surl string, resp *http.Response, printBody bool, receive a
 				err = errors.New(str)
 			}
 		}
-		return resp, err
+		return err
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = zlog.Error("readall", err)
-		return resp, err
+		return err
 	}
 	if receive != nil {
 		if rbytes, got := receive.(*[]byte); got {
 			*rbytes = body
-			return resp, nil
+			return nil
 		}
 		if rstring, got := receive.(*string); got {
 			*rstring = string(body)
-			return resp, nil
+			return nil
 		}
 		err = json.Unmarshal(body, receive)
 		if err != nil {
 			err = zlog.Error("unmarshal", err)
-			return resp, err
+			return err
 		}
 	}
-	return resp, nil
+	return nil
 }
 
 func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Response, code int, err error) {
@@ -397,17 +408,26 @@ func TruncateLongParametersInURL(surl string, onlyIfTotalCharsMoreThan, maxChars
 	return u.String()
 }
 
+func makeContextErrorFromError(err error, title, surl, method string) zerrors.ContextError {
+	m := zstr.FirstToTitleCase(strings.ToLower(method))
+	dict := zdict.Dict{
+		"URL":         surl,
+		"HTTP Method": m,
+	}
+	str := err.Error()
+	pre := m + ` "` + surl + `": `
+	if zstr.HasPrefix(str, pre, &str) {
+		err = errors.New(str)
+	}
+	return zerrors.MakeContextError(dict, title, err)
+}
+
 func GetRedirectedURL(surl string) (string, error) {
 	var log string
 	start := time.Now()
-	dict := zdict.Dict{
-		"URL": surl,
-	}
-	ie := zerrors.MakeContextError(dict, "Get Redirected URL")
 	req, err := http.NewRequest("HEAD", surl, nil)
 	if err != nil {
-		ie.SubContextError = &ie
-		ie.SetError(err)
+		ie := makeContextErrorFromError(err, "Get Redirected URL", surl, "HEAD")
 		return surl, ie
 	}
 	client := http.Client{}
@@ -430,14 +450,9 @@ func GetRedirectedURL(surl string) (string, error) {
 		if zstr.HasPrefix(text, `Head "`+surl+`": `, &text) {
 			err = errors.New(text)
 		}
-		ce := zerrors.MakeContextError(nil, "Get Head", err)
-		ie.SubContextError = &ce
+		ie := makeContextErrorFromError(err, "Get Redirected URL: Get Head", surl, "HEAD")
 		err = ie
-		u, perr := url.Parse(surl)
-		if perr != nil {
-			zlog.Error(surl, perr)
-			return "", err
-		}
+		u, _ := url.Parse(surl)
 		startDNS := time.Now()
 		ip, lerr := znet.DNSLookupToIP4(u.Host)
 		if lerr != nil {
