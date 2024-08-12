@@ -52,7 +52,7 @@ func Init() {
 }
 
 func StartAuth() {
-	zrpc.MainClient.HandleAuthenticanFailedFunc = func() {
+	zrpc.MainClient.HandleAuthenticationFailedFunc = func() {
 		checkAndDoAuth()
 	}
 	ztimer.StartIn(0.1, checkAndDoAuth)
