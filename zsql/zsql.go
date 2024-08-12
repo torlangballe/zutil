@@ -56,7 +56,10 @@ const (
 	MySQL // Not used yet
 )
 
-var timeType = reflect.TypeOf(time.Time{})
+var (
+	timeType            = reflect.TypeOf(time.Time{})
+	AllreadyExistsError = errors.New("already exists")
+)
 
 // CustomizeQuery can make a sqlite or psql (or other in future) query, replacing $x with ?x for sqlite.
 // It also replaces $NOW, $SERIAL and $PRIMARY-INT-INC with what is needed for each DB type.
