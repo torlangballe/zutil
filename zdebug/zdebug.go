@@ -1,6 +1,7 @@
 package zdebug
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zerrors"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zwords"
 )
@@ -19,22 +21,22 @@ const (
 )
 
 var (
-	IsInTests                     = (strings.HasSuffix(os.Args[0], ".test"))
-	GetOpenFileCountFunc          func() int
-	AverageCPUFunc                func() float64
-	GetOngoingProcsCountFunc      func() int
-	TimersGoingCountFunc          func() int
-	KeyValueSetObjectFunc         func(key string, o any)
-	KeyValueGetAndDeleteErrorFunc func(key string) error
-	CreateAndLogErrorFunc         func(parts ...any) error
+	IsInTests                            = (strings.HasSuffix(os.Args[0], ".test"))
+	GetOpenFileCountFunc                 func() int
+	AverageCPUFunc                       func() float64
+	GetOngoingProcsCountFunc             func() int
+	TimersGoingCountFunc                 func() int
+	MakeContextErrorForSignalRestart     func(pos int, parts ...any) error
+	KeyValueSaveContextErrorFunc         func(key string, object any)
+	KeyValueGetAndDeleteContextErrorFunc func(key string) (ce error)
 
 	AllProfileTypes = []string{"heap", "profile", "block", "mutex"}
 
-	HandleFatalFunc func(err error)
+	HandleRestartFunc func(err error)
 )
 
 func init() {
-	HandleFatalFunc = func(err error) {
+	HandleRestartFunc = func(err error) {
 		fmt.Println("fatal handler:", err)
 	}
 }
@@ -173,20 +175,26 @@ func RecoverFromPanic(exit bool) {
 	if err == nil {
 		err = fmt.Errorf("%v", r)
 	}
+	err = MakeContextErrorForSignalRestart(4, "Panic Restart", err)
+	fmt.Println("RecoverFromPanic:", err, r)
 	StoreAndExitError(err, exit)
 }
 
 func StoreAndExitError(err error, exit bool) {
-	KeyValueSetObjectFunc(RestartContextErrorKey, err)
+	fmt.Println("StoreAndExitError", err.(zerrors.ContextError))
+	KeyValueSaveContextErrorFunc(RestartContextErrorKey, err)
 	if exit {
 		os.Exit(-1)
 	}
-	HandleFatalFunc(err)
+	HandleRestartFunc(err)
 }
 
-func LoadStoredSignalContextError() {
-	err := KeyValueGetAndDeleteErrorFunc(RestartContextErrorKey)
+func LoadStoredRestartContextError() {
+	err := KeyValueGetAndDeleteContextErrorFunc(RestartContextErrorKey)
+	if err == nil {
+		err = errors.New("Restarted")
+	}
 	if err != nil {
-		HandleFatalFunc(err)
+		HandleRestartFunc(err)
 	}
 }

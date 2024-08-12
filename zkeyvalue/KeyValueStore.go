@@ -56,12 +56,15 @@ var (
 )
 
 func init() {
-	zdebug.KeyValueSetObjectFunc = func(key string, o any) {
+	zdebug.KeyValueSaveContextErrorFunc = func(key string, object any) {
 		if DefaultStore != nil {
-			DefaultStore.SetObject(o, key, true)
+			// zlog.Info("KeyValueSaveContextErrorFunc:", object)
+			// ce, got := object.(zerrors.ContextError)
+			// zlog.Info("KeyValueSaveContextErrorFunc2:", got, zlog.Full(ce))
+			DefaultStore.SetObject(object, key, true)
 		}
 	}
-	zdebug.KeyValueGetAndDeleteErrorFunc = func(key string) error {
+	zdebug.KeyValueGetAndDeleteContextErrorFunc = func(key string) (ce error) {
 		if DefaultStore != nil {
 			var ce zerrors.ContextError
 			if DefaultStore.GetObject(key, &ce) {
@@ -69,6 +72,7 @@ func init() {
 				return ce
 			}
 		}
+		DefaultStore.RemoveForKey(key, true)
 		return nil
 	}
 }
@@ -80,10 +84,11 @@ func (s Store) GetObject(key string, objectPtr interface{}) (got bool) {
 	if got {
 		err := json.Unmarshal([]byte(rawjson), objectPtr)
 		if zlog.OnError(err, "unmarshal", string(rawjson)) {
-			return
+			return false
 		}
+		return true
 	}
-	return
+	return false
 }
 
 func (s Store) GetString(key string) (str string, got bool) {
@@ -160,6 +165,7 @@ func (s Store) SetObject(object interface{}, key string, sync bool) {
 	if zlog.OnError(err, "marshal") {
 		return
 	}
+	zlog.Info("KV.SetObject:", key, string(data))
 	s.postfixKey(&key)
 	s.Raw.RawSetItem(key, string(data))
 	if sync && s.Saver != nil {

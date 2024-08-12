@@ -7,6 +7,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zerrors"
 )
 
 func SetupSignalHandler() {
@@ -14,9 +17,9 @@ func SetupSignalHandler() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGABRT, syscall.SIGQUIT, syscall.SIGILL, syscall.SIGTRAP, syscall.SIGSYS)
 	go func() {
 		sig := <-c
-		// if sig != syscall.SIGABRT && sig != syscall.SIGTERM {
-		err := fmt.Errorf("%v", sig)
+		dict := zdict.Dict{"Signal": fmt.Sprint(sig)}
+		err := zerrors.MakeContextError(dict, "Restart Signal")
+		// fmt.Println("SIGNAL:", sig, fmt.Sprint(sig), sig.String(), dict)
 		StoreAndExitError(err, true)
-		// }
 	}()
 }

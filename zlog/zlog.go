@@ -1,7 +1,6 @@
 package zlog
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zerrors"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -48,13 +48,13 @@ var (
 	hooking                    = false
 	timeLock                   sync.Mutex
 	linesPrintedSinceTimeStamp int
-
-	MakeContextErrorFunc func(dict map[string]any, parts ...any) error
 )
 
 func init() {
 	zdict.AssertFunc = Assert
-	zdebug.CreateAndLogErrorFunc = Error
+	zdebug.MakeContextErrorForSignalRestart = func(pos int, parts ...any) error {
+		return NewLogError(FatalLevel, time.Now(), pos, parts...)
+	}
 }
 
 func Error(parts ...any) error {
@@ -118,6 +118,20 @@ func expandTildeInFilepath(path string) string { // can't use one in zfile, cycl
 
 func NewError(parts ...any) error {
 	return NewLogError(InfoLevel, time.Now(), 1, parts...)
+}
+
+func makeContextErrorFunc(m map[string]any, parts ...any) error {
+	dict := zdict.FromShallowMap(m)
+	for i, part := range parts {
+		spart := fmt.Sprint(part)
+		str := zstr.ColorSetter.Replace(spart)
+		if str != spart {
+			parts[i] = str
+			parts = append(parts, zstr.EscNoColor)
+		}
+	}
+	ce := zerrors.MakeContextError(dict, parts...)
+	return ce
 }
 
 func baseLog(priority Priority, pos int, parts ...any) error {
@@ -200,11 +214,13 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 	if priority == FatalLevel {
 		finfo += "\nFatal:" + zdebug.CallingStackString() + "\n"
 	}
-	err := NewLogError(priority, now, pos, parts...)
-	errStr := zstr.Spaced(parts...)
-	fmt.Println(finfo + col + errStr + endCol)
-	str := finfo + errStr + "\n"
-
+	str := zstr.Spaced(parts...)
+	var err error
+	if priority >= ErrorLevel {
+		err = NewLogError(priority, now, pos, parts...)
+	}
+	fmt.Println(finfo + col + str + endCol)
+	str = finfo + str + "\n"
 	hookingLock.Lock()
 	if !hooking {
 		hooking = true
@@ -230,19 +246,16 @@ func NewLogError(priority Priority, time time.Time, pos int, parts ...any) error
 		dict["File"] = file
 		dict["Line"] = line
 		dict["Time"] = time
+		dict["Stack"] = zstr.TruncatedFromEnd(zdebug.CallingStackStringAt(pos), 10*1024, "\n---call stack truncated at 10K---")
 	}
-	var err error
-	if MakeContextErrorFunc != nil {
-		err = MakeContextErrorFunc(dict, parts...)
-	} else {
-		err = errors.New(zstr.Spaced(parts...))
-	}
+	err := makeContextErrorFunc(dict, parts...)
+
 	return err
 }
 
 func Assert(success bool, parts ...any) {
 	if !success {
-		parts = append([]any{StackAdjust(2), "Assert:"}, parts...)
+		parts = append([]any{StackAdjust(2), "Assert"}, parts...)
 		Fatal(parts...)
 	}
 }

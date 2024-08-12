@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/torlangballe/zutil/zdict"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -17,21 +16,21 @@ type ContextError struct {
 	errorStr        string
 }
 
-func init() {
-	zlog.MakeContextErrorFunc = func(m map[string]any, parts ...any) error {
-		dict := zdict.FromShallowMap(m)
-		for i, part := range parts {
-			spart := fmt.Sprint(part)
-			str := zstr.ColorSetter.Replace(spart)
-			if str != spart {
-				parts[i] = str
-				parts = append(parts, zstr.EscNoColor)
-			}
-		}
-		ce := MakeContextError(dict, parts...)
-		return ce
-	}
-}
+// func init() {
+// 	zlog.MakeContextErrorFunc = func(m map[string]any, parts ...any) error {
+// 		dict := zdict.FromShallowMap(m)
+// 		for i, part := range parts {
+// 			spart := fmt.Sprint(part)
+// 			str := zstr.ColorSetter.Replace(spart)
+// 			if str != spart {
+// 				parts[i] = str
+// 				parts = append(parts, zstr.EscNoColor)
+// 			}
+// 		}
+// 		ce := MakeContextError(dict, parts...)
+// 		return ce
+// 	}
+// }
 
 func (e ContextError) Error() string {
 	return e.errorStr
@@ -46,6 +45,14 @@ func (e ContextError) Error() string {
 
 func (e ContextError) GetTitle() string {
 	return e.Title
+}
+
+func (e ContextError) String() string {
+	str := fmt.Sprintf("{ %s %+v ", e.Title, e.KeyValues)
+	if e.SubContextError != nil {
+		str += "{ " + e.SubContextError.String() + " } "
+	}
+	return str + "}"
 }
 
 func (e ContextError) Unwrap() error {
@@ -84,7 +91,9 @@ func MakeContextError(dict zdict.Dict, parts ...any) ContextError {
 			ie.WrappedError = err
 			ce, gotCE := ContextErrorFromError(err)
 			if gotCE {
-				zlog.ErrorIf(ie.SubContextError != nil, p, "multiple sub-items-errors")
+				if ie.SubContextError != nil {
+					fmt.Println("MakeContextError: assert ie.SubContextError != nil", p, "multiple sub-items-errors")
+				}
 				ie.SubContextError = &ce
 				continue
 			}
