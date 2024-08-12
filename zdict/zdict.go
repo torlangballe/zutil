@@ -12,7 +12,6 @@ import (
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -33,6 +32,8 @@ type Items []Item
 type ItemsGetter interface {
 	GetItems() Items
 }
+
+var AssertFunc func(success bool, parts ...any)
 
 func ItemsFromRowGetterSlice(slice any) *Items {
 	sval := reflect.ValueOf(slice)
@@ -231,15 +232,15 @@ func (d Dict) ToStruct(structPtr any) {
 		switch each.ReflectValue.Kind() {
 		case reflect.String:
 			str, got := val.(string)
-			zlog.Assert(got, reflect.TypeOf(val), name)
+			AssertFunc(got, reflect.TypeOf(val), name)
 			each.ReflectValue.Addr().Elem().SetString(str)
 		case reflect.Float32, reflect.Float64:
 			f, err := zfloat.GetAny(val)
-			zlog.AssertNotError(err, name, each.ReflectValue.Kind())
+			AssertFunc(err == nil, err, name, each.ReflectValue.Kind())
 			each.ReflectValue.Addr().Elem().SetFloat(f)
 		case reflect.Int:
 			n, err := zint.GetAny(val)
-			zlog.AssertNotError(err)
+			AssertFunc(err != nil, err)
 			each.ReflectValue.Addr().Elem().SetInt(n)
 		case reflect.Bool:
 			b, isBool := val.(bool)
@@ -281,7 +282,7 @@ func (d Dict) URL(prefix string) string {
 }
 
 func (d Dict) Dump() {
-	zlog.Info("zdict dump")
+	fmt.Println("zdict dump")
 	for k, v := range d {
 		fmt.Print(k, ": '", v, "' ", reflect.ValueOf(v).Kind(), reflect.ValueOf(v).Type(), "\n")
 	}
@@ -307,7 +308,7 @@ func (d *Dict) Scan(val any) error {
 		if ok {
 			data = []byte(str)
 		} else {
-			return zlog.NewError("zdict.Dict Scan unsupported data type", reflect.TypeOf(val), reflect.ValueOf(val).Kind())
+			return fmt.Errorf("zdict.Dict Scan unsupported data type %v %v", reflect.TypeOf(val), reflect.ValueOf(val).Kind())
 		}
 	}
 	// zlog.Info("JSONStringInterfaceMap scan2", string(data))
