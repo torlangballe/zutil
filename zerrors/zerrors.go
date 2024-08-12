@@ -18,7 +18,8 @@ type ContextError struct {
 }
 
 func init() {
-	zlog.MakeContextErrorFunc = func(parts ...any) error {
+	zlog.MakeContextErrorFunc = func(m map[string]any, parts ...any) error {
+		dict := zdict.FromShallowMap(m)
 		for i, part := range parts {
 			spart := fmt.Sprint(part)
 			str := zstr.ColorSetter.Replace(spart)
@@ -27,7 +28,7 @@ func init() {
 				parts = append(parts, zstr.EscNoColor)
 			}
 		}
-		ce := MakeContextError(nil, parts...)
+		ce := MakeContextError(dict, parts...)
 		return ce
 	}
 }

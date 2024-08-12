@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zdebug"
+	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -34,7 +35,6 @@ var (
 	PrintPriority   = DebugLevel
 	outputHooks     = map[string]func(s string){}
 	UseColor        = false
-	PanicHandler    func(reason string, exit bool)
 	PrintGoRoutines = false
 	PrintDate       = true
 	EnablerList     sync.Map // map[string]*Enabler
@@ -49,16 +49,12 @@ var (
 	timeLock                   sync.Mutex
 	linesPrintedSinceTimeStamp int
 
-	MakeContextErrorFunc func(parts ...any) error
+	MakeContextErrorFunc func(dict map[string]any, parts ...any) error
 )
 
 func init() {
-	PanicHandler = func(reason string, exit bool) {
-		Error("panic handler:", reason)
-		if exit {
-			panic(reason)
-		}
-	}
+	zdict.AssertFunc = Assert
+	zdebug.CreateAndLogErrorFunc = Error
 }
 
 func Error(parts ...any) error {
@@ -121,8 +117,7 @@ func expandTildeInFilepath(path string) string { // can't use one in zfile, cycl
 }
 
 func NewError(parts ...any) error {
-	e := MakeContextErrorFunc(parts...)
-	return e
+	return NewLogError(InfoLevel, time.Now(), 1, parts...)
 }
 
 func baseLog(priority Priority, pos int, parts ...any) error {
@@ -132,6 +127,7 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 	if priority < WarningLevel && isInTests {
 		return nil
 	}
+	now := time.Now()
 	for i := 0; i < len(parts); i++ {
 		p := parts[i]
 		n, got := p.(StackAdjust)
@@ -154,7 +150,7 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 					return nil
 				}
 			}
-			rateLimiters.Store(rl, time.Now())
+			rateLimiters.Store(rl, now)
 		}
 		enable, got := p.(Enabler)
 		if got {
@@ -184,10 +180,10 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 		if PrintGoRoutines && lastGoRoutineCount != num && time.Since(lastGoRoutineOutputTime) > time.Second*10 {
 			finfo = fmt.Sprintln("goroutines:", num)
 			lastGoRoutineCount = num
-			lastGoRoutineOutputTime = time.Now()
+			lastGoRoutineOutputTime = now
 		}
 		if PrintDate {
-			str := time.Now().Local().Format("15:04:05.00-02-01 ")
+			str := now.Local().Format("15:04:05.00-02-01 ")
 			if UseColor {
 				str = zstr.EscCyan + str + zstr.EscNoColor
 			}
@@ -204,9 +200,10 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 	if priority == FatalLevel {
 		finfo += "\nFatal:" + zdebug.CallingStackString() + "\n"
 	}
-	err := NewError(parts...)
-	fmt.Println(finfo + col + err.Error() + endCol)
-	str := finfo + err.Error() + "\n"
+	err := NewLogError(priority, now, pos, parts...)
+	errStr := zstr.Spaced(parts...)
+	fmt.Println(finfo + col + errStr + endCol)
+	str := finfo + errStr + "\n"
 
 	hookingLock.Lock()
 	if !hooking {
@@ -225,21 +222,34 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 	return err
 }
 
+func NewLogError(priority Priority, time time.Time, pos int, parts ...any) error {
+	dict := map[string]any{}
+	if priority >= ErrorLevel {
+		function, _, file, _, line := zdebug.CallingFunctionShortInfo(pos)
+		dict["Func"] = function
+		dict["File"] = file
+		dict["Line"] = line
+		dict["Time"] = time
+	}
+	var err error
+	if MakeContextErrorFunc != nil {
+		err = MakeContextErrorFunc(dict, parts...)
+	} else {
+		err = errors.New(zstr.Spaced(parts...))
 	}
 	return err
 }
 
 func Assert(success bool, parts ...any) {
 	if !success {
-		parts = append([]any{StackAdjust(2), "assert:"}, parts...)
-		fmt.Println(parts...)
+		parts = append([]any{StackAdjust(2), "Assert:"}, parts...)
 		Fatal(parts...)
 	}
 }
 
 func AssertMakeError(success bool, parts ...any) error {
 	if !success {
-		parts = append([]any{"assert failed:", StackAdjust(1)}, parts...)
+		parts = append([]any{"Assert failed:", StackAdjust(1)}, parts...)
 		return Error(parts...)
 	}
 	return nil
@@ -301,28 +311,6 @@ func PrintStartupInfo(version, commitHash, builtAt, builtBy, builtOn string) {
 		builtOn,
 		zstr.EscNoColor,
 	)
-}
-
-func HandlePanic(exit bool) error {
-	if PanicHandler == nil {
-		return nil
-	}
-	if runtime.GOOS == "js" {
-		return nil
-	}
-	r := recover()
-	if r != nil {
-		fmt.Println("**HandlePanic")
-		Error("\n🟥HandlePanic:", r, "\n", zdebug.CallingStackString())
-		str := fmt.Sprint(r)
-		PanicHandler(str, exit)
-		e, _ := r.(error)
-		if e != nil {
-			return e
-		}
-		return errors.New(str)
-	}
-	return nil
 }
 
 func OnErrorTestError(t *testing.T, err error, items ...any) bool {
