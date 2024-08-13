@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/torlangballe/zutil/zerrors"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zwords"
 )
@@ -181,7 +180,6 @@ func RecoverFromPanic(exit bool) {
 }
 
 func StoreAndExitError(err error, exit bool) {
-	fmt.Println("StoreAndExitError", err.(zerrors.ContextError))
 	KeyValueSaveContextErrorFunc(RestartContextErrorKey, err)
 	if exit {
 		os.Exit(-1)
