@@ -165,7 +165,6 @@ func (s Store) SetObject(object interface{}, key string, sync bool) {
 	if zlog.OnError(err, "marshal") {
 		return
 	}
-	zlog.Info("KV.SetObject:", key, string(data))
 	s.postfixKey(&key)
 	s.Raw.RawSetItem(key, string(data))
 	if sync && s.Saver != nil {
