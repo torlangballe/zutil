@@ -122,14 +122,6 @@ func NewError(parts ...any) error {
 
 func makeContextErrorFunc(m map[string]any, parts ...any) error {
 	dict := zdict.FromShallowMap(m)
-	for i, part := range parts {
-		spart := fmt.Sprint(part)
-		str := zstr.ColorSetter.Replace(spart)
-		if str != spart {
-			parts[i] = str
-			parts = append(parts, zstr.EscNoColor)
-		}
-	}
 	ce := zerrors.MakeContextError(dict, parts...)
 	return ce
 }
@@ -214,23 +206,42 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 	if priority == FatalLevel {
 		finfo += "\nFatal:" + zdebug.CallingStackString() + "\n"
 	}
-	str := zstr.Spaced(parts...)
+	var cparts, nparts []any
+	for _, p := range parts {
+		n := p
+		s, got := p.(string)
+		if got {
+			var did bool
+			s, did = zstr.EscapeColorSymbols(s)
+			if did {
+				endCol = zstr.EscNoColor
+				p = s
+			}
+			e, did := zstr.RemoveColorSymbols(s)
+			if did {
+				n = e
+			}
+		}
+		cparts = append(cparts, p)
+		nparts = append(nparts, n)
+	}
+	colStr := zstr.Spaced(cparts...)
 	var err error
 	if priority >= ErrorLevel {
-		err = NewLogError(priority, now, pos, parts...)
+		err = NewLogError(priority, now, pos, nparts...)
 	}
-	fmt.Println(finfo + col + str + endCol)
-	str = finfo + str + "\n"
+	fmt.Println(finfo + col + colStr + endCol)
+	whiteStr := finfo + zstr.Spaced(nparts...) + "\n"
 	hookingLock.Lock()
 	if !hooking {
 		hooking = true
 		for _, f := range outputHooks {
-			f(str)
+			f(whiteStr)
 		}
 		hooking = false
 	}
 	hookingLock.Unlock()
-	writeToSyslog(str)
+	writeToSyslog(whiteStr)
 	if priority == FatalLevel {
 		Info("Log fatal exit!")
 		zdebug.StoreAndExitError(err, true)

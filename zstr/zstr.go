@@ -888,6 +888,14 @@ func IsFirstLetterUpperCase(str string) bool {
 	return unicode.ToUpper(r) == r
 }
 
+func FirstRuneAsString(str string) string {
+	r := FirstRune(str)
+	if r == 0 {
+		return ""
+	}
+	return string(r)
+}
+
 func FirstRune(str string) rune {
 	r, _ := utf8.DecodeRuneInString(str)
 	return r

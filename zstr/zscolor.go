@@ -26,7 +26,7 @@ var ColorRemover = strings.NewReplacer(
 	EscNoColor, "",
 )
 
-var ColorSetter = strings.NewReplacer(
+var colorSetter = strings.NewReplacer(
 	"🟥", EscRed,
 	"🟩", EscGreen,
 	"🟨", EscYellow,
@@ -34,6 +34,25 @@ var ColorSetter = strings.NewReplacer(
 	"🟪", EscMagenta,
 	"🔵", EscCyan,
 )
+
+var colorRemover = strings.NewReplacer(
+	"🟥", "",
+	"🟩", "",
+	"🟨", "",
+	"🟦", "",
+	"🟪", "",
+	"🔵", "",
+)
+
+func EscapeColorSymbols(str string) (string, bool) {
+	out := colorSetter.Replace(str)
+	return out, out != str
+}
+
+func RemoveColorSymbols(str string) (string, bool) {
+	out := colorRemover.Replace(str)
+	return out, out != str
+}
 
 // termColor converts a 24-bit RGB color into a term256 compatible approximation.
 func termColor(r, g, b uint16) uint16 {
