@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"path"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -176,6 +177,7 @@ func RecoverFromPanic(exit bool) {
 	}
 	err = MakeContextErrorForSignalRestart(4, "Panic Restart", err)
 	fmt.Println("RecoverFromPanic:", err, r)
+	debug.PrintStack()
 	StoreAndExitError(err, exit)
 }
 
