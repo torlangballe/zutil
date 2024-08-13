@@ -4,19 +4,18 @@ package zdevice
 
 import (
 	"errors"
-	"os"
 	"runtime"
 	"strconv"
 	"strings"
 
 	"github.com/matishsiao/goInfo"
 	// "github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/net"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztimer"
-	"golang.org/x/sys/unix"
 )
 
 type NetCount struct {
@@ -156,13 +155,11 @@ func OSVersion() string {
 }
 
 func FreeAndUsedDiskSpace() (free int64, used int64) {
-	var stat unix.Statfs_t
-	wd, _ := os.Getwd()
-	unix.Statfs(wd, &stat)
-	free = int64(stat.Bfree * uint64(stat.Bsize))
-	used = int64(stat.Blocks * uint64(stat.Bsize))
-	zlog.Assert(used != 0)
-	return
+	s, err := disk.Usage("/")
+	if err != nil {
+		return 0, 0
+	}
+	return int64(s.Free), int64(s.Used)
 }
 
 // func BootTime() (time.Time, error) {
