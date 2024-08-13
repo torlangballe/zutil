@@ -8,32 +8,34 @@ type Class struct {
 	Icon  string `db:"icon"`
 }
 
+type Constant struct {
+	ID       int64  `db:"id"`
+	Constant string `db:"constant"`
+}
+
 type Instance struct {
-	ID     int64  `db:"id"`
-	OfID   int64  `db:"ofid"`
-	Value  string `db:"value"`
-	UserID int64  `db:"userid"`
+	ID         int64 `db:"id"`
+	OfID       int64 `db:"ofid"`
+	ConstantID int64 `db:"constantid"`
+	UserID     int64 `db:"userid"`
 }
 
 type VerbName string
 type Verb int
 
-type Link struct {
-	ID        int64
-	Verb      VerbName
-	ToClassID int64
-}
-
 type Relation struct {
+	ID          int64
 	FromClassID int64
-	LinkID      int64
+	Verb        VerbName
+	ToClassID   int64
+	OverrideID  int64
 }
 
-type Value struct {
+type ValRel struct {
+	ID              int64
 	FromInstanceID  int64
-	LinkID          int64
+	RelationID      int64
 	ValueInstanceID int64
-	OverrideLinkID  int64
 }
 
 type Tree struct {
@@ -54,6 +56,7 @@ const (
 	VerbControlledBy VerbName = "controlled-by" // run by, operated by,
 	VerbPartOf       VerbName = "part-of"       // a sub-component of
 	VerbAttributeOf  VerbName = "attribute-of"  // a characteristic/attribute of something. ID, color etc
+	VerbConnectedTo  VerbName = "connected-to"  // something being connected to (with to usually bigger/more-important)
 )
 
 var numbersToVerbMap = map[Verb]VerbName{
@@ -69,6 +72,7 @@ var numbersToVerbMap = map[Verb]VerbName{
 	9:  VerbControlledBy,
 	10: VerbPartOf,
 	11: VerbAttributeOf,
+	12: VerbConnectedTo,
 }
 
 var verbsToNumbersMap = func() map[VerbName]Verb {

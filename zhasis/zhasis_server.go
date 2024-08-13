@@ -6,9 +6,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zfilecache"
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zsql"
@@ -31,25 +33,29 @@ CREATE TABLE IF NOT EXISTS classes (
 	isid INT REFERENCES classes(id),
 	name TEXT NOT NULL DEFAULT '',
 	icon TEXT NOT NULL DEFAULT '',
-	about TEXT NOT NULL DEFAULT ''
+	about TEXT NOT NULL DEFAULT '',
+	UNIQUE (id, name)
 );
 `
 	_, err := db.Exec(query)
 	if err != nil {
 		zlog.Fatal(err)
 	}
-	db.Exec("INSERT INTO classes (id, name, about) VALUES($1, 'zhasisthing', 'root class all others are ancestors of')", RootThingClassID)
+	db.Exec("INSERT INTO classes (id, name, about) VALUES ($1, 'zhasisthing', 'root class all others are ancestors of')", RootThingClassID)
 
 	query = `
 CREATE TABLE IF NOT EXISTS instances (
 	id SERIAL PRIMARY KEY,
 	ofid INT,
 	userid INT,
-	value TEXT NOT NULL DEFAULT '',
-	UNIQUE (ofid, userid, value),
+	constantid INT NOT NULL,
+	UNIQUE (ofid, userid, constantid),
 	CONSTRAINT fk_ofid
 	FOREIGN KEY(ofid)
-	REFERENCES classes(id)
+	REFERENCES classes(id),
+	CONSTRAINT fk_constantid
+	FOREIGN KEY(constantid)
+	REFERENCES constants(id)
 );
 `
 	_, err = db.Exec(query)
@@ -58,32 +64,57 @@ CREATE TABLE IF NOT EXISTS instances (
 	}
 
 	query = `
-CREATE TABLE IF NOT EXISTS links (
+	CREATE TABLE IF NOT EXISTS constants (
+		id SERIAL PRIMARY KEY,
+		constant TEXT NOT NULL DEFAULT '',
+		UNIQUE (constant)
+	);
+	`
+	_, err = db.Exec(query)
+	if err != nil {
+		zlog.Fatal(err)
+	}
+
+	query = `
+CREATE TABLE IF NOT EXISTS relations (
 	id SERIAL PRIMARY KEY,
+	fromclassid INT NOT NULL,
 	verb SMALLINT NOT NULL,
 	toclassid INT NOT NULL,
-	UNIQUE (verb, toclassid),
-	CONSTRAINT fk_toclassid
-	FOREIGN KEY(toclassid)
-	REFERENCES classes(id)
-);
-`
-	_, err = db.Exec(query)
-	if err != nil {
-		zlog.Fatal(err)
-	}
-
-	query = `
-CREATE TABLE IF NOT EXISTS relations2 (
-	fromclassid INT NOT NULL,
-	linkid INT NOT NULL,
-	UNIQUE (fromclassid, linkid),
+	overrideid INT,
+	UNIQUE (fromclassid, verb, toclassid, overrideid),
 	CONSTRAINT fk_fromclassid
 	FOREIGN KEY(fromclassid)
 	REFERENCES classes(id),
-	CONSTRAINT fk_linkid
-	FOREIGN KEY(linkid)
-	REFERENCES links(id)
+	CONSTRAINT fk_toclassid
+	FOREIGN KEY(toclassid)
+	REFERENCES classes(id),
+	CONSTRAINT fk_overrideid
+	FOREIGN KEY(overrideid)
+	REFERENCES relations(id)
+);
+`
+	_, err = db.Exec(query)
+	if err != nil {
+		zlog.Fatal(err)
+	}
+
+	query = `
+CREATE TABLE IF NOT EXISTS valrels (
+	id SERIAL PRIMARY KEY,
+	frominstanceid INT NOT NULL,
+	relationid INT NOT NULL,
+	valueinstanceid INT NOT NULL,
+	UNIQUE (frominstanceid, relationid, valueinstanceid),
+	CONSTRAINT kf_frominstanceid
+	FOREIGN KEY(frominstanceid)
+	REFERENCES instances(id),
+	CONSTRAINT fk_relationid
+	FOREIGN KEY(relationid)
+	REFERENCES relations(id),
+	CONSTRAINT kf_valueinstanceid
+	FOREIGN KEY(valueinstanceid)
+	REFERENCES instances(id)
 );
 `
 	_, err = db.Exec(query)
@@ -95,6 +126,31 @@ CREATE TABLE IF NOT EXISTS relations2 (
 	FileCache.DeleteAfter = 0
 
 	InitCoreThings()
+}
+
+func ClassesParentIDs(classID int64) ([]int64, error) {
+	var ids []int64
+	var id int64
+	query := `WITH RECURSIVE classHierary AS (
+    SELECT C1.isid FROM classes C1 WHERE id=$1
+  UNION
+    SELECT C.isid FROM classes C
+	INNER JOIN classHierary H
+	ON C.id = H.isid
+)
+SELECT * FROM classHierary`
+	rows, err := database.Query(query, classID)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		err = rows.Scan(&id)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func CreateHardCodedClass(name, about string, hardcodedID, isID int64) (int64, error) {
@@ -119,93 +175,118 @@ func CreateClass(name, about string, isID int64) (int64, error) {
 	return id, nil
 }
 
-func GetClassDescendantClasses(classID int64, recursive bool) ([]Tree, error) {
-	var trees []Tree
-	query := "SELECT FROM classes id WHERE isid=$1"
-	rows, err := database.Query(query, classID)
+func GetClassParentClasses(classID int64) ([]Class, error) {
+	ids, err := ClassesParentIDs(classID)
+	if err != nil {
+		return nil, err
+	}
+	return GetClassesForIDs(ids)
+}
+
+func GetClassesForIDs(classIDs []int64) ([]Class, error) {
+	var classes []Class
+	format := "SELECT id, isid, name, about, icon FROM classes id WHERE id IN (%s)"
+	query := fmt.Sprintf(format, zint.Join64(classIDs, ","))
+	rows, err := database.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
-		var t Tree
-		err = rows.Scan(&t.ID)
+		var c Class
+		err = rows.Scan(&c.ID, &c.IsID, &c.Name, &c.About, &c.Icon)
 		if err != nil {
 			return nil, err
 		}
-		trees = append(trees)
+		classes = append(classes, c)
 	}
-	if !recursive {
-		return trees, nil
-	}
-	for i, t := range trees {
-		trees[i].Children, err = GetClassDescendantClasses(t.ID, true)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return trees, nil
+	return classes, nil
 }
 
-func CreateInstance(classID, userID int64, value any) (int64, error) {
+func CreateInstance(classID, userID, constantID int64) (int64, error) {
 	var id int64
-	var str string
-	if value != "" {
-		data, err := json.Marshal(value)
-		if err != nil {
-			return 0, err
-		}
-		str = string(data)
-	}
-	query := "INSERT INTO instances (ofid, userid, value) VALUES ($1, $2, $3) ON CONFLICT (ofid, userid, value) DO UPDATE SET id=EXCLUDED.id RETURNING id"
-	row := database.QueryRow(query, classID, userID, str)
+	query := "INSERT INTO instances (ofid, userid, constantid) VALUES ($1, $2, $3) ON CONFLICT (ofid, userid, constantid) DO UPDATE SET userid=EXCLUDED.userid RETURNING id"
+	row := database.QueryRow(query, classID, userID, constantID)
 	err := row.Scan(&id)
-	zlog.Info("Inserted:", id, err)
 	if err != nil {
 		if err == sql.ErrNoRows {
 		}
-		zlog.Error(err, zsql.ReplaceDollarArguments(query, classID, userID, str))
+		zlog.Error(err, zsql.ReplaceDollarArguments(query, classID, userID, constantID))
 		return 0, err
 	}
 	return id, nil
 }
 
-func AddRelationToClass(classID int64, verbName VerbName, toClassID int64) (linkID int64, err error) {
-	verb := verbsToNumbersMap[verbName]
-	query := `
-	WITH 
-	L AS (INSERT INTO links (verb, toclassid) VALUES ($2, $3) ON CONFLICT (verb, toclassid) DO UPDATE SET id=MATCHED.id RETURNING id)
-	INSERT INTO relations2 (fromclassid, linkid) SELECT $1, L.id FROM L ON CONFLICT (fromclassid, linkid) DO NOTHING RETURNING linkid`
-	// row := database.QueryRow(query, classID, userID, verb, toClassID)
-	row := database.QueryRow(query, classID, verb, toClassID)
-	err = row.Scan(&linkID)
-	zlog.Info("RELLINK:", linkID)
+func CreateInstanceWithConstant(classID, userID int64, constant any) (int64, error) {
+	constID, err := CreateConstant(constant)
+	if err != nil {
+		return 0, err
+	}
+	return CreateInstance(classID, userID, constID)
+}
+
+func CreateConstant(constant any) (int64, error) {
+	var id int64
+	var str string
+	if constant != nil {
+		data, err := json.Marshal(constant)
+		if err != nil {
+			return 0, err
+		}
+		str = string(data)
+	}
+	query := "INSERT INTO constants (constant) VALUES ($1) ON CONFLICT (constant) DO UPDATE SET constant=EXCLUDED.constant RETURNING id"
+	row := database.QueryRow(query, str)
+	err := row.Scan(&id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return linkID, nil
+		}
+		zlog.Error(err, zsql.ReplaceDollarArguments(query, constant))
+		return 0, err
+	}
+	return id, nil
+}
+
+func AddRelationToClass(classID int64, verbName VerbName, toClassID int64, overrideID *int64) (relationID int64, err error) {
+	verb := verbsToNumbersMap[verbName]
+	var o sql.NullInt64
+	if overrideID != nil {
+		o.Valid = true
+		o.Int64 = *overrideID
+	}
+	query := `
+	INSERT INTO relations (fromclassid, verb, toclassid, overrideid) VALUES ($1, $2, $3, $4) ON CONFLICT (fromclassid, verb, toclassid, overrideid) DO UPDATE SET verb=$2 RETURNING id`
+	// row := database.QueryRow(query, classID, userID, verb, toClassID)
+	row := database.QueryRow(query, classID, verb, toClassID, o)
+	err = row.Scan(&relationID)
+	zlog.Info("RELLINK:", relationID, err)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return relationID, nil
 		}
 		zlog.Error(err, zsql.ReplaceDollarArguments(query, classID, verb, toClassID))
 		return 0, err
 	}
-	return linkID, nil
+	return relationID, nil
 }
 
-func AddValueToInstance(instanceID, userID, linkID, valueInstanceID int64) (err error) {
-	// verb := verbsToNumbersMap[verbName]
-	// query := `
-	// WITH tocid AS (SELECT id FROM classes WHERE id=$4 AND userid=$2 OR userid=0 LIMIT 1),
-	// WITH linkid AS (INSERT INTO links (verb, toclassid) VALUES ($3, tocid) RETURNING id"),
-	// WITH cid AS (SELECT id FROM classes WHERE id=$1 AND userid=$2 LIMIT 1)
-	// INSERT INTO relations (fromclassid, linkid) VALUES (cid, linkid) RETURNING linkid";
-	// `
-	// row := database.QueryRow(query, classID, userID, verb, toClassID)
-	// err = row.Scan(&linkID)
-	// if err != nil {
-	// 	zlog.Error(err, zsql.ReplaceDollarArguments(query, classID, userID, verb, toClassID))
-	// 	return 0, err
-	// }
-	// return linkID, nil
+func AddValueRelationToInstance(instanceID, relationID, valueInstanceID, userID int64) error {
+	query := `
+	WITH F AS (SELECT id FROM instances WHERE id=$1 AND ($4=0 OR userid=$4)),
+	     V AS (SELECT id FROM instances WHERE id=$3 AND ($4=0 OR userid=$4))
+	INSERT INTO valrels (frominstanceid, relationid, valueinstanceid) SELECT F.id, $2, V.id FROM F,V LIMIT 1 ON CONFLICT (frominstanceid, relationid, valueinstanceid) DO UPDATE SET relationid=$2;
+	`
+	_, err := database.Exec(query, instanceID, relationID, valueInstanceID, userID)
+	if err != nil {
+		zlog.Error(err, zsql.ReplaceDollarArguments(query, instanceID, relationID, valueInstanceID, userID))
+		return err
+	}
 	return nil
 }
+
+// func AddConstantToInstance(instanceID, relationID, constant any, userID int64) error {
+// 	instID, err := CreateInstanceWithConstant(classID, userID int64, constant any) (int64, error) {
+// }
+// }
 
 func GetRelationsForClass(classID, userID int64) {
 
