@@ -71,8 +71,8 @@ func init() {
 				DefaultStore.RemoveForKey(key, true)
 				return ce
 			}
+			DefaultStore.RemoveForKey(key, true)
 		}
-		DefaultStore.RemoveForKey(key, true)
 		return nil
 	}
 }
