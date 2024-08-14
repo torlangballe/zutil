@@ -240,7 +240,7 @@ func (d Dict) ToStruct(structPtr any) {
 			each.ReflectValue.Addr().Elem().SetFloat(f)
 		case reflect.Int:
 			n, err := zint.GetAny(val)
-			AssertFunc(err != nil, err)
+			AssertFunc(err == nil, err, each.StructField.Name, reflect.TypeOf(val))
 			each.ReflectValue.Addr().Elem().SetInt(n)
 		case reflect.Bool:
 			b, isBool := val.(bool)
