@@ -46,7 +46,7 @@ func NewFileServer(router *mux.Router, cacheBaseFolder string) *FileServer {
 	if !addedIconsFS {
 		zapp.AllWebFS.Add(iconsFS, "zfilelister-icons."+cacheBaseFolder)
 	}
-	zlog.Info("NewFileServer:", cacheBaseFolder)
+	// zlog.Info("NewFileServer:", cacheBaseFolder)
 	s := &FileServer{}
 	s.IconCache = zfilecache.Init(router, cacheBaseFolder, "caches", "filelister-icons")
 	s.IconCache.DeleteAfter = ztime.Day * 7
