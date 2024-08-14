@@ -26,11 +26,12 @@ func UnmarshalFromFile(to interface{}, fpath string, allowNoFile bool) error {
 	return nil
 }
 
-// MarshalToFile marshals from into a json byte stream that is writted to fpath.
+// MarshalToFile marshals from into a json byte stream that is written to fpath.
 // It happens atomically using a temporary file
 func MarshalToFile(from interface{}, fpath string) error {
 	return zfile.WriteToFileAtomically(fpath, func(file io.Writer) error {
 		encoder := json.NewEncoder(file)
+		encoder.SetIndent("  ", "  ")
 		return encoder.Encode(from)
 	})
 }
