@@ -254,7 +254,7 @@ func NewLogError(priority Priority, time time.Time, pos int, parts ...any) error
 	if priority >= ErrorLevel {
 		function, _, file, _, line := zdebug.CallingFunctionShortInfo(pos)
 		dict["Func"] = function
-		dict["File"] = file
+		dict["File"] = zstr.TruncatedFromStart(file, 90, "…")
 		dict["Line"] = line
 		dict["Time"] = time
 		dict["Stack"] = zstr.TruncatedFromEnd(zdebug.CallingStackStringAt(pos), 10*1024, "\n---call stack truncated at 10K---")
@@ -266,7 +266,7 @@ func NewLogError(priority Priority, time time.Time, pos int, parts ...any) error
 
 func Assert(success bool, parts ...any) {
 	if !success {
-		parts = append([]any{StackAdjust(2), "Assert"}, parts...)
+		parts = append([]any{StackAdjust(1), "Assert"}, parts...)
 		Fatal(parts...)
 	}
 }
