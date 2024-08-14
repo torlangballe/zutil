@@ -15,7 +15,7 @@ type Constant struct {
 
 type Instance struct {
 	ID         int64 `db:"id"`
-	OfID       int64 `db:"ofid"`
+	OfClassID  int64 `db:"ofclassid"`
 	ConstantID int64 `db:"constantid"`
 	UserID     int64 `db:"userid"`
 }
@@ -26,7 +26,7 @@ type Verb int
 type Relation struct {
 	ID          int64
 	FromClassID int64
-	Verb        VerbName
+	Verb        Verb
 	ToClassID   int64
 	OverrideID  int64
 }

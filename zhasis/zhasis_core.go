@@ -46,6 +46,9 @@ const (
 
 var (
 	ResidencesIdentifierAttributeID int64
+	ResidenceWithinDwellingRel      int64
+	RoomPartOfDwellingRel           int64
+	DwellingWithinShelterRel        int64
 )
 
 const (
