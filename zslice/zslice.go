@@ -115,15 +115,13 @@ func IndexOf(length int, is func(i int) bool) int {
 	return -1
 }
 
-// func Reverse[T any](s []T) {
-// 	first := 0
-// 	last := len(s) - 1
-// 	for first < last {
-// 		s[first], s[last] = s[last], s[first]
-// 		first++
-// 		last--
-// 	}
-// }
+func Find[S any](slice []S, is func(s S) bool) (*S, int) {
+	i := slices.IndexFunc(slice, is)
+	if i == -1 {
+		return nil, -1
+	}
+	return &slice[i], i
+}
 
 func Reverse(s any) {
 	n := reflect.ValueOf(s).Len()
