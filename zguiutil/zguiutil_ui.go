@@ -8,6 +8,7 @@ import (
 	"github.com/torlangballe/zui/zcanvas"
 	"github.com/torlangballe/zui/zcheckbox"
 	"github.com/torlangballe/zui/zcontainer"
+	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zstyle"
 	"github.com/torlangballe/zui/ztext"
@@ -32,7 +33,7 @@ func NewBar(title string) (*zcontainer.StackView, *zlabel.Label) {
 		label.SetColor(zstyle.DefaultFGColor())
 		label.SetMaxWidth(500)
 		label.SetMaxLines(1)
-		label.SetLongPressedHandler(func() {
+		label.SetLongPressedHandler("", zkeyboard.ModifierNone, func() {
 			zdebug.PrintAllGoroutines()
 			ztimer.DumpRepeaters()
 		})
@@ -146,6 +147,7 @@ func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFra
 		label.SetObjectName("title")
 		label.SetMaxWidth(400)
 		label.SetWrap(ztextinfo.WrapTailTruncate)
+		label.SetPressWithModifierToClipboard(zkeyboard.ModifierAlt)
 		ts := DefaultFrameTitleStyling.MergeWith(titleStyling)
 		label.SetStyling(ts)
 		header.Add(label, zgeo.CenterLeft|zgeo.HorExpand, zgeo.SizeNull)
@@ -172,7 +174,7 @@ func CreateLockIconForView(view zview.View) zview.View {
 	if clear {
 		view.Native().SetUsable(false)
 	}
-	label.SetPressedHandler(func() {
+	label.SetPressedHandler("$press.lock", zkeyboard.ModifierNone, func() {
 		u := view.Native().Usable()
 		view.Native().SetUsable(!u)
 	})

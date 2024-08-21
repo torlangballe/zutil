@@ -108,7 +108,7 @@ func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string
 
 	v.button = zbutton.New("")
 	v.Add(v.button, zgeo.CenterLeft)
-	v.button.SetPressedHandler(v.buttonPressed)
+	v.button.SetPressedHandler("", zkeyboard.ModifierNone, v.buttonPressed)
 
 	v.DropWell = zwidgets.NewDropWell("", zgeo.SizeD(10, 20))
 	v.Add(v.DropWell, zgeo.CenterLeft|zgeo.Expand)

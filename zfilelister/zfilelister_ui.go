@@ -11,6 +11,7 @@ import (
 	"github.com/torlangballe/zui/zcontainer"
 	"github.com/torlangballe/zui/zgridlist"
 	"github.com/torlangballe/zui/zimageview"
+	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zpresent"
 	"github.com/torlangballe/zui/zview"
@@ -66,7 +67,7 @@ func NewFileListerView(opts DirOptions, rpcClient *zrpc.Client) *FileListerView 
 
 	v.back = zimageview.New(nil, true, "images/triangle-left-gray.png", zgeo.SizeD(16, 16))
 	bar.Add(v.back, zgeo.TopLeft)
-	v.back.SetPressedHandler(v.goBack)
+	v.back.SetPressedHandler("", zkeyboard.ModifierNone, v.goBack)
 
 	v.title = makeLabel("")
 	v.title.SetFont(zgeo.FontNice(zgeo.FontDefaultSize+3, zgeo.FontStyleBold))
@@ -267,7 +268,7 @@ func NewRemoteFileListerView(urlPrefix, urlStub string, opts DirOptions, rpcClie
 }
 
 func (v *FileListerView) Present(title string, got func(pickedPaths []string)) {
-	att := zpresent.ModalDialogAttributes
+	att := zpresent.ModalConfirmAttributes
 	zalert.PresentOKCanceledView(v, title, att, nil, func(ok bool) bool {
 		if ok {
 			got(v.DirOptions.PickedPaths)

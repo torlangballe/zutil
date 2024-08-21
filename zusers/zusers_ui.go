@@ -118,7 +118,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 		forgot.SetColor(zgeo.ColorNavy)
 		v1.Add(forgot, zgeo.TopRight)
 
-		forgot.SetPressedHandler(func() {
+		forgot.SetPressedHandler("", zkeyboard.ModifierNone, func() {
 			doForgot(usernameField.Text())
 		})
 	}
@@ -127,7 +127,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 
 	if doReg {
 		h1.Add(register, zgeo.CenterRight)
-		register.SetPressedHandler(func() {
+		register.SetPressedHandler("", zkeyboard.ModifierNone, func() {
 			var a Authentication
 
 			a.IsRegister = true
@@ -139,7 +139,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	if doLogin {
 		h1.Add(login, zgeo.CenterRight)
 	}
-	login.SetPressedHandler(func() {
+	login.SetPressedHandler("", zkeyboard.ModifierNone, func() {
 		var a Authentication
 
 		a.IsRegister = false
@@ -150,7 +150,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	if canCancel {
 		cancel := zshape.ImageButtonViewSimpleInsets("Cancel", "")
 		h1.Add(cancel, zgeo.CenterLeft)
-		cancel.SetPressedHandler(func() {
+		cancel.SetPressedHandler("", zkeyboard.ModifierNone, func() {
 			zpresent.Close(v1, true, nil)
 		})
 	}

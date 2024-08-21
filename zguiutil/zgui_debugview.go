@@ -14,7 +14,6 @@ import (
 	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zpresent"
-	"github.com/torlangballe/zui/ztext"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdevice"
@@ -54,7 +53,7 @@ func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zla
 	then.SetFont(zgeo.FontDefault(0).NewWithStyle(zgeo.FontStyleBold))
 	v.Add(then, zgeo.CenterLeft)
 	label := zlabel.New("go tool pprof -web " + down + "/" + name)
-	ztext.MakeViewPressToClipboard(label)
+	label.SetPressWithModifierToClipboard(zkeyboard.ModifierNone)
 	v.Add(label, zgeo.CenterLeft)
 	in.Add(v, zgeo.CenterLeft|zgeo.HorExpand)
 	return button, label
@@ -65,7 +64,7 @@ func addGUIProfileRow(in *zcontainer.StackView, name, ptype string) {
 	if ptype == "" {
 		ptype = name
 	}
-	button.SetPressedHandler(func() {
+	button.SetPressedHandler("", zkeyboard.ModifierNone, func() {
 		data := doProfiling(ptype)
 		uri := zhttp.MakeDataURL(data, "application/octet-stream")
 		zview.DownloadURI(uri, name)
@@ -84,12 +83,12 @@ func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 	}
 	surl += zrest.AppURLPrefix + zdebug.ProfilingURLPrefix + name // must be here and not in closure below!
 	button.SetToolTip(surl)
-	button.SetPressedHandler(func() {
-		if zkeyboard.ModifiersAtPress == zkeyboard.ModifierAlt {
-			str := "curl " + surl + " > " + name + " && go tool pprof -web " + name
-			zclipboard.SetString(str)
-			return
-		}
+	button.SetPressedHandler("", zkeyboard.ModifierAlt, func() {
+		str := "curl " + surl + " > " + name + " && go tool pprof -web " + name
+		zclipboard.SetString(str)
+		return
+	})
+	button.SetPressedHandler("", zkeyboard.ModifierNone, func() {
 		zview.DownloadURI(surl, name)
 	})
 }
