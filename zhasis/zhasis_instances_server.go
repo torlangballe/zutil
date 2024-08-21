@@ -5,6 +5,7 @@ package zhasis
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
@@ -32,6 +33,18 @@ CREATE TABLE IF NOT EXISTS instances (
 	}
 }
 
+func instanceInfo(instanceID int64) string {
+	str := strconv.FormatInt(instanceID, 10) + "*"
+	inst, err := getInstance(instanceID)
+	if err != nil {
+		str += "<err>"
+	} else {
+		str += classInfo(inst.OfClassID)
+	}
+	str += ":" + constantInfo(inst.ConstantID)
+	return str
+}
+
 func CreateInstance(classID, userID, constantID int64) (int64, error) {
 	var id int64
 	query := "INSERT INTO instances (ofclassid, userid, constantid) VALUES ($1, $2, $3) ON CONFLICT (ofclassid, userid, constantid) DO UPDATE SET userid=EXCLUDED.userid RETURNING id"
@@ -52,6 +65,18 @@ func CreateInstanceWithConstant(classID, userID int64, constant any) (int64, err
 		return 0, err
 	}
 	return CreateInstance(classID, userID, constID)
+}
+
+func getInstance(id int64) (Instance, error) {
+	where := fmt.Sprintf("id=%d", id)
+	is, err := selectInstances(where)
+	if err != nil {
+		return Instance{}, err
+	}
+	if len(is) == 0 {
+		return Instance{}, NotFoundError
+	}
+	return is[0], nil
 }
 
 func selectInstances(where string) ([]Instance, error) {
@@ -121,7 +146,7 @@ func getValueRelations(rels []Relation, isTo bool, instanceID int64) ([]Instance
 	var ivs []InstanceValue
 	column := "from"
 	if isTo {
-		column = "toinstanceid"
+		column = "value"
 	}
 	column += "instanceid"
 	for _, r := range rels {
@@ -143,6 +168,7 @@ func getValueRelations(rels []Relation, isTo bool, instanceID int64) ([]Instance
 		r, _ := FindRelationInSliceForID(rels, vr.RelationID)
 		zlog.Assert(r != nil)
 		iv.Relation = *r
+		ivs = append(ivs, iv)
 	}
 	return ivs, err
 }

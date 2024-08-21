@@ -71,9 +71,10 @@ func InitCoreThings() {
 	// */
 	a2, _ := CreateConstant("2A")
 	homeNumber, _ := CreateInstance(ResidenceIdentifierClassID, userID, a2)
+	fhg1, _ := CreateConstant("FHG2")
 	fhg2, _ := CreateConstant("FHG2-home")
 	kitchen, _ := CreateConstant("Kitchen")
-	apartmentID, _ := CreateInstance(ApartmentClassID, userID, fhg2)
+	apartmentID, _ := CreateInstance(ApartmentClassID, userID, fhg1)
 	homeID, _ := CreateInstance(HomeClassID, userID, fhg2)
 	kitchenID, _ := CreateInstance(RoomClassID, userID, kitchen)
 	// zlog.Info("HomeID:", homeID, err)
@@ -83,16 +84,23 @@ func InitCoreThings() {
 	AddValueRelationToInstance(kitchenID, RoomPartOfDwellingRel, apartmentID, 1)
 
 	crs, err := GetRelationsOfClass(ApartmentClassID)
-	if !zlog.OnError(err) {
-		for _, cr := range crs {
-			zlog.Info("CR Class:", classString(cr.ClassID))
-			for _, r := range cr.ToRelations {
-				zlog.Info(" <- ", numbersToVerbMap[r.Verb], classString(r.FromClassID))
-			}
-			for _, r := range cr.FromRelations {
-				zlog.Info(" -> ", numbersToVerbMap[r.Verb], classString(r.ToClassID))
-			}
+	zlog.OnError(err)
+	for _, cr := range crs {
+		zlog.Info("CR Class:", classInfo(cr.ClassID))
+		for _, r := range cr.ToRelations {
+			zlog.Info(" <- ", numberToVerbNameMap[r.Verb], classInfo(r.FromClassID))
+		}
+		for _, r := range cr.FromRelations {
+			zlog.Info(" -> ", numberToVerbNameMap[r.Verb], classInfo(r.ToClassID))
 		}
 	}
 
+	fs, vs, err := GetValuesOfInstance(homeID)
+	homeStr := instanceInfo(homeID)
+	for _, f := range fs {
+		zlog.Info("ValOfInst:Froms", homeStr, "->", relInfo(f.Relation), "->", instanceInfo(f.ValueInstanceID))
+	}
+	for _, v := range vs {
+		zlog.Info("ValOfInst:Values:", instanceInfo(v.ValueInstanceID), "->", relInfo(v.Relation), "->", homeStr)
+	}
 }

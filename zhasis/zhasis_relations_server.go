@@ -4,6 +4,7 @@ package zhasis
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
@@ -152,4 +153,9 @@ func FindRelationInSliceForID(relations []Relation, id int64) (*Relation, int) {
 		}
 	}
 	return nil, -1
+}
+
+func relInfo(r Relation) string {
+	return fmt.Sprint("R[", numberToVerbNameMap[r.Verb], ":", classInfo(r.FromClassID), "]")
+
 }

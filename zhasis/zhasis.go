@@ -1,5 +1,7 @@
 package zhasis
 
+import "errors"
+
 type Class struct {
 	ID    int64  `db:"id"`
 	IsID  int64  `db:"isid"`
@@ -59,7 +61,9 @@ const (
 	VerbConnectedTo  VerbName = "connected-to"  // something being connected to (with to usually bigger/more-important)
 )
 
-var numbersToVerbMap = map[Verb]VerbName{
+var NotFoundError = errors.New("not found")
+
+var numberToVerbNameMap = map[Verb]VerbName{
 	0:  VerbNone,
 	1:  VerbWithin,
 	2:  VerbOn,
@@ -77,7 +81,7 @@ var numbersToVerbMap = map[Verb]VerbName{
 
 var verbsToNumbersMap = func() map[VerbName]Verb {
 	m := map[VerbName]Verb{}
-	for n, v := range numbersToVerbMap {
+	for n, v := range numberToVerbNameMap {
 		m[v] = n
 	}
 	return m

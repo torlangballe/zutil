@@ -30,15 +30,24 @@ CREATE TABLE IF NOT EXISTS classes (
 
 }
 
-func classString(classID int64) string {
-	cs, err := selectClasses(fmt.Sprintf("id=%d", classID))
+func classInfo(id int64) string {
+	class, err := getClass(id)
 	if err != nil {
 		return "<err>"
 	}
-	if len(cs) == 0 {
-		return fmt.Sprint(classID)
+	return fmt.Sprintf("%d*%s", id, class.Name)
+}
+
+func getClass(id int64) (Class, error) {
+	where := fmt.Sprintf("id=%d", id)
+	cs, err := selectClasses(where)
+	if err != nil {
+		return Class{}, err
 	}
-	return fmt.Sprintf("%d*%s", cs[0].ID, cs[0].Name)
+	if len(cs) == 0 {
+		return Class{}, NotFoundError
+	}
+	return cs[0], nil
 }
 
 func selectClasses(where string) ([]Class, error) {
