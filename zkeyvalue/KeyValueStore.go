@@ -77,7 +77,7 @@ func init() {
 	}
 }
 
-func (s Store) GetObject(key string, objectPtr interface{}) (got bool) {
+func (s Store) GetObject(key string, objectPtr any) (got bool) {
 	var rawjson string
 	s.postfixKey(&key)
 	got = s.Raw.RawGetItem(key, &rawjson)
@@ -160,7 +160,7 @@ func (s Store) IncrementInt(key string, sync bool, inc int) int {
 	return 0
 }
 
-func (s Store) SetObject(object interface{}, key string, sync bool) {
+func (s Store) SetObject(object any, key string, sync bool) {
 	data, err := json.Marshal(object)
 	if zlog.OnError(err, "marshal") {
 		return
