@@ -104,6 +104,11 @@ func RunFuncUntilTimeoutSecs(secs float64, do func()) (completed bool) {
 // RunFuncUntilContextDone waits for do() to finish or the context to be done
 // If it finishes it returns completed = true, otherwise the goroutine continues, but it returns with false.
 func RunFuncUntilContextDone(ctx context.Context, do func()) (completed bool) {
+	_, has := ctx.Deadline()
+	if !has {
+		do()
+		return true
+	}
 	doneChannel := make(chan struct{}, 2)
 	go func() {
 		do()
