@@ -1,7 +1,6 @@
 package zdebug
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -17,7 +16,7 @@ import (
 
 const (
 	ProfilingURLPrefix     = "debug/pprof/"
-	RestartContextErrorKey = "zdebug.RestartContextError"
+	restartContextErrorKey = "zdebug.RestartContextError"
 )
 
 var (
@@ -26,9 +25,9 @@ var (
 	AverageCPUFunc                       func() float64
 	GetOngoingProcsCountFunc             func() int
 	TimersGoingCountFunc                 func() int
-	MakeContextErrorForSignalRestart     func(pos int, parts ...any) error
+	MakeContextErrorForSignalRestart     func(pos int, invokeFunc string, parts ...any) error
 	KeyValueSaveContextErrorFunc         func(key string, object any)
-	KeyValueGetAndDeleteContextErrorFunc func(key string) (ce error)
+	KeyValueGetAndDeleteContextErrorFunc func(key string) (err error)
 
 	AllProfileTypes = []string{"heap", "profile", "block", "mutex"}
 
@@ -163,9 +162,10 @@ func FileLineAndCallingFunctionString(pos int, useShortFile bool) string {
 	return fmt.Sprintf("%s:%d %s()", file, line, shortFunction)
 }
 
-func RecoverFromPanic(exit bool) {
+func RecoverFromPanic(exit bool, invokeFunc string) {
+	upStackLevels := 4
 	if runtime.GOOS == "js" {
-		return
+		upStackLevels = 4
 	}
 	r := recover()
 	if r == nil {
@@ -175,14 +175,15 @@ func RecoverFromPanic(exit bool) {
 	if err == nil {
 		err = fmt.Errorf("%v", r)
 	}
-	err = MakeContextErrorForSignalRestart(4, "Panic Restart", err)
+
+	err = MakeContextErrorForSignalRestart(upStackLevels, invokeFunc, "Panic Restart", err)
 	fmt.Println("RecoverFromPanic:", err, r)
 	debug.PrintStack()
 	StoreAndExitError(err, exit)
 }
 
 func StoreAndExitError(err error, exit bool) {
-	KeyValueSaveContextErrorFunc(RestartContextErrorKey, err)
+	KeyValueSaveContextErrorFunc(restartContextErrorKey, err)
 	if exit {
 		os.Exit(-1)
 	}
@@ -190,11 +191,9 @@ func StoreAndExitError(err error, exit bool) {
 }
 
 func LoadStoredRestartContextError() {
-	err := KeyValueGetAndDeleteContextErrorFunc(RestartContextErrorKey)
-	if err == nil {
-		err = errors.New("Restarted")
-	}
+	err := KeyValueGetAndDeleteContextErrorFunc(restartContextErrorKey)
 	if err != nil {
+		// fmt.Printf("LoadStoredRestartContextError %+v\n:", err)
 		HandleRestartFunc(err)
 	}
 }
