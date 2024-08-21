@@ -32,18 +32,11 @@ type ContextError struct {
 // }
 
 func (e ContextError) Error() string {
-	str := e.Title
+	var add string
 	if e.WrappedError != nil {
-		str += ": " + e.WrappedError.Error()
+		add = e.WrappedError.Error()
 	}
-	return str
-	// str := e.Title
-	// if e.SubContextError != nil {
-	// 	str = zstr.Concat(" / ", str, e.SubContextError.Error())
-	// } else if e.WrappedError != nil {
-	// 	str = zstr.Concat(" / ", str, e.WrappedError.Error())
-	// }
-	// return str
+	return zstr.Concat(": ", e.Title, add)
 }
 
 func (e ContextError) GetTitle() string {
