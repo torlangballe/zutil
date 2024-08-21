@@ -50,12 +50,13 @@ func (t *Timer) StartIn(secs float64, perform func()) {
 	countMutex.Unlock()
 
 	t.start = time.Now()
+	invokeFunc := zdebug.FileLineAndCallingFunctionString(4, true)
 	t.timer = time.AfterFunc(secs2Dur(secs), func() {
 		countMutex.Lock()
 		timersCount[secs]--
 		countMutex.Unlock()
 		t.timer = nil
-		defer zdebug.RecoverFromPanic(true)
+		defer zdebug.RecoverFromPanic(true, invokeFunc)
 		perform()
 	})
 }

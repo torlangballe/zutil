@@ -86,7 +86,7 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "OPTIONS" {
 		return
 	}
-	defer zdebug.RecoverFromPanic(false)
+	defer zdebug.RecoverFromPanic(false, "")
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&cp)
 	call := true

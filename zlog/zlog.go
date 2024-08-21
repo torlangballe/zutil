@@ -52,8 +52,17 @@ var (
 
 func init() {
 	zdict.AssertFunc = Assert
-	zdebug.MakeContextErrorForSignalRestart = func(pos int, parts ...any) error {
-		return NewLogError(FatalLevel, time.Now(), pos, parts...)
+	zdebug.MakeContextErrorForSignalRestart = func(pos int, invokeFunc string, parts ...any) error {
+		err := NewLogError(FatalLevel, time.Now(), pos, parts...)
+		if invokeFunc == "" {
+			return err
+		}
+		ce, is := err.(zerrors.ContextError)
+		if !is {
+			return err
+		}
+		ce.SetKeyValue("Invoked", invokeFunc)
+		return ce
 	}
 }
 
@@ -252,7 +261,7 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 func NewLogError(priority Priority, time time.Time, pos int, parts ...any) error {
 	dict := map[string]any{}
 	if priority >= ErrorLevel {
-		function, _, file, _, line := zdebug.CallingFunctionShortInfo(pos)
+		function, _, file, _, line := zdebug.CallingFunctionShortInfo(pos + 1)
 		dict["Func"] = function
 		dict["File"] = zstr.TruncatedFromStart(file, 90, "…")
 		dict["Line"] = line

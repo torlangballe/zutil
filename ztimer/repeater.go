@@ -65,6 +65,7 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	if r.ticker != nil {
 		r.Stop()
 	}
+	invokeFunc := zdebug.FileLineAndCallingFunctionString(4, true)
 	r.ticker = time.NewTicker(secs2Dur(secs))
 	repeatersMutex.Lock()
 	r.stack = zdebug.FileLineAndCallingFunctionString(4, true)
@@ -74,7 +75,7 @@ func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
 	GoingCount++
 	r.stop = make(chan bool, 5)
 	go func() {
-		defer zdebug.RecoverFromPanic(true)
+		defer zdebug.RecoverFromPanic(true, invokeFunc)
 		if now {
 			if !perform() {
 				return
