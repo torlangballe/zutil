@@ -70,7 +70,7 @@ func NewClient(prefixURL string, id string) *Client {
 	}
 	// zlog.Info("zrpc.NewClient:", c.callURL)
 	c.ID = id
-	c.TimeoutSecs = 100
+	c.TimeoutSecs = 20
 	return c
 }
 
@@ -122,7 +122,7 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 	_, err = zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
 		limitID := zlog.Limit("zrpc.Post.Err." + method)
-		zlog.Info(limitID, "post", surl, err)
+		zlog.Info(limitID, "zrpc Post", surl, err)
 		return nil, zerrors.MakeContextError(dict, "Post to Remote URL", err)
 	}
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also

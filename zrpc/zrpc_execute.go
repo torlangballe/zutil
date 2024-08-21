@@ -11,6 +11,7 @@ import (
 
 	"github.com/torlangballe/zutil/zcache"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -23,6 +24,7 @@ type Executor struct {
 	Authenticator      TokenAuthenticator     // used to authenticate a token in a RPC call
 	callMethods        map[string]*methodType // stores all registered types/methods
 	IPAddressWhitelist map[string]bool        // if non-empty, only ip-addresses in map are allowed to be called from
+	ErrorHandler       func(err error)        // calls this with errors that happen, for logging etc in system that uses zrpc
 }
 
 // temporaryDataServe stores temporary bytes to serve as a separate http reqest
@@ -37,6 +39,14 @@ func NewExecutor() *Executor {
 	return e
 }
 
+func (e *Executor) Error(parts ...any) error {
+	err := zlog.Error(parts...)
+	if e.ErrorHandler != nil {
+		e.ErrorHandler(err)
+	}
+	return err
+}
+
 // Register registers instances of types that have methods in them suitable for being an rpc call.
 // func (t type) Method(<ci ClientInfo>, input, <*result>) error
 func (e *Executor) Register(callers ...interface{}) {
@@ -45,7 +55,7 @@ func (e *Executor) Register(callers ...interface{}) {
 		for n, m := range methods {
 			_, got := e.callMethods[n]
 			if got {
-				zlog.Error("Registering existing call object:", n)
+				e.Error("Registering existing call object:", n)
 				break
 			}
 			// zlog.Info("REG:", n, m.Method, zlog.Pointer(e))
@@ -126,11 +136,13 @@ func isExportedOrBuiltinType(t reflect.Type) bool {
 func (e *Executor) methodNeedsAuth(name string) bool {
 	m, got := e.callMethods[name]
 	if !got {
-		zlog.Error("methodNeedsAuth on unknown:", name)
+		e.Error("methodNeedsAuth: Couldn't find method:", name)
 		return true
 	}
 	return !m.AuthNotNeeded
 }
+
+var callID int
 
 func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg json.RawMessage, requestHTTPDataClient *Client) (rp receivePayload, err error) {
 	// zlog.Info("callMethod:", mtype.Method.Name)
@@ -159,6 +171,7 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 		requestHTTPDataFields(argv.Interface(), requestHTTPDataClient)
 	}
 
+	// zlog.Info("zrpc.CallMethod:", mtype.Method)
 	if argIsValue {
 		argv = argv.Elem()
 	}
@@ -181,7 +194,22 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 		}
 		args = append(args, replyv)
 	}
-	returnValues := mtype.Method.Func.Call(args)
+	var returnValues []reflect.Value
+	// deadline, _ := ctx.Deadline()
+	// zlog.Info("Call with deadline:", mtype.Method.Name, -time.Since(deadline))
+
+	called := time.Now()
+	completed := zprocess.RunFuncUntilContextDone(ctx, func() {
+		id := callID
+		callID++
+		zlog.Info("Inside Call RPC:", mtype.Method.Name, id)
+		returnValues = mtype.Method.Func.Call(args)
+		zlog.Info("Inside Call RPC done:", mtype.Method.Name, id)
+	})
+	if !completed {
+		return rp, zlog.NewError("zrpc.Call expired before call", mtype.Method.Name, time.Since(start), time.Since(called))
+	}
+
 	errInter := returnValues[0].Interface()
 	if errInter != nil {
 		err := errInter.(error)
