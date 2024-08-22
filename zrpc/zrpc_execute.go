@@ -142,8 +142,6 @@ func (e *Executor) methodNeedsAuth(name string) bool {
 	return !m.AuthNotNeeded
 }
 
-var callID int
-
 func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodType, rawArg json.RawMessage, requestHTTPDataClient *Client) (rp receivePayload, err error) {
 	// zlog.Info("callMethod:", mtype.Method.Name)
 	start := time.Now()
@@ -200,11 +198,7 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 
 	called := time.Now()
 	completed := zprocess.RunFuncUntilContextDone(ctx, func() {
-		id := callID
-		callID++
-		zlog.Info("Inside Call RPC:", mtype.Method.Name, id)
 		returnValues = mtype.Method.Func.Call(args)
-		zlog.Info("Inside Call RPC done:", mtype.Method.Name, id)
 	})
 	if !completed {
 		return rp, zlog.NewError("zrpc.Call expired before call", mtype.Method.Name, time.Since(start), time.Since(called))
