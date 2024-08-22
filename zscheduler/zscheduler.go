@@ -230,7 +230,7 @@ func (s *Scheduler[I]) selectLoop() {
 			run, _ := s.findRun(jobID)
 			if run == nil {
 				zlog.Error("SetJobHasErrorCh: no run for", jobID)
-				return
+				continue
 			}
 			run.ErrorAt = time.Now()
 
@@ -245,7 +245,7 @@ func (s *Scheduler[I]) selectLoop() {
 			}
 
 		case <-s.refreshCh:
-			// zlog.Warn("Refresh")
+			// zlog.Warn("zscheduler: Refresh")
 			reason = "refreshCh"
 			s.startAndStopRuns()
 
@@ -260,7 +260,7 @@ func (s *Scheduler[I]) selectLoop() {
 			s.startAndStopRuns()
 
 		case <-s.timer.C:
-			// zlog.Warn("tick")
+			// zlog.Warn("zscheduler: tick")
 			s.timerOn = false
 			s.startAndStopRuns()
 		}
