@@ -52,7 +52,7 @@ var (
 
 func init() {
 	zdict.AssertFunc = Assert
-	zdebug.MakeContextErrorForSignalRestart = func(pos int, invokeFunc string, parts ...any) error {
+	zdebug.MakeContextErrorForSignalRestartFunc = func(pos int, invokeFunc string, parts ...any) error {
 		err := NewLogError(FatalLevel, time.Now(), pos, parts...)
 		if invokeFunc == "" {
 			return err
