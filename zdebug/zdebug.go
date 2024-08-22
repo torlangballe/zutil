@@ -25,7 +25,7 @@ var (
 	AverageCPUFunc                       func() float64
 	GetOngoingProcsCountFunc             func() int
 	TimersGoingCountFunc                 func() int
-	MakeContextErrorForSignalRestart     func(pos int, invokeFunc string, parts ...any) error
+	MakeContextErrorForSignalRestartFunc func(pos int, invokeFunc string, parts ...any) error
 	KeyValueSaveContextErrorFunc         func(key string, object any)
 	KeyValueGetAndDeleteContextErrorFunc func(key string) (err error)
 
@@ -110,7 +110,7 @@ func CallingStackStringAt(index int) string {
 func makePathRelativeTo(path, rel string) string {
 	origPath := path
 	path = strings.TrimLeft(path, "/")
-	rel = strings.TrimLeft(rel, "/")
+	// rel = strings.TrimLeft(rel, "/")
 	// fmt.Println("MakePathRelativeTo1:", path, rel)
 	for {
 		p := zstr.HeadUntil(path, "/")
@@ -163,9 +163,9 @@ func FileLineAndCallingFunctionString(pos int, useShortFile bool) string {
 }
 
 func RecoverFromPanic(exit bool, invokeFunc string) {
-	upStackLevels := 4
+	upStackLevels := 5
 	if runtime.GOOS == "js" {
-		upStackLevels = 4
+		upStackLevels = 5
 	}
 	r := recover()
 	if r == nil {
@@ -176,7 +176,7 @@ func RecoverFromPanic(exit bool, invokeFunc string) {
 		err = fmt.Errorf("%v", r)
 	}
 
-	err = MakeContextErrorForSignalRestart(upStackLevels, invokeFunc, "Panic Restart", err)
+	err = MakeContextErrorForSignalRestartFunc(upStackLevels, invokeFunc, "Panic Restart", err)
 	fmt.Println("RecoverFromPanic:", err, r)
 	debug.PrintStack()
 	StoreAndExitError(err, exit)
