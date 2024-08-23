@@ -275,7 +275,7 @@ func NewLogError(priority Priority, time time.Time, pos int, parts ...any) error
 
 func Assert(success bool, parts ...any) {
 	if !success {
-		parts = append([]any{StackAdjust(1), "Assert"}, parts...)
+		parts = append([]any{"Assert"}, parts...) // StackAdjust(1),
 		Fatal(parts...)
 	}
 }

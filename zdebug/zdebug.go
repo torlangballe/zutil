@@ -163,9 +163,9 @@ func FileLineAndCallingFunctionString(pos int, useShortFile bool) string {
 }
 
 func RecoverFromPanic(exit bool, invokeFunc string) {
-	upStackLevels := 5
+	upStackLevels := 4
 	if runtime.GOOS == "js" {
-		upStackLevels = 5
+		upStackLevels = 4
 	}
 	r := recover()
 	if r == nil {
@@ -177,7 +177,7 @@ func RecoverFromPanic(exit bool, invokeFunc string) {
 	}
 
 	err = MakeContextErrorForSignalRestartFunc(upStackLevels, invokeFunc, "Panic Restart", err)
-	fmt.Println("RecoverFromPanic:", err, r)
+	fmt.Println("RecoverFromPanic:", upStackLevels, err, r)
 	debug.PrintStack()
 	StoreAndExitError(err, exit)
 }
