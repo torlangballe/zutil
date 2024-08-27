@@ -41,6 +41,12 @@ type NameGetter interface {
 	GetName() string
 }
 
+type CodeLink string // Codelink is special string that might be turned into a link
+
+type URLGetter interface {
+	GetURL() string
+}
+
 type KeyValue struct {
 	Key   string
 	Value string
@@ -1313,4 +1319,8 @@ func SmartCompare(a, b string) bool {
 		}
 	}
 	return CaselessCompare(a, b) < 0
+}
+
+func (c CodeLink) GetURL() string {
+	return "vscode://file/" + string(c)
 }
