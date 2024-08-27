@@ -79,6 +79,13 @@ func (bi *BoolInd) FromBool(b bool) {
 	}
 }
 
+func BoolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 func FromBool(b bool) BoolInd {
 	if b {
 		return True
