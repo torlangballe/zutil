@@ -1,8 +1,11 @@
 package zerrors
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"strconv"
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zstr"
@@ -14,22 +17,6 @@ type ContextError struct {
 	WrappedError    error `json:"-"`
 	KeyValues       zdict.Dict
 }
-
-// func init() {
-// 	zlog.MakeContextErrorFunc = func(m map[string]any, parts ...any) error {
-// 		dict := zdict.FromShallowMap(m)
-// 		for i, part := range parts {
-// 			spart := fmt.Sprint(part)
-// 			str := zstr.ColorSetter.Replace(spart)
-// 			if str != spart {
-// 				parts[i] = str
-// 				parts = append(parts, zstr.EscNoColor)
-// 			}
-// 		}
-// 		ce := MakeContextError(dict, parts...)
-// 		return ce
-// 	}
-// }
 
 func (e ContextError) Error() string {
 	var add string
@@ -115,4 +102,26 @@ func ContextErrorFromError(err error) (ContextError, bool) {
 		return c, true
 	}
 	return ContextError{}, false
+}
+
+func (ce *ContextError) UnmarshalJSON(data []byte) error {
+	type ce2 ContextError
+	err := json.Unmarshal(data, (*ce2)(ce))
+	if err != nil {
+		return err
+	}
+	for k, v := range ce.KeyValues {
+		if k == "Code File" {
+			var sname, sline string
+			str := reflect.ValueOf(v).String()
+			if zstr.SplitN(str, ":", &sname, &sline) && sname != "" && sline != "" {
+				_, err := strconv.Atoi(sline)
+				if err == nil {
+					codeLink := zstr.CodeLink(str)
+					ce.KeyValues[k] = codeLink
+				}
+			}
+		}
+	}
+	return nil
 }
