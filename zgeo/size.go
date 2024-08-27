@@ -319,7 +319,7 @@ func (s *Size) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-func (s *Size) MarshalJSON() ([]byte, error) {
+func (s Size) MarshalJSON() ([]byte, error) {
 	if s.IsNull() {
 		return []byte(`""`), nil
 	}
