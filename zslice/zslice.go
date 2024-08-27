@@ -88,13 +88,37 @@ func Behead(slice any) {
 	RemoveAt(slice, 0)
 }
 
+func Delete[S comparable](s *[]S, dels ...S) int {
+	count := 0
+	for i := 0; i < len(*s); {
+		if slices.Contains(dels, (*s)[i]) {
+			count++
+			RemoveAt(s, i)
+			break
+		} else {
+			i++
+		}
+	}
+	return count
+}
+
+func Deleted[S comparable](slice []S, dels ...S) []S {
+	var out []S
+	for _, s := range slice {
+		if !slices.Contains(dels, s) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func DeleteFromFunc[S any](s *[]S, del func(s S) bool) {
 	for i := 0; i < len(*s); {
 		if del((*s)[i]) {
 			RemoveAt(s, i)
-		} else {
-			i++
+			continue
 		}
+		i++
 	}
 }
 
@@ -141,9 +165,11 @@ func Add[T any](s *[]T, a T) {
 	*s = append(*s, a)
 }
 
-func AddToSet[T comparable](s *[]T, a T) {
-	if !slices.Contains(*s, a) {
-		Add(s, a)
+func AddToSet[T comparable](s *[]T, adds ...T) {
+	for _, a := range adds {
+		if !slices.Contains(*s, a) {
+			Add(s, a)
+		}
 	}
 }
 
