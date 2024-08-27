@@ -119,7 +119,7 @@ func CPUUsage(maxCores int) (out []float64) {
 	}
 
 	n := 0
-	out = make([]float64, coresPhysical, coresPhysical)
+	out = make([]float64, coresPhysical)
 	for i := 0; i < threads; i++ {
 		for j := 0; j < coresPhysical; j++ {
 			out[j] += float64(int(vals[n]) / threads)
