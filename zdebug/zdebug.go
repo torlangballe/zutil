@@ -3,7 +3,6 @@ package zdebug
 import (
 	"fmt"
 	"os"
-	"os/user"
 	"path"
 	"runtime"
 	"runtime/debug"
@@ -79,16 +78,15 @@ func CallingFunctionInfo(pos int) (function, file string, line int) {
 func CallingFunctionShortInfo(pos int) (function, shortFunction, file, shortFile string, line int) {
 	var ok bool
 	var pc uintptr
+
 	pc, file, line, ok = runtime.Caller(pos)
 	if !ok {
-		return
+		return "", "", "", "", 0
 	}
 	function = runtime.FuncForPC(pc).Name()
 	_, shortFunction = path.Split(function)
 	_, shortFile = path.Split(file)
-	wd, _ := os.Getwd()
-	file = makePathRelativeTo(file, wd)
-	return
+	return function, shortFunction, file, shortFile, line
 }
 
 func CallingStackString() string {
@@ -105,45 +103,6 @@ func CallingStackStringAt(index int) string {
 		parts = append(parts, s)
 	}
 	return strings.Join(parts, "\n")
-}
-
-func makePathRelativeTo(path, rel string) string {
-	origPath := path
-	path = strings.TrimLeft(path, "/")
-	// rel = strings.TrimLeft(rel, "/")
-	// fmt.Println("MakePathRelativeTo1:", path, rel)
-	for {
-		p := zstr.HeadUntil(path, "/")
-		r := zstr.HeadUntil(rel, "/")
-		if p != r || p == "" {
-			break
-		}
-		l := len(p)
-		path = zstr.Body(path, l+1, -1)
-		rel = zstr.Body(rel, l+1, -1)
-	}
-	// fmt.Println("MakePathRelativeTo:", path, rel)
-	count := strings.Count(rel, "/")
-	if count != 0 {
-		count++
-	}
-	str := strings.Repeat("../", count) + path
-	if count > 2 || len(str) > len(origPath) {
-		var rest string
-		if runtime.GOOS == "js" {
-			return origPath
-		}
-		usr, err := user.Current()
-		if err != nil {
-			return origPath
-		}
-		dir := usr.HomeDir + "/"
-		if zstr.HasPrefix(origPath, dir, &rest) {
-			return "~/" + rest
-		}
-		return origPath
-	}
-	return str
 }
 
 func CallingFunctionString(pos int) string {
@@ -165,7 +124,7 @@ func FileLineAndCallingFunctionString(pos int, useShortFile bool) string {
 func RecoverFromPanic(exit bool, invokeFunc string) {
 	upStackLevels := 4
 	if runtime.GOOS == "js" {
-		upStackLevels = 4
+		upStackLevels = 5
 	}
 	r := recover()
 	if r == nil {
