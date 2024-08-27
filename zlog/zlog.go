@@ -32,17 +32,12 @@ const (
 )
 
 var (
-	PrintPriority   = DebugLevel
-	outputHooks     = map[string]func(s string){}
-	UseColor        = false
-	PrintGoRoutines = false
-	PrintDate       = true
-	EnablerList     sync.Map // map[string]*Enabler
-
-	lastGoRoutineCount      int
-	lastGoRoutineOutputTime time.Time
-	rateLimiters            sync.Map
-
+	PrintPriority              = DebugLevel
+	outputHooks                = map[string]func(s string){}
+	UseColor                   = false
+	PrintDate                  = true
+	EnablerList                sync.Map // map[string]*Enabler
+	rateLimiters               sync.Map
 	isInTests                  = (strings.HasSuffix(os.Args[0], ".test"))
 	hookingLock                sync.Mutex
 	hooking                    = false
@@ -191,12 +186,6 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 	if true { //runtime.GOOS != "js" {
 		timeLock.Lock()
 		linesPrintedSinceTimeStamp++
-		num := runtime.NumGoroutine()
-		if PrintGoRoutines && lastGoRoutineCount != num && time.Since(lastGoRoutineOutputTime) > time.Second*10 {
-			finfo = fmt.Sprintln("goroutines:", num)
-			lastGoRoutineCount = num
-			lastGoRoutineOutputTime = now
-		}
 		if PrintDate {
 			str := now.Local().Format("15:04:05.00-02-01 ")
 			if UseColor {
@@ -263,8 +252,7 @@ func NewLogError(priority Priority, time time.Time, pos int, parts ...any) error
 	if priority >= ErrorLevel {
 		function, _, file, _, line := zdebug.CallingFunctionShortInfo(pos + 1)
 		dict["Func"] = function
-		dict["File"] = zstr.TruncatedFromStart(file, 90, "…")
-		dict["Line"] = line
+		dict["Code File"] = zstr.CodeLink(fmt.Sprintf("%s:%d", file, line))
 		dict["Time"] = time
 		dict["Stack"] = zstr.TruncatedFromEnd(zdebug.CallingStackStringAt(pos), 10*1024, "\n---call stack truncated at 10K---")
 	}
