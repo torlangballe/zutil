@@ -2,11 +2,11 @@ package ztimer
 
 import (
 	"math"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zslice"
 )
 
 // create a RateLimiter to only do a function every n seconds since last time it was done for a given id.
@@ -156,7 +156,7 @@ func (r *RateCounter) Add() (countInWindow int) {
 	now := time.Now()
 	for i := 0; i < len(r.timeStamps); i++ {
 		if time.Since(r.timeStamps[i]) > r.Window {
-			zslice.RemoveAt(&r.timeStamps, i)
+			r.timeStamps = slices.Delete(r.timeStamps, i, i+1)
 			i--
 		} else {
 			break // timeStamps are chronological, so don't need to continue
