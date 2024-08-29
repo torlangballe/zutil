@@ -216,10 +216,15 @@ func Reduced[A any](slice []A, keep func(a A) bool) []A {
 	return snew
 }
 
-func Random[S any](slice []S) (S, int) {
+func Random[S any](slice []S) *S {
+	i := RandomIndex(slice)
+	return &slice[i]
+}
+
+func RandomIndex[S any](slice []S) int {
 	zlog.Assert(len(slice) != 0)
 	i := rand.Int31n(int32(len(slice)))
-	return slice[i], int(i)
+	return int(i)
 }
 
 func SplitWithFunc[S any](slice []S, match func(s S) bool) (is []S, not []S) {
