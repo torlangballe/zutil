@@ -346,7 +346,7 @@ func (ls *LinkedSlice[T, F]) Load() error {
 		return nil
 	}
 	ls.currentChunkSaveIndex = int(index)
-	if !ls.loadChunk(ls.currentChunkSaveIndex) {
+	if !ls.loadChunk(ls.currentChunkSaveIndex, false) {
 		ls.Loaded = true
 		ls.lock.Unlock()
 		return zlog.Error("Error loading first chunk", ls.currentChunkSaveIndex)
@@ -356,7 +356,7 @@ func (ls *LinkedSlice[T, F]) Load() error {
 	ls.lock.Unlock()
 	go func(from int) { // then do rest in a go routine
 		for i := from; i >= 0; i-- {
-			if !ls.loadChunk(i) {
+			if !ls.loadChunk(i, true) {
 				break
 			}
 		}
@@ -365,7 +365,7 @@ func (ls *LinkedSlice[T, F]) Load() error {
 	return nil
 }
 
-func (ls *LinkedSlice[T, F]) loadChunk(chunkSaveIndex int) bool {
+func (ls *LinkedSlice[T, F]) loadChunk(chunkSaveIndex int, lock bool) bool {
 	chunkKey := makeKey(chunkKeyPrefix, int64(chunkSaveIndex))
 	data, err := ls.opts.DB.Get([]byte(chunkKey))
 	if err != nil {
@@ -380,9 +380,13 @@ func (ls *LinkedSlice[T, F]) loadChunk(chunkSaveIndex int) bool {
 	var chunk []T
 	err = dec.Decode(&chunk)
 	zlog.AssertNotError(err)
-	ls.lock.Lock()
+	if lock {
+		ls.lock.Lock()
+	}
 	ls.chunks = append([][]T{chunk}, ls.chunks...)
-	ls.lock.Unlock()
+	if lock {
+		ls.lock.Unlock()
+	}
 	// zlog.Warn("Loaded:", zlog.Full(ls.chunks))
 	return true
 }
