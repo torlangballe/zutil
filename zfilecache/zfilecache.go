@@ -126,7 +126,7 @@ func (c *Cache) CacheFromReader(reader io.Reader, name string) (string, error) {
 // This string return is this name/hash, used to get a path or a url for fetching.
 // This should really call CacheFromReader, not visa versa
 func (c *Cache) CacheFromData(data []byte, name string) (string, error) {
-	prof := zlog.NewProfile(2, "CacheFromData", name)
+	prof := zlog.NewProfile(0.4, "CacheFromData:", name)
 	var err error
 	// zlog.Warn("CacheFromData1:", name)
 	hashName := (name == "" || strings.HasPrefix(name, "."))
