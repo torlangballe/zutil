@@ -114,7 +114,8 @@ func (FileServerCalls) ExpandFilePathsFromPicked(dirOpts DirOptions, paths *[]st
 		return nil
 	}
 	for dirOpts.MaxFiles > 0 && len(all) > 0 {
-		f, i := zslice.Random(all)
+		i := zslice.RandomIndex(all)
+		f := all[i]
 		zslice.RemoveAt(&all, i)
 		*paths = append(*paths, f)
 		dirOpts.MaxFiles--
