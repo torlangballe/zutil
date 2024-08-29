@@ -41,7 +41,7 @@ func addStandardNumbers(slice *LinkedIntSlice) {
 	}
 }
 func testAdd(t *testing.T) {
-	zlog.Warn("testAdd")
+	zlog.Warn("zlinkedslice testAdd")
 	slice := makeSlice(nil)
 	addStandardNumbers(slice)
 	// zlog.Warn("Slice:", zlog.Full(*slice))
@@ -83,7 +83,7 @@ func openDB(t *testing.T) *lotusdb.DB {
 }
 
 func testSave(t *testing.T) {
-	zlog.Warn("testSave")
+	zlog.Warn("zlinkedslice testSave")
 
 	db := openDB(t)
 	if db == nil {
@@ -118,8 +118,6 @@ func testSave(t *testing.T) {
 }
 
 func testLoad(t *testing.T) {
-	zlog.Warn("testSave")
-
 	db := openDB(t)
 	if db == nil {
 		return
@@ -153,7 +151,7 @@ func sliceAsString(slice *LinkedIntSlice) string {
 }
 
 func testDelayed(t *testing.T) {
-	zlog.Warn("testDelayed")
+	zlog.Warn("zlinkedslice testDelayed")
 	opts := DefaultLSOpts
 	opts.ChunkSize = 5
 	opts.DelaySortAddSecs = 0.05
