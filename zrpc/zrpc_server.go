@@ -4,21 +4,16 @@ package zrpc
 
 import (
 	"encoding/json"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/torlangballe/zutil/zcache"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/ztime"
 )
-
-// temporaryDataServe stores temporary bytes to serve within 2 seconds. See AddToTemporaryServe.
-var temporaryDataServe = zcache.NewExpiringMap[int64, []byte](2)
 
 // TokenAuthenticator is used to authenticate a token in ClientInfo, can be zuser doing it, or whatever.
 // InitServer initializes a rpc server with an authenticator, and registers RPCCalls,
@@ -146,12 +141,3 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 }
-
-// AddToTemporaryServe adds some data to be served within a few seconds, returning a unique id.
-// Client.RequestTemporaryServe requests it with that id.
-func AddToTemporaryServe(data []byte) int64 {
-	id := rand.Int63()
-	temporaryDataServe.Set(id, data)
-	return id
-}
-

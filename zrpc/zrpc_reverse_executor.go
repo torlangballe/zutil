@@ -3,8 +3,10 @@ package zrpc
 import (
 	"encoding/json"
 	"math"
+	"math/rand"
 	"time"
 
+	"github.com/torlangballe/zutil/zcache"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztimer"
 )
@@ -34,10 +36,10 @@ type ReverseResult struct {
 	Token             string
 }
 
-// reverseResults stores results from executed methods, waiting to be sent on next poll
 var (
-	reverseResults    []ReverseResult
-	EnableLogExecutor zlog.Enabler = false
+	temporaryDataServe = zcache.NewExpiringMap[int64, []byte](2) // temporaryDataServe stores temporary bytes to serve within 2 seconds. See AddToTemporaryServe.
+	reverseResults     []ReverseResult                           // reverseResults stores results from executed methods, waiting to be sent on next poll
+	EnableLogExecutor  zlog.Enabler                              = false
 )
 
 func init() {
@@ -134,4 +136,12 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 			// zlog.Info("DONE: execute method:", cp.Method, rr.Token)
 		}()
 	}
+}
+
+// AddToTemporaryServe adds some data to be served within a few seconds, returning a unique id.
+// Client.RequestTemporaryServe requests it with that id.
+func AddToTemporaryServe(data []byte) int64 {
+	id := rand.Int63()
+	temporaryDataServe.Set(id, data)
+	return id
 }
