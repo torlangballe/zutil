@@ -18,6 +18,7 @@ require (
 	github.com/gosnmp/gosnmp v1.37.0
 	github.com/jezek/xgb v1.1.1
 	github.com/lib/pq v1.10.9
+	github.com/lotusdblabs/lotusdb/v2 v2.1.0
 	github.com/matishsiao/goInfo v0.0.0-20210923090445-da2e3fa8d45f
 	github.com/mileusna/useragent v1.3.4
 	github.com/mitchellh/go-ps v1.0.0
@@ -31,9 +32,9 @@ require (
 	github.com/torlangballe/blackfridayV2 v0.0.0-20230907135525-adceae2f31a8
 	github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
-	github.com/torlangballe/zui v0.0.0-20240827111014-99b748f62aa6
+	github.com/torlangballe/zui v0.0.0-20240827113221-726e81f5230c
 	golang.org/x/crypto v0.26.0
-	golang.org/x/net v0.25.0
+	golang.org/x/net v0.28.0
 	golang.org/x/sys v0.24.0
 	golang.org/x/text v0.17.0
 	modernc.org/sqlite v1.27.0
@@ -65,7 +66,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
-	github.com/lotusdblabs/lotusdb/v2 v2.1.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20240819163618-b1d8f4d146e7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -87,10 +87,10 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.etcd.io/bbolt v1.3.8 // indirect
 	golang.org/x/image v0.13.0 // indirect
-	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/term v0.23.0 // indirect
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	golang.org/x/tools v0.24.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	lukechampine.com/uint128 v1.3.0 // indirect
 	modernc.org/cc/v3 v3.41.0 // indirect
