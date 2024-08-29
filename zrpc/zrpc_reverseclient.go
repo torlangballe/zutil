@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
+	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
@@ -181,17 +184,19 @@ func (rc *ReverseClient) Error(parts ...any) error {
 	return err
 }
 
-// Call has the same syntax as a regular zrpc Call.
-// It creates a CallPayload, with a unique token, puts it on the ReverseClient's
-// pendingCallsToSend map. It then waits for a timeout or for ReversePoll above to write
-// a result to a channel.
+// Call has the same syntax as a regular zrpc Call. See CallWithTimeout() below.
 func (rc *ReverseClient) Call(method string, args, resultPtr any) error {
 	return rc.CallWithTimeout(rc.TimeoutSecs, method, args, resultPtr)
 }
 
+// CallWithTimeout stores a call to be gotten from server, where it is executed, and waits for the server to push back the result:
+// It creates a CallPayload, with a unique token, puts it on the pendingCallsToSend map.
+// ReversePoll from ReverseExecutor will get th payload, execute it on the server, sending the result back
+// with ReversePushResult and putting it on a channel.
+// CallWithTimeout is waiting for a timeout or the result on the channel.
 func (rc *ReverseClient) CallWithTimeout(timeoutSecs float64, method string, args, resultPtr any) error {
 	var pc pendingCall
-	registerHTTPDataFields(args)
+	registerReverseHTTPDataFields(args)
 	pc.CallPayload = CallPayload{Method: method, Args: args}
 	pc.placed = time.Now()
 	pc.Expires = time.Now().Add(ztime.SecondsDur(timeoutSecs))
@@ -224,6 +229,26 @@ func (rc *ReverseClient) CallWithTimeout(timeoutSecs float64, method string, arg
 		// zlog.Info("ChannelPushed, call done", reflect.TypeOf(r.Result), resultPtr)
 		return nil
 	}
+}
+
+func registerReverseHTTPDataFields(s any) {
+	rval := reflect.ValueOf(s)
+	if !(rval.Kind() == reflect.Struct || rval.Kind() == reflect.Pointer && rval.Elem().Kind() == reflect.Struct) {
+		return
+	}
+	zreflect.ForEachField(s, zreflect.FlattenAll, func(each zreflect.FieldInfo) bool {
+		parts, _ := zreflect.GetTagValuesForKey(each.StructField.Tag, "zrpc")
+		if zstr.StringsContain(parts, "http") {
+			if !each.ReflectValue.CanSet() {
+				zlog.Error("can't set zrpc:http field. RPC call needs pointer passed as arg:", each.StructField.Name)
+				return true
+			}
+			id := AddToTemporaryServe(each.ReflectValue.Bytes())
+			idBytes := []byte(strconv.FormatInt(id, 10))
+			each.ReflectValue.Set(reflect.ValueOf(idBytes))
+		}
+		return true
+	})
 }
 
 func RemoveReverseClient(r *ReverseClientsOwner, receiverID string) {

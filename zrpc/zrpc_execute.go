@@ -4,15 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"go/token"
-	"math/rand"
 	"reflect"
-	"strconv"
 	"time"
 
-	"github.com/torlangballe/zutil/zcache"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
-	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -26,9 +22,6 @@ type Executor struct {
 	IPAddressWhitelist map[string]bool        // if non-empty, only ip-addresses in map are allowed to be called from
 	ErrorHandler       func(err error)        // calls this with errors that happen, for logging etc in system that uses zrpc
 }
-
-// temporaryDataServe stores temporary bytes to serve as a separate http reqest
-var temporaryDataServe = zcache.NewExpiringMap[int64, []byte](2)
 
 var EnableLogExecute zlog.Enabler
 
@@ -201,7 +194,7 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 		returnValues = mtype.Method.Func.Call(args)
 	})
 	if !completed {
-		return rp, zlog.NewError("zrpc.Call expired before call", mtype.Method.Name, time.Since(start), time.Since(called))
+		return rp, zlog.NewError("zrpc.Call expired before call", mtype.Method.Name, "since start/before http-fields:", time.Since(start), "since exe:", time.Since(called))
 	}
 
 	errInter := returnValues[0].Interface()
@@ -232,7 +225,7 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 	var err error
 	// zlog.Info("zrpc callWithDeadline:", method, zlog.Pointer(e))
 	if time.Since(expires) >= 0 {
-		zlog.Error("zrpc Executor: callWithDeadline expired:", expires)
+		zlog.Error("zrpc Executor: callWithDeadline expired before execute:", expires)
 		rp.TransportError = TransportError(zstr.Spaced("Call received after timeout.", method, time.Since(expires)))
 	} else {
 		ctx, cancel := context.WithDeadline(context.Background(), expires)
@@ -241,7 +234,7 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 		rp, err = e.callMethodName(ctx, ci, method, args, requestHTTPDataClient)
 		// zlog.Info("zrpc callWithDeadline: callMethod done:", method, err, method, zlog.Pointer(e))
 		if err != nil {
-			zlog.Error("call", zlog.Pointer(e), err)
+			zlog.Error("callWithDeadline execute error, expires:", expires, err)
 			rp.Error = err.Error()
 		}
 		deadline, ok := ctx.Deadline()
@@ -251,30 +244,4 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 		}
 	}
 	return rp, err
-}
-
-func registerHTTPDataFields(s any) {
-	rval := reflect.ValueOf(s)
-	if !(rval.Kind() == reflect.Struct || rval.Kind() == reflect.Pointer && rval.Elem().Kind() == reflect.Struct) {
-		return
-	}
-	zreflect.ForEachField(s, zreflect.FlattenAll, func(each zreflect.FieldInfo) bool {
-		parts, _ := zreflect.GetTagValuesForKey(each.StructField.Tag, "zrpc")
-		if zstr.StringsContain(parts, "http") {
-			if !each.ReflectValue.CanSet() {
-				zlog.Error("can't set zrpc:http field. RPC call needs pointer passed as arg:", each.StructField.Name)
-				return true
-			}
-			id := AddToTemporaryServe(each.ReflectValue.Bytes())
-			idBytes := []byte(strconv.FormatInt(id, 10))
-			each.ReflectValue.Set(reflect.ValueOf(idBytes))
-		}
-		return true
-	})
-}
-
-func AddToTemporaryServe(data []byte) int64 {
-	id := rand.Int63()
-	temporaryDataServe.Set(id, data)
-	return id
 }

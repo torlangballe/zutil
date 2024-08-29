@@ -291,6 +291,7 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client) error {
 	return outErr
 }
 
+// RequestTemporaryServe requests to get data bytes with id set up with AddToTemporaryServe() in executor.
 func (c *Client) RequestTemporaryServe(id int64) (io.ReadCloser, error) {
 	params := zhttp.MakeParameters()
 	params.Method = http.MethodGet
