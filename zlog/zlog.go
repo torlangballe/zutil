@@ -284,10 +284,17 @@ func ErrorIf(check bool, parts ...any) bool {
 	return check
 }
 
-func OnError(err error, parts ...any) bool {
+func OnError(parts ...any) bool {
+	var err error
+	for _, p := range parts {
+		e, got := p.(error)
+		if got {
+			err = e
+			break
+		}
+	}
 	if err != nil {
 		parts = append([]any{StackAdjust(1)}, parts...)
-		parts = append(parts, err)
 		Error(parts...)
 		return true
 	}
