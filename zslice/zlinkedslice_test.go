@@ -136,6 +136,7 @@ func testLoad(t *testing.T) {
 	slice2 := makeSlice(nil)
 	addStandardNumbers(slice2)
 
+	time.Sleep(time.Millisecond * 200) // loading happens in a go routine and takes amount of time
 	ztesting.Compare(t, "loaded len is same", slice.len(), slice2.len())
 }
 

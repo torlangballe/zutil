@@ -43,11 +43,14 @@ type LinkedSlice[T any, O cmp.Ordered] struct {
 	delayedAdds           []delayedAdd[T]
 	saveTimer             *ztimer.Repeater
 	delayAddTimer         *ztimer.Repeater
-	currentChunkSaveIndex int64
+	currentChunkSaveIndex int
 	lock                  sync.Mutex
 	touched               bool
 	auxToSaveWithChunk    map[string]any
 	binaryCompareFunc     func(t T, o O) int
+
+	Loaded     bool
+	BottomLock sync.Mutex
 
 	GetIDFunc func(T) int64
 }
@@ -161,6 +164,23 @@ func (ls *LinkedSlice[T, O]) Flush() {
 	ls.lock.Unlock()
 }
 
+func (ls *LinkedSlice[T, O]) Close() {
+	ls.Flush()
+	ls.lock.Lock()
+	if ls.opts.DB != nil {
+		if ls.saveTimer != nil {
+			ls.saveTimer.Stop()
+		}
+		err := ls.opts.DB.Close()
+		zlog.OnError(err)
+	}
+	if ls.delayAddTimer != nil {
+		ls.saveTimer.Stop()
+	}
+	ls.chunks = [][]T{}
+	ls.lock.Unlock()
+}
+
 func (ls *LinkedSlice[T, O]) BinarySearchForChunk(find O) (i int, before zbool.BoolInd) {
 	ls.lock.Lock()
 	i, before = ls.binarySearchForChunk(find)
@@ -240,7 +260,7 @@ func (ls *LinkedSlice[T, F]) add(t T, auxData any) {
 		return
 	}
 	if auxData != nil {
-		key := makeKey("aux", ls.GetIDFunc(t))
+		key := makeKey(auxDataKeyPrefix, ls.GetIDFunc(t))
 		ls.auxToSaveWithChunk[key] = auxData
 	}
 	ls.chunks[count-1] = append(ls.chunks[count-1], t)
@@ -292,36 +312,79 @@ func (ls *LinkedSlice[T, F]) saveLastChunk() error {
 	return nil
 }
 
-func (ls *LinkedSlice[T, F]) GetInt64ForKeyFromDB(key []byte) (int64, error) {
-	data, err := ls.opts.DB.Get([]byte(currentChunkIndexKey))
-	if err != nil {
-		return 0, err
+func (ls *LinkedSlice[T, F]) GetInt64ForKeyFromDB(key string) (int64, bool, error) {
+	data, err := ls.opts.DB.Get([]byte(key))
+	if err == nil {
+		return int64(zbytes.BytesToInt64(data)), true, nil
 	}
-	return int64(zbytes.BytesToInt64(data)), nil
+	if err == lotusdb.ErrKeyNotFound {
+		return 0, false, nil
+	}
+	return 0, false, zlog.Error(err, "•", "key:", key)
+}
+
+func (ls *LinkedSlice[T, F]) SetInt64ForKeyToDB(key string, v int64) error {
+	data := zbytes.Int64ToBytes(uint64(v))
+	err := ls.opts.DB.Put([]byte(key), data)
+	if zlog.OnError(err) {
+		return err
+	}
+	return nil
 }
 
 func (ls *LinkedSlice[T, F]) Load() error {
-	var err error
 	zlog.Assert(ls.opts.DB != nil, "has db")
 	ls.lock.Lock()
-	defer ls.lock.Unlock()
-	ls.currentChunkSaveIndex, err = ls.GetInt64ForKeyFromDB([]byte(currentChunkIndexKey))
-	zlog.OnError(err) // we can probably ignore not found error
-	for i := ls.currentChunkSaveIndex; i >= 0; i-- {
-		chunkKey := makeKey(chunkKeyPrefix, int64(i))
-		data, err := ls.opts.DB.Get([]byte(chunkKey))
-		if err != nil {
-			break
-		}
-		buff := bytes.NewBuffer(data)
-		dec := gob.NewDecoder(buff)
-		var chunk []T
-		err = dec.Decode(&chunk)
-		zlog.AssertNotError(err)
-		ls.chunks = append([][]T{chunk}, ls.chunks...)
-		// zlog.Warn("Loaded:", zlog.Full(ls.chunks))
+	index, got, err := ls.GetInt64ForKeyFromDB(currentChunkIndexKey)
+	if err != nil {
+		ls.lock.Unlock()
+		return zlog.Error(err)
 	}
+	if !got {
+		ls.Loaded = true
+		ls.lock.Unlock()
+		return nil
+	}
+	ls.currentChunkSaveIndex = int(index)
+	if !ls.loadChunk(ls.currentChunkSaveIndex) {
+		ls.Loaded = true
+		ls.lock.Unlock()
+		return zlog.Error("Error loading first chunk", ls.currentChunkSaveIndex)
+	}
+	// we load top chunk so we can get going
+	from := ls.currentChunkSaveIndex - 1
+	ls.lock.Unlock()
+	go func(from int) { // then do rest in a go routine
+		for i := from; i >= 0; i-- {
+			if !ls.loadChunk(i) {
+				break
+			}
+		}
+		ls.Loaded = true
+	}(from)
 	return nil
+}
+
+func (ls *LinkedSlice[T, F]) loadChunk(chunkSaveIndex int) bool {
+	chunkKey := makeKey(chunkKeyPrefix, int64(chunkSaveIndex))
+	data, err := ls.opts.DB.Get([]byte(chunkKey))
+	if err != nil {
+		if err != lotusdb.ErrKeyNotFound {
+			zlog.Error(err, "index:", chunkSaveIndex)
+		}
+		ls.Loaded = true
+		return false
+	}
+	buff := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buff)
+	var chunk []T
+	err = dec.Decode(&chunk)
+	zlog.AssertNotError(err)
+	ls.lock.Lock()
+	ls.chunks = append([][]T{chunk}, ls.chunks...)
+	ls.lock.Unlock()
+	// zlog.Warn("Loaded:", zlog.Full(ls.chunks))
+	return true
 }
 
 type delayedAdd[T any] struct {
@@ -333,8 +396,24 @@ type delayedAdd[T any] struct {
 const (
 	currentChunkIndexKey = "curchix"
 	chunkKeyPrefix       = "chnk"
+	auxDataKeyPrefix     = "aux"
 )
 
 func makeKey(prefix string, n int64) string {
 	return fmt.Sprintf("%s%d", prefix, n)
+}
+
+func (ls *LinkedSlice[T, F]) GetAuxData(id int64, dataPtr any) error {
+	key := makeKey(auxDataKeyPrefix, id)
+	data, err := ls.opts.DB.Get([]byte(key))
+	if err != nil {
+		return zlog.Error(err, key)
+	}
+	buff := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buff)
+	err = dec.Decode(dataPtr)
+	if err != nil {
+		return zlog.Error(err, key, len(data))
+	}
+	return nil
 }
