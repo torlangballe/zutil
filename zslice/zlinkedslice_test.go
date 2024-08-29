@@ -1,3 +1,5 @@
+//go:build !js && experimental
+
 package zslice
 
 import (

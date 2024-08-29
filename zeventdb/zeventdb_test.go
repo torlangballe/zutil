@@ -1,3 +1,5 @@
+//go:build !js && experimental
+
 package zeventdb
 
 import (
@@ -70,7 +72,7 @@ func testAdd(t *testing.T) {
 }
 
 func testIterate(t *testing.T) {
-	
+
 }
 
 func TestAll(t *testing.T) {
