@@ -20,6 +20,7 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztimer"
+	"github.com/torlangballe/zutil/zwords"
 )
 
 type WalkOptions int
@@ -533,14 +534,13 @@ func ReadLastLine(fpath string, pos int64) (line string, startpos, newpos int64,
 }
 
 // PeriodicFileBackup checks if *filepath* is larger than maxMB megabytes
-// every *checkHours*. If so, the file is copied to a file in the  same directory
-// with a suffix before extension. "path/file_suffix.log", and the file truncated.
-// This may be slow, but only way that seems to work with launchd logs on mac.
+// every *checkHours*. If so, the file is moved to a file in the  same directory
+// with a suffix before extension. "path/file_suffix.log".
 func PeriodicFileBackup(filepath, suffixForOld string, maxMB int) {
 	ztimer.RepeatNow(60*10, func() bool {
-		zlog.Info("🟩PeriodicFileBackup", filepath, Size(filepath), int64(maxMB*1024*1024))
-		if Size(filepath) >= int64(maxMB*1024*1024) {
-			zlog.Info("🟩PeriodicFileBackup need to do swap")
+		over := Size(filepath) >= int64(maxMB*1024*1024)
+		zlog.Info("🟩PeriodicFileBackup", filepath, true, zwords.GetStorageSizeString(Size(filepath), "", 1))
+		if over {
 			dir, _, stub, ext := Split(filepath)
 			newPath := dir + stub + suffixForOld + ext
 			err := os.Remove(newPath)
@@ -548,9 +548,14 @@ func PeriodicFileBackup(filepath, suffixForOld string, maxMB int) {
 				fmt.Println(err, "remove old", filepath, newPath)
 				return true
 			}
-			err = os.Rename(filepath, newPath)
+			err = CopyFile(newPath, filepath)
 			if err != nil {
-				fmt.Println(err, "mv to backup", filepath, newPath)
+				fmt.Println(err, "copy to file backup", filepath, newPath)
+				return true
+			}
+			err = os.Truncate(filepath, 0)
+			if err != nil {
+				fmt.Println(err, "remove old file backup", filepath, newPath)
 				return true
 			}
 		}
