@@ -31,7 +31,7 @@ func (e ContextError) GetTitle() string {
 }
 
 func (e ContextError) String() string {
-	str := fmt.Sprintf("{ %s %+v ", e.Title, e.KeyValues)
+	str := fmt.Sprintf("{ %s %+v ", e.Title)
 	if e.SubContextError != nil {
 		str += "{ " + e.SubContextError.String() + " } "
 	}
