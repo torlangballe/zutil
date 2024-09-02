@@ -4,12 +4,15 @@ package zrpc
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/znet"
+	"github.com/torlangballe/zutil/ztesting"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 type CloudCall struct{}
@@ -112,7 +115,50 @@ func testMultiWeb(t *testing.T) {
 	}
 }
 
+func (WebCall) Fast(Unused) error {
+	return nil
+}
+
+func (WebCall) Slow(Unused) error {
+	time.Sleep(time.Second)
+	return nil
+}
+
+func testReverseSpeed(t *testing.T) {
+	const count = 10
+	zlog.Warn("testReverseSpeed")
+	start := time.Now()
+	for i := 0; i < count; i++ {
+		err := cloudRC.Call("WebCall.Fast", nil, nil)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+	ztesting.GreaterThan(t, "10 fast calls > 0.1 sec", ztime.Since(start), 0.1)
+
+	start = time.Now()
+	var wg sync.WaitGroup
+
+	wg.Add(count)
+	for i := 0; i < count; i++ {
+		go func() {
+			err := cloudRC.Call("WebCall.Slow", nil, nil)
+			time.Sleep(time.Second)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	ztesting.GreaterThan(t, "10 slow calls > 1.1 sec", ztime.Since(start), 2.1)
+}
+
 func TestAll(t *testing.T) {
+	// EnableLogReverseClient = true
+	// EnableLogExecutor = true
 	surl := fmt.Sprint("http://localhost:", port)
 	webClient = NewClient(surl, "client")
 	webExecutor := NewExecutor()
@@ -131,5 +177,6 @@ func TestAll(t *testing.T) {
 	// testCall(t)
 	// testReverseCall(t)
 	// testReverseAdd(t)
-	testMultiWeb(t)
+	// testMultiWeb(t)
+	testReverseSpeed(t)
 }

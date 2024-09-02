@@ -148,7 +148,7 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 			return nil, TransportError(err.Error())
 		}
 		// zlog.Info("zrpc.requestHTTPDataFields:", cp.Method, reflect.TypeOf(result))
-		err = requestHTTPDataFields(result, c)
+		err = requestHTTPDataFields(result, c, "zrpc:"+method+":"+surl) // this is for getting big fields back as data. Doesn't work for sending though
 		if err != nil {
 			zlog.Error("requestHTTPDataFields", err)
 			return nil, TransportError(err.Error())
@@ -231,7 +231,7 @@ func (c *Client) RegisterPollGetter(resID string, get func()) {
 	c.pollGetters.Set(resID, get)
 }
 
-func requestHTTPDataFields(s any, requestHTTPDataClient *Client) error {
+func requestHTTPDataFields(s any, requestHTTPDataClient *Client, debugInfo string) error {
 	var wg sync.WaitGroup
 	var outErr error
 	rv := reflect.ValueOf(s)
@@ -248,15 +248,15 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client) error {
 			}
 			data, _ := each.ReflectValue.Interface().([]byte)
 			if data == nil {
-				outErr = zlog.Error("client: field isn't []byte:", each.StructField.Name)
+				outErr = zlog.Error("client: field isn't []byte:", each.StructField.Name, debugInfo)
 				return true
 			}
 			if len(data) == 0 {
-				zlog.Info("requestHTTPDataFields: empty data:", each.StructField.Name)
+				zlog.Info("requestHTTPDataFields: empty data:", each.StructField.Name, debugInfo)
 				return true
 			}
 			if len(data) > 20 {
-				zlog.Info("zrpc.requestHTTPDataFields: data too big, was it sent in []byte?", each.StructField.Name)
+				zlog.Info("zrpc.requestHTTPDataFields: data too big, was it sent in []byte?", each.StructField.Name, debugInfo)
 				return true
 				// id := AddToTemporaryServe(each.ReflectValue.Bytes())
 				// idBytes := []byte(strconv.FormatInt(id, 10))
@@ -265,7 +265,7 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client) error {
 			str := string(data)
 			id, err := strconv.ParseInt(str, 10, 64)
 			if err != nil {
-				outErr = zlog.Error("client: id wasn't valid:", str, err, each.StructField.Name)
+				outErr = zlog.Error("client: id wasn't valid:", str, err, each.StructField.Name, debugInfo)
 				return true
 			}
 			wg.Add(1)
@@ -273,12 +273,12 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client) error {
 				reader, err := requestHTTPDataClient.RequestTemporaryServe(id)
 				defer wg.Done()
 				if err != nil {
-					outErr = zlog.Error("RequestTemporaryServe err:", err, id, each.StructField.Name)
+					outErr = zlog.Error("RequestTemporaryServe req err:", err, id, each.StructField.Name, debugInfo)
 					return
 				}
 				buf, err := io.ReadAll(reader)
 				if err != nil {
-					outErr = zlog.Error("RequestTemporaryServe err:", err, id, each.StructField.Name)
+					outErr = zlog.Error("RequestTemporaryServe read err:", err, id, each.StructField.Name, debugInfo)
 					return
 				}
 				rval.SetBytes(buf)

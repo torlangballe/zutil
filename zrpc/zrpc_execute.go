@@ -157,9 +157,9 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 		return rp, err
 	}
 
-	if requestHTTPDataClient != nil {
+	if requestHTTPDataClient != nil { // this is for getting big args in a reverse rpc call
 		// zlog.Info("zrpc.requestHTTPDataFields in revcall:", mtype.Method, reflect.TypeOf(argv.Interface()))
-		requestHTTPDataFields(argv.Interface(), requestHTTPDataClient)
+		requestHTTPDataFields(argv.Interface(), requestHTTPDataClient, "zrpc:"+mtype.Method.Name+":"+ci.IPAddress)
 	}
 
 	// zlog.Info("zrpc.CallMethod:", mtype.Method)
@@ -224,8 +224,12 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 	var rp receivePayload
 	var err error
 	// zlog.Info("zrpc callWithDeadline:", method, zlog.Pointer(e))
+	var from string
+	if requestHTTPDataClient != nil {
+		from += "from: " + requestHTTPDataClient.callURL
+	}
 	if time.Since(expires) >= 0 {
-		zlog.Error("zrpc Executor: callWithDeadline expired before execute:", expires)
+		zlog.Error("zrpc Executor: callWithDeadline expired before execute:", expires, from)
 		rp.TransportError = TransportError(zstr.Spaced("Call received after timeout.", method, time.Since(expires)))
 	} else {
 		ctx, cancel := context.WithDeadline(context.Background(), expires)
@@ -234,7 +238,7 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 		rp, err = e.callMethodName(ctx, ci, method, args, requestHTTPDataClient)
 		// zlog.Info("zrpc callWithDeadline: callMethod done:", method, err, method, zlog.Pointer(e))
 		if err != nil {
-			zlog.Error("callWithDeadline execute error, expires:", expires, err)
+			zlog.Error("callWithDeadline execute error:", expires, from, err)
 			rp.Error = err.Error()
 		}
 		deadline, ok := ctx.Deadline()
