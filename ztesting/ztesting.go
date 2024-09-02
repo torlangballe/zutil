@@ -1,25 +1,39 @@
 package ztesting
 
 import (
-	"fmt"
+	"cmp"
 	"testing"
 
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zstr"
 )
 
-func Compare[N comparable](t *testing.T, str string, n ...N) bool {
-	var fail bool
-	for i := 0; i < len(n); i += 2 {
-		c := n[i]
-		val := n[i+1]
-		if c != val {
-			str += fmt.Sprint(" ", c, " != ", val)
-			fail = true
-		}
-	}
-	if fail {
+func Equal[N comparable](t *testing.T, str string, a, b N) bool {
+	if a == b {
+		str := zstr.Spaced(str, a, "==", b)
 		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
 		t.Error(str)
+		return false
 	}
-	return !fail
+	return true
+}
+
+func Different[N comparable](t *testing.T, str string, a, b N) bool {
+	if a != b {
+		str := zstr.Spaced(str+":", a, "!=", b)
+		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
+		t.Error(str)
+		return false
+	}
+	return true
+}
+
+func GreaterThan[N cmp.Ordered](t *testing.T, str string, a, b N) bool {
+	if a > b {
+		str := zstr.Spaced(str+":", a, ">", b)
+		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
+		t.Error(str)
+		return false
+	}
+	return true
 }
