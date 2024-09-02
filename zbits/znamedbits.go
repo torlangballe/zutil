@@ -9,21 +9,30 @@ type NamedBitMap map[string]uint64
 
 func (n NamedBit) ToString(m NamedBitMap) string {
 	var str string
-	for i := uint64(0); i < 64; i++ {
-		mask := NamedBit(1 << i)
-		if n&mask == 0 {
+	has := NamedBitMap{}
+outer:
+	for name, mask := range m {
+		if mask == 0 {
 			continue
 		}
-		for s, j := range m {
-			// zlog.Info("BitAdd?:", s, mask, j)
-			if j == uint64(mask) {
-				str += s + "|"
-				break
+		if uint64(n)&mask == mask {
+			for hn, hm := range has {
+				if uint64(hm)&mask != 0 {
+					if mask > hm {
+						delete(has, hn)
+					} else {
+						continue outer
+					}
+				}
 			}
+			has[name] = mask
 		}
 	}
-	if len(str) != 0 {
-		str = str[:len(str)-1]
+	for name := range has {
+		if str != "" {
+			str += "|"
+		}
+		str += name
 	}
 	return str
 }
