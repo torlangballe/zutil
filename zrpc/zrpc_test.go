@@ -135,7 +135,7 @@ func testReverseSpeed(t *testing.T) {
 			return
 		}
 	}
-	ztesting.GreaterThan(t, "10 fast calls > 0.1 sec", ztime.Since(start), 0.1)
+	ztesting.LessThan(t, "10 fast calls > 0.1 sec", ztime.Since(start), 0.1)
 
 	start = time.Now()
 	var wg sync.WaitGroup
@@ -153,7 +153,7 @@ func testReverseSpeed(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	ztesting.GreaterThan(t, "10 slow calls > 1.1 sec", ztime.Since(start), 2.1)
+	ztesting.LessThan(t, "10 slow calls > 1.1 sec", ztime.Since(start), 2.1)
 }
 
 func TestAll(t *testing.T) {
