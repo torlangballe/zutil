@@ -425,7 +425,7 @@ int CloseWindowForTitle(const char *title, long pid) {
 
 int ActivateWindowForTitle(const char *title, long pid) {
     NSRunningApplication* app = [NSRunningApplication runningApplicationWithProcessIdentifier: pid];
-    [app activateWithOptions: NSApplicationActivateIgnoringOtherApps];
+    [app activateWithOptions: NSApplicationActivateAllWindows];
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, false);
     if (winRef == nil) {
         // NSLog(@"ActivateWindowForTitle: no window for %s %ld\n", title, pid);
