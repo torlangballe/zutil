@@ -9,8 +9,8 @@ import (
 )
 
 func Equal[N comparable](t *testing.T, str string, a, b N) bool {
-	if a == b {
-		str := zstr.Spaced(str, a, "==", b)
+	if a != b {
+		str := zstr.Spaced(str, a, "!=", b)
 		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
 		t.Error(str)
 		return false
@@ -19,8 +19,8 @@ func Equal[N comparable](t *testing.T, str string, a, b N) bool {
 }
 
 func Different[N comparable](t *testing.T, str string, a, b N) bool {
-	if a != b {
-		str := zstr.Spaced(str+":", a, "!=", b)
+	if a == b {
+		str := zstr.Spaced(str+":", a, "==", b)
 		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
 		t.Error(str)
 		return false
@@ -29,8 +29,8 @@ func Different[N comparable](t *testing.T, str string, a, b N) bool {
 }
 
 func GreaterThan[N cmp.Ordered](t *testing.T, str string, a, b N) bool {
-	if a > b {
-		str := zstr.Spaced(str+":", a, ">", b)
+	if a < b {
+		str := zstr.Spaced(str+":", a, "<", b)
 		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
 		t.Error(str)
 		return false
