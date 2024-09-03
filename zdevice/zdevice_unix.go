@@ -9,9 +9,8 @@ import (
 	"strings"
 
 	"github.com/matishsiao/goInfo"
-	// "github.com/shirou/gopsutil/host"
-	"github.com/shirou/gopsutil/disk"
-	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/v4/disk"
+	"github.com/shirou/gopsutil/v4/net"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
