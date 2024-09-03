@@ -6,8 +6,8 @@ import (
 	"runtime"
 
 	ua "github.com/mileusna/useragent"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/mem"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
