@@ -198,7 +198,7 @@ func (v *UploadView) updateWidgets() {
 		ctext, cpass, cbutton, cdrop, cactivity = true, true, true, true, false
 	}
 	if action != Select && v.selectButton != nil {
-		v.RemoveChild(v.selectButton)
+		v.RemoveChild(v.selectButton, true)
 		v.selectButton = nil
 	}
 	v.button.SetUsable(busable)
