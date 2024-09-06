@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"runtime"
+	"time"
 
 	ua "github.com/mileusna/useragent"
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -30,7 +31,11 @@ const (
 	BrowserNone BrowserType = ""
 )
 
-var OverrideUUID string // used for unit tests and other testing that needs a know uuid
+var (
+	OverrideUUID string // used for unit tests and other testing that needs a know uuid
+	lastCPUGet   time.Time
+	lastCPU      []float64
+)
 
 const (
 	CellularUnknown CellularNetworkType = iota
@@ -112,33 +117,37 @@ func CPUUsage(maxCores int) (out []float64) {
 
 	threads := coresVirtual / coresPhysical
 	percpu := true
-	vals, err := cpu.Percent(0, percpu)
-	if err != nil {
-		zlog.Error("cpu.percent", err)
-		return
+	var vals []float64
+	if time.Since(lastCPUGet) < time.Second { // this isn't just for efficiency, cpu.Percent() twice immediately returns all 0's.
+		vals = lastCPU
+	} else {
+		lastCPUGet = time.Now()
+		var err error
+		vals, err = cpu.Percent(0, percpu)
+		if err != nil {
+			zlog.Error("cpu.percent", err)
+			return
+		}
+		lastCPU = vals
 	}
-
 	n := 0
 	out = make([]float64, coresPhysical)
 	for i := 0; i < threads; i++ {
 		for j := 0; j < coresPhysical; j++ {
-			out[j] += float64(int(vals[n]) / threads)
+			out[j] += vals[n] / float64(threads)
 			n++
 		}
 	}
-	for j := 0; j < coresPhysical; j++ {
-		out[j] /= 100
-	}
 	for len(out) > maxCores {
-		if len(out)%2 == 1 {
-			out = out[:maxCores]
-			return
-		}
 		half := len(out) / 2
+		out = out[:half*2]
 		for i := 0; i < half; i++ {
 			out[i] = (out[i] + out[half+i]) / 2
 		}
 		out = out[:half]
+	}
+	for i := range out {
+		out[i] /= 100
 	}
 	return
 }
