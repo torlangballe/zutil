@@ -47,6 +47,11 @@ type URLGetter interface {
 	GetURL() string
 }
 
+// GetLowerCaseMatchContenter returns a lower case string to match an item with in searching
+type GetLowerCaseMatchContenter interface {
+	GetLowerCaseMatchContent() string
+}
+
 type KeyValue struct {
 	Key   string
 	Value string
