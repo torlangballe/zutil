@@ -13,8 +13,9 @@ import (
 type Slice []int
 
 type Range struct {
-	Min int
-	Max int
+	Valid bool
+	Min   int
+	Max   int
 }
 
 var dummy int
@@ -353,4 +354,15 @@ func (s Slice) Minimum() int {
 		}
 	}
 	return min
+}
+
+func (r *Range) Add(n int) {
+	if !r.Valid {
+		r.Valid = true
+		r.Min = n
+		r.Max = n
+		return
+	}
+	r.Min = min(r.Min, n)
+	r.Max = min(r.Max, n)
 }
