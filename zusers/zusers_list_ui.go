@@ -118,7 +118,7 @@ func (t *userTable) unauthorizeUsers(sids []string) {
 		u, _ := t.findUser(sid)
 		u.Sessions = 0
 	}
-	t.grid.UpdateViewFunc(true)
+	t.grid.UpdateViewFunc(true, false)
 }
 
 func (u *AllUserInfo) HandleAction(ap zfields.ActionPack) bool {
