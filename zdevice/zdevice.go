@@ -109,9 +109,9 @@ func CPUUsage(maxCores int) (out []float64) {
 	if runtime.GOOS == "js" {
 		return []float64{-1}
 	}
-	// if zdebug.IsInTests {
-	// 	return []float64{0.1, 0.2, 0.3, 0.4}
-	// }
+	if zdebug.IsInTests {
+		return []float64{0.1, 0.2, 0.3, 0.4}
+	}
 	coresVirtual, _ := cpu.Counts(true)
 	coresPhysical, _ := cpu.Counts(false)
 
