@@ -25,6 +25,7 @@ import (
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zerrors"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
@@ -146,9 +147,13 @@ func SendBody(surl string, params Parameters, send, receive any) (*http.Response
 	}
 	params.Body = bout
 	resp, _, err := SendBytesSetContentLength(surl, params)
+	if err != nil {
+		zlog.Warn("SendBytesSetContentLength:", err)
+	}
 	err = processResponse(surl, resp, params, receive, err)
 	if err != nil {
 		err = makeContextErrorFromError(err, "Send Body", surl, params.Method)
+		zlog.Warn("SendErr2:", err, surl)
 	}
 	return resp, err
 }
@@ -170,53 +175,49 @@ var NoVerifyClient = &http.Client{
 	},
 }
 
-var defClient *http.Client
-var defSkipClient *http.Client
-
-func makeClient(skipVerify bool) *http.Client {
+func makeClient(params Parameters) *http.Client {
+	if params.TimeoutSecs == -1 {
+		params.TimeoutSecs = 15
+	}
 	c := &http.Client{
-		Timeout: 15 * time.Second,
+		Timeout: ztime.SecondsDur(params.TimeoutSecs),
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 5,
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: params.SkipVerifyCertificate,
 			},
 		},
 	}
 	if runtime.GOOS != "js" {
 		c.Transport = &http.Transport{ //
-			MaxIdleConnsPerHost: 100,
-			MaxConnsPerHost:     100,
-			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 20,
+			MaxConnsPerHost:     20,
+			MaxIdleConns:        20,
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: params.SkipVerifyCertificate,
 			},
 		}
 	}
 	return c
 }
 
+type clientInfo struct {
+	timeoutSecs    float64
+	skipVerifyCert bool
+}
+
+var clientCache zmap.LockMap[clientInfo, *http.Client]
+
 func MakeRequest(surl string, params Parameters) (request *http.Request, client *http.Client, err error) {
 	// wasm fetch options: https://go.dev/src/net/http/roundtrip_js.go
 	if params.Args != nil {
 		surl, _ = MakeURLWithArgs(surl, params.Args)
 	}
-	if defClient == nil {
-		defClient = makeClient(false)
-	}
-	if defSkipClient == nil {
-		defSkipClient = makeClient(true)
-	}
-	if params.SkipVerifyCertificate {
-		client = defSkipClient
-	} else {
-		client = defClient
-	}
-	// we need to remember a new client for each timeout?
-	if params.TimeoutSecs != -1 {
-		c := *client
-		client = &c
-		client.Timeout = ztime.SecondsDur(params.TimeoutSecs)
+	ci := clientInfo{timeoutSecs: params.TimeoutSecs, skipVerifyCert: params.SkipVerifyCertificate}
+	client, _ = clientCache.Get(ci)
+	if client == nil {
+		client = makeClient(params)
+		clientCache.Set(ci, client)
 	}
 	// zlog.Info("MakeRequest:", client.Timeout, surl)
 	reader := params.Reader
