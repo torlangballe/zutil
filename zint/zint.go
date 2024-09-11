@@ -364,5 +364,5 @@ func (r *Range) Add(n int) {
 		return
 	}
 	r.Min = min(r.Min, n)
-	r.Max = min(r.Max, n)
+	r.Max = max(r.Max, n)
 }
