@@ -45,14 +45,16 @@ func CreateTempFile(name string) (file *os.File, fpath string, err error) {
 }
 
 func CreateTempFilePath(name string) string {
-	sdate := time.Now().Format("2006-01-02/")
+	now := time.Now()
+	sdate := now.Format("2006-01-02/")
 	sfold := JoinPathParts(os.TempDir(), sdate)
 	err := os.MkdirAll(sfold, 0775|os.ModeDir)
 	if err != nil {
 		fmt.Println("zfile.CreateTempFolder:", err)
 		return ""
 	}
-	stime := time.Now().Format("150405_999999")
+	stime := now.Format("150405.999999")
+	stime = strings.Replace(stime, ".", "_", -1)
 	stemp := JoinPathParts(sfold, SanitizeStringForFilePath(stime+"_"+name))
 	return stemp
 }
