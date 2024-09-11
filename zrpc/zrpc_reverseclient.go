@@ -142,7 +142,7 @@ func (r *ReverseClientsOwner) ReversePoll(ci *ClientInfo, receiverID string, cp 
 }
 
 func (r *ReverseClientsOwner) ReversePushResult(rp ReverseResult) error {
-	// zlog.Info("ReversePushResult:", rp.Token, rp.Error)
+	// zlog.Warn("ReversePushResult:", rp.Token, rp.Error)
 	rc := FindOrAddReverseClient(r, rp.ReverseReceiverID, "")
 	if rc == nil {
 		return zlog.Error(rp.ReverseReceiverID)
@@ -226,7 +226,7 @@ func (rc *ReverseClient) CallWithTimeout(timeoutSecs float64, method string, arg
 				return err
 			}
 		}
-		// zlog.Info("ChannelPushed, call done", reflect.TypeOf(r.Result), resultPtr)
+		// zlog.Warn("ChannelPushed, call done", reflect.TypeOf(r.Result), resultPtr)
 		return nil
 	}
 }

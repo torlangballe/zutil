@@ -96,7 +96,7 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 		err := r.client.CallWithTimeout(maxTimeout, "ReverseClientsOwner.ReversePoll", r.rid, &cp)
 		zlog.Warn(EnableLogExecutor, "Call ReverseClientsOwner.ReversePoll:", cp.Method, maxTimeout, err, time.Since(start))
 		if err != nil {
-			zlog.Info(EnableLogExecutor, "Call ReverseClientsOwner.ReversePoll, error! cp.Token:", err, cp.Token)
+			zlog.Warn(EnableLogExecutor, "Call ReverseClientsOwner.ReversePoll, error! cp.Token:", err, cp.Token)
 			time.Sleep(time.Millisecond * 50) // lets not go nuts
 			continue
 		}
@@ -129,7 +129,6 @@ func startCallingPollForReverseCalls(r *ReverseExecutor) {
 			rr.ReverseReceiverID = r.rid
 			maxTimeout := math.Max(PollRestartSecs, r.client.TimeoutSecs)
 			cerr := r.client.CallWithTimeout(maxTimeout, "ReverseClientsOwner.ReversePushResult", rr, nil)
-			// zlog.Info("zrpc.RevExe RevPushResult:", cp.Method, rr.Error, maxTimeout, cerr, time.Since(start))
 			if cerr != nil {
 				zlog.Error(cerr, "call push result", rr.Token)
 			}

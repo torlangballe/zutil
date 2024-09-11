@@ -4,6 +4,7 @@ package zrpc
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -40,7 +41,10 @@ func (e *Executor) doServeTempDataHTTP(w http.ResponseWriter, req *http.Request)
 	if req.Method == http.MethodOptions {
 		return
 	}
-	defer req.Body.Close()
+	defer func() {
+		io.Copy(io.Discard, req.Body)
+		req.Body.Close()
+	}()
 	if req.Method == "OPTIONS" {
 		return
 	}
@@ -82,7 +86,10 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodOptions {
 		return
 	}
-	defer req.Body.Close()
+	defer func() {
+		io.Copy(io.Discard, req.Body)
+		req.Body.Close()
+	}()
 	if req.Method == "OPTIONS" {
 		return
 	}
