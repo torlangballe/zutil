@@ -187,7 +187,7 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 		timeLock.Lock()
 		linesPrintedSinceTimeStamp++
 		if PrintDate {
-			str := now.Local().Format("15:04:05.00-02-01 ")
+			str := now.Local().Format("15:04:05.000-02-01 ")
 			if UseColor {
 				str = zstr.EscCyan + str + zstr.EscNoColor
 			}
