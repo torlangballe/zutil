@@ -21,19 +21,21 @@ type WebCall struct{}
 const port = 95
 
 var (
-	webClient   *Client
-	cloudRC     *ReverseClient
-	revClienter *ReverseClientsOwner
+	webClient     *Client
+	cloudRC       *ReverseClient
+	revClienter   *ReverseClientsOwner
+	cloudExecutor *Executor
+	webExecutor   *Executor
 )
 
 func (CloudCall) HelloTo5(str string, result *int) error {
-	zlog.Warn("Hello:", str)
+	// zlog.Warn("Hello:", str)
 	*result = 5
 	return nil
 }
 
 func (WebCall) HelloTo7(str string, result *int) error {
-	zlog.Warn("Hello:", str)
+	// zlog.Warn("Hello:", str)
 	*result = 7
 	return nil
 }
@@ -125,7 +127,7 @@ func (WebCall) Slow(Unused) error {
 }
 
 func testReverseSpeed(t *testing.T) {
-	const count = 10
+	const count = 30
 	zlog.Warn("testReverseSpeed")
 	start := time.Now()
 	for i := 0; i < count; i++ {
@@ -135,7 +137,10 @@ func testReverseSpeed(t *testing.T) {
 			return
 		}
 	}
-	ztesting.LessThan(t, "10 fast calls > 0.1 sec", ztime.Since(start), 0.1)
+	since := ztime.Since(start)
+	// zlog.Warn("Call", count, "took:", since)
+	sum := count * 0.011
+	ztesting.LessThan(t, fmt.Sprintf("%d fast calls > %g sec", count, sum), since, sum)
 
 	start = time.Now()
 	var wg sync.WaitGroup
@@ -153,26 +158,31 @@ func testReverseSpeed(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	ztesting.LessThan(t, "10 slow calls > 1.1 sec", ztime.Since(start), 2.1)
+	ztesting.LessThan(t, "10 slow calls > 2.2 sec", ztime.Since(start), 2.2)
 }
 
 func TestAll(t *testing.T) {
 	// EnableLogReverseClient = true
 	// EnableLogExecutor = true
-	surl := fmt.Sprint("http://localhost:", port)
+	surl := fmt.Sprint("http://127.0.0.1:", port)
 	webClient = NewClient(surl, "client")
-	webExecutor := NewExecutor()
-	NewReverseExecutor(webClient, "", webExecutor)
+	webExecutor = NewExecutor()
 	webExecutor.Register(WebCall{})
-
 	router := mux.NewRouter()
-	cloudExecutor := NewServer(router, nil)
+	cloudExecutor = NewServer(router, nil)
 	cloudExecutor.Register(CloudCall{})
+	address := fmt.Sprint(":", port)
+	znet.ServeHTTPInBackground(address, "", router)
+
+	testCall(t)
+	testReverse(t)
+}
+
+func testReverse(t *testing.T) {
+	NewReverseExecutor(webClient, "", webExecutor)
 	revClienter = NewReverseClientsOwner(cloudExecutor)
 	cloudRC = NewReverseClient(revClienter, "client", "", true)
 	cloudRC.TimeoutSecs = 2
-	address := fmt.Sprint(":", port)
-	znet.ServeHTTPInBackground(address, "", router)
 
 	// testCall(t)
 	// testReverseCall(t)
