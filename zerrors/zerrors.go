@@ -6,16 +6,17 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zstr"
 )
 
 type ContextError struct {
-	Title           string
-	SubContextError *ContextError
-	WrappedError    error `json:"-"`
-	KeyValues       zdict.Dict
+	Title           string        `json:",omitempty"`
+	SubContextError *ContextError `json:",omitempty"`
+	WrappedError    error         `json:"-"`
+	KeyValues       zdict.Dict    `json:",omitempty"`
 }
 
 func (e ContextError) Error() string {
@@ -62,6 +63,18 @@ func (e *ContextError) SetKeyValue(key string, value any) {
 		e.KeyValues = zdict.Dict{}
 	}
 	e.KeyValues[key] = value
+}
+
+func (e *ContextError) GetLowerCaseMatchContent() string {
+	str := e.Title
+	for k, v := range e.KeyValues {
+		str += "," + k + "," + fmt.Sprint(v)
+	}
+	str = strings.ToLower(str)
+	if e.SubContextError != nil {
+		str += "," + e.SubContextError.GetLowerCaseMatchContent()
+	}
+	return str
 }
 
 func MakeContextError(dict zdict.Dict, parts ...any) ContextError {
