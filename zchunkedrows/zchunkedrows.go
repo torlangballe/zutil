@@ -189,14 +189,11 @@ func (cr *ChunkedRows) appendToChunkMMap(chunkIndex int, cType chunkType, data [
 	}
 	preFileLen = fs.size
 	n, err := fs.file.Write(data)
-	// if cType == isMatch {
-	// 	zlog.Warn("appendToChunkMMap match", preFileLen, n, string(data))
-	// }
 	if err != nil {
 		return //0, zlog.Error("write:", chunkIndex, isAux, err)
 	}
 	if err == nil && n != len(data) {
-		return //0, zlog.Error("wrote wrong size:", n, chunkIndex, isAux)
+		return 0, zlog.Error("wrote wrong size:", n, chunkIndex, isAux)
 	}
 	fs.size += int64(len(data))
 	return preFileLen, nil
@@ -458,16 +455,23 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 	zlog.Assert((auxData != nil) == (cr.opts.MatchIndexOffset != 0), auxData != nil, cr.opts.MatchIndexOffset != 0)
 
 	if auxData != nil {
-		mc, _ := auxData.(zstr.GetLowerCaseMatchContenter)
-		if mc != nil {
-			match = mc.GetLowerCaseMatchContent()
-		} else {
-			zlog.Assert(cr.opts.MatchIndexOffset == 0)
+		if cr.opts.MatchIndexOffset != 0 {
+			mc, _ := auxData.(zstr.GetLowerCaseMatchContenter)
+			if mc != nil {
+				match = mc.GetLowerCaseMatchContent()
+			} else {
+				zlog.Assert(cr.opts.MatchIndexOffset == 0)
+			}
+		}
+		idset, _ := (auxData).(zint.ID64Setter)
+		if idset != nil {
+			idset.SetID64(cr.currentID)
 		}
 		djson, err := json.Marshal(auxData)
 		if err != nil {
 			return 0, zlog.Error(err, cr.topChunkIndex)
 		}
+		// zlog.Warn("IPO:", idset != nil, string(djson))
 		auxBytes = append(djson, cr.auxMatchRowEndChar)
 	}
 
@@ -566,6 +570,7 @@ func (cr *ChunkedRows) load() error {
 	})
 	if !rowRange.Valid {
 		zfile.RemoveContents(cr.opts.DirPath)
+		cr.currentID = 1
 		return nil
 	}
 	if cr.opts.AuxIndexOffset != 0 {
@@ -579,8 +584,8 @@ func (cr *ChunkedRows) load() error {
 	cr.bottomChunkIndex = rowRange.Min
 	cr.topChunkIndex = rowRange.Max
 	mm, err := cr.getMemoryMap(cr.topChunkIndex, isRows)
-	if zlog.OnError(err) {
-		return err
+	if err != nil {
+		return zlog.Error(err, cr.topChunkIndex)
 	}
 	err = cr.handleLoadedTopRow(mm)
 	//TODO: Check if top (or all) aux and row chunks have same top value(s)
@@ -609,24 +614,23 @@ func (cr *ChunkedRows) handleLoadedTopRow(mm *mmap.File) error {
 			break
 		}
 	}
-	if !hasBadChunkAbove {
-		return nil
-	}
-	err = cr.readRow(cr.topChunkRowCount-1, lastRow, mm)
-	if zlog.OnError(err) {
-		return err
-	}
-	for offset, ctype := range ctypes {
-		if offset == 0 {
-			continue
-		}
-		_, endPos, err := cr.getLineFromChunk(cr.topChunkRowCount, offset, ctype, lastRow)
-		if err != nil {
+	if hasBadChunkAbove {
+		err = cr.readRow(cr.topChunkRowCount-1, lastRow, mm)
+		if zlog.OnError(err) {
 			return err
 		}
-		cr.truncateChunk(ctype, cr.topChunkIndex, endPos)
+		for offset, ctype := range ctypes {
+			if offset == 0 {
+				continue
+			}
+			_, endPos, err := cr.getLineFromChunk(cr.topChunkRowCount, offset, ctype, lastRow)
+			if err != nil {
+				return err
+			}
+			cr.truncateChunk(ctype, cr.topChunkIndex, endPos)
+		}
+		cr.closeMaps(cr.topChunkIndex, false)
 	}
-	cr.closeMaps(cr.topChunkIndex, false)
 	cr.currentID = int64(binary.LittleEndian.Uint64(lastRow[0:])) + 1
 	return nil
 }
@@ -704,7 +708,6 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 	}
 	match = strings.ToLower(match)
 	// zlog.Warn("Iter1:", cr.bottomChunkIndex, cr.topChunkIndex, cr.topChunkRowCount, "in:", startChunkIndex, index, forward)
-	row := make([]byte, cr.opts.RowByteSize)
 	cr.lock.Lock()
 	defer cr.lock.Unlock()
 	chunkIndex := startChunkIndex
@@ -737,7 +740,7 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 			return zlog.NewError("index after top row in top chunk", startChunkIndex, "==", cr.topChunkIndex, index, ">=", cr.topChunkRowCount)
 		}
 	}
-	row = make([]byte, cr.opts.RowByteSize)
+	row := make([]byte, cr.opts.RowByteSize)
 	var mmap *mmap.File
 	for {
 		var err error

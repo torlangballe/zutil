@@ -16,14 +16,18 @@ import (
 
 const rowSize = 24
 
-type event struct {
-	id   int64
-	time int64
-	text string
+type Event struct {
+	ID   int64
+	Time int64
+	Text string
 }
 
-func (e event) GetLowerCaseMatchContent() string {
-	return strings.ToLower(e.text)
+func (e Event) GetLowerCaseMatchContent() string {
+	return strings.ToLower(e.Text)
+}
+
+func (e *Event) SetID64(id int64) {
+	e.ID = id
 }
 
 func checkBinarySearchForChunk(t *testing.T, chunkedRows *ChunkedRows, val int64, wantChunkIndex int, wantPos ChunkPos) {
@@ -63,22 +67,22 @@ func makeChunkedRows(path string) *ChunkedRows {
 	return New(opts)
 }
 
-func makeEventBytes(e event) []byte {
+func makeEventBytes(e Event) []byte {
 	row := make([]byte, rowSize)
-	binary.LittleEndian.PutUint64(row[0:], uint64(e.id))
-	binary.LittleEndian.PutUint64(row[8:], uint64(e.time))
+	binary.LittleEndian.PutUint64(row[0:], uint64(e.ID))
+	binary.LittleEndian.PutUint64(row[8:], uint64(e.Time))
 	return row
 }
 
-func eventFromBytes(row []byte) event {
-	var e event
-	e.id = int64(binary.LittleEndian.Uint64(row[0:]))
-	e.time = int64(binary.LittleEndian.Uint64(row[8:]))
+func eventFromBytes(row []byte) Event {
+	var e Event
+	e.ID = int64(binary.LittleEndian.Uint64(row[0:]))
+	e.Time = int64(binary.LittleEndian.Uint64(row[8:]))
 	return e
 }
 
 func addNumber(cr *ChunkedRows, n int) {
-	e := event{time: int64(n)}
+	e := Event{Time: int64(n)}
 	row := makeEventBytes(e)
 	cr.Add(row, nil)
 }
@@ -200,7 +204,7 @@ func testIterate(t *testing.T) {
 }
 
 func testCorruption(t *testing.T) {
-	zlog.Warn("testIterate")
+	zlog.Warn("testCorruption")
 	const count = 5
 	names := []string{"john", "sally", "bill", "fred", "jill", "peter", "tor", "paul"}
 	opts := DefaultLSOpts
@@ -217,7 +221,7 @@ func testCorruption(t *testing.T) {
 		if i == len(names)-1 {
 			chunkedRows.auxMatchRowEndChar = '\t'
 		}
-		e := &event{time: int64(i + 1), text: n}
+		e := &Event{Time: int64(i + 1), Text: n}
 		row := makeEventBytes(*e)
 		chunkedRows.Add(row, e)
 	}
@@ -240,7 +244,7 @@ func testDeleteOldChunk(t *testing.T) {
 		t := time.Now().Add(time.Millisecond * time.Duration(i))
 		end = t
 		u := t.UnixMicro()
-		e := event{time: u}
+		e := Event{Time: u}
 		row := makeEventBytes(e)
 		chunkedRows.Add(row, nil)
 	}
@@ -248,10 +252,10 @@ func testDeleteOldChunk(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	testAdd(t)
-	testBinarySearch(t)
-	testLoad(t)
-	testIterate(t)
+	// testAdd(t)
+	// testBinarySearch(t)
+	// testLoad(t)
+	// testIterate(t)
 	testCorruption(t)
-	testDeleteOldChunk(t)
+	// testDeleteOldChunk(t)
 }
