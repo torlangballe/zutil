@@ -12,7 +12,7 @@ import (
 func Equal[N comparable](t *testing.T, a, b N, parts ...any) bool {
 	if a != b {
 		str := zstr.Spaced(parts...) + fmt.Sprintf(" '%s' != '%s'", a, b)
-		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
+		zlog.Error(zlog.StackAdjust(1), zlog.StackAdjust(1), "Fail:", str)
 		t.Error(str)
 		return false
 	}
