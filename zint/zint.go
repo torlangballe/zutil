@@ -18,6 +18,10 @@ type Range struct {
 	Max   int
 }
 
+type ID64Setter interface {
+	SetID64(id int64)
+}
+
 var dummy int
 
 // SizeOfInt is the size of an int type
