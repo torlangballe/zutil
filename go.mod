@@ -12,6 +12,7 @@ require (
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/go-mmap/mmap v0.7.0
+	github.com/go-mmap/mmap v0.7.0
 	github.com/gomodule/redigo v1.8.9
 	github.com/google/gopacket v1.1.19
 	github.com/gorilla/mux v1.8.0
@@ -26,6 +27,7 @@ require (
 	github.com/riywo/loginshell v0.0.0-20200815045211-7d26008be1ab
 	github.com/sendgrid/sendgrid-go v3.13.0+incompatible
 	github.com/sergi/go-diff v1.3.1
+	github.com/shirou/gopsutil/v4 v4.24.8
 	github.com/shirou/gopsutil/v4 v4.24.8
 	github.com/timest/gomanuf v0.0.0-20230209100256-466f396c9305
 	github.com/torlangballe/blackfridayV2 v0.0.0-20230907135525-adceae2f31a8
