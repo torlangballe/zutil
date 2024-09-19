@@ -158,7 +158,7 @@ func repeatPrintAverages(printSecs float64) {
 		var tab *zstr.TabWriter
 		time.Sleep(time.Duration(float64(time.Second) * printSecs))
 		averagesLock.Lock()
-		names := zmap.GetKeysAsStrings(averages)
+		names := zmap.KeysAsStrings(averages)
 		sort.Strings(names)
 		for _, n := range names {
 			a := averages[n]
