@@ -498,10 +498,3 @@ func Swap[A any](a, b *A) {
 	*a = *b
 	*b = t
 }
-
-func PrintStructToTabWriter(s any, tabs *zstr.TabWriter) {
-	ForEachField(s, FlattenIfAnonymous, func(each FieldInfo) bool {
-		fmt.Fprint(tabs, zstr.EscGreen, each.StructField.Name, "\t", zstr.EscNoColor, each.ReflectValue.Interface(), "\n")
-		return true
-	})
-}
