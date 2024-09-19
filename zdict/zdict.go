@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"reflect"
 	"sort"
@@ -198,18 +199,20 @@ func FromString(str, assigner, separator string) Dict {
 
 func FromStruct(structure any, lowerFirst bool) Dict {
 	d := Dict{}
-	options := zreflect.Options{UnnestAnonymous: true, Recursive: true}
-	rootItems, err := zreflect.IterateStruct(structure, options)
-	if err != nil {
-		panic(err)
-	}
-	for _, item := range rootItems.Children {
-		name := item.FieldName
+	zreflect.ForEachField(structure, zreflect.FlattenIfAnonymous, func(each zreflect.FieldInfo) bool {
+		dtags := zreflect.GetTagAsMap(string(each.StructField.Tag))["zdict"]
+		name := each.StructField.Name
 		if lowerFirst {
 			name = zstr.FirstToLower(name)
+		} else {
+			hasTag := (len(dtags) != 0)
+			if hasTag {
+				name = dtags[0]
+			}
 		}
-		d[name] = item.Interface
-	}
+		d[name] = each.ReflectValue.Interface()
+		return true
+	})
 	return d
 }
 
@@ -364,4 +367,15 @@ func (d Items) GetItem(i int) (id, name string, value any) {
 
 func (d Items) Count() int {
 	return len(d)
+}
+
+func (d Dict) WriteTabulated(w io.Writer) {
+	tabs := zstr.NewTabWriter(w)
+	tabs.MaxColumnWidth = 100
+
+	for _, k := range d.SortedKeys() {
+		v := d[k]
+		fmt.Fprint(tabs, zstr.EscGreen, k, "\t", zstr.EscNoColor, v, "\n")
+	}
+	tabs.Flush()
 }
