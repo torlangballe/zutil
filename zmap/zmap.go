@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/torlangballe/zutil/zstr"
 )
 
 type LockMap[K comparable, V any] struct {
@@ -187,4 +189,10 @@ func GetValueInRecursiveMap(m map[string]any, slashPath string) (any, error) {
 // Usefull since maps are shared and you want to avoid clearing a shared map.
 func EmptyOf[K comparable, V any](m map[K]V) map[K]V {
 	return map[K]V{}
+}
+
+func PrintMapToTabWriter[K comparable, V any](m map[K]V, tabs *zstr.TabWriter) {
+	for k, v := range m {
+		fmt.Fprint(tabs, zstr.EscGreen, k, "\t", zstr.EscNoColor, v, "\n")
+	}
 }
