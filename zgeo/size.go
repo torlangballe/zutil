@@ -269,7 +269,7 @@ func (s Size) String() string {
 	return fmt.Sprintf("%gx%g", s.W, s.H)
 }
 
-func SizeFromString(str string) (Size, error) { // we don't use String() since that's special in Go
+func SizeFromString(str string) (Size, error) {
 	var sw, sh string
 	if !zstr.SplitN(str, "x", &sw, &sh) {
 		return Size{}, errors.New("no x parsing zgeo.Size string: " + str)
