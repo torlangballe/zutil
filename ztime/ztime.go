@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlocale"
 	"github.com/torlangballe/zutil/zlog"
@@ -31,6 +32,25 @@ const (
 
 	Day  = time.Hour * time.Duration(24)
 	Week = Day * time.Duration(7)
+)
+
+type TimeFieldFlags int
+
+const (
+	TimeFieldNone TimeFieldFlags = 1 << iota
+	TimeFieldSecs
+	TimeFieldMins
+	TimeFieldHours
+	TimeFieldDays
+	TimeFieldMonths
+	TimeFieldYears
+	TimeFieldAMPM
+	TimeFieldDateOnly
+	TimeFieldTimeOnly
+	TimeFieldNoCalendar
+	TimeFieldShortYear
+	TimeFieldStatic
+	TimeFieldPreviousYear30 // If !TimeFieldYears, use previous year date is then less than 30 days from now
 )
 
 type JSONTime time.Time
@@ -664,4 +684,109 @@ func TimeToNearestEmojii(t time.Time) rune {
 		r = timeHMStringToClockEmojiiMap["10:30"]
 	}
 	return r
+}
+
+func getInt(str string, i *int, min, max int, err *error, faults *[]TimeFieldFlags, field TimeFieldFlags) {
+	if str == "" {
+		return
+	}
+	n, cerr := strconv.Atoi(str)
+	if cerr != nil {
+		*err = cerr
+		return
+	}
+	if max != 0 && n > max {
+		// zlog.Info("MAX>", v.ObjectName(), n, max)
+		*faults = append(*faults, field)
+		*err = errors.New("big")
+		return
+	}
+	if n < min {
+		*faults = append(*faults, field)
+		*err = errors.New("small")
+		return
+	}
+	*i = n
+}
+
+func ParseDate(date string, location *time.Location, use24Clock bool) (t time.Time, faults []TimeFieldFlags, err error) {
+	var hour, min, sec int
+	var stime, sdate string
+
+	date = strings.ToLower(date)
+	now := time.Now().In(location)
+	month := int(now.Month())
+	year := now.Year()
+	day := now.Day()
+
+	maxHour := 12
+	minHour := 1
+	if use24Clock {
+		maxHour = 23
+		minHour = 0
+	}
+	for _, split := range []string{" ", "T", "t"} {
+		if zstr.SplitN(date, split, &stime, &sdate) {
+			break
+		}
+	}
+	if sdate == "" {
+		if strings.Contains(date, ":") {
+			stime = date
+		} else {
+			sdate = date
+			stime = ""
+		}
+	}
+	var pm zbool.BoolInd
+	if !use24Clock {
+		if zstr.HasSuffix(stime, "pm", &stime) {
+			pm = zbool.True
+		} else if zstr.HasSuffix(stime, "am", &stime) {
+			pm = zbool.False
+		} else {
+			faults = append(faults, TimeFieldAMPM)
+			return time.Time{}, nil, zlog.NewError("no am/pm", date)
+		}
+	}
+	var shour, smin, ssec, sday, smonth, syear string
+	zstr.SplitN(stime, ":", &shour, &smin, &ssec)
+	zstr.SplitN(sdate, "-", &sday, &smonth, &syear)
+
+	getInt(shour, &hour, minHour, maxHour, &err, &faults, TimeFieldHours)
+
+	if !pm.IsUnknown() {
+		if pm.IsTrue() {
+			if hour != 12 {
+				hour += 12
+			}
+		} else if hour == 12 {
+			hour = 0
+		}
+	}
+
+	getInt(smin, &min, 0, 60, &err, &faults, TimeFieldMins)
+	getInt(ssec, &sec, 0, 59, &err, &faults, TimeFieldSecs)
+	getInt(smonth, &month, 1, 12, &err, &faults, TimeFieldMonths)
+
+	days := DaysInMonth(time.Month(month), year)
+	getInt(syear, &year, 0, 0, &err, &faults, TimeFieldYears)
+	if year < 100 {
+		year += 2000
+	}
+	getInt(sday, &day, 1, days, &err, &faults, TimeFieldDays)
+	// zlog.Warn("All:", err)
+	if err != nil {
+		return t, faults, err
+	}
+	t = time.Date(year, time.Month(month), day, hour, min, sec, 0, location)
+	// zlog.Warn("T:", t, year, time.Month(month), day, hour, min, sec)
+	if syear == "" {
+		prev := time.Date(year-1, time.Month(month), day, hour, min, sec, 0, location)
+		psince := time.Since(prev)
+		if psince < Day*30 && math.Abs(DurSeconds(psince)) < math.Abs(Since(t)) {
+			t = prev
+		}
+	}
+	return t, faults, nil
 }
