@@ -4,7 +4,7 @@ package zchunkedrows
 
 // ChunkedRows is a static list of byte-rows that is chunked into memory-mapped chunks.
 // It can have an int64 for ordering if OrdererOffset option is set.
-// If IncreasingIDOffset option in not -1, adding rows automatically sets a int64 increasing id.
+// If HasIncreasingIDFirstInRow option is set, adding rows automatically sets a int64 increasing id first in row.
 // If AuxIndexOffset is set, at each row at that offset is a uint32 index into corresponding memory mapped chunk of auxillary data.
 // If MatchIndexOffset is set, a chunk of lower-case match strings is also stored
 // Then BinarySearch allows fast finding, and BinarySearchForChunk finds the chunk a value is in.
@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,6 +30,7 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -44,13 +46,13 @@ const (
 )
 
 type LSOpts struct {
-	RowsPerChunk       int
-	RowByteSize        int
-	DirPath            string
-	IncreasingIDOffset int // if not -1, an ID is increased and set first in row at this offset
-	AuxIndexOffset     int // if not 0, we have aux, and it is where aux chunk index is stored in row as a uint32
-	MatchIndexOffset   int // if not 0, we have match string chunks, and it is where index into this chunk is stored in row as a uint32
-	OrdererOffset      int // if not 0, where an uint32 to order rows is in a row
+	RowsPerChunk              int
+	RowByteSize               int
+	DirPath                   string
+	HasIncreasingIDFirstInRow bool // if true, an ID is increased and set first in row
+	AuxIndexOffset            int  // if not 0, we have aux, and it is where aux chunk index is stored in row as a uint32
+	MatchIndexOffset          int  // if not 0, we have match string chunks, and it is where index into this chunk is stored in row as a uint32
+	OrdererOffset             int  // if not 0, where an uint32 to order rows is in a row
 }
 
 type ChunkedRows struct {
@@ -76,8 +78,8 @@ const (
 var AboveError = errors.New("above")
 
 var DefaultLSOpts = LSOpts{
-	RowsPerChunk:       1024, // a million for events?
-	IncreasingIDOffset: -1,
+	RowsPerChunk:              1024, // a million for events?
+	HasIncreasingIDFirstInRow: true,
 }
 
 func New(opts LSOpts) *ChunkedRows {
@@ -175,6 +177,7 @@ func (cr *ChunkedRows) closeMaps(chunkIndex int, remove bool) {
 			delete(cmap, chunkIndex)
 		}
 		if remove {
+			// zlog.Warn("zChunkedRows.RemoveChunk:", chunkIndex)
 			fpath := cr.chunkFilepath(chunkIndex, cType)
 			os.Remove(fpath)
 		}
@@ -256,6 +259,7 @@ func (cr *ChunkedRows) getMemoryMap(chunkIndex int, cType chunkType) (mm *mmap.F
 		f.Close()
 	}
 	mm, err = mmap.Open(fpath)
+	// zlog.Warn("MMAP Open:", fpath, zdebug.CallingStackString())
 	if err != nil {
 		return nil, err
 	}
@@ -440,8 +444,6 @@ func (cr *ChunkedRows) incrementRowOrChunk() {
 	cr.topChunkIndex++
 }
 
-var AddDurationProfile time.Duration
-
 // Add keeps adding rows's to the top chunk, with optional aux data in aux chunks.
 // it calls checkIfAtEndOfChunk afterwards to get ready in next chunk.
 func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
@@ -465,7 +467,7 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 		}
 		idset, _ := (auxData).(zint.ID64Setter)
 		if idset != nil {
-			idset.SetID64(cr.currentID)
+			idset.SetID64(cr.currentID + 1)
 		}
 		djson, err := json.Marshal(auxData)
 		if err != nil {
@@ -478,7 +480,6 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 	cr.lock.Lock()
 	defer cr.lock.Unlock()
 
-	s := time.Now()
 	cr.incrementRowOrChunk()
 	if auxData != nil {
 		if cr.opts.MatchIndexOffset != 0 {
@@ -502,7 +503,7 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 		binary.LittleEndian.PutUint32(rowBytes[cr.opts.MatchIndexOffset:], uint32(matchPos))
 	}
 	var id int64
-	if cr.opts.IncreasingIDOffset != -1 {
+	if cr.opts.HasIncreasingIDFirstInRow {
 		id = cr.currentID
 		binary.LittleEndian.PutUint64(rowBytes[0:], uint64(id))
 	}
@@ -514,7 +515,6 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 		cr.truncateChunk(isMatch, cr.topChunkIndex, matchPos)
 		return 0, err
 	}
-	AddDurationProfile += time.Since(s)
 	return id, nil
 }
 
@@ -552,7 +552,9 @@ func (cr *ChunkedRows) load() error {
 	zfile.MakeDirAllIfNotExists(cr.opts.DirPath)
 	cr.lock.Lock()
 	defer cr.lock.Unlock()
-	var rowRange, auxRange zint.Range
+	ctypes := []chunkType{isAux, isRows, isMatch}
+
+	var ranges = map[chunkType]zint.Range{}
 	zfile.Walk(cr.opts.DirPath, "", zfile.WalkOptionGiveNameOnly, func(fname string, info os.FileInfo) error {
 		var sn, stub string
 		if zstr.SplitN(fname, ".", &sn, &stub) {
@@ -560,29 +562,31 @@ func (cr *ChunkedRows) load() error {
 			if zlog.OnError(err, sn) {
 				return nil
 			}
-			if stub == "rows" {
-				rowRange.Add(n)
-			} else if cr.opts.AuxIndexOffset != 0 && stub == "aux" {
-				auxRange.Add(n)
+			for _, cType := range ctypes {
+				if stub == cType.String() {
+					ranges[cType] = ranges[cType].Added(n)
+				}
 			}
 		}
 		return nil
 	})
-	if !rowRange.Valid {
+	if !ranges[isRows].Valid {
+		zlog.Info("Deleting zchunkedrows dir with invalid chunk range (empty)", cr.opts.DirPath)
 		zfile.RemoveContents(cr.opts.DirPath)
-		cr.currentID = 1
+		cr.currentID = 0
 		return nil
 	}
-	if cr.opts.AuxIndexOffset != 0 {
-		for cr.bottomChunkIndex = min(rowRange.Min, auxRange.Min); cr.bottomChunkIndex < max(rowRange.Min, auxRange.Min); cr.bottomChunkIndex++ { // if more aux chunks than chunk chunks or visa versa at bottom
-			cr.deleteChunk(cr.bottomChunkIndex)
-		}
-		for cr.topChunkIndex = max(rowRange.Max, auxRange.Max); cr.topChunkIndex > min(rowRange.Max, auxRange.Max); cr.topChunkIndex-- { // likewise for top
-			cr.deleteChunk(cr.topChunkIndex)
-		}
+	mins := zint.GetRangeMins(zmap.AllValues(ranges))
+	for cr.bottomChunkIndex = slices.Min(mins); cr.bottomChunkIndex < slices.Max(mins); cr.bottomChunkIndex++ { // if more aux chunks than chunk chunks or visa versa at bottom
+		zlog.Warn("zchunkedrows deleting bottom chunk without matching aux/match range", cr.bottomChunkIndex, cr.opts.DirPath)
+		cr.deleteChunk(cr.bottomChunkIndex)
 	}
-	cr.bottomChunkIndex = rowRange.Min
-	cr.topChunkIndex = rowRange.Max
+	maxes := zint.GetRangeMaxes(zmap.AllValues(ranges))
+	for cr.topChunkIndex = slices.Max(maxes); cr.topChunkIndex > slices.Min(maxes); cr.topChunkIndex-- { // likewise for top
+		zlog.Warn("zchunkedrows deleting top chunk without matching aux/match range", cr.bottomChunkIndex, cr.opts.DirPath)
+		cr.deleteChunk(cr.topChunkIndex)
+	}
+	// zlog.Warn("Loaded:", maxes, cr.bottomChunkIndex, cr.topChunkIndex)
 	mm, err := cr.getMemoryMap(cr.topChunkIndex, isRows)
 	if err != nil {
 		return zlog.Error(err, cr.topChunkIndex)
@@ -623,7 +627,7 @@ func (cr *ChunkedRows) handleLoadedTopRow(mm *mmap.File) error {
 			if offset == 0 {
 				continue
 			}
-			_, endPos, err := cr.getLineFromChunk(cr.topChunkRowCount, offset, ctype, lastRow)
+			_, endPos, err := cr.getLineFromChunk(cr.topChunkIndex, offset, ctype, lastRow)
 			if err != nil {
 				return err
 			}
@@ -663,6 +667,17 @@ func (cr *ChunkedRows) getMatchStr(chunkIndex int, row []byte) (string, error) {
 	return string(matchBytes), nil
 }
 
+func (cr *ChunkedRows) onErrorRemoveChunkMapFileIfFirstGet(chunkIndex int, cType chunkType) {
+	if chunkIndex != 2 { // for now to limit prints
+		return
+	}
+	zlog.Warn("onErrorRemoveChunkMapFileIfFirstGet1", chunkIndex, cType, cr.topChunkIndex, cr.topChunkRowCount, zdebug.CallingStackString())
+	if chunkIndex == cr.topChunkIndex && cr.topChunkRowCount == 0 {
+		zlog.Warn("onErrorRemoveChunkMapFileIfFirstGet:", chunkIndex, cType)
+		cr.closeMaps(chunkIndex, true)
+	}
+}
+
 func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType, row []byte) (lineBytes []byte, endPos int64, err error) {
 	mm, err := cr.getMemoryMap(chunkIndex, cType)
 	if err != nil {
@@ -673,11 +688,13 @@ func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType,
 	_, err = mm.Seek(int64(i), io.SeekStart)
 	// zlog.Warn("getLineFromChunk", i, err, chunkIndex, offset, cType)
 	if err != nil {
+		cr.onErrorRemoveChunkMapFileIfFirstGet(chunkIndex, cType)
 		return nil, 0, zlog.Error(err, i, chunkIndex, offset, cType)
 	}
 	reader := bufio.NewReader(mm)
 	lineBytes, err = reader.ReadBytes(cr.auxMatchRowEndChar)
 	if err != nil {
+		cr.onErrorRemoveChunkMapFileIfFirstGet(chunkIndex, cType)
 		return nil, 0, err
 	}
 	lineBytes = lineBytes[:len(lineBytes)-1]
