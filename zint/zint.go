@@ -360,13 +360,38 @@ func (s Slice) Minimum() int {
 	return min
 }
 
-func (r *Range) Add(n int) {
+func (r Range) Added(n int) Range {
 	if !r.Valid {
 		r.Valid = true
 		r.Min = n
 		r.Max = n
-		return
+		return r
 	}
 	r.Min = min(r.Min, n)
 	r.Max = max(r.Max, n)
+	return r
+}
+
+func (r *Range) Add(n int) {
+	*r = r.Added(n)
+}
+
+func GetRangeMins(rs []Range) []int {
+	var all []int
+	for _, r := range rs {
+		if r.Valid {
+			all = append(all, r.Min)
+		}
+	}
+	return all
+}
+
+func GetRangeMaxes(rs []Range) []int {
+	var all []int
+	for _, r := range rs {
+		if r.Valid {
+			all = append(all, r.Max)
+		}
+	}
+	return all
 }
