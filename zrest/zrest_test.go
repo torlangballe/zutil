@@ -56,5 +56,5 @@ func TestCalls(t *testing.T) {
 	}
 	since := ztime.Since(start)
 	zlog.Warn("100 calls:", since)
-	ztesting.LessThan(t, "100 calls less than 600ms", since, 0.6)
+	ztesting.LessThan(t, since, 0.6, "100 calls less than 600ms")
 }
