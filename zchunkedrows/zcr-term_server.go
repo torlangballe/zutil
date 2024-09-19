@@ -8,9 +8,8 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zcommands"
+	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zmap"
-	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -129,18 +128,13 @@ func (crc *CRCommander) Info(c *zcommands.CommandInfo) string {
 		return "Show information about the chunked rows."
 	}
 	w := c.Session.TermSession.Writer()
-	tabs := zstr.NewTabWriter(w)
-	tabs.MaxColumnWidth = 100
-
-	zreflect.PrintStructToTabWriter(crc.ChunkedRows.opts, tabs)
-	parts := map[string]any{
-		"BottomChunkIndex": crc.ChunkedRows.bottomChunkIndex,
-		"TopChunkIndex":    crc.ChunkedRows.topChunkIndex,
-		"TopChunkRowCount": crc.ChunkedRows.topChunkRowCount,
-		"CurrentID":        crc.ChunkedRows.currentID,
-	}
-	zmap.PrintMapToTabWriter(parts, tabs)
-	tabs.Flush()
+	dict := zdict.FromStruct(crc.ChunkedRows.opts, false)
+	dict["BottomChunkIndex"] = crc.ChunkedRows.bottomChunkIndex
+	dict["TopChunkIndex"] = crc.ChunkedRows.topChunkIndex
+	dict["TopChunkRowCount"] = crc.ChunkedRows.topChunkRowCount
+	dict["CurrentID"] = crc.ChunkedRows.currentID
+	dict["TotalRows"] = crc.ChunkedRows.TotalRowCount()
+	dict.WriteTabulated(w)
 
 	return ""
 }
