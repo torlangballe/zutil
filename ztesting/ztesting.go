@@ -11,7 +11,7 @@ import (
 
 func Equal[N comparable](t *testing.T, a, b N, parts ...any) bool {
 	if a != b {
-		str := zstr.Spaced(parts...) + fmt.Sprintf(" '%s' != '%s'", a, b)
+		str := zstr.Spaced(parts...) + fmt.Sprintf(" '%v' != '%v'", a, b)
 		zlog.Error(zlog.StackAdjust(1), zlog.StackAdjust(1), "Fail:", str)
 		t.Error(str)
 		return false
@@ -21,7 +21,7 @@ func Equal[N comparable](t *testing.T, a, b N, parts ...any) bool {
 
 func Different[N comparable](t *testing.T, a, b N, parts ...any) bool {
 	if a == b {
-		str := zstr.Spaced(parts...) + fmt.Sprintf(" '%s' == '%s'", a, b)
+		str := zstr.Spaced(parts...) + fmt.Sprintf(" '%v' == '%v'", a, b)
 		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
 		t.Error(str)
 		return false
@@ -31,7 +31,7 @@ func Different[N comparable](t *testing.T, a, b N, parts ...any) bool {
 
 func GreaterThan[N cmp.Ordered](t *testing.T, a, b N, parts ...any) bool {
 	if a < b {
-		str := zstr.Spaced(parts...) + fmt.Sprintf(" '%s' < '%s'", a, b)
+		str := zstr.Spaced(parts...) + fmt.Sprintf(" '%v' < '%v'", a, b)
 		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
 		t.Error(str)
 		return false
@@ -41,7 +41,7 @@ func GreaterThan[N cmp.Ordered](t *testing.T, a, b N, parts ...any) bool {
 
 func LessThan[N cmp.Ordered](t *testing.T, a, b N, parts ...any) bool {
 	if a > b {
-		str := zstr.Spaced(parts...) + fmt.Sprintf(" '%s' > '%s'", a, b)
+		str := zstr.Spaced(parts...) + fmt.Sprintf(" '%v' > '%v'", a, b)
 		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
 		t.Error(str)
 		return false
