@@ -21,15 +21,16 @@ import (
 // https://pkg.go.dev/github.com/gliderlabs/ssh = docs
 
 type Terminal struct {
-	port                int
-	startText           string
-	userIDs             map[string]int64
-	sessionPublicKeys   map[string]string   // maps sessionID to public key. First a ssh.PublicKeyAuth comes in before login. Store map of session:public-key. Then in ssh.PasswordAuth read the key via same session, and store that zusers or map (if no auth), to let user thru on next login.
-	hardcodedUsers      map[string]hardUser // hardcodedUsers is a map of users who log right in. Only for development/testing.
-	noUserAuthValidKeys map[string]bool     // Map of public keys to let through when no zuser auth.
-	PublicKeyStorePath  string
-	HandleLine          func(line string, ts *Session) bool
-	HandleNewSession    func(ts *Session) func(line string, pos int, key rune) (newLine string, newPos int, ok bool)
+	port                           int
+	startText                      string
+	userIDs                        map[string]int64
+	sessionPublicKeys              map[string]string   // maps sessionID to public key. First a ssh.PublicKeyAuth comes in before login. Store map of session:public-key. Then in ssh.PasswordAuth read the key via same session, and store that zusers or map (if no auth), to let user thru on next login.
+	hardcodedUsers                 map[string]hardUser // hardcodedUsers is a map of users who log right in. Only for development/testing.
+	noUserAuthValidKeys            map[string]bool     // Map of public keys to let through when no zuser auth.
+	PublicKeyStorePath             string
+	RequireSystemPasswordIfNoZUser bool // if true, when no zuser set up, require unix user login. Otherwise go straight in.
+	HandleLine                     func(line string, ts *Session) bool
+	HandleNewSession               func(ts *Session) func(line string, pos int, key rune) (newLine string, newPos int, ok bool)
 }
 
 type Session struct {
@@ -90,6 +91,7 @@ func New(startText string) *Terminal {
 	t.sessionPublicKeys = map[string]string{}
 	t.hardcodedUsers = map[string]hardUser{}
 	t.noUserAuthValidKeys = map[string]bool{}
+	t.RequireSystemPasswordIfNoZUser = true
 
 	return t
 }
@@ -146,8 +148,12 @@ func (t *Terminal) ListenForever(port int) {
 	var opts []ssh.Option
 	if t.PublicKeyStorePath != "" {
 		publicKeyOpt := ssh.PublicKeyAuth(func(ctx ssh.Context, key ssh.PublicKey) bool {
+			zlog.Info("zterm.PublicKeyAuth", key)
 			skey := "ssh:" + zstr.MD5Hex(key.Marshal())
 			if zusers.MainServer == nil {
+				if !t.RequireSystemPasswordIfNoZUser {
+					return true
+				}
 				// return true // return true to buypass all
 				// zlog.Info("ssh.Session has public key?", skey, t.noUserAuthValidKeys)
 				if t.noUserAuthValidKeys[skey] {
