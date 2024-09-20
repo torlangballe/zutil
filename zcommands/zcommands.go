@@ -415,7 +415,7 @@ func (s *Session) expandChildStubArg(line, command string) (newLine string, newP
 	return
 }
 
-func CreateCommanderAndTerminal(welcome string, keysdir string, hardUsers map[string]string, rootNode any, port int) *Commander {
+func CreateCommanderAndTerminal(welcome string, keysdir string, hardUsers map[string]string, rootNode any, port int, requireSystemPasswordIfNoZUser bool) *Commander {
 	_, ip, _ := znet.GetCurrentLocalIPAddress()
 	if ip == "" {
 		ip = "localhost"
@@ -429,6 +429,7 @@ func CreateCommanderAndTerminal(welcome string, keysdir string, hardUsers map[st
 	if keysdir != "" {
 		terminal.PublicKeyStorePath = keysdir + "terminal-pubkeys.json"
 	}
+	terminal.RequireSystemPasswordIfNoZUser = requireSystemPasswordIfNoZUser
 	for user, pass := range hardUsers {
 		terminal.AddHardcodedUser(user, pass)
 	}
