@@ -10,6 +10,7 @@ import (
 	"github.com/torlangballe/zutil/zcommands"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zslice"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -19,18 +20,27 @@ type CRCommander struct {
 	lastIndex      int
 	ChunkedRows    *ChunkedRows
 	OrdererIsTime  bool
-	// RowParameters    zfields.FieldParameters
-	// EditParameters   zfields.FieldParameters
+	otherColumns   []termColumn // this is map of offsets to int columns. For showing in rows.
+	shownRows      bool
+
+	UpdateTermColumnsFunc func()
 }
 
-//const RowUseZTermSliceName = "$zterm"
+type termColumn struct {
+	offset  int
+	header  string
+	is32Bit bool
+	isMask  bool
+	isTime  bool
+	names   map[int]string
+}
 
-// func makeRowParameters() zfields.FieldParameters {
-// 	var p zfields.FieldParameters
-
-// 	p.UseInValues = []string{RowUseZTermSliceName}
-// 	return p
-// }
+func (crc *CRCommander) SetTermColumn(offset int, header string, is32Bit, isMask, isTime bool, names map[int]string) {
+	col := termColumn{offset: offset, header: header, is32Bit: is32Bit, isMask: isMask, isTime: isTime, names: names}
+	zslice.AddOrReplace(&crc.otherColumns, col, func(a, b termColumn) bool {
+		return a.offset == b.offset
+	})
+}
 
 func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
 	ChunkIndex *int    `zui:"title:ci,desc:Start Chunk"`
@@ -43,9 +53,17 @@ func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
 	case zcommands.CommandHelp:
 		return "lists rows in the table"
 	}
+	if !crc.shownRows {
+		crc.lastChunkIndex = -1
+		crc.lastIndex = -1
+		crc.shownRows = true
+	}
 	if a.ChunkIndex != nil {
 		crc.lastChunkIndex = *a.ChunkIndex
 		crc.lastIndex = 0
+		if *a.ChunkIndex == -1 {
+			crc.lastIndex = -1
+		}
 	}
 	if a.Index != nil {
 		crc.lastIndex = *a.Index
@@ -54,32 +72,40 @@ func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
 	if a.Match != nil {
 		match = *a.Match
 	}
+	if crc.UpdateTermColumnsFunc != nil {
+		crc.UpdateTermColumnsFunc()
+	}
 	zlog.Warn("Rows:", a.ChunkIndex != nil, a.Index != nil, crc.lastChunkIndex, crc.lastIndex, match)
 	outputRows(crc, c, match)
 	return ""
 }
 
 func outputRows(crc *CRCommander, c *zcommands.CommandInfo, match string) {
-	var hid, horderer, hmatch string
 	w := c.Session.TermSession.Writer()
 	tabs := zstr.NewTabWriter(w)
 	tabs.MaxColumnWidth = 60
 
+	zlog.Warn("OutRows:", zlog.Full(crc.otherColumns))
+	fmt.Fprint(tabs, zstr.EscGreen, "chunk\tindex\t")
 	if crc.ChunkedRows.opts.HasIncreasingIDFirstInRow {
-		hid = "id\t"
+		fmt.Fprint(tabs, "id\t")
 	}
 	if crc.ChunkedRows.opts.OrdererOffset != 0 {
-		horderer = "orderer\t"
 		if crc.OrdererIsTime {
-			horderer = "time\t"
+			fmt.Fprint(tabs, "time\t")
+		} else {
+			fmt.Fprint(tabs, "orderer\t")
 		}
 	}
-	if crc.ChunkedRows.opts.MatchIndexOffset != 0 {
-		hmatch = "text\t"
+	for _, col := range crc.otherColumns {
+		fmt.Fprint(tabs, col.header, "\t")
 	}
-	fmt.Fprint(tabs, zstr.EscGreen, "chunk\tindex\t", hid, horderer, hmatch, zstr.EscNoColor, "\n")
+	if crc.ChunkedRows.opts.MatchIndexOffset != 0 {
+		fmt.Fprint(tabs, "text\t")
+	}
+	fmt.Fprint(tabs, zstr.EscNoColor, "\n")
 	i := 0
-	err := crc.ChunkedRows.Iterate(crc.lastChunkIndex, crc.lastIndex, true, match, func(row []byte, chunkIndex, index int) bool {
+	err := crc.ChunkedRows.Iterate(crc.lastChunkIndex, crc.lastIndex, false, match, func(row []byte, chunkIndex, index int) bool {
 		crc.outputRow(c, tabs, row, chunkIndex, index)
 		i++
 		crc.lastChunkIndex = chunkIndex
@@ -108,6 +134,31 @@ func (crc *CRCommander) outputRow(c *zcommands.CommandInfo, tabs *zstr.TabWriter
 		} else {
 			fmt.Fprint(tabs, o, "\t")
 		}
+	}
+	for _, col := range crc.otherColumns {
+		var n int64
+		if col.is32Bit {
+			n = int64(binary.LittleEndian.Uint32(row[col.offset:]))
+		} else {
+			n = int64(binary.LittleEndian.Uint64(row[col.offset:]))
+		}
+		if col.isTime {
+			t := time.UnixMicro(n)
+			fmt.Fprint(tabs, ztime.GetNiceSubSecs(t, true, 3), "\t")
+			continue
+		}
+		if len(col.names) != 0 {
+			name := col.names[int(n)]
+			if name != "" {
+				fmt.Fprint(tabs, name, "\t")
+				continue
+			}
+		}
+		if n == 0 {
+			fmt.Fprint(tabs, "x\t")
+			continue
+		}
+		fmt.Fprint(tabs, n, "\t")
 	}
 	if crc.ChunkedRows.opts.MatchIndexOffset != 0 {
 		match, err := crc.ChunkedRows.getMatchStr(chunkIndex, row)
