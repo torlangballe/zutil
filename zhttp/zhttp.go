@@ -147,13 +147,13 @@ func SendBody(surl string, params Parameters, send, receive any) (*http.Response
 	}
 	params.Body = bout
 	resp, _, err := SendBytesSetContentLength(surl, params)
-	if err != nil {
-		zlog.Warn("SendBytesSetContentLength:", err)
-	}
+	// if err != nil {
+	// 	zlog.Warn("SendBytesSetContentLength:", err)
+	// }
 	err = processResponse(surl, resp, params, receive, err)
 	if err != nil {
 		err = makeContextErrorFromError(err, "Send Body", surl, params.Method)
-		zlog.Warn("SendErr2:", err, surl)
+		// zlog.Warn("SendErr2:", err, surl)
 	}
 	return resp, err
 }
