@@ -114,9 +114,9 @@ func GetAnyValue(getPtr any, m any) error {
 }
 
 func KeysAsStrings[K comparable, V any](m map[K]V) []string {
-	out := make([]string, len(m))
-	for i, k := range Keys(m) {
-		out[i] = fmt.Sprint(m[k])
+	out := make([]string, 0, len(m))
+	for _, k := range Keys(m) {
+		out = append(out, fmt.Sprint(m[k]))
 	}
 	return out
 }
