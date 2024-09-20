@@ -5,6 +5,7 @@ package zchunkedrows
 import (
 	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztesting"
+	"github.com/torlangballe/zutil/ztime"
 )
 
 const rowSize = 24
@@ -254,6 +256,26 @@ func testDeleteOldChunk(t *testing.T) {
 	ztesting.Equal(t, sumAfter, 20, "20 after delete")
 }
 
+func testBadOrder(t *testing.T) {
+	const count = 100
+	zlog.Warn("testBadOrder")
+	chunkedRows := makeChunkedRows("")
+	now := time.Now()
+	for i := 0; i < 100; i++ {
+		t := now.Add(ztime.SecondsDur(float64(rand.Int31n(3600))))
+		u := t.UnixMicro()
+		e := Event{Time: u}
+		row := makeEventBytes(e)
+		chunkedRows.Add(row, nil)
+	}
+	for i := 0; i < 50; i++ {
+		t := now.Add(-time.Minute).Add(ztime.SecondsDur(float64(rand.Int31n(3660))))
+		u := t.UnixMicro()
+		_, ci, ri, exact, err := chunkedRows.BinarySearch(u, false)
+		zlog.Warn("Find", t, ":", ci, ri, exact, err)
+	}
+}
+
 func TestAll(t *testing.T) {
 	testAdd(t)
 	testBinarySearch(t)
@@ -261,4 +283,5 @@ func TestAll(t *testing.T) {
 	testIterate(t)
 	testCorruption(t)
 	testDeleteOldChunk(t)
+	testBadOrder(t)
 }
