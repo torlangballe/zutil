@@ -245,3 +245,13 @@ func Map[S any](slice []S, mapFunc func(s S) S) []S {
 	}
 	return out
 }
+
+func AddOrReplace[S any](slice *[]S, add S, equal func(a, b S) bool) {
+	for i, s := range *slice {
+		if equal(add, s) {
+			(*slice)[i] = add
+			return
+		}
+	}
+	*slice = append(*slice, add)
+}
