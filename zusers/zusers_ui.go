@@ -86,7 +86,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	usernameField.UpdateSecs = 0
 
 	style = ztext.Style{KeyboardType: zkeyboard.TypePassword}
-	passwordField := ztext.NewView("", style, 30, 1)
+	passwordField := ztext.NewView("", style, 60, 1)
 	str = fmt.Sprintf("password must be minimum %d ascii characters", MinimumPasswordLength)
 	passwordField.SetToolTip((str))
 	passwordField.UpdateSecs = 0
@@ -283,7 +283,7 @@ func showDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title strin
 	} else if isEmail {
 		style.KeyboardType = zkeyboard.TypeEmailAddress
 	}
-	textField := ztext.NewView(oldValue, style, 20, 1)
+	textField := ztext.NewView(oldValue, style, 60, 1)
 	_, s1, _, _ := zguiutil.Labelize(textField, name, columnWith, zgeo.CenterLeft, "")
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
 
