@@ -65,6 +65,7 @@ type ChunkedRows struct {
 	currentID          int64
 	lock               sync.Mutex
 	auxMatchRowEndChar byte // this should always be '\n', but can be changed for unit tests
+	lastOrdererValue   int64
 }
 
 type chunkType int
@@ -453,6 +454,13 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 	var auxPos int64 = -1
 	var matchPos int64 = -1
 
+	if cr.opts.OrdererOffset != 0 {
+		o := int64(binary.LittleEndian.Uint64(rowBytes[cr.opts.OrdererOffset:]))
+		if o < cr.lastOrdererValue {
+			zlog.Error("zchunkRows.Add(): Added with orderer less than previous:", time.UnixMicro(cr.lastOrdererValue), (cr.lastOrdererValue-o)/1000, "ms", zlog.Full(auxData))
+		}
+		cr.lastOrdererValue = o
+	}
 	zlog.Assert((auxData != nil) == (cr.opts.AuxIndexOffset != 0), auxData != nil, cr.opts.AuxIndexOffset != 0)
 	zlog.Assert((auxData != nil) == (cr.opts.MatchIndexOffset != 0), auxData != nil, cr.opts.MatchIndexOffset != 0)
 
@@ -717,6 +725,7 @@ func (cr *ChunkedRows) readRow(index int, bytes []byte, mmap *mmap.File) error {
 }
 
 func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match string, got func(row []byte, chunkIndex, index int) bool) error {
+	zlog.Info("ChunkedRows.Iterate", startChunkIndex, index, forward, match)
 	if cr.isEmpty() {
 		return nil
 	}
@@ -761,7 +770,7 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 	var mmap *mmap.File
 	for {
 		var err error
-		// zlog.Warn("cr.Iter:", match, chunkIndex, index, forward)
+		zlog.Info("cr.Iter:", match, chunkIndex, index, forward)
 		if mmap == nil {
 			mmap, err = cr.getMemoryMap(chunkIndex, isRows)
 			if zlog.OnError(err, chunkIndex) {
