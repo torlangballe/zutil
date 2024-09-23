@@ -345,6 +345,9 @@ func (s *Session) GetAllMethodsHelp(structure any) []Help {
 		mtype := method.Type
 		i := 1
 		hasCommand := (mtype.NumIn() > 1 && mtype.In(1) == commandInfoType)
+		if !hasCommand { // Other public funcs
+			continue
+		}
 		if hasCommand {
 			i++
 			var args []reflect.Value
