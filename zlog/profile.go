@@ -162,6 +162,10 @@ func repeatPrintAverages(printSecs float64) {
 		sort.Strings(names)
 		for _, n := range names {
 			a := averages[n]
+			if a == nil {
+				Info("repeatPrintAverages a=nil:", n, names, averages)
+				continue
+			}
 			if a.AllDurCount == 0 {
 				continue
 			}
