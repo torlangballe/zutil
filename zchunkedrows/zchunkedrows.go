@@ -1,4 +1,4 @@
-//go:build !js
+//go:build server
 
 package zchunkedrows
 
@@ -643,7 +643,7 @@ func (cr *ChunkedRows) handleLoadedTopRow(mm *mmap.File) error {
 		}
 		cr.closeMaps(cr.topChunkIndex, false)
 	}
-	cr.currentID = int64(binary.LittleEndian.Uint64(lastRow[0:])) + 1
+	cr.currentID = int64(binary.LittleEndian.Uint64(lastRow[0:]))
 	return nil
 }
 
