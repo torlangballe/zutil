@@ -5,10 +5,13 @@ package zchunkedrows
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/torlangballe/zutil/zcommands"
 	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zfile"
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zslice"
 	"github.com/torlangballe/zutil/zstr"
@@ -120,21 +123,25 @@ func outputRows(crc *CRCommander, c *zcommands.CommandInfo, match string) {
 	}
 }
 
+func (crc *CRCommander) orderToString(row []byte) string {
+	if crc.ChunkedRows.opts.OrdererOffset == 0 {
+		return ""
+	}
+	o := int64(binary.LittleEndian.Uint64(row[crc.ChunkedRows.opts.OrdererOffset:]))
+	if crc.OrdererIsTime {
+		t := time.UnixMicro(o)
+		return ztime.GetNiceSubSecs(t, true, 3) + "\t"
+	}
+	return fmt.Sprint(o, "\t")
+}
+
 func (crc *CRCommander) outputRow(c *zcommands.CommandInfo, tabs *zstr.TabWriter, row []byte, chunkIndex, index int) {
 	fmt.Fprint(tabs, chunkIndex, "\t", index, "\t")
 	if crc.ChunkedRows.opts.HasIncreasingIDFirstInRow {
 		id := int64(binary.LittleEndian.Uint64(row[0:]))
 		fmt.Fprint(tabs, id, "\t")
 	}
-	if crc.ChunkedRows.opts.OrdererOffset != 0 {
-		o := int64(binary.LittleEndian.Uint64(row[crc.ChunkedRows.opts.OrdererOffset:]))
-		if crc.OrdererIsTime {
-			t := time.UnixMicro(o)
-			fmt.Fprint(tabs, ztime.GetNiceSubSecs(t, true, 3), "\t")
-		} else {
-			fmt.Fprint(tabs, o, "\t")
-		}
-	}
+	fmt.Fprint(tabs, crc.orderToString(row))
 	for _, col := range crc.otherColumns {
 		var n int64
 		if col.is32Bit {
@@ -155,7 +162,7 @@ func (crc *CRCommander) outputRow(c *zcommands.CommandInfo, tabs *zstr.TabWriter
 			}
 		}
 		if n == 0 {
-			fmt.Fprint(tabs, "x\t")
+			fmt.Fprint(tabs, "\t")
 			continue
 		}
 		fmt.Fprint(tabs, n, "\t")
@@ -187,5 +194,136 @@ func (crc *CRCommander) Info(c *zcommands.CommandInfo) string {
 	dict["TotalRows"] = crc.ChunkedRows.TotalRowCount()
 	dict.WriteTabulated(w)
 
+	return ""
+}
+
+func (crc *CRCommander) Chunks(c *zcommands.CommandInfo) string {
+	switch c.Type {
+	case zcommands.CommandExpand:
+		return ""
+	case zcommands.CommandHelp:
+		return "Show details about each chunk."
+	}
+	w := c.Session.TermSession.Writer()
+	tabs := zstr.NewTabWriter(w)
+	tabs.MaxColumnWidth = 60
+
+	cr := crc.ChunkedRows
+	fmt.Fprintln(tabs, zstr.EscGreen+"chunk\tfilelen\tfilerows\trows\tfirstid\tlastid\tiddiff", zstr.EscNoColor)
+	for i := cr.bottomChunkIndex; i <= cr.topChunkIndex; i++ {
+		var idStart, idEnd int64
+		fpath := cr.chunkFilepath(i, isRows)
+		size := zfile.Size(fpath)
+		rcf := float64(size) / float64(cr.opts.RowByteSize)
+		rci := int(rcf)
+		fmt.Fprint(tabs, i, "\t", zint.MakeHumanFriendly(size), "\t")
+		_, fract := math.Modf(rcf)
+		if fract != 0.0 {
+			fmt.Fprint(tabs, zstr.EscRed, rcf, zstr.EscNoColor, "\t")
+		} else if rci != cr.opts.RowsPerChunk && i != cr.topChunkIndex {
+			fmt.Fprint(tabs, zstr.EscRed, zint.MakeHumanFriendly(rci), zstr.EscNoColor, "\t")
+		} else {
+			fmt.Fprint(tabs, zint.MakeHumanFriendly(rci), "\t")
+		}
+		fmt.Fprint(tabs, zint.MakeHumanFriendly(cr.opts.RowsPerChunk), "\t")
+		mm, err := cr.getMemoryMap(i, isRows)
+		if err != nil {
+			fmt.Fprint(tabs, err, "\t")
+		} else {
+			row := make([]byte, cr.opts.RowByteSize)
+			err = cr.readRow(0, row, mm)
+			if err != nil {
+				fmt.Fprint(tabs, err, "\t")
+			} else {
+				idStart = int64(binary.LittleEndian.Uint64(row[0:]))
+				fmt.Fprint(tabs, idStart, "\t")
+				err = cr.readRow(rci-1, row, mm)
+				if err != nil {
+					fmt.Fprint(tabs, err, "\t")
+				} else {
+					idEnd = int64(binary.LittleEndian.Uint64(row[0:]))
+					fmt.Fprint(tabs, idEnd, "\t")
+				}
+			}
+		}
+		var col string
+		idDiff := idEnd - idStart + 1
+		if idDiff != int64(rci) {
+			col = zstr.EscRed
+		}
+		fmt.Fprint(tabs, col, zint.MakeHumanFriendly(idDiff), zstr.EscNoColor, "\t")
+		fmt.Fprint(tabs, "\n")
+	}
+	tabs.Flush()
+	return ""
+}
+
+func (crc *CRCommander) Chunk(c *zcommands.CommandInfo, a struct {
+	ChunkIndex int `zui:"title:ChunkIndex,desc:Chunk to show details of"`
+}) string {
+	switch c.Type {
+	case zcommands.CommandExpand:
+		return ""
+	case zcommands.CommandHelp:
+		return "Show details about a specific chunk, including missing ids."
+	}
+	w := c.Session.TermSession.Writer()
+
+	cr := crc.ChunkedRows
+	if a.ChunkIndex < cr.bottomChunkIndex || a.ChunkIndex > cr.topChunkIndex {
+		fmt.Fprintln(w, "Chunk Index of of bounds:", a.ChunkIndex, "[", cr.bottomChunkIndex, "-", cr.topChunkIndex, "]")
+		return ""
+	}
+	fpath := cr.chunkFilepath(a.ChunkIndex, isRows)
+	size := zfile.Size(fpath)
+	rows := int(size) / cr.opts.RowByteSize
+	fmt.Fprintln(w, "Chunk:", a.ChunkIndex, "Rows:", rows)
+	lastID := int64(-1)
+	mm, err := cr.getMemoryMap(a.ChunkIndex, isRows)
+	if err != nil {
+		fmt.Fprintln(w, "Error getting memory map:", err)
+	}
+	tabs := zstr.NewTabWriter(w)
+	tabs.MaxColumnWidth = 60
+	fmt.Fprintln(tabs, zstr.EscGreen+"row\ttime\tid\tstatus", zstr.EscNoColor)
+	var prevOKLine string
+	for i := 0; i < rows; i++ {
+		var line string
+		row := make([]byte, cr.opts.RowByteSize)
+		line += fmt.Sprint(i, "\t")
+		err = cr.readRow(i, row, mm)
+		if err != nil {
+			fmt.Fprint(tabs, line, err, "\t\t\t\n")
+			continue
+		}
+		line += crc.orderToString(row)
+		id := int64(binary.LittleEndian.Uint64(row[0:]))
+		line += fmt.Sprint(id, "\t")
+		lID := lastID
+		lastID = id
+		var serr string
+		if id == lID {
+			serr = "duplcate"
+		} else if id < lID {
+			serr = "below"
+		} else if lID != -1 && id > lID+1 {
+			serr = fmt.Sprint("skipped: ", id-lID-1)
+		}
+		if serr != "" {
+			if prevOKLine != "" {
+				fmt.Fprint(tabs, prevOKLine, "\n")
+				prevOKLine = ""
+			}
+			fmt.Fprint(tabs, line, zstr.EscRed, serr, zstr.EscNoColor, "\n")
+		} else {
+			if i == 0 || i == rows-1 {
+				fmt.Fprint(tabs, line, "\n")
+				prevOKLine = ""
+			} else {
+				prevOKLine = line
+			}
+		}
+	}
+	tabs.Flush()
 	return ""
 }
