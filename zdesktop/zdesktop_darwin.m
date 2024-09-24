@@ -472,15 +472,6 @@ int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int 
     return (err == 0) ? 1 : 0;
 }
 
-CGImageRef GetWindowImage(long winID) {
-    // https://stackoverflow.com/questions/48030214/capture-screenshot-of-macos-window
-     CGImageRef image = CGWindowListCreateImage(CGRectNull, 
-                            kCGWindowListOptionIncludingWindow,
-                            (CGWindowID)winID, 
-                            kCGWindowImageBoundsIgnoreFraming|kCGWindowImageNominalResolution|kCGWindowImageShouldBeOpaque);
-    return image;
-}
-
 void ShowAlert(char *str) {
     CFOptionFlags cfRes;
     CFStringRef cfstr = CFStringCreateWithCString(NULL, str, kCFStringEncodingUTF8);

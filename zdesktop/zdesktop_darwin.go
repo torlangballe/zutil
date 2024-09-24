@@ -4,8 +4,9 @@ package zdesktop
 // #cgo LDFLAGS: -framework Foundation
 // #cgo LDFLAGS: -framework AppKit
 // #cgo LDFLAGS: -framework CoreGraphics
+// #cgo LDFLAGS: -framework ScreenCaptureKit
+// #include <CoreFoundation/CoreFoundation.h>
 // #include <CoreGraphics/CoreGraphics.h>
-// #include <stdlib.h>
 // typedef struct WinIDInfo {
 //     long       winID;
 //     int        scale;
@@ -35,6 +36,7 @@ package zdesktop
 // void ShowAlert(char *str);
 // int CloseOldWindowWithSamePIDAndRectOnceNew(long pid, int x, int y, int w, int h);
 // void CloseOldWindowWithSamePIDAndRect(long pid, int x, int y, int w, int h);
+// void ImageOfWindowToGlobalCallback(const char *winTitle, const char *appBundleID, CGRect cropRect);
 import "C"
 
 import (
@@ -46,13 +48,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 	"unsafe"
 
 	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zprocess"
 )
 
@@ -85,6 +87,18 @@ func GetCachedPIDForAppName(app string) (int64, error) {
 	pidCache[app] = pid
 	pidCacheLock.Unlock()
 	return pid, nil
+}
+
+func GetAppIdOfBrowser(btype zdevice.BrowserType) string {
+	switch btype {
+	case zdevice.Safari:
+		return "com.apple.Safari"
+	case zdevice.Chrome:
+		return "com.google.Chrome"
+	case zdevice.Edge:
+		return "com.microsoft.edgemac.Canary"
+	}
+	return ""
 }
 
 func GetAppNameOfBrowser(btype zdevice.BrowserType, fullName bool) string {
@@ -181,19 +195,6 @@ func CloseOldWindowWithSamePIDAndRect(pid int64, r zgeo.Rect) {
 	C.CloseOldWindowWithSamePIDAndRect(C.long(pid), C.int(r.Pos.X), C.int(r.Pos.Y), C.int(r.Size.W), C.int(r.Size.H))
 }
 
-func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect) (img image.Image, pid int64, err error) {
-	winID, _, _, pid, err := GetIDScaleAndRectForWindowTitle(title, app, oldPID)
-	if err != nil {
-		zlog.Error("GetImageForWindowTitle with old pid:", oldPID, err)
-		winID, _, _, pid, err = GetIDScaleAndRectForWindowTitle(title, app, 0)
-	}
-	if err != nil {
-		return nil, 0, zlog.Error("Get Image For Window Title", err)
-	}
-	img, err = GetWindowImage(winID, insetRect)
-	return img, pid, err
-}
-
 func CloseWindowForTitle(title, app string) error {
 	pids := zprocess.GetPIDsForAppName(app, false)
 	for _, pid := range pids {
@@ -246,6 +247,7 @@ func AddExecutableToLoginItems(exePath, name string, hidden bool) error {
 	return nil
 }
 
+/*
 func GetWindowImage(winID string, insetRect zgeo.Rect) (image.Image, error) {
 	wid, _ := strconv.ParseInt(winID, 10, 64)
 	if wid == 0 {
@@ -267,6 +269,7 @@ func GetWindowImage(winID string, insetRect zgeo.Rect) (image.Image, error) {
 	C.CGImageRelease(cgimage)
 	return img, err
 }
+*/
 
 func CanControlComputer(prompt bool) bool {
 	p := 0
@@ -312,4 +315,50 @@ func ShowAlert(str string) {
 	cstr := C.CString(str)
 	C.ShowAlert(cstr)
 	C.free(unsafe.Pointer(cstr))
+}
+
+type imageError struct {
+	image image.Image
+	err   error
+}
+
+var imageChannels zmap.LockMap[string, chan imageError]
+
+//export GotWindowImageCallback
+func GotWindowImageCallback(cWinTitle *C.char, cAppID *C.char, cErr *C.char, cgImage C.CGImageRef) {
+	title := C.GoString(cWinTitle)
+	serr := C.GoString(cErr)
+	zlog.Info("Got image", title, serr)
+	C.free(unsafe.Pointer(cWinTitle))
+	C.free(unsafe.Pointer(cAppID))
+	ch := imageChannels.Index(title)
+	if ch != nil {
+		var ie imageError
+		if len(serr) != 0 {
+			ie.err = errors.New(serr)
+		} else {
+			zlog.Assert(cgImage != C.CGImageRef(C.NULL))
+			ie.image, ie.err = zimage.CGImageToGoImage(unsafe.Pointer(cgImage), zgeo.Rect{}, 1)
+			// zlog.Info("GetWindowImage Make Go Image:", time.Since(start))
+			C.CGImageRelease(cgImage)
+		}
+		ch <- ie
+		imageChannels.Remove(title)
+	}
+}
+
+func GetImageForWindowTitle(title, appID string, oldPID int64, cropRect zgeo.Rect) (img image.Image, pid int64, err error) {
+	var cgrect C.CGRect
+	ctitle := C.CString(title)
+	cappid := C.CString(appID)
+	cgrect.origin.x = C.CGFloat(cropRect.Pos.X)
+	cgrect.origin.y = C.CGFloat(cropRect.Pos.Y)
+	cgrect.size.width = C.CGFloat(cropRect.Size.W)
+	cgrect.size.height = C.CGFloat(cropRect.Size.H)
+	ch := make(chan imageError)
+	imageChannels.Set(title, ch)
+	zlog.Info("GetImageForWindowTitle:", cropRect)
+	C.ImageOfWindowToGlobalCallback(ctitle, cappid, cgrect)
+	ie := <-ch
+	return ie.image, 0, ie.err
 }
