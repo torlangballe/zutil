@@ -71,6 +71,10 @@ type methodNode struct {
 	Name string
 }
 
+type NodeOwner interface {
+	GetChildrenNodes(s *Session) map[string]any
+}
+
 var (
 	AllowBash       bool
 	AddressIP4      string
@@ -265,6 +269,9 @@ func (s *Session) structCommandWithMethod(method reflect.Method, structVal refle
 		sparams = append(sparams, argVal.Elem())
 	}
 	vals := method.Func.Call(sparams)
+	if len(vals) == 0 {
+		return ""
+	}
 	return vals[0].Interface().(string)
 }
 
@@ -324,6 +331,13 @@ func (s *Session) addChildNodes(m map[string]any, parent any) {
 		m[name] = each.ReflectValue.Addr().Interface()
 		return true
 	})
+	no, _ := parent.(NodeOwner)
+	if no != nil {
+		cn := no.GetChildrenNodes(s)
+		for n, v := range cn {
+			m[n] = v
+		}
+	}
 }
 
 type Help struct {
@@ -348,18 +362,18 @@ func (s *Session) GetAllMethodsHelp(structure any) []Help {
 		if !hasCommand { // Other public funcs
 			continue
 		}
-		if hasCommand {
-			i++
-			var args []reflect.Value
-			args = append(args, rval)
-			c := &CommandInfo{Session: s, Type: CommandHelp}
-			args = append(args, reflect.ValueOf(c))
-			for i := 2; i < mtype.NumIn(); i++ {
-				atype := mtype.In(i)
-				z := reflect.Zero(atype)
-				args = append(args, z)
-			}
-			rets := method.Func.Call(args)
+		i++
+		var args []reflect.Value
+		args = append(args, rval)
+		c := &CommandInfo{Session: s, Type: CommandHelp}
+		args = append(args, reflect.ValueOf(c))
+		for i := 2; i < mtype.NumIn(); i++ {
+			atype := mtype.In(i)
+			z := reflect.Zero(atype)
+			args = append(args, z)
+		}
+		rets := method.Func.Call(args)
+		if len(rets) != 0 {
 			h.Description = rets[0].Interface().(string)
 		}
 		h.Method = strings.ToLower(method.Name)

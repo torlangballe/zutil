@@ -21,10 +21,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-mmap/mmap"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zfile"
@@ -63,7 +63,7 @@ type ChunkedRows struct {
 	topChunkIndex      int
 	topChunkRowCount   int
 	currentID          int64
-	lock               sync.Mutex
+	lock               deadlock.Mutex
 	auxMatchRowEndChar byte // this should always be '\n', but can be changed for unit tests
 	lastOrdererValue   int64
 }
@@ -724,10 +724,10 @@ func (cr *ChunkedRows) readRow(index int, bytes []byte, mmap *mmap.File) error {
 	return nil
 }
 
-func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match string, got func(row []byte, chunkIndex, index int) bool) error {
+func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match string, got func(row []byte, chunkIndex, index int) bool) (totalRows int, err error) {
 	zlog.Info("ChunkedRows.Iterate", startChunkIndex, index, forward, match)
 	if cr.isEmpty() {
-		return nil
+		return 0, nil
 	}
 	if match != "" {
 		zlog.Assert(cr.opts.MatchIndexOffset != 0)
@@ -738,13 +738,13 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 	defer cr.lock.Unlock()
 	chunkIndex := startChunkIndex
 	if index >= cr.opts.RowsPerChunk {
-		return zlog.NewError("index too big for chunk", index, cr.opts.RowsPerChunk)
+		return 0, zlog.NewError("index too big for chunk", index, cr.opts.RowsPerChunk)
 	}
 	if startChunkIndex == -1 {
 		if forward {
 			chunkIndex = cr.bottomChunkIndex
 			if index < 0 || index >= cr.opts.RowsPerChunk {
-				return zlog.NewError("index outside range:", index)
+				return 0, zlog.NewError("index outside range:", index)
 			}
 		} else {
 			chunkIndex = cr.topChunkIndex
@@ -754,33 +754,37 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 		}
 	} else {
 		if startChunkIndex > cr.topChunkIndex {
-			return zlog.NewError("startChunkIndex after topChunkIndex", startChunkIndex, cr.bottomChunkIndex)
+			return 0, zlog.NewError("startChunkIndex after topChunkIndex", startChunkIndex, cr.bottomChunkIndex)
 		}
 		if startChunkIndex < cr.bottomChunkIndex {
-			return zlog.NewError("startChunkIndex before bottomChunkIndex", startChunkIndex, cr.bottomChunkIndex)
+			return 0, zlog.NewError("startChunkIndex before bottomChunkIndex", startChunkIndex, cr.bottomChunkIndex)
 		}
 		if index < 0 {
-			return zlog.NewError("index < 0 for chunk not -1", index, cr.opts.RowsPerChunk)
+			return 0, zlog.NewError("index < 0 for chunk not -1", index, cr.opts.RowsPerChunk)
 		}
 		if startChunkIndex == cr.topChunkIndex && index >= cr.topChunkRowCount {
-			return zlog.NewError("index after top row in top chunk", startChunkIndex, "==", cr.topChunkIndex, index, ">=", cr.topChunkRowCount)
+			return 0, zlog.NewError("index after top row in top chunk", startChunkIndex, "==", cr.topChunkIndex, index, ">=", cr.topChunkRowCount)
 		}
 	}
 	row := make([]byte, cr.opts.RowByteSize)
 	var mmap *mmap.File
+	count := 0
 	for {
+		if count%50000 == 0 && count != 0 {
+			zlog.Info("chunked.Iterate:", count, chunkIndex, index, match)
+		}
 		var err error
-		zlog.Info("cr.Iter:", match, chunkIndex, index, forward)
+		count++
 		if mmap == nil {
 			mmap, err = cr.getMemoryMap(chunkIndex, isRows)
 			if zlog.OnError(err, chunkIndex) {
-				return err
+				return 0, err
 			}
 		}
 		err = cr.readRow(index, row, mmap)
 		if err != nil {
 			// zlog.Warn("iter.ReadRow: err", chunkIndex, index, err)
-			return err
+			return 0, err
 		}
 		skip := false
 		if match != "" {
@@ -788,7 +792,7 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 			// zlog.Warn("iter.getMatch", chunkIndex, index, str, err)
 			if err != nil {
 				// zlog.Warn("iter.ReadRow: getMatch err", chunkIndex, index, err)
-				return zlog.Error(err, chunkIndex, index)
+				return 0, zlog.Error(err, chunkIndex, index)
 			}
 			if !strings.Contains(str, match) {
 				skip = true
@@ -822,7 +826,7 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 			}
 		}
 	}
-	return nil
+	return count, nil
 }
 
 // PosForIndexes returns a combined fixed position of chunkIndex and rowIndex

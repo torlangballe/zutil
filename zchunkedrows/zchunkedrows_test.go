@@ -157,7 +157,7 @@ func testLoad(t *testing.T) {
 
 func joinOrderForIterator(chunkedRows *ChunkedRows, startChunkIndex, index int, forward bool) string {
 	var orderers []string
-	err := chunkedRows.Iterate(startChunkIndex, index, forward, "", func(row []byte, chunkIndex, index int) bool {
+	_, err := chunkedRows.Iterate(startChunkIndex, index, forward, "", func(row []byte, chunkIndex, index int) bool {
 		o := chunkedRows.getOrderer(row, false)
 		so := fmt.Sprint(o)
 		if chunkedRows.opts.MatchIndexOffset != 0 {
