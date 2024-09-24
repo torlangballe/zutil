@@ -216,9 +216,9 @@ func Reduced[A any](slice []A, keep func(a A) bool) []A {
 	return snew
 }
 
-func Random[S any](slice []S) *S {
+func Random[S any](slice []S) S {
 	i := RandomIndex(slice)
-	return &slice[i]
+	return slice[i]
 }
 
 func RandomIndex[S any](slice []S) int {
