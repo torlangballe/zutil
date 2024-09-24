@@ -17,13 +17,10 @@ package zscreen
 import "C"
 
 import (
-	"image"
 	"strconv"
 	"unsafe"
 
-	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zlog"
 )
 
 func GetAll() (screens []Screen) {
@@ -70,23 +67,3 @@ func SetMainResolutionWithinWidths(min, max zgeo.Size) {
 	C.SetMainResolutionWithinWidths(C.long(min.W), C.long(min.H), C.long(max.W), C.long(max.H))
 }
 
-func GetScreenShot(screenID string, noScale bool) image.Image {
-	n, _ := strconv.Atoi(screenID)
-	s := FindForID(screenID)
-	zlog.Assert(s != nil)
-	cgImage := C.CGDisplayCreateImage(C.CGDirectDisplayID(n))
-	if cgImage == 0 {
-		return nil
-	}
-	scale := 1.0
-	if noScale {
-		scale = 1 / s.Scale
-	}
-	// zlog.Info("ScreenShot:", ss, iw, ih, scale)
-	// r := zgeo.Rect{Size: ss}
-	img, _ := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), zgeo.Rect{}, scale)
-	zlog.Info("GetScreenShot1 count:", C.CFGetRetainCount(C.CFTypeRef(cgImage)))
-	C.CGImageRelease(cgImage)
-	zlog.Info("GetScreenShot2:", C.CFGetRetainCount(C.CFTypeRef(cgImage)))
-	return img
-}
