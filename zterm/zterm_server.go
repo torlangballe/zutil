@@ -148,7 +148,7 @@ func (t *Terminal) ListenForever(port int) {
 	var opts []ssh.Option
 	if t.PublicKeyStorePath != "" {
 		publicKeyOpt := ssh.PublicKeyAuth(func(ctx ssh.Context, key ssh.PublicKey) bool {
-			zlog.Info("zterm.PublicKeyAuth", key)
+			// zlog.Info("zterm.PublicKeyAuth", key)
 			skey := "ssh:" + zstr.MD5Hex(key.Marshal())
 			if zusers.MainServer == nil {
 				if !t.RequireSystemPasswordIfNoZUser {
