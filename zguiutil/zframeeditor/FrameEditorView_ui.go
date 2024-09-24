@@ -103,7 +103,7 @@ func NewFrameEditorView(boxes []Box, options Options, size zgeo.Size) *FrameEdit
 	}
 	v.boxTable.StoreChangedItemsFunc = func(boxes []Box) {
 		v.boxTable.SetItemsInSlice(boxes)
-		v.boxTable.UpdateViewFunc(true)
+		v.boxTable.UpdateViewFunc(true, false)
 		if v.UpdateFunc != nil {
 			v.UpdateFunc(boxes, false)
 		}
@@ -273,7 +273,7 @@ func (v *FrameEditorView) addBox() {
 		}
 	}
 	box := BoxFromRect(rect)
-	box.Color, _ = zslice.Random(defaultColors)
+	box.Color = zslice.Random(defaultColors)
 	boxCount++
 	box.Name = fmt.Sprint("Box", boxCount)
 	title := "Add New Box"
