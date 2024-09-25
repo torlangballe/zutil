@@ -352,7 +352,7 @@ func (cr *ChunkedRows) binarySearchForChunk(find int64, bottomChunkIndex, topChu
 		if bottomChunkIndex == topChunkIndex {
 			return mid, PosBelow, nil
 		}
-		return cr.binarySearchForChunk(find, bottomChunkIndex, max(0, mid-1), isIDOrderer)
+		return cr.binarySearchForChunk(find, bottomChunkIndex, max(bottomChunkIndex, mid-1), isIDOrderer)
 	}
 	if bottomChunkIndex == topChunkIndex {
 		// zlog.Warn("binarySearchForChunk2", find, bottomChunkIndex, topChunkIndex, "top:", cr.topChunkIndex, cr.topChunkRowCount, cr.opts.RowsPerChunk, topChunkIndex < cr.topChunkIndex)
@@ -365,7 +365,7 @@ func (cr *ChunkedRows) binarySearchForChunk(find int64, bottomChunkIndex, topChu
 		return mid, PosAboveOutside, nil
 	}
 	// zlog.Warn("binarySearchForChunk4")
-	return cr.binarySearchForChunk(find, mid+1, topChunkIndex, isIDOrderer)
+	return cr.binarySearchForChunk(find, min(topChunkIndex, mid+1), topChunkIndex, isIDOrderer)
 }
 
 func (cr *ChunkedRows) BinarySearch(find int64, isIDOrderer bool) (row []byte, chunkIndex, rowIndex int, exact bool, err error) {
@@ -423,7 +423,7 @@ func (cr *ChunkedRows) binarySearchForRow(find int64, mm *mmap.File, bottomRowIn
 		// }
 		return row, mid + 1, false, nil
 	}
-	return cr.binarySearchForRow(find, mm, mid+1, topRowIndex, maxRowIndex, isIDOrderer)
+	return cr.binarySearchForRow(find, mm, min(topRowIndex, mid+1), topRowIndex, maxRowIndex, isIDOrderer)
 }
 
 func (cr *ChunkedRows) RowPosForIndex(i int) int {
@@ -456,7 +456,7 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 
 	if cr.opts.OrdererOffset != 0 {
 		o := int64(binary.LittleEndian.Uint64(rowBytes[cr.opts.OrdererOffset:]))
-		if o < cr.lastOrdererValue {
+		if o < cr.lastOrdererValue && !zdebug.IsInTests {
 			zlog.Error("zchunkRows.Add(): Added with orderer less than previous:", time.UnixMicro(cr.lastOrdererValue), (cr.lastOrdererValue-o)/1000, "ms", zlog.Full(auxData))
 		}
 		cr.lastOrdererValue = o
