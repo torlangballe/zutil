@@ -209,17 +209,12 @@ func (crc *CRCommander) Info(c *zcommands.CommandInfo) string {
 	case zcommands.CommandHelp:
 		return "Show information about the chunked rows."
 	}
-	zlog.Info("info!")
 	w := c.Session.TermSession.Writer()
 	dict := zdict.FromStruct(crc.chunkedRows.opts, false)
-	zlog.Info("info2!")
-	dict["BottomChunkIndex"] = crc.chunkedRows.bottomChunkIndex
-	dict["TopChunkIndex"] = crc.chunkedRows.topChunkIndex
-	dict["TopChunkRowCount"] = crc.chunkedRows.topChunkRowCount
-	dict["CurrentID"] = crc.chunkedRows.currentID
-	zlog.Info("info3!")
-	dict["TotalRows"] = crc.chunkedRows.TotalRowCount()
-	zlog.Info("info4!")
+	dict["Chunk Indexes"] = fmt.Sprint(crc.chunkedRows.topChunkIndex, "-", crc.chunkedRows.bottomChunkIndex)
+	dict["Top Chunk Row Count"] = crc.chunkedRows.topChunkRowCount
+	dict["Current ID"] = crc.chunkedRows.currentID
+	dict["Total Rows"] = crc.chunkedRows.TotalRowCount()
 	dict.WriteTabulated(w)
 
 	return ""
@@ -283,6 +278,24 @@ func (crc *CRCommander) Chunks(c *zcommands.CommandInfo) string {
 		fmt.Fprint(tabs, "\n")
 	}
 	tabs.Flush()
+	return ""
+}
+
+func (crc *CRCommander) DelOld(c *zcommands.CommandInfo, a struct {
+	Days int `zui:"desc:How many days old chunks to delete,default:8"`
+}) string {
+	switch c.Type {
+	case zcommands.CommandExpand:
+		return ""
+	case zcommands.CommandHelp:
+		return "delete old chunks"
+	}
+	if a.Days < 1 {
+		fmt.Fprintln(c.Session.TermSession.Writer(), "bad number of days:", a.Days)
+		return ""
+	}
+	zlog.Assert(a.Days != 0)
+	crc.chunkedRows.DeleteOldChunksThan(time.Now().Add(-ztime.Day * time.Duration(a.Days)))
 	return ""
 }
 
