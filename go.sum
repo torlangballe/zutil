@@ -126,6 +126,7 @@ github.com/sendgrid/sendgrid-go v3.13.0+incompatible h1:HZrzc06/QfBGesY9o3n1lvBr
 github.com/sendgrid/sendgrid-go v3.13.0+incompatible/go.mod h1:QRQt+LX/NmgVEvmdRw0VT/QgUn499+iza2FnDca9fg8=
 github.com/sergi/go-diff v1.3.1 h1:xkr+Oxo4BOQKmkn/B9eMK0g5Kg/983T9DqqPHwYqD+8=
 github.com/sergi/go-diff v1.3.1/go.mod h1:aMJSSKb2lpPvRNec0+w3fl7LP9IOFzdc9Pa4NFbPK1I=
+github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
 github.com/shirou/gopsutil/v4 v4.24.8 h1:pVQjIenQkIhqO81mwTaXjTzOMT7d3TZkf43PlVFHENI=
 github.com/shirou/gopsutil/v4 v4.24.8/go.mod h1:wE0OrJtj4dG+hYkxqDH3QiBICdKSf04/npcvLLc/oRg=
 github.com/shoenig/go-m1cpu v0.1.6 h1:nxdKQNcEB6vzgA2E2bvzKIYRuNj7XNJ4S/aRSwKzFtM=
@@ -149,6 +150,8 @@ github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d h1:8ZaYtKJakalmz
 github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d/go.mod h1:mBuNyGnmDeFg4xYYy+j+6JS/x/95bZMuvw5lHP3uhK4=
 github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286 h1:CHDS4msR3WoSJ/qlQdWitAjb3CYRkFdDpTrK7wNQ3xY=
 github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286/go.mod h1:hHOQC9P9McoXtf/QQ7r2HomHZW+Q3G8ZyS1rJSAGNsU=
+github.com/torlangballe/zui v0.0.0-20240917120955-4fd821a58db0 h1:HS35uuPIwKmNEjbiijXTeyEsPosNRDx60bacKTN+RuQ=
+github.com/torlangballe/zui v0.0.0-20240917120955-4fd821a58db0/go.mod h1:bHpozq/HxAXjBBzr29f/t5lABn5t43olfyyfUFe6O8c=
 github.com/torlangballe/zui v0.0.0-20240919132424-59a526274a6a h1:ccSduWs7bV0n/rjIIAudeewQTt9vYpfxUWphRAcseGU=
 github.com/torlangballe/zui v0.0.0-20240919132424-59a526274a6a/go.mod h1:8gGN9T2PZyG8DHPK1NFJ2t+joEIVhkvP2JHK1brrCtQ=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
