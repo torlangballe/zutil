@@ -90,10 +90,18 @@ func (d *defaultCommands) LS(c *CommandInfo) string {
 	if c.Type == CommandExpand {
 		return ""
 	}
+	tabs := zstr.NewTabWriter(c.Session.TermSession.Writer())
+	tabs.MaxColumnWidth = 60
 	nodes := c.Session.getChildNodes()
-	for name := range nodes {
-		c.Session.TermSession.Writeln(name)
+	for name, n := range nodes {
+		fmt.Fprint(tabs, name)
+		do, _ := n.(Descriptor)
+		if do != nil {
+			fmt.Fprint(tabs, "\t", do.GetDescription())
+		}
+		fmt.Fprint(tabs, "\n")
 	}
+	tabs.Flush()
 	return ""
 }
 

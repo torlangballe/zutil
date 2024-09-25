@@ -71,6 +71,10 @@ type methodNode struct {
 	Name string
 }
 
+type Descriptor interface {
+	GetDescription() string
+}
+
 type NodeOwner interface {
 	GetChildrenNodes(s *Session) map[string]any
 }
