@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztesting"
@@ -269,11 +270,18 @@ func testBadOrder(t *testing.T) {
 		chunkedRows.Add(row, nil)
 	}
 	for i := 0; i < 50; i++ {
-		t := now.Add(-time.Minute).Add(ztime.SecondsDur(float64(rand.Int31n(3660))))
-		u := t.UnixMicro()
+		at := now.Add(-time.Minute).Add(ztime.SecondsDur(float64(rand.Int31n(3660))))
+		u := at.UnixMicro()
+		// zlog.Warn("Find", t, u)
 		_, ci, ri, exact, err := chunkedRows.BinarySearch(u, false)
-		zlog.Warn("Find", t, ":", ci, ri, exact, err)
+		zdebug.Consume(ci, ri, exact)
+		if err != nil {
+			t.Error(err, u)
+			return
+		}
+		// zlog.Warn("Find", t, ":", ci, ri, exact, err)
 	}
+	ztesting.LessThan(t, ztime.Since(now), 1, "bad order finding, took more than a second")
 }
 
 func TestAll(t *testing.T) {
