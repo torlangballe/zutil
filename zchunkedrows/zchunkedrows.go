@@ -344,7 +344,7 @@ func (cr *ChunkedRows) binarySearchForChunk(find int64, bottomChunkIndex, topChu
 	if err != nil {
 		return 0, PosNone, err
 	}
-	// zlog.Warn("binarySearchForChunk", find, bottomChunkIndex, topChunkIndex, mid, diffDir)
+	// zlog.Warn("binarySearchForChunk2", find, bottomChunkIndex, topChunkIndex, mid, diffDir)
 	if diffDir == 0 {
 		return mid, PosWithin, nil
 	}
@@ -352,7 +352,7 @@ func (cr *ChunkedRows) binarySearchForChunk(find int64, bottomChunkIndex, topChu
 		if bottomChunkIndex == topChunkIndex {
 			return mid, PosBelow, nil
 		}
-		return cr.binarySearchForChunk(find, bottomChunkIndex, mid-1, isIDOrderer)
+		return cr.binarySearchForChunk(find, bottomChunkIndex, max(0, mid-1), isIDOrderer)
 	}
 	if bottomChunkIndex == topChunkIndex {
 		// zlog.Warn("binarySearchForChunk2", find, bottomChunkIndex, topChunkIndex, "top:", cr.topChunkIndex, cr.topChunkRowCount, cr.opts.RowsPerChunk, topChunkIndex < cr.topChunkIndex)
@@ -542,6 +542,7 @@ func (cr *ChunkedRows) truncateChunk(cType chunkType, chunkIndex int, toPos int6
 }
 
 func (cr *ChunkedRows) deleteChunk(i int) error {
+	zlog.Warn("zchunkedrows.delChunk:", i)
 	cr.closeMaps(i, true)
 	if i == cr.bottomChunkIndex {
 		cr.bottomChunkIndex++
@@ -858,7 +859,9 @@ func (cr *ChunkedRows) DeleteOldChunksThan(old time.Time) error {
 	cr.lock.Lock()
 	defer cr.lock.Unlock()
 	t := old.UnixMicro()
+	zlog.Info("ChunkedRows.DeleteOldChunksThan:", old)
 	index, cpos, err := cr.binarySearchForChunk(t, cr.bottomChunkIndex, cr.topChunkIndex, isIDOrderer)
+	zlog.Info("ChunkedRows.DeleteOldChunksThan2:", index, cpos, err)
 	if err != nil {
 		return zlog.Error(err, t)
 	}
