@@ -132,7 +132,7 @@ func testStartingTime(t *testing.T) {
 	if c1 == 0 || c1 == 10 {
 		t.Error("Jobs still 0 or reached 10:", c1, 10, c1, 0)
 	}
-	time.Sleep(startDuration() * 7) // wait past when all 10 should be started, give a bit extra (7-2) to make sure
+	time.Sleep(startDuration() * 10) // wait past when all 10 should be started, give a bit extra to make sure
 	c1 = s.CountRunningJobs(1)
 	compare(t, "Jobs not reached 10:", c1, 10)
 	stopAndCheckScheduler(s, t)
@@ -572,7 +572,7 @@ func compare(t *testing.T, str string, n ...int) bool {
 		}
 	}
 	if fail {
-		zlog.Error(zlog.StackAdjust(1), "Fail:", str)
+		zlog.Error(zlog.StackAdjust(2), "Fail:", str)
 		t.Error(str)
 	}
 	return !fail
