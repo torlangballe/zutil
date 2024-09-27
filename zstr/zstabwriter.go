@@ -44,6 +44,7 @@ func (t *TabWriter) Write(b []byte) (n int, err error) {
 func (t *TabWriter) Flush() error {
 	var widths []int
 	allOutput := string(t.buffer.Bytes())
+	allOutput = strings.TrimRight(allOutput, "\n")
 	lines := strings.Split(allOutput, "\n")
 	for _, sline := range lines {
 		sline = strings.TrimRight(sline, "\t")
