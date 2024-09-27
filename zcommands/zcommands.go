@@ -319,7 +319,6 @@ func (s *Session) getChildNodes() map[string]any {
 }
 
 func (s *Session) addChildNodes(m map[string]any, parent any) {
-	// zlog.Info("AddChildNodes:", reflect.TypeOf(parent))
 	zreflect.ForEachField(parent, zreflect.FlattenIfAnonymous, func(each zreflect.FieldInfo) bool {
 		if each.ReflectValue.Kind() == reflect.Pointer {
 			each.ReflectValue = each.ReflectValue.Elem()
@@ -329,7 +328,10 @@ func (s *Session) addChildNodes(m map[string]any, parent any) {
 		}
 		meths := s.methodNames(each.ReflectValue.Addr().Interface())
 		if len(meths) == 0 {
-			return true
+			_, no := parent.(NodeOwner)
+			if !no {
+				return true
+			}
 		}
 		name := strings.ToLower(each.StructField.Name)
 		m[name] = each.ReflectValue.Addr().Interface()
