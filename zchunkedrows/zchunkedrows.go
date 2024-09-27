@@ -720,7 +720,7 @@ func (cr *ChunkedRows) readRow(index int, bytes []byte, mmap *mmap.File) error {
 	// zlog.Warn("readRow:", index)
 	n, err := mmap.ReadAt(bytes, int64(index*cr.opts.RowByteSize))
 	if n != cr.opts.RowByteSize || err != nil {
-		return zlog.NewError("couldn't read row:", index, n, cr.opts.RowByteSize, err, zdebug.CallingStackString())
+		return zlog.Error("couldn't read row:", index, n, cr.opts.RowByteSize, err) // , zdebug.CallingStackString())
 	}
 	return nil
 }

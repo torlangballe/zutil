@@ -211,7 +211,7 @@ func (crc *CRCommander) Info(c *zcommands.CommandInfo) string {
 	}
 	w := c.Session.TermSession.Writer()
 	dict := zdict.FromStruct(crc.chunkedRows.opts, false)
-	dict["Chunk Indexes"] = fmt.Sprint(crc.chunkedRows.topChunkIndex, "-", crc.chunkedRows.bottomChunkIndex)
+	dict["Chunk Indexes"] = fmt.Sprint(crc.chunkedRows.bottomChunkIndex, "-", crc.chunkedRows.topChunkIndex)
 	dict["Top Chunk Row Count"] = crc.chunkedRows.topChunkRowCount
 	dict["Current ID"] = crc.chunkedRows.currentID
 	dict["Total Rows"] = crc.chunkedRows.TotalRowCount()
@@ -229,7 +229,7 @@ func (crc *CRCommander) Chunks(c *zcommands.CommandInfo) string {
 	}
 	w := c.Session.TermSession.Writer()
 	tabs := zstr.NewTabWriter(w)
-	tabs.MaxColumnWidth = 60
+	// tabs.MaxColumnWidth = 60
 
 	cr := crc.chunkedRows
 	fmt.Fprintln(tabs, zstr.EscGreen+"chunk\tfilelen\tfilerows\trows\tfirstid\tlastid\tiddiff", zstr.EscNoColor)
