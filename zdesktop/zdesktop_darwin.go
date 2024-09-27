@@ -347,7 +347,7 @@ func GotWindowImageCallback(cWinTitle *C.char, cAppID *C.char, cErr *C.char, cgI
 	}
 }
 
-func GetImageForWindowTitle(title, appID string, oldPID int64, cropRect zgeo.Rect) (img image.Image, pid int64, err error) {
+func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect) (img image.Image, err error) {
 	var cgrect C.CGRect
 	ctitle := C.CString(title)
 	cappid := C.CString(appID)
@@ -360,5 +360,5 @@ func GetImageForWindowTitle(title, appID string, oldPID int64, cropRect zgeo.Rec
 	zlog.Info("GetImageForWindowTitle:", cropRect)
 	C.ImageOfWindowToGlobalCallback(ctitle, cappid, cgrect)
 	ie := <-ch
-	return ie.image, 0, ie.err
+	return ie.image, ie.err
 }

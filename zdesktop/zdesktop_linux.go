@@ -38,6 +38,6 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) (winPID int64, err
 	return 0, nil
 }
 
-func GetImageForWindowTitle(title, app string, oldPID int64, insetRect zgeo.Rect) (img image.Image, pid int64, err error) {
+func GetImageForWindowTitle(title, app string, insetRect zgeo.Rect) (img image.Image, err error) {
 	return nil, 0, nil
 }
