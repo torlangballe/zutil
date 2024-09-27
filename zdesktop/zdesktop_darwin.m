@@ -24,7 +24,7 @@ void removeNonASCIIAndTruncate(NSString **str) {
         range.length = range.location;
         range.location = 0;
         snew = [*str substringWithRange: range];
-    }        
+    }
     NSData *data = [snew dataUsingEncoding:NSASCIIStringEncoding allowLossyConversion:YES];
     CFRelease(*str);
     *str = [NSString stringWithUTF8String:[data bytes]];
