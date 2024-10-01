@@ -17,6 +17,10 @@ func SetupSignalHandler() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGABRT, syscall.SIGQUIT, syscall.SIGILL, syscall.SIGTRAP, syscall.SIGSYS)
 	go func() {
 		sig := <-c
+		if sig == syscall.SIGTRAP {
+			fmt.Println("************* SIGTRAP received, continuing *************")
+			return
+		}
 		dict := zdict.Dict{"Signal": fmt.Sprint(sig)}
 		err := zerrors.MakeContextError(dict, "Restart Signal")
 		// fmt.Println("SIGNAL:", sig, fmt.Sprint(sig), sig.String(), dict)
