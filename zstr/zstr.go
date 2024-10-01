@@ -1331,3 +1331,12 @@ func SmartCompare(a, b string) bool {
 func (c CodeLink) GetURL() string {
 	return "vscode://file/" + string(c)
 }
+
+func KeyValuesFindForKey(keyVals []KeyValue, key string) (*KeyValue, int) {
+	for i, kv := range keyVals {
+		if kv.Key == key {
+			return &keyVals[i], i
+		}
+	}
+	return nil, -1
+}
