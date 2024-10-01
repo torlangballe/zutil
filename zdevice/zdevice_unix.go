@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/matishsiao/goInfo"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/net"
 	"github.com/torlangballe/zutil/zlog"
@@ -142,15 +141,6 @@ func Model() string {
 		return model
 	}
 	return "Server"
-}
-
-func OSVersion() string {
-	gi, err := goInfo.GetInfo()
-	if err != nil {
-		zlog.Error("get info", err)
-		return ""
-	}
-	return gi.Core
 }
 
 func FreeAndUsedDiskSpace() (free int64, used int64) {

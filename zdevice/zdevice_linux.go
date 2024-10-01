@@ -5,7 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/matishsiao/goInfo"
 	"github.com/torlangballe/zutil/zfile"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztime"
 )
 
@@ -21,4 +23,13 @@ func BootTime() (t time.Time, err error) {
 	}
 	t = time.Now().Add(ztime.SecondsDur(secs))
 	return t, nil
+}
+
+func OSVersion() string {
+	gi, err := goInfo.GetInfo()
+	if err != nil {
+		zlog.Error("get info", err)
+		return ""
+	}
+	return gi.Core
 }
