@@ -83,21 +83,71 @@ func helpForStruct(s *Session, structure any, tabs *zstr.TabWriter) {
 	}
 }
 
-func (d *defaultCommands) LS(c *CommandInfo) string {
+func (d *defaultCommands) LS(c *CommandInfo, a struct {
+	Where string `zui:"default:,desc:context-specific constraint."`
+}) string {
+	return BaseGetNodes(c, false, "", a.Where)
+}
+
+func (d *defaultCommands) LL(c *CommandInfo, a struct {
+	Where string `zui:"default:,desc:context-specific constraint."`
+}) string {
+	return BaseGetNodes(c, true, "", a.Where)
+}
+
+func BaseGetNodes(c *CommandInfo, details bool, mode string, where string) string {
 	if c.Type == CommandHelp {
-		return "list nodes. Nodes are like directories, but with commands and content."
+		str := "list nodes. Nodes are like directories, but with commands and content."
+		if details {
+			str += "\tAdds columns of detailed information."
+		}
+		return str
 	}
 	if c.Type == CommandExpand {
 		return ""
 	}
 	tabs := zstr.NewTabWriter(c.Session.TermSession.Writer())
 	tabs.MaxColumnWidth = 60
-	nodes := c.Session.getChildNodes()
+	forExpand := false
+	nodes := c.Session.getChildNodes(where, mode, forExpand)
+
+	var cols []string
+	if details {
+		for _, n := range nodes {
+			cg, _ := n.(ColumnGetter)
+			if cg != nil {
+				for _, kv := range cg.GetColumns() {
+					zstr.AddToSet(&cols, kv.Key)
+				}
+			}
+		}
+		fmt.Fprint(tabs, zstr.EscGreen)
+		fmt.Fprint(tabs, "node\t")
+		for _, c := range cols {
+			fmt.Fprint(tabs, c, "\t")
+		}
+		fmt.Fprint(tabs, zstr.EscNoColor, "\n")
+	}
 	for name, n := range nodes {
-		fmt.Fprint(tabs, name)
-		do, _ := n.(Descriptor)
-		if do != nil {
-			fmt.Fprint(tabs, "\t", do.GetDescription())
+		fmt.Fprint(tabs, name, "\t")
+		if !details {
+			do, _ := n.(Descriptor)
+			if do != nil {
+				fmt.Fprint(tabs, "\t", do.GetDescription())
+			}
+		} else {
+			var nodeCols []zstr.KeyValue
+			cg, _ := n.(ColumnGetter)
+			if cg != nil {
+				nodeCols = cg.GetColumns()
+			}
+			for _, c := range cols {
+				kv, _ := zstr.KeyValuesFindForKey(nodeCols, c)
+				if kv != nil {
+					fmt.Fprint(tabs, kv.Value)
+				}
+				fmt.Fprint(tabs, "\t")
+			}
 		}
 		fmt.Fprint(tabs, "\n")
 	}

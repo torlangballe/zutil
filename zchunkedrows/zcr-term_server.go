@@ -212,9 +212,9 @@ func (crc *CRCommander) Info(c *zcommands.CommandInfo) string {
 	w := c.Session.TermSession.Writer()
 	dict := zdict.FromStruct(crc.chunkedRows.opts, false)
 	dict["Chunk Indexes"] = fmt.Sprint(crc.chunkedRows.bottomChunkIndex, "-", crc.chunkedRows.topChunkIndex)
-	dict["Top Chunk Row Count"] = crc.chunkedRows.topChunkRowCount
+	dict["Top Chunk Row Count"] = zint.MakeHumanFriendly(crc.chunkedRows.topChunkRowCount)
 	dict["Current ID"] = crc.chunkedRows.currentID
-	dict["Total Rows"] = crc.chunkedRows.TotalRowCount()
+	dict["Total Rows"] = zint.MakeHumanFriendly(crc.chunkedRows.TotalRowCount())
 	dict.WriteTabulated(w)
 
 	return ""
