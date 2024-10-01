@@ -375,18 +375,22 @@ func (cr *ChunkedRows) BinarySearch(find int64, isIDOrderer bool) (row []byte, c
 	cr.lock.Lock()
 	defer cr.lock.Unlock()
 
+	zlog.Warn("BinarySearch", time.UnixMicro(find), isIDOrderer)
+
 	var pos ChunkPos
 	chunkIndex, pos, err = cr.binarySearchForChunk(find, cr.bottomChunkIndex, cr.topChunkIndex, isIDOrderer)
 	// zlog.Warn("BinarySearch Got chunk", find, chunkIndex, pos, err)
 	if err != nil {
 		return nil, 0, 0, false, err
 	}
-	if pos == PosAboveInChunk || pos == PosAboveOutside {
-		return nil, chunkIndex, cr.topChunkRowCount - 1, false, nil
-	}
 	mmap, err := cr.getMemoryMap(chunkIndex, isRows)
 	if err != nil {
 		return nil, 0, 0, false, err
+	}
+	if pos == PosAboveInChunk || pos == PosAboveOutside {
+		row = make([]byte, cr.opts.RowByteSize)
+		err = cr.readRow(cr.topChunkRowCount-1, row, mmap)
+		return row, chunkIndex, cr.topChunkRowCount - 1, false, err
 	}
 	rowCount, _ := cr.getChunkRowCount(chunkIndex)
 	// zlog.Warn("BinarySearch", cr.topChunkIndex, find, chunkIndex, "range", 0, rowCount-1)
