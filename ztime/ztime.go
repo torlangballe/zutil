@@ -50,7 +50,7 @@ const (
 	TimeFieldNoCalendar
 	TimeFieldShortYear
 	TimeFieldStatic
-	TimeFieldPreviousYear30 // If !TimeFieldYears, use previous year date is then less than 30 days from now
+	TimeFieldNotFutureIfAmbiguous // day, month, year are not present, subtract 1 to make it in past if current makes it future
 )
 
 type JSONTime time.Time
@@ -686,7 +686,10 @@ func TimeToNearestEmojii(t time.Time) rune {
 	return r
 }
 
-func getInt(str string, i *int, min, max int, err *error, faults *[]TimeFieldFlags, field TimeFieldFlags) {
+func getInt(str string, i *int, min, max int, err *error, faults *[]TimeFieldFlags, field TimeFieldFlags, isEmpty *bool) {
+	if isEmpty != nil {
+		*isEmpty = (str == "")
+	}
 	if str == "" {
 		return
 	}
@@ -709,7 +712,7 @@ func getInt(str string, i *int, min, max int, err *error, faults *[]TimeFieldFla
 	*i = n
 }
 
-func ParseDate(date string, location *time.Location, use24Clock bool) (t time.Time, faults []TimeFieldFlags, err error) {
+func ParseDate(date string, location *time.Location, flags TimeFieldFlags) (t time.Time, faults []TimeFieldFlags, err error) {
 	var hour, min, sec int
 	var stime, sdate string
 
@@ -721,7 +724,7 @@ func ParseDate(date string, location *time.Location, use24Clock bool) (t time.Ti
 
 	maxHour := 12
 	minHour := 1
-	if use24Clock {
+	if flags&TimeFieldAMPM == 0 {
 		maxHour = 23
 		minHour = 0
 	}
@@ -739,7 +742,7 @@ func ParseDate(date string, location *time.Location, use24Clock bool) (t time.Ti
 		}
 	}
 	var pm zbool.BoolInd
-	if !use24Clock {
+	if flags&TimeFieldAMPM != 0 {
 		if zstr.HasSuffix(stime, "pm", &stime) {
 			pm = zbool.True
 		} else if zstr.HasSuffix(stime, "am", &stime) {
@@ -753,7 +756,7 @@ func ParseDate(date string, location *time.Location, use24Clock bool) (t time.Ti
 	zstr.SplitN(stime, ":", &shour, &smin, &ssec)
 	zstr.SplitN(sdate, "-", &sday, &smonth, &syear)
 
-	getInt(shour, &hour, minHour, maxHour, &err, &faults, TimeFieldHours)
+	getInt(shour, &hour, minHour, maxHour, &err, &faults, TimeFieldHours, nil)
 
 	if !pm.IsUnknown() {
 		if pm.IsTrue() {
@@ -765,27 +768,45 @@ func ParseDate(date string, location *time.Location, use24Clock bool) (t time.Ti
 		}
 	}
 
-	getInt(smin, &min, 0, 60, &err, &faults, TimeFieldMins)
-	getInt(ssec, &sec, 0, 59, &err, &faults, TimeFieldSecs)
-	getInt(smonth, &month, 1, 12, &err, &faults, TimeFieldMonths)
+	getInt(smin, &min, 0, 60, &err, &faults, TimeFieldMins, nil)
+	getInt(ssec, &sec, 0, 59, &err, &faults, TimeFieldSecs, nil)
+
+	var subDay, subMonth, subYear bool
+
+	getInt(smonth, &month, 1, 12, &err, &faults, TimeFieldMonths, &subMonth)
 
 	days := DaysInMonth(time.Month(month), year)
-	getInt(syear, &year, 0, 0, &err, &faults, TimeFieldYears)
+	getInt(syear, &year, 0, 0, &err, &faults, TimeFieldYears, &subYear)
 	if year < 100 {
 		year += 2000
 	}
-	getInt(sday, &day, 1, days, &err, &faults, TimeFieldDays)
+	getInt(sday, &day, 1, days, &err, &faults, TimeFieldDays, &subDay)
 	// zlog.Warn("All:", err)
 	if err != nil {
 		return t, faults, err
 	}
-	t = time.Date(year, time.Month(month), day, hour, min, sec, 0, location)
-	// zlog.Warn("T:", t, year, time.Month(month), day, hour, min, sec)
-	if syear == "" {
-		prev := time.Date(year-1, time.Month(month), day, hour, min, sec, 0, location)
-		psince := time.Since(prev)
-		if psince < Day*30 && math.Abs(DurSeconds(psince)) < math.Abs(Since(t)) {
-			t = prev
+	for {
+		t = time.Date(year, time.Month(month), day, hour, min, sec, 0, location)
+		zlog.Warn("PARSE:", date, time.Since(t), flags&TimeFieldNotFutureIfAmbiguous != 0)
+		if time.Since(t) >= 0 {
+			break
+		}
+		if flags&TimeFieldNotFutureIfAmbiguous == 0 {
+			break
+		}
+		if subDay && day > 1 {
+			day--
+		} else {
+			if subMonth && month > 0 {
+				month--
+			} else {
+				if subYear {
+					year--
+				} else {
+					break
+				}
+			}
+			subYear = false
 		}
 	}
 	return t, faults, nil
