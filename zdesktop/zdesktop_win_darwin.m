@@ -37,7 +37,7 @@ void imageOfWindow(NSString *winTitle, NSString *appBundleID, CGRect insetRect, 
             }
         }
         if (foundWin == nil) {
-            got(nil, @"window not found");
+            got(nil, @"window not found for capture");
             return;
         }
         SCContentFilter *filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:foundWin];
@@ -67,19 +67,33 @@ void imageOfWindow(NSString *winTitle, NSString *appBundleID, CGRect insetRect, 
     }];
 }
 
-extern void GotWindowImageCallback(char *ctitle, char *cappid, char *err, CGImageRef cfimage);
 
-void ImageOfWindowToGlobalCallback(char *winTitle, char *appBundleID, CGRect insetRect) {
+char cerr[1024];
+const char *ImageOfWindow(char *winTitle, char *appBundleID, CGRect insetRect, CGImageRef *cgImagePtr) {
+    const int timeoutSecs = 2; // it should only take 10ms ish for smaller sizes, so lets keep it small to avoid congestion
     NSString *nstitle = [NSString stringWithUTF8String:winTitle];
     NSString *nsapp = [NSString stringWithUTF8String:appBundleID];
+    __block NSString *snapErr = nil;
+    __block dispatch_semaphore_t sem = dispatch_semaphore_create(0);
     imageOfWindow(nstitle, nsapp, insetRect, ^(CGImageRef image, NSString *err) {
-        char cerr[1024];
-        cerr[0] = 0;
         [nstitle release];
         [nsapp release];
         if (err != nil) {
-            [err getCString:cerr maxLength:1024 encoding:NSUTF8StringEncoding];
+            snapErr = err;
+        } else {
+            CFRetain(image);
         }
-        GotWindowImageCallback(winTitle, appBundleID, cerr, image);
+        *cgImagePtr = image;
+        dispatch_semaphore_signal(sem);
     });
+//    int64_t timeoutAt = dispatch_time(DISPATCH_TIME_NOW, (int64_t)timeoutSecs * NSEC_PER_SEC);
+    // if (dispatch_semaphore_wait(sem, timeoutAt)) {
+    if (dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER)) {
+        return "timed out";
+    } else if (snapErr != nil) {
+            NSLog(@"ImageOfWindow Error: %s %@\n", winTitle, snapErr);
+            [snapErr getCString:cerr maxLength:1024 encoding:NSUTF8StringEncoding];
+            return cerr;
+    }
+    return "";
 }

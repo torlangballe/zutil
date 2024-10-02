@@ -36,7 +36,7 @@ package zdesktop
 // void ShowAlert(char *str);
 // int CloseOldWindowWithSamePIDAndRectOnceNew(long pid, int x, int y, int w, int h);
 // void CloseOldWindowWithSamePIDAndRect(long pid, int x, int y, int w, int h);
-// void ImageOfWindowToGlobalCallback(const char *winTitle, const char *appBundleID, CGRect cropRect);
+// const char *ImageOfWindow(const char *winTitle, const char *appBundleID, CGRect cropRect, CGImageRef *cgImage);
 import "C"
 
 import (
@@ -48,13 +48,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zprocess"
 )
 
@@ -317,35 +317,7 @@ func ShowAlert(str string) {
 	C.free(unsafe.Pointer(cstr))
 }
 
-type imageError struct {
-	image image.Image
-	err   error
-}
-
-var imageChannels zmap.LockMap[string, chan imageError]
-
-//export GotWindowImageCallback
-func GotWindowImageCallback(cWinTitle *C.char, cAppID *C.char, cErr *C.char, cgImage C.CGImageRef) {
-	title := C.GoString(cWinTitle)
-	serr := C.GoString(cErr)
-	zlog.Info("Got image", title, serr)
-	C.free(unsafe.Pointer(cWinTitle))
-	C.free(unsafe.Pointer(cAppID))
-	ch := imageChannels.Index(title)
-	if ch != nil {
-		var ie imageError
-		if len(serr) != 0 {
-			ie.err = errors.New(serr)
-		} else {
-			zlog.Assert(cgImage != C.CGImageRef(C.NULL))
-			ie.image, ie.err = zimage.CGImageToGoImage(unsafe.Pointer(cgImage), zgeo.Rect{}, 1)
-			// zlog.Info("GetWindowImage Make Go Image:", time.Since(start))
-			C.CGImageRelease(cgImage)
-		}
-		ch <- ie
-		imageChannels.Remove(title)
-	}
-}
+var captureLock sync.Mutex
 
 func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect) (img image.Image, err error) {
 	var cgrect C.CGRect
@@ -355,10 +327,19 @@ func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect) (img image.
 	cgrect.origin.y = C.CGFloat(cropRect.Pos.Y)
 	cgrect.size.width = C.CGFloat(cropRect.Size.W)
 	cgrect.size.height = C.CGFloat(cropRect.Size.H)
-	ch := make(chan imageError)
-	imageChannels.Set(title, ch)
-	zlog.Info("GetImageForWindowTitle:", cropRect)
-	C.ImageOfWindowToGlobalCallback(ctitle, cappid, cgrect)
-	ie := <-ch
-	return ie.image, ie.err
+	var cgImage C.CGImageRef = C.CGImageRef(C.NULL)
+	captureLock.Lock()
+	// zlog.Warn("GetImageForWindowTitle:", title)
+	start := time.Now()
+	cerr := C.ImageOfWindow(ctitle, cappid, cgrect, &cgImage)
+	serr := C.GoString(cerr)
+	// zlog.Warn("GetImageForWindowTitle Done:", title, time.Since(start), serr)
+	captureLock.Unlock()
+
+	if serr != "" || cgImage == C.CGImageRef(C.NULL) {
+		return nil, zlog.Error(serr)
+	}
+	image, err := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), zgeo.Rect{}, 1)
+	C.CGImageRelease(cgImage)
+	return image, err
 }
