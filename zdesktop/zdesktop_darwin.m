@@ -155,8 +155,8 @@ CFArrayRef getWindowsForPID(long pid) {
     AXUIElementRef appElementRef = AXUIElementCreateApplication(pid);
     AXError err = AXUIElementCopyAttributeValue(appElementRef, kAXWindowsAttribute, (CFTypeRef*)&windowArray);
     CFRelease(appElementRef);
-    if (err == 0 && windowArray != 0) {
-        NSLog(@"getWindowsForPID: %ld\n", (long)CFArrayGetCount(windowArray));
+    if (err != 0 && windowArray != 0) {
+        NSLog(@"getWindowsForPID Err: %d %ld\n", err, (long)CFArrayGetCount(windowArray));
     }
     return windowArray;
 }
@@ -280,7 +280,7 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
         }
     }
     CFRelease(windowList);
-    return "window not found";
+    return "window not found for getall";
 }
 
 void PrintWindowTitles() {
