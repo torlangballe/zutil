@@ -375,8 +375,7 @@ func (cr *ChunkedRows) BinarySearch(find int64, isIDOrderer bool) (row []byte, c
 	cr.lock.Lock()
 	defer cr.lock.Unlock()
 
-	zlog.Warn("BinarySearch", time.UnixMicro(find), isIDOrderer)
-
+	// zlog.Warn("BinarySearch", time.UnixMicro(find), isIDOrderer)
 	var pos ChunkPos
 	chunkIndex, pos, err = cr.binarySearchForChunk(find, cr.bottomChunkIndex, cr.topChunkIndex, isIDOrderer)
 	// zlog.Warn("BinarySearch Got chunk", find, chunkIndex, pos, err)
