@@ -58,13 +58,13 @@ func (d *defaultCommands) Help(c *CommandInfo) string {
 	if c.Type == CommandExpand {
 		return ""
 	}
-	h, _ := c.Session.currentNode().(helpGetter)
+	h, _ := c.Session.currentNodeValue().(helpGetter)
 	if h != nil {
 		str := h.GetHelpForNode_()
 		c.Session.TermSession.Writeln(str)
 	}
 	tabs := zstr.NewTabWriter(c.Session.TermSession.Writer())
-	helpForStruct(c.Session, c.Session.currentNode(), tabs)
+	helpForStruct(c.Session, c.Session.currentNodeValue(), tabs)
 	for _, n := range c.Session.commander.GlobalNodes {
 		helpForStruct(c.Session, n, tabs)
 	}

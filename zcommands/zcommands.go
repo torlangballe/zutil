@@ -150,7 +150,7 @@ func (s *Session) doCommand(line string, ctype CommandType) string {
 	command := parts[0]
 	args := parts[1:]
 	// zlog.Info("doCommand", command, args)
-	str, got := s.structCommand(s.currentNode(), command, args, ctype)
+	str, got := s.structCommand(s.currentNodeValue(), command, args, ctype)
 	if got {
 		return str
 	}
@@ -177,7 +177,7 @@ func (s *Session) autoComplete(line string, pos int, key rune) (newLine string, 
 			return ret, len(ret), true
 		}
 		var names []string
-		nodes := append(s.commander.GlobalNodes, s.currentNode())
+		nodes := append(s.commander.GlobalNodes, s.currentNodeValue())
 		for _, n := range nodes {
 			names = append(names, s.specialMethodNames(n)...)
 		}
@@ -194,14 +194,34 @@ func (s *Session) ExpandChildren(fileStub, prefix string) (addStub string) {
 func (s *Session) expandChildren(fileStub, prefix string) (newLine string, newPos int, ok bool) {
 	var names []string
 	forExpand := true
-	for n := range s.getChildNodes("", "", forExpand) {
-		names = append(names, n)
+
+	var dirs string
+	stub := zstr.TailUntilWithRest(fileStub, "/", &dirs)
+	if dirs == "" {
+		dirs = strings.Trim(fileStub, "/")
+	} else {
+		fileStub = stub
 	}
+	zlog.Info("expandChildren", dirs)
+	nodes, _ := s.findNodeInPath(s.nodeHistory, dirs)
+	zlog.Info("expandChildren2", dirs, nodes)
+	top := s.currentNodeValue()
+	if len(nodes) > 0 {
+		if len(nodes) != 0 {
+			top = nodes[len(nodes)-1].node
+		}
+	}
+	var pre string
+	zstr.TailUntilWithRest(fileStub, "/", &pre)
+	for n := range s.getChildNodesOf(top, "", "", forExpand) {
+		names = append(names, zstr.Concat("/", pre, n))
+	}
+	zlog.Info("expandChildren3", pre, nodes, names, fileStub, prefix, "dirs:", dirs, fileStub)
 	return s.expandForList(fileStub, names, prefix)
 }
 
 func (s *Session) expandForList(stub string, list []string, prefix string) (newLine string, newPos int, ok bool) {
-	// zlog.Info("expandForList1", stub, list)
+	zlog.Info("expandForList1", stub, list)
 	var commands []string
 	for _, c := range list {
 		if strings.HasPrefix(c, stub) {
@@ -229,8 +249,12 @@ func (s *Session) expandForList(stub string, list []string, prefix string) (newL
 	return
 }
 
-func (s *Session) currentNode() any {
-	return s.nodeHistory[len(s.nodeHistory)-1].node
+func (s *Session) currentNodeValue() any {
+	return s.currentNode().node
+}
+
+func (s *Session) currentNode() namedNode {
+	return s.nodeHistory[len(s.nodeHistory)-1]
 }
 
 func (s *Session) Path() string {
@@ -337,7 +361,7 @@ func (s *Session) specialMethodNames(structure any) []string {
 }
 
 func (s *Session) getChildNodes(where, mode string, forExpand bool) map[string]any {
-	return s.getChildNodesOf(s.currentNode(), where, mode, forExpand)
+	return s.getChildNodesOf(s.currentNodeValue(), where, mode, forExpand)
 }
 
 func (s *Session) getChildNodesOf(node any, where, mode string, forExpand bool) map[string]any {
@@ -445,28 +469,30 @@ func (s *Session) GetAllMethodsHelp(structure any) []Help {
 	return help
 }
 
-func (s *Session) findNodeInPath(startNodes []namedNode, path string) (namedNode, error) {
+func (s *Session) findNodeInPath(sn []namedNode, path string) (nodes []namedNode, err error) {
+	var startNodes []namedNode
+	zslice.CopyTo(&startNodes, sn)
 	forExpand := true
 	for _, part := range strings.Split(path, "/") {
-		if path == ".." {
+		if part == ".." {
 			slen := len(startNodes)
 			if slen <= 1 {
-				return namedNode{}, errors.New("cd .. below root")
+				return nil, errors.New("cd .. below root")
 			}
 			startNodes = startNodes[:slen-1]
 			continue
 		}
-		zlog.Info("findNodeInPath:", part, path)
+		zlog.Info("findNodeInPath:", len(startNodes), len(sn), part, "path:", path)
 		nodes := s.getChildNodesOf(startNodes[len(startNodes)-1].node, part, "", forExpand)
-		zlog.Info("Parts:", zlog.Full(nodes))
 		node, got := nodes[part]
 		if !got {
-			return namedNode{}, errors.New("no directory: '" + part + "'")
+			return nil, errors.New("no directory: '" + part + "'")
 		}
 		nn := namedNode{part, node}
 		startNodes = append(startNodes, nn)
 	}
-	return startNodes[len(startNodes)-1], nil
+	zlog.Info("findNodeInPath done:", len(startNodes))
+	return startNodes, nil
 }
 
 func (s *Session) changeDirectory(path string) error {
@@ -475,22 +501,22 @@ func (s *Session) changeDirectory(path string) error {
 		// todo
 		return s.changeDirectory("/")
 	}
-	var node namedNode
+	var nodes []namedNode
 	var err error
 	if path[0] == '/' {
 		hist := []namedNode{s.nodeHistory[0]}
-		node, err = s.findNodeInPath(hist, path[1:])
+		nodes, err = s.findNodeInPath(hist, path[1:])
 	} else {
 		var hist []namedNode
-		zslice.CopyTo(&hist, s.nodeHistory)
-		node, err = s.findNodeInPath(hist, path)
-		zlog.Info("find:", hist, node, err, path)
+		nodes, err = s.findNodeInPath(s.nodeHistory, path)
+		zlog.Info("find:", hist, nodes, err, path)
 	}
 	if err != nil {
 		s.TermSession.Writeln(err)
 		return err
 	}
-	s.GotoChildNode(node.name, node.node)
+	s.nodeHistory = nodes
+	s.updatePrompt()
 	return nil
 }
 
