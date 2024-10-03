@@ -1,9 +1,11 @@
 package zbuild
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -51,4 +53,19 @@ func SetFromLine(line, sep, eq string) {
 func (info Info) ZUIString() string {
 	str := zstr.Concat(" • ", info.Version, info.At.Format("15:04 02-Jan-07"), info.CommitHash, info.Branch, info.User, info.Host)
 	return str
+}
+
+func (info Info) Number() float64 {
+	n := NumberFromVersion(info.Version)
+	return zfloat.KeepFractionDigits(n, 1)
+}
+
+func NumberFromVersion(vstr string) float64 {
+	var str string
+	if zstr.HasPrefix(vstr, "v", &str) {
+		str = zstr.HeadUntil(str, "-")
+		n, _ := strconv.ParseFloat(str, 32)
+		return n
+	}
+	return 0
 }
