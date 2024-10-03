@@ -787,7 +787,7 @@ func ParseDate(date string, location *time.Location, flags TimeFieldFlags) (t ti
 	}
 	for {
 		t = time.Date(year, time.Month(month), day, hour, min, sec, 0, location)
-		zlog.Warn("PARSE:", date, time.Since(t), flags&TimeFieldNotFutureIfAmbiguous != 0)
+		// zlog.Warn("PARSE:", date, time.Since(t), flags&TimeFieldNotFutureIfAmbiguous != 0)
 		if time.Since(t) >= 0 {
 			break
 		}
