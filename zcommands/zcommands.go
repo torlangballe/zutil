@@ -501,6 +501,11 @@ func (s *Session) changeDirectory(path string) error {
 		// todo
 		return s.changeDirectory("/")
 	}
+	if path == "/" {
+		s.nodeHistory = s.nodeHistory[:1]
+		s.updatePrompt()
+		return nil
+	}
 	var nodes []namedNode
 	var err error
 	if path[0] == '/' {
