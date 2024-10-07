@@ -46,7 +46,7 @@ func SetAnnotation(graphanaURLPrefix string, a Annotation) error {
 	if !a.TimeEnd.IsZero() {
 		a.TimeEndEpocMS = a.TimeEnd.UnixMilli()
 	}
-	zlog.Info("ANNO:", a.Text, a.Time, a.TimeEnd)
+	// zlog.Info("ANNO:", a.Text, a.Time, a.TimeEnd)
 	surl := zfile.JoinPathParts(graphanaURLPrefix, "api/annotations")
 	params := zhttp.MakeParameters()
 	// params.PrintBody = true
