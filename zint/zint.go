@@ -102,19 +102,6 @@ func Minimize64(a *int64, b int64) bool {
 	return true
 }
 
-func Slice64Contains(slice []int64, i int64) bool {
-	return IndexInSlice64(i, slice) != -1
-}
-
-func IndexInSlice64(n int64, slice []int64) int {
-	for i, s := range slice {
-		if s == n {
-			return i
-		}
-	}
-	return -1
-}
-
 func RemoveFromSet64(n int64, set *[]int64) bool {
 	for i, num := range *set {
 		if num == n {
@@ -145,7 +132,7 @@ func Intersection64(a, b []int64) []int64 {
 	return ns
 }
 
-func IsInSlice32(n int32, slice []int32) bool {
+func Slice64Contains(slice []int64, n int64) bool {
 	for _, s := range slice {
 		if s == n {
 			return true
