@@ -10,6 +10,7 @@ import (
 
 	"github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zutil/zdebug"
+	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zreflect"
@@ -101,6 +102,8 @@ var (
 	commandInfoType = reflect.TypeOf(&CommandInfo{})
 )
 
+const lastCDKVKey = "zcommand.CD.Path"
+
 func NewCommander(rootNode any, term *zterm.Terminal) *Commander {
 	c := new(Commander)
 	// c.rootNode = rootNode
@@ -114,6 +117,14 @@ func NewCommander(rootNode any, term *zterm.Terminal) *Commander {
 		s.nodeHistory = []namedNode{nn}
 		s.TermSession = ts
 		c.sessions[s.id] = s
+		zlog.Info("LOADPATH?:", zkeyvalue.DefaultStore != nil)
+		if zkeyvalue.DefaultStore != nil {
+			path, _ := zkeyvalue.DefaultStore.GetString(lastCDKVKey)
+			zlog.Info("LOADPATH:", path)
+			if path != "" {
+				s.changeDirectory(path)
+			}
+		}
 		s.updatePrompt()
 		return s.autoComplete
 	}
@@ -197,27 +208,40 @@ func (s *Session) expandChildren(fileStub, prefix string) (newLine string, newPo
 
 	var dirs string
 	stub := zstr.TailUntilWithRest(fileStub, "/", &dirs)
+	// if dirs == "" {
+	// 	dirs = strings.TrimLeft(fileStub, "/")
+	// 	stub = ""
+	// }
+	stub = strings.TrimRight(stub, "/")
+
+	var top any
+	zlog.Info("expandChildren", dirs, "stub:", stub)
 	if dirs == "" {
-		dirs = strings.Trim(fileStub, "/")
+		top = s.currentNodeValue()
+		if zstr.HasPrefix(fileStub, "/", &stub) {
+			top = s.nodeHistory[0].node
+		}
 	} else {
-		fileStub = stub
-	}
-	zlog.Info("expandChildren", dirs)
-	nodes, _ := s.findNodeInPath(s.nodeHistory, dirs)
-	zlog.Info("expandChildren2", dirs, nodes)
-	top := s.currentNodeValue()
-	if len(nodes) > 0 {
-		if len(nodes) != 0 {
-			top = nodes[len(nodes)-1].node
+		root := s.nodeHistory
+		if zstr.HasPrefix(dirs, "/", &dirs) {
+			root = s.nodeHistory[:1]
+		}
+		nodes, _ := s.findNodeInPath(root, dirs)
+		zlog.Info("expandChildren2", dirs, nodes)
+		top = s.currentNodeValue()
+		if len(nodes) > 0 {
+			if len(nodes) != 0 {
+				top = nodes[len(nodes)-1].node
+			}
 		}
 	}
+	dirs = strings.TrimLeft(dirs, "/")
 	var pre string
-	zstr.TailUntilWithRest(fileStub, "/", &pre)
 	for n := range s.getChildNodesOf(top, "", "", forExpand) {
-		names = append(names, zstr.Concat("/", pre, n))
+		names = append(names, n) // zstr.Concat("/", dirs,
 	}
-	zlog.Info("expandChildren3", pre, nodes, names, fileStub, prefix, "dirs:", dirs, fileStub)
-	return s.expandForList(fileStub, names, prefix)
+	zlog.Info("expandChildren3", top, pre, names, stub, prefix, "dirs:", dirs, fileStub)
+	return s.expandForList(stub, names, prefix)
 }
 
 func (s *Session) expandForList(stub string, list []string, prefix string) (newLine string, newPos int, ok bool) {
@@ -269,8 +293,12 @@ func (s *Session) Path() string {
 }
 
 func (s *Session) updatePrompt() {
-	str := zstr.Concat(" ", s.Path(), s.promptExtra)
+	path := s.Path()
+	str := zstr.Concat(" ", path, s.promptExtra)
 	s.TermSession.SetPrompt(str + "> ")
+	if zkeyvalue.DefaultStore != nil {
+		zkeyvalue.DefaultStore.SetString(path, lastCDKVKey, true)
+	}
 }
 
 func (s *Session) structCommand(structure any, command string, args []string, ctype CommandType) (result string, got bool) {
@@ -365,7 +393,7 @@ func (s *Session) getChildNodes(where, mode string, forExpand bool) map[string]a
 }
 
 func (s *Session) getChildNodesOf(node any, where, mode string, forExpand bool) map[string]any {
-	zlog.Info("getChildNodes:", reflect.TypeOf(node))
+	// zlog.Info("getChildNodes:", reflect.TypeOf(node))
 	m := map[string]any{}
 	for _, st := range anonStructsAndSelf(node) {
 		s.addChildNodes(where, mode, forExpand, m, st)
@@ -406,7 +434,7 @@ func (s *Session) addChildNodes(where, mode string, forExpand bool, m map[string
 			}
 		}
 		name := strings.ToLower(each.StructField.Name)
-		zlog.Info("addChildNode From field", name, commander)
+		// zlog.Info("addChildNode From field", name, commander)
 		initCommander(commander)
 		m[name] = commander
 		return true
@@ -482,7 +510,7 @@ func (s *Session) findNodeInPath(sn []namedNode, path string) (nodes []namedNode
 			startNodes = startNodes[:slen-1]
 			continue
 		}
-		zlog.Info("findNodeInPath:", len(startNodes), len(sn), part, "path:", path)
+		// zlog.Info("findNodeInPath:", len(startNodes), len(sn), part, "path:", path)
 		nodes := s.getChildNodesOf(startNodes[len(startNodes)-1].node, part, "", forExpand)
 		node, got := nodes[part]
 		if !got {
@@ -491,7 +519,7 @@ func (s *Session) findNodeInPath(sn []namedNode, path string) (nodes []namedNode
 		nn := namedNode{part, node}
 		startNodes = append(startNodes, nn)
 	}
-	zlog.Info("findNodeInPath done:", len(startNodes))
+	// zlog.Info("findNodeInPath done:", len(startNodes))
 	return startNodes, nil
 }
 
