@@ -163,7 +163,7 @@ func repeatPrintAverages(printSecs float64) {
 		for _, n := range names {
 			a := averages[n]
 			if a == nil {
-				Info("repeatPrintAverages a=nil:", n, names, averages)
+				Info("repeatPrintAverages a=nil: '"+n+"'", len(names), averages)
 				continue
 			}
 			if a.AllDurCount == 0 {
