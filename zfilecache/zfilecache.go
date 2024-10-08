@@ -108,10 +108,6 @@ func (c *Cache) getToken() string {
 	return ""
 }
 
-func (c *Cache) IsTokenValid(t string) bool {
-	return true
-}
-
 // CacheFromReader reads bytes from reader with stype png or jpeg and caches is with CacheFromData
 // This name is used to get a path or a url for getting
 func (c *Cache) CacheFromReader(reader io.Reader, name string) (string, error) {
@@ -193,12 +189,6 @@ func (c *Cache) GetURLForName(name string) string {
 
 func (c *Cache) HandlerWithCheckToken(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		t := req.URL.Query().Get("token")
-		if !c.IsTokenValid(t) {
-			req.Body.Close()
-			zrest.ReturnError(w, req, "bad token for get cached file", http.StatusBadRequest)
-			return
-		}
 		h.ServeHTTP(w, req)
 	})
 }
