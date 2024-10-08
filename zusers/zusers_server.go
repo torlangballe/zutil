@@ -65,7 +65,6 @@ func (UsersCalls) GetUserForToken(ci *zrpc.ClientInfo, token string, user *User)
 		return nil
 	}
 	u, err := MainServer.GetUserForToken(token)
-	zlog.Info("GetUserForToken:", err, token, ci.Token)
 	if err != nil {
 		valid, uid := authenticator.IsTokenValid("", ci.Request)
 		if valid {
@@ -76,7 +75,6 @@ func (UsersCalls) GetUserForToken(ci *zrpc.ClientInfo, token string, user *User)
 			*user = u
 			return nil
 		}
-		zlog.Error("GetUserForToken", token, err)
 		return err
 	}
 	*user = u
@@ -252,6 +250,7 @@ func (UsersCalls) UnauthenticateUser(ci *zrpc.ClientInfo, userID int64) error {
 func RegisterDefaultAdminUserIfNone() {
 	var us []AllUserInfo
 	err := UsersCalls{}.GetAllUsers(nil, &us)
+	zlog.Info("RegisterDefaultAdminUserIfNone", err)
 	if err == nil && len(us) == 0 && DefaultUserName != "" {
 		userID, _, _ := MainServer.RegisterUser(nil, DefaultUserName, DefaultPassword, false)
 		MainServer.SetAdminForUser(userID, true)
