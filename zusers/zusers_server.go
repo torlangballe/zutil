@@ -41,10 +41,12 @@ var (
 	NoTokenError             = fmt.Errorf("no token for user: %w", AuthFailedError)
 	ForgotPassword           = ForgotPasswordData{ProductName: "This service"}
 	temporaryTokens          = zcache.NewExpiringMap[int64, int64](60) // temporaryTokens are tokens that map to a userid, granting that token access as that user for 60 seconds
+	authenticator            zrpc.TokenAuthenticator
 )
 
 func setupWithSQLServer(s *SQLServer, executor *zrpc.Executor) {
 	MainServer = s
+	authenticator = executor.Authenticator
 	executor.Register(UsersCalls{})
 	executor.SetAuthNotNeededForMethod("UsersCalls.GetUserForToken")
 	executor.SetAuthNotNeededForMethod("UsersCalls.Authenticate")
@@ -53,26 +55,27 @@ func setupWithSQLServer(s *SQLServer, executor *zrpc.Executor) {
 	zsql.GetUserIDFromTokenFunc = MainServer.GetUserIDFromToken
 }
 
-func makeHash(str, salt string) string {
-	hash := zstr.SHA256Hex([]byte(str + salt))
-	// zlog.Info("MakeHash:", hash, "from:", str, salt)
-	return hash
-}
+// func (UsersCalls) IsAuthWorking(ci *zrpc.ClientInfo, arg zrpc.Unused, token *string) error {
+// 	*token = ci.Token // if we actually get here at all, we're good
+// 	return nil
+// }
 
-func makeSaltyHash(password string) (hash, salt, token string) {
-	salt = zstr.GenerateUUID()
-	hash = makeHash(password, salt)
-	token = zstr.GenerateUUID()
-	return
-}
-
-func (UsersCalls) GetUserForToken(token string, user *User) error {
+func (UsersCalls) GetUserForToken(ci *zrpc.ClientInfo, token string, user *User) error {
 	if MainServer == nil {
 		return nil
 	}
 	u, err := MainServer.GetUserForToken(token)
-	// zlog.Info("GetUserForToken:", err, token, zlog.CallingStackString())
+	zlog.Info("GetUserForToken:", err, token, ci.Token)
 	if err != nil {
+		valid, uid := authenticator.IsTokenValid("", ci.Request)
+		if valid {
+			u, err = MainServer.GetUserForID(uid)
+			if err != nil {
+				return err
+			}
+			*user = u
+			return nil
+		}
 		zlog.Error("GetUserForToken", token, err)
 		return err
 	}
@@ -249,8 +252,8 @@ func (UsersCalls) UnauthenticateUser(ci *zrpc.ClientInfo, userID int64) error {
 func RegisterDefaultAdminUserIfNone() {
 	var us []AllUserInfo
 	err := UsersCalls{}.GetAllUsers(nil, &us)
-	if err == nil && len(us) == 0 {
-		userID, _, _ := MainServer.RegisterUser(nil, DefaultEmail, DefaultPassword, false)
+	if err == nil && len(us) == 0 && DefaultUserName != "" {
+		userID, _, _ := MainServer.RegisterUser(nil, DefaultUserName, DefaultPassword, false)
 		MainServer.SetAdminForUser(userID, true)
 	}
 }

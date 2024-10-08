@@ -61,7 +61,7 @@ var (
 	// redisPool                 *redis.Pool
 	AuthFailedError            = errors.New("Authentication Failed")
 	UserNamePasswordWrongError = fmt.Errorf("Incorrect username/email or password: %w", AuthFailedError)
-	DefaultEmail               = "user@example.com"
+	DefaultUserName            = "user@example.com"
 	DefaultPassword            = "admin"
 )
 

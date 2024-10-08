@@ -20,6 +20,7 @@ package zrpc
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"reflect"
 	"time"
 )
@@ -63,13 +64,14 @@ type methodType struct {
 
 // ClientInfo stores information about the client calling.
 type ClientInfo struct {
-	Type      string    // Type is zrpc or zrpc-rev for these calls. Might be something else if used elsewhere.
-	ClientID  string    // ClientID identifies the rpc client
-	Token     string    `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
-	UserID    int64     `json:",omitempty"` // UserID can be a userid gotten when authenticated
-	UserAgent string    `json:",omitempty"` // From the http request
-	IPAddress string    `json:",omitempty"` // From the http request
-	SendDate  time.Time `json:",omitempty"` // From the http requests Date header
+	Type      string // Type is zrpc or zrpc-rev for these calls. Might be something else if used elsewhere.
+	ClientID  string // ClientID identifies the rpc client
+	Token     string `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
+	UserID    int64  `json:",omitempty"` // UserID can be a userid gotten when authenticated
+	Request   *http.Request
+	UserAgent string    `json:",omitempty"`
+	IPAddress string    `json:",omitempty"`
+	SendDate  time.Time `json:",omitempty"`
 	Context   context.Context
 }
 

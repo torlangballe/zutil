@@ -53,11 +53,13 @@ func (e *Executor) doServeTempDataHTTP(w http.ResponseWriter, req *http.Request)
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "doServeTempDataHTTP: no id")
 		return
 	}
-	token := req.Header.Get("X-Token")
-	valid, _ := e.Authenticator.IsTokenValid(token)
-	if !valid {
-		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "doServeTempDataHTTP auth error:", token)
-		return
+	ztoken := req.Header.Get("X-Token")
+	if e.Authenticator != nil {
+		valid, _ := e.Authenticator.IsTokenValid(ztoken, req)
+		if !valid {
+			zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "doServeTempDataHTTP auth error:", ztoken)
+			return
+		}
 	}
 	data, got := temporaryDataServe.Get(id)
 	if !got {
@@ -104,7 +106,7 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		token = cp.Token
 		if e.Authenticator != nil && e.methodNeedsAuth(cp.Method) {
 			var valid bool
-			valid, userID = e.Authenticator.IsTokenValid(token)
+			valid, userID = e.Authenticator.IsTokenValid(token, req)
 			if !valid {
 				zlog.Error("token not valid: '"+token+"'", zlog.Full(e.Authenticator), req.RemoteAddr, req.URL.Path, req.URL.Query())
 				rp.TransportError = "authentication error"
@@ -127,6 +129,7 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 			ci.ClientID = cp.ClientID
 			ci.Token = token
 			ci.UserID = userID
+			ci.Request = req
 			ci.UserAgent = req.UserAgent()
 			ci.IPAddress = req.RemoteAddr
 			sdate := req.Header.Get(dateHeaderID)

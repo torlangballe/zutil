@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"go/token"
+	"net/http"
 	"reflect"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 )
 
 type TokenAuthenticator interface {
-	IsTokenValid(token string) (bool, int64)
+	IsTokenValid(token string, req *http.Request) (bool, int64)
 }
 
 type Executor struct {

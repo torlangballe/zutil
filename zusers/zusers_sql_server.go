@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/lib/pq"
@@ -19,6 +20,7 @@ import (
 
 type SQLServer struct {
 	zsql.Base
+	UseNoSaltMD5Hash bool
 }
 
 func NewSQLServer(db *sql.DB, btype zsql.BaseType, executor *zrpc.Executor) (*SQLServer, error) {
@@ -108,7 +110,7 @@ func (s *SQLServer) GetUserForToken(token string) (user User, err error) {
 	return s.GetUserForID(id)
 }
 
-func (s *SQLServer) IsTokenValid(token string) (bool, int64) {
+func (s *SQLServer) IsTokenValid(token string, req *http.Request) (bool, int64) {
 	var userID int64
 	squery := "SELECT userid FROM zuser_sessions WHERE token=$1"
 	squery = s.customizeQuery(squery)
@@ -197,7 +199,7 @@ func (s *SQLServer) ChangePasswordForUser(ci *zrpc.ClientInfo, id int64, passwor
 
 	squery := "UPDATE zusers SET passwordhash=$1, salt=$2, login=$NOW WHERE id=$3"
 	squery = s.customizeQuery(squery)
-	hash, salt, token = makeSaltyHash(password)
+	hash, salt, token = s.makeSaltyHash(password)
 	_, err = s.DB.Exec(squery, hash, salt, id)
 	if err == nil {
 		zlog.Info("ChangePASS:", hash)
@@ -299,18 +301,28 @@ func (s *SQLServer) AddNewUser(username, password, hash, salt string, perm []str
 }
 
 func (s *SQLServer) Login(ci *zrpc.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
+	return s.baseLogin(ci, username, password, false)
+}
+
+func (s *SQLServer) LoginWithPrehashedPassword(ci *zrpc.ClientInfo, username, preHashedPassword string) (ui ClientUserInfo, err error) {
+	return s.baseLogin(ci, username, preHashedPassword, true)
+}
+
+func (s *SQLServer) baseLogin(ci *zrpc.ClientInfo, username, password string, prehashed bool) (ui ClientUserInfo, err error) {
 	//	zlog.Info("Login:", username)
 	u, err := s.GetUserForUserName(username)
 	if err != nil {
 		return
 	}
-	hash := makeHash(password, u.Salt)
+	hash := password
+	if !prehashed {
+		hash = s.makeHash(password, u.Salt)
+	}
 	if hash != u.PasswordHash {
 		// zlog.Info("calchash:", hash, password, "salt:", u.Salt, "storedhash:", u.PasswordHash)
 		err = UserNamePasswordWrongError
 		return
 	}
-
 	var session Session
 	session.ClientInfo = *ci
 	if session.Token == "" {
@@ -338,7 +350,7 @@ func (s *SQLServer) RegisterUser(ci *zrpc.ClientInfo, username, password string,
 		return
 	}
 	perm := []string{}
-	hash, salt, token := makeSaltyHash(password)
+	hash, salt, token := s.makeSaltyHash(password)
 	id, err = s.AddNewUser(username, password, hash, salt, perm)
 	if makeToken {
 		var session Session
@@ -383,4 +395,19 @@ func (s *SQLServer) GetOrCreateSessionForUserIDAndClientID(ci *zrpc.ClientInfo, 
 		return "", AuthFailedError
 	}
 	return session.Token, nil
+}
+
+func (s *SQLServer) makeHash(str, salt string) string {
+	if s.UseNoSaltMD5Hash {
+		return zstr.MD5Hex([]byte(str))
+	}
+	hash := zstr.SHA256Hex([]byte(str + salt))
+	return hash
+}
+
+func (s *SQLServer) makeSaltyHash(password string) (hash, salt, token string) {
+	salt = zstr.GenerateUUID()
+	hash = s.makeHash(password, salt)
+	token = zstr.GenerateUUID()
+	return
 }
