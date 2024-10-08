@@ -466,7 +466,7 @@ func HashAnyToInt64(a interface{}, add string) int64 {
 	return zint.HashTo64(str)
 }
 
-func SetStringToAny(toPtr any, from string) {
+func SetStringToAny(toPtr any, from string) error {
 	switch t := toPtr.(type) {
 	case *bool:
 		if from == "true" || from == "TRUE" || from == "1" {
@@ -489,12 +489,38 @@ func SetStringToAny(toPtr any, from string) {
 	case *string:
 		*t = from
 	default:
-		fmt.Println("SetStringToAny: bad type:", from, reflect.TypeOf(toPtr))
+		return fmt.Errorf("SetStringToAny: bad type: %v %v", from, reflect.TypeOf(toPtr))
 	}
+	return nil
 }
 
 func Swap[A any](a, b *A) {
 	t := *a
 	*a = *b
 	*b = t
+}
+
+// GetZTags get's all tags that are structured with k:v, parts etc, like zui
+func GetZTags(tagMap map[string][]string, tagName string) (keyVals []zstr.KeyValue, skip bool) {
+	zuiParts, got := tagMap[tagName]
+	if !got {
+		return nil, false
+	}
+	for _, part := range zuiParts {
+		if part == "-" {
+			return nil, true
+		}
+		var key, val string
+		parts := zstr.SplitStringWithDoubleAsEscape(part, ":")
+		if len(parts) == 2 {
+			key = parts[0]
+			val = parts[1]
+		} else {
+			key = part
+		}
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+		keyVals = append(keyVals, zstr.KeyValue{Key: key, Value: val})
+	}
+	return keyVals, false
 }
