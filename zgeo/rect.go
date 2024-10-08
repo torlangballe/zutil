@@ -27,7 +27,7 @@ func RectMake(x0, y0, x1, y1 float64) Rect {
 }
 
 func RectFromXYWH(x, y, w, h float64) Rect {
-	return Rect{Pos{x, y}, Size{w, h}}
+	return Rect{Pos{x, y}, SizeD(w, h)}
 }
 
 func RectFromMinMax(min, max Pos) Rect {
@@ -39,7 +39,11 @@ func RectFromCenterSize(center Pos, size Size) Rect {
 }
 
 func RectFromXY2(x, y, x2, y2 float64) Rect {
-	return Rect{Pos{x, y}, Size{x2 - x, y2 - y}}
+	return Rect{PosD(x, y), SizeD(x2-x, y2-y)}
+}
+
+func RectFromPosSize(x, y, w, h float64) Rect {
+	return Rect{Pos: PosD(x, y), Size: SizeD(w, h)}
 }
 
 func RectFromMarginSize(m Size) Rect {
@@ -47,7 +51,7 @@ func RectFromMarginSize(m Size) Rect {
 }
 
 func RectFromWH(w, h float64) Rect {
-	return Rect{Size: Size{w, h}}
+	return Rect{Size: SizeD(w, h)}
 }
 
 func (r Rect) IsNull() bool {
@@ -274,7 +278,7 @@ func (r Rect) AlignPro(s Size, align Alignment, marg, maxSize, minSize Size) Rec
 		ha = hf
 	}
 	if maxSize.Area() != 0 && align&Proportional != 0 {
-		s := Size{wa, ha}.ShrunkInto(maxSize)
+		s := SizeD(wa, ha).ShrunkInto(maxSize)
 		wa = s.W
 		ha = s.H
 	} else {
@@ -287,7 +291,7 @@ func (r Rect) AlignPro(s Size, align Alignment, marg, maxSize, minSize Size) Rec
 	}
 
 	if minSize.W != 0 && minSize.H != 0 && align&Proportional != 0 {
-		s := Size{wa, ha}.ExpandedInto(minSize)
+		s := SizeD(wa, ha).ExpandedInto(minSize)
 		wa = s.W
 		ha = s.H
 	}
@@ -348,7 +352,7 @@ func (r Rect) AlignPro(s Size, align Alignment, marg, maxSize, minSize Size) Rec
 			}
 		}
 	}
-	return Rect{Pos{x, y}, Size{wa, ha}}
+	return Rect{Pos{x, y}, SizeD(wa, ha)}
 }
 
 func (r Rect) MovedInto(rect Rect) (m Rect) {
@@ -426,7 +430,7 @@ func (r *Rect) AddPos(a Pos)   { r.Pos.Add(a) }
 func (r *Rect) Subtract(a Pos) { r.Pos.Subtract(a) }
 
 func centerToRect(center Pos, radius float64, radiusy float64) Rect {
-	var s = Size{radius, radius}
+	var s = SizeBoth(radius)
 	if radiusy != 0 {
 		s.H = radiusy
 	}
@@ -485,7 +489,7 @@ func CellsSpanInBox(box Rect, cellSize, spacing Size, cellCount int) (x, y int, 
 		neededRows := (cellCount + columns) / columns
 		zint.Minimize(&rows, neededRows)
 	}
-	m := Size{float64(columns), float64(rows)}
+	m := SizeI(columns, rows)
 	s := cellSize.Times(m).Plus(spacing.Times(m.MinusD(1)))
 	r := box.Align(s, Center, Size{})
 	return columns, rows, r
