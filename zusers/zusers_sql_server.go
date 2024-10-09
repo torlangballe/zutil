@@ -128,7 +128,7 @@ func (s *SQLServer) GetUserForID(id int64) (User, error) {
 	squery := "SELECT " + allUserFields + " FROM zusers WHERE id=$1 LIMIT 1"
 	squery = s.customizeQuery(squery)
 	row := s.DB.QueryRow(squery, id)
-	err := row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions), &user.Created, &user.Login)
+	err := row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.TransPasswordHash, &user.Salt, pq.Array(&user.Permissions), &user.Created, &user.Login)
 	if err != nil {
 		return user, fmt.Errorf("No user for id %d (%w)", id, AuthFailedError)
 	}
@@ -237,13 +237,13 @@ func (s *SQLServer) GetAllUsers() (us []AllUserInfo, err error) {
 	return
 }
 
-const allUserFields = "id, username, passwordhash, salt, permissions, created, login"
+const allUserFields = "id, username, passwordhash, transpasswordhash, salt, permissions, created, login"
 
 func (s *SQLServer) GetUserForUserName(username string) (user User, err error) {
 	squery := "SELECT " + allUserFields + " FROM zusers WHERE username=$1 LIMIT 1"
 	squery = s.customizeQuery(squery)
 	row := s.DB.QueryRow(squery, username)
-	err = row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.Salt, pq.Array(&user.Permissions), &user.Created, &user.Login)
+	err = row.Scan(&user.ID, &user.UserName, &user.PasswordHash, &user.TransPasswordHash, &user.Salt, pq.Array(&user.Permissions), &user.Created, &user.Login)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err = fmt.Errorf("No user for username %s (%w)", username, AuthFailedError)
@@ -304,18 +304,23 @@ func (s *SQLServer) Login(ci *zrpc.ClientInfo, username, password string) (ui Cl
 	return s.baseLogin(ci, username, password, false)
 }
 
-func (s *SQLServer) LoginWithPrehashedPassword(ci *zrpc.ClientInfo, username, preHashedPassword string) (ui ClientUserInfo, err error) {
+func (s *SQLServer) LoginWithPasswordTransformer(ci *zrpc.ClientInfo, username, preHashedPassword string) (ui ClientUserInfo, err error) {
 	return s.baseLogin(ci, username, preHashedPassword, true)
 }
 
 func (s *SQLServer) baseLogin(ci *zrpc.ClientInfo, username, password string, useTransformer bool) (ui ClientUserInfo, err error) {
-	zlog.Info("LoginTrans:", username, password)
 	u, err := s.GetUserForUserName(username)
 	if err != nil {
 		return
 	}
-	hash := s.makeHash(password, u.Salt, useTransformer)
-	if hash != u.PasswordHash {
+	forStore := false
+	hash := s.makeHash(password, u.Salt, useTransformer, forStore)
+	dbHash := u.PasswordHash
+	if useTransformer {
+		dbHash = u.TransPasswordHash
+	}
+	// zlog.Info("LoginTrans:", username, password, "hash:", hash, dbHash)
+	if hash != dbHash {
 		// zlog.Info("calchash:", hash, password, "salt:", u.Salt, "storedhash:", u.PasswordHash)
 		err = UserNamePasswordWrongError
 		return
@@ -394,10 +399,10 @@ func (s *SQLServer) GetOrCreateSessionForUserIDAndClientID(ci *zrpc.ClientInfo, 
 	return session.Token, nil
 }
 
-func (s *SQLServer) makeHash(password, salt string, useTransformer bool) string {
+func (s *SQLServer) makeHash(password, salt string, useTransformer, forStore bool) string {
 	if useTransformer {
 		zlog.Assert(s.TransformPasswordFunc != nil)
-		password = s.TransformPasswordFunc(password, true)
+		password = s.TransformPasswordFunc(password, forStore)
 	}
 	hash := zstr.SHA256Hex([]byte(password + salt))
 	return hash
@@ -405,9 +410,11 @@ func (s *SQLServer) makeHash(password, salt string, useTransformer bool) string 
 
 func (s *SQLServer) makeSaltyHashes(password string) (hash, transHash, salt, token string) {
 	salt = zstr.GenerateUUID()
-	hash = s.makeHash(password, salt, false)
+	forStore := true
+	useTrans := true
+	hash = s.makeHash(password, salt, !useTrans, forStore)
 	if s.TransformPasswordFunc != nil {
-		transHash = s.makeHash(password, salt, true)
+		transHash = s.makeHash(password, salt, useTrans, forStore)
 	}
 	token = zstr.GenerateUUID()
 	return
