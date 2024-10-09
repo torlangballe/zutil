@@ -197,11 +197,11 @@ func (s *SQLServer) ChangeUserNameForUser(id int64, username string) error {
 
 func (s *SQLServer) ChangePasswordForUser(ci *zrpc.ClientInfo, id int64, password string) (token string, err error) {
 	var hash, transHash, salt string
-	squery := "UPDATE zusers SET passwordhash=$1, transpasswordhash=$2 salt=$3, login=$NOW WHERE id=$4"
+	squery := "UPDATE zusers SET passwordhash=$1, transpasswordhash=$2, salt=$3, login=$NOW WHERE id=$4"
+	squery = s.customizeQuery(squery)
 	hash, transHash, salt, token = s.makeSaltyHashes(password)
 	_, err = s.DB.Exec(squery, hash, transHash, salt, id)
 	if err == nil {
-		squery = s.customizeQuery(squery)
 		zlog.Info("ChangePASS:", hash, transHash)
 		err = s.UnauthenticateUser(id)
 		if err != nil {
