@@ -67,11 +67,11 @@ func init() {
 	zdebug.KeyValueGetAndDeleteContextErrorFunc = func(key string) (ce error) {
 		if DefaultStore != nil {
 			var ce zerrors.ContextError
-			if DefaultStore.GetObject(key, &ce) {
-				DefaultStore.RemoveForKey(key, true)
+			got := DefaultStore.GetObject(key, &ce)
+			DefaultStore.RemoveForKey(key, true)
+			if got {
 				return ce
 			}
-			DefaultStore.RemoveForKey(key, true)
 		}
 		return nil
 	}
@@ -250,7 +250,7 @@ func (s Store) GetItemAsAny(key string) (any, bool) {
 func (s Store) SetItem(key string, v any, sync bool) error {
 	s.postfixKey(&key)
 	err := s.Raw.RawSetItem(key, v)
-	if err != nil && sync {
+	if s.Saver != nil && err == nil && sync {
 		s.Saver.Save()
 	}
 	return err
@@ -258,8 +258,9 @@ func (s Store) SetItem(key string, v any, sync bool) error {
 
 func (s Store) RemoveForKey(key string, sync bool) error {
 	err := s.Raw.RawRemoveForKey(key)
-	if err != nil && sync {
-		s.Saver.Save()
+	if s.Saver != nil && err == nil && sync {
+		// zlog.Info("KVStore.Raw.RawRemoveForKey Save:", s.Saver != nil)
+		err = s.Saver.Save()
 	}
 	return err
 }
