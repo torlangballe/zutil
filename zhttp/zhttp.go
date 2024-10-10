@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"io/ioutil"
 	"net"
@@ -22,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zbytes"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zerrors"
 	"github.com/torlangballe/zutil/zlog"
@@ -146,9 +148,9 @@ func SendBody(surl string, params Parameters, send, receive any) (*http.Response
 		}
 	}
 	params.Body = bout
-	resp, _, err := SendBytesSetContentLength(surl, params)
+	resp, _, err := SendBytesOrFromReader(surl, params)
 	// if err != nil {
-	// 	zlog.Warn("SendBytesSetContentLength:", err)
+	// 	zlog.Warn("SendBytesOrFromReader:", err)
 	// }
 	err = processResponse(surl, resp, params, receive, err)
 	if err != nil {
@@ -326,7 +328,7 @@ func processResponse(surl string, resp *http.Response, params Parameters, receiv
 		}
 		return err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		err = zlog.Error("readall", err)
 		return err
@@ -349,12 +351,14 @@ func processResponse(surl string, resp *http.Response, params Parameters, receiv
 	return nil
 }
 
-func SendBytesSetContentLength(surl string, params Parameters) (resp *http.Response, code int, err error) {
+func SendBytesOrFromReader(surl string, params Parameters) (resp *http.Response, code int, err error) {
 	// zlog.Assert(len(params.Body) != 0 || params.Reader != nil, surl)
 	zlog.Assert(params.ContentType != "")
 	zlog.Assert(params.Method != "")
-	// params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
-	// zlog.Info("SendBytesSetContentLength:", params.Method, surl)
+	if params.Body != nil {
+		params.Headers["Content-Length"] = strconv.Itoa(len(params.Body))
+	}
+	// zlog.Info("SendBytesOrFromReader:", params.Method, surl)
 	if params.PrintBody {
 		zlog.Info("dump output:", surl, "\n", string(params.Body))
 		for h, s := range params.Headers {
@@ -498,7 +502,7 @@ func GetAndReturnUrlEncodedBodyValues(surl string) (values url.Values, err error
 	defer resp.Body.Close()
 	defer io.Copy(ioutil.Discard, resp.Body)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
@@ -514,21 +518,21 @@ func (m myReader) Close() error {
 }
 
 func GetCopyOfRequestBodyAsString(req *http.Request) string {
-	buf, _ := ioutil.ReadAll(req.Body)
+	buf, _ := io.ReadAll(req.Body)
 	reader1 := myReader{bytes.NewBuffer(buf)}
 	reader2 := myReader{bytes.NewBuffer(buf)}
 	req.Body = reader2
-	body, _ := ioutil.ReadAll(reader1)
+	body, _ := io.ReadAll(reader1)
 
 	return string(body)
 }
 
 func GetCopyOfResponseBodyAsString(resp *http.Response) string {
-	buf, _ := ioutil.ReadAll(resp.Body)
+	buf, _ := io.ReadAll(resp.Body)
 	reader1 := myReader{bytes.NewBuffer(buf)}
 	reader2 := myReader{bytes.NewBuffer(buf)}
 	resp.Body = reader2
-	body, _ := ioutil.ReadAll(reader1)
+	body, _ := io.ReadAll(reader1)
 
 	return string(body)
 }
@@ -537,7 +541,7 @@ func CheckErrorFromBody(resp *http.Response) (err error) {
 	if resp.StatusCode < 400 {
 		return
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
@@ -675,7 +679,7 @@ func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
 	if err != nil {
 		return
 	}
-	info.ContentLengthBytes, _ = strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
+	info.ContentLengthBytes, _ = GetContentLengthFromHeader(resp.Header)
 
 	if downloadBytes != 0 {
 		bytes := make([]byte, 1024)
@@ -758,4 +762,41 @@ func HasURLScheme(str string) bool {
 
 func IsRuneValidForHeaderKey(r rune) bool {
 	return zstr.IsRuneASCIIAlphaNumeric(r) || r == '-'
+}
+
+func GetContentLengthFromHeader(header http.Header) (int64, error) {
+	return strconv.ParseInt(header.Get("Content-Length"), 10, 64)
+}
+
+// SendForFile POSTs parameter.Body or parameter.Reader to surl, with crc and Content-Length headers.
+// If crc or length are 0, they are calculated, reading params.Reader into params.Body if needed.
+func SendForFile(surl string, crc, length int64, params Parameters) error {
+	var err error
+	if crc == 0 || length == 0 {
+		if params.Body == nil {
+			buf := bytes.NewBuffer([]byte{})
+			if crc == 0 {
+				crcWriter := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+				multi := io.MultiWriter(crcWriter, buf)
+				_, err = io.Copy(multi, params.Reader)
+				crc = int64(crcWriter.Sum32())
+			} else {
+				_, err = io.Copy(buf, params.Reader)
+			}
+			if err != nil {
+				return err
+			}
+			params.Body = buf.Bytes()
+			params.Reader = nil
+		}
+		if crc == 0 {
+			crc = zbytes.CalculateCRC32(params.Body, crc32.Castagnoli)
+		}
+		length = int64(len(params.Body))
+	}
+	params.TimeoutSecs = 300
+	params.Headers["X-ZCRC"] = fmt.Sprint(crc)
+	params.Headers["Content-Length"] = fmt.Sprint(length)
+	_, err = Post(surl, params, nil, nil)
+	return err
 }
