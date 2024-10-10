@@ -31,6 +31,7 @@ import (
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
+	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -566,7 +567,7 @@ func (cr *ChunkedRows) load() error {
 	defer cr.lock.Unlock()
 	ctypes := []chunkType{isAux, isRows, isMatch}
 
-	var ranges = map[chunkType]zint.Range{}
+	var ranges = map[chunkType]zmath.Range[int]{}
 	zfile.Walk(cr.opts.DirPath, "", zfile.WalkOptionGiveNameOnly, func(fname string, info os.FileInfo) error {
 		var sn, stub string
 		if zstr.SplitN(fname, ".", &sn, &stub) {
@@ -588,12 +589,12 @@ func (cr *ChunkedRows) load() error {
 		cr.currentID = 0
 		return nil
 	}
-	mins := zint.GetRangeMins(zmap.AllValues(ranges))
+	mins := zmath.GetRangeMins(zmap.AllValues(ranges))
 	for cr.bottomChunkIndex = slices.Min(mins); cr.bottomChunkIndex < slices.Max(mins); cr.bottomChunkIndex++ { // if more aux chunks than chunk chunks or visa versa at bottom
 		zlog.Warn("zchunkedrows deleting bottom chunk without matching aux/match range", cr.bottomChunkIndex, cr.opts.DirPath)
 		cr.deleteChunk(cr.bottomChunkIndex)
 	}
-	maxes := zint.GetRangeMaxes(zmap.AllValues(ranges))
+	maxes := zmath.GetRangeMaxes(zmap.AllValues(ranges))
 	for cr.topChunkIndex = slices.Max(maxes); cr.topChunkIndex > slices.Min(maxes); cr.topChunkIndex-- { // likewise for top
 		zlog.Warn("zchunkedrows deleting top chunk without matching aux/match range", cr.bottomChunkIndex, cr.opts.DirPath)
 		cr.deleteChunk(cr.topChunkIndex)

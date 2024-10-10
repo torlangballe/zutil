@@ -19,6 +19,7 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -37,7 +38,7 @@ type GraphView struct {
 	ImagePathPrefix     string
 	MinWidth            float64
 	TickColor           zgeo.Color
-	TickYRange          zfloat.Range
+	TickYRange          zmath.Range[float64]
 	On                  bool
 	Ticks               int
 	ShowMarkerAt        time.Time
@@ -98,7 +99,7 @@ func (v *GraphView) Update(secsPerPixel int, windowMinutes int, ticks int, on bo
 		v.Job.WindowMinutes = windowMinutes
 		v.SecondsPerPixel = secsPerPixel
 		v.Ticks = ticks
-		v.TickYRange = zfloat.RangeF(0, float64(v.Job.PixelHeight)/2.5)
+		v.TickYRange = zmath.MakeRange(0, float64(v.Job.PixelHeight)/2.5)
 		// zlog.Info("GraphView.Update", v.Job.ID, v.On, zlog.CallingStackString())
 		if on {
 			v.repeater.Set(float64(v.SecondsPerPixel), true, func() bool {

@@ -12,12 +12,6 @@ import (
 
 type Slice []int
 
-type Range struct {
-	Valid bool
-	Min   int
-	Max   int
-}
-
 type ID64Setter interface {
 	SetID64(id int64)
 }
@@ -345,42 +339,6 @@ func (s Slice) Minimum() int {
 		}
 	}
 	return min
-}
-
-func (r Range) Added(n int) Range {
-	if !r.Valid {
-		r.Valid = true
-		r.Min = n
-		r.Max = n
-		return r
-	}
-	r.Min = min(r.Min, n)
-	r.Max = max(r.Max, n)
-	return r
-}
-
-func (r *Range) Add(n int) {
-	*r = r.Added(n)
-}
-
-func GetRangeMins(rs []Range) []int {
-	var all []int
-	for _, r := range rs {
-		if r.Valid {
-			all = append(all, r.Min)
-		}
-	}
-	return all
-}
-
-func GetRangeMaxes(rs []Range) []int {
-	var all []int
-	for _, r := range rs {
-		if r.Valid {
-			all = append(all, r.Max)
-		}
-	}
-	return all
 }
 
 func MakeHumanFriendly[N int | int64](n N) string {

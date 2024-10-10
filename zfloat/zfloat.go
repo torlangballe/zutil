@@ -9,16 +9,7 @@ import (
 	"strings"
 )
 
-type Range struct {
-	Min float64
-	Max float64
-}
-
 type Slice []float64
-
-func RangeF(min, max float64) Range {
-	return Range{Min: min, Max: max}
-}
 
 func GetAny(i any) (float64, error) {
 	switch n := i.(type) {
