@@ -5,6 +5,7 @@ import (
 	"compress/zlib"
 	"encoding/binary"
 	"encoding/json"
+	"hash/crc32"
 	"io"
 	"io/ioutil"
 
@@ -93,4 +94,30 @@ func Int64ToBytes(n uint64) []byte {
 
 func BytesToInt64(b []byte) uint64 {
 	return binary.LittleEndian.Uint64(b)
+}
+
+// CountReadUntilError reads reader until it is exhausted.
+// if it stops by EOF, no error is returned.
+// it is for draining  a reader just to count it.
+// Can be used to get file size of a file system with only io.Reader access.
+func CountReadUntilError(reader io.Reader) (int64, error) {
+	var count int64
+	buffer := make([]byte, 4096)
+	for {
+		n, err := reader.Read(buffer)
+		count += int64(n)
+		if err != nil {
+			if err == io.EOF {
+				return count, nil
+			}
+			return count, err
+		}
+	}
+}
+
+func CalculateCRC32(data []byte, seed int64) int64 {
+	buf := bytes.NewBuffer(data)
+	crc := crc32.New(crc32.MakeTable(uint32(seed)))
+	io.Copy(crc, buf)
+	return int64(crc.Sum32())
 }
