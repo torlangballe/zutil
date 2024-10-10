@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 
+	"github.com/torlangballe/zutil/zbytes"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -82,6 +83,14 @@ func (m *MultiFS) InsertFirst(f fs.FS, fsname string) {
 	*m = append([]multiRow{row}, *m...)
 }
 
+func CountBytesOfFileInFS(f fs.FS, name string) (int64, error) {
+	file, err := f.Open(name)
+	if err != nil {
+		return 0, err
+	}
+	return zbytes.CountReadUntilError(file)
+}
+
 func ReadBytesFromFileInFS(f fs.FS, name string) ([]byte, error) {
 	file, err := f.Open(name)
 	if err != nil {
@@ -103,6 +112,7 @@ func ReadStringFromFileInFS(f fs.FS, name string) (string, error) {
 	return string(data), nil
 }
 
+// ReaderAtFromFileInFS reads entire file to memory to be able to create a io.ReaderAt
 func ReaderAtFromFileInFS(f fs.FS, name string) (reader io.ReaderAt, length int64, err error) {
 	data, err := ReadBytesFromFileInFS(f, name)
 	if err != nil {
@@ -112,11 +122,16 @@ func ReaderAtFromFileInFS(f fs.FS, name string) (reader io.ReaderAt, length int6
 	return reader, int64(len(data)), nil
 }
 
-func ReaderFromFileInFS(f fs.FS, name string) (reader io.Reader, length int64, err error) {
-	data, err := ReadBytesFromFileInFS(f, name)
+func ReaderFromFileInFS(f fs.FS, name string) (reader io.Reader, err error) {
+	file, err := f.Open(name)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	reader = bytes.NewReader(data)
-	return reader, int64(len(data)), nil
+	return file, nil
+	// data, err := ReadBytesFromFileInFS(f, name)
+	// if err != nil {
+	// 	return nil, 0, err
+	// }
+	// reader = bytes.NewReader(data)
+	// return reader, int64(len(data)), nil
 }
