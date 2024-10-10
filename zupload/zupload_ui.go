@@ -220,6 +220,7 @@ func (v *UploadView) addUploadButton() {
 }
 
 func (v *UploadView) CallHTTUpload(up UploadPayload, data []byte) {
+	// TODO: Use zhttp_file.go routines
 	var result zdict.Dict
 	params := zhttp.MakeParameters()
 	args := map[string]string{
