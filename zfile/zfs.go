@@ -9,7 +9,6 @@ import (
 	"io/fs"
 
 	"github.com/torlangballe/zutil/zbytes"
-	"github.com/torlangballe/zutil/zlog"
 )
 
 type multiRow struct {
@@ -56,7 +55,6 @@ func CanOpenInFS(f fs.FS, filename string) bool {
 func (m MultiFS) Stat(filename string) (fs.FileInfo, string, error) {
 	for _, f := range m {
 		stat, got := f.FS.(fs.StatFS)
-		zlog.Info("fs.Stat1", stat, got, filename)
 		if !got {
 			continue
 		}
