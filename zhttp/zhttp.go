@@ -119,35 +119,43 @@ func Put(surl string, params Parameters, send, receive any) (resp *http.Response
 func SendBody(surl string, params Parameters, send, receive any) (*http.Response, error) {
 	// start := time.Now()
 	var err error
-	bout, got := send.([]byte)
-	if got {
-		if params.ContentType == "" {
-			params.ContentType = "raw"
-		}
+	if send != nil {
+		zlog.Assert(params.Body == nil && params.Reader == nil)
+	}
+	zlog.Assert(!(send != nil && params.Body != nil || params.Reader != nil))
+	if params.Body != nil {
+		params.ContentType = "raw"
 	} else {
-		m, got := send.(map[string]string)
+		bout, got := send.([]byte)
 		if got {
-			bout = []byte(zstr.GetArgsAsURLParameters(m))
 			if params.ContentType == "" {
-				params.ContentType = "application/x-www-form-urlencoded"
+				params.ContentType = "raw"
 			}
 		} else {
-			reader, got := send.(io.Reader)
+			m, got := send.(map[string]string)
 			if got {
-				params.Reader = reader
-			} else {
-				bout, err = json.Marshal(send)
-				if err != nil {
-					return nil, zlog.Error("marshal", err)
+				bout = []byte(zstr.GetArgsAsURLParameters(m))
+				if params.ContentType == "" {
+					params.ContentType = "application/x-www-form-urlencoded"
 				}
-				// zlog.Info("SendBody:", surl, string(bout))
-			}
-			if params.ContentType == "" {
-				params.ContentType = "application/json"
+			} else {
+				reader, got := send.(io.Reader)
+				if got {
+					params.Reader = reader
+				} else {
+					bout, err = json.Marshal(send)
+					if err != nil {
+						return nil, zlog.Error("marshal", err)
+					}
+					// zlog.Info("SendBody:", surl, string(bout))
+				}
+				if params.ContentType == "" {
+					params.ContentType = "application/json"
+				}
 			}
 		}
+		params.Body = bout
 	}
-	params.Body = bout
 	resp, _, err := SendBytesOrFromReader(surl, params)
 	// if err != nil {
 	// 	zlog.Warn("SendBytesOrFromReader:", err)
@@ -795,8 +803,8 @@ func SendForFile(surl string, crc, length int64, params Parameters) error {
 		length = int64(len(params.Body))
 	}
 	params.TimeoutSecs = 300
-	params.Headers["X-ZCRC"] = fmt.Sprint(crc)
-	params.Headers["Content-Length"] = fmt.Sprint(length)
+	params.Headers["X-Zcrc"] = fmt.Sprint(crc)
+	params.Headers["Content-Length"] = fmt.Sprint(length) // we set it here in case we still have a reader but know it
 	_, err = Post(surl, params, nil, nil)
 	return err
 }

@@ -24,18 +24,19 @@ func ReceiveToFile(req *http.Request, toPath string, inTemp bool) (path string, 
 	if err != nil {
 		return path, err
 	}
+	defer file.Close()
 	crcWriter := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 	multi := io.MultiWriter(file, crcWriter)
-	defer file.Close()
 	n, err := io.Copy(multi, req.Body)
 	if err != nil {
 		return path, zlog.Error("copy from request to file/crc", err)
 	}
+	req.Body.Close()
 	conLen, cerr := GetContentLengthFromHeader(req.Header)
 	calcCRC := int64(crcWriter.Sum32())
-	headerCRC, perr := strconv.ParseInt(req.Header.Get("X-ZCRC"), 10, 64)
-	if calcCRC == 0 || perr != nil || cerr != nil || calcCRC != headerCRC || conLen != n {
-		return path, zlog.Error("incomplete upload", headerCRC, "!=", calcCRC, perr)
+	headerCRC, perr := strconv.ParseInt(req.Header.Get("X-Zcrc"), 10, 64)
+	if conLen != n || calcCRC == 0 || perr != nil || cerr != nil || calcCRC != headerCRC || conLen != n {
+		return path, zlog.Error("incomplete upload. crc:", headerCRC, calcCRC, "len:", conLen, n, perr, cerr, path, req.Header)
 	}
 	return path, nil
 }
