@@ -42,10 +42,6 @@ func RectFromXY2(x, y, x2, y2 float64) Rect {
 	return Rect{PosD(x, y), SizeD(x2-x, y2-y)}
 }
 
-func RectFromPosSize(x, y, w, h float64) Rect {
-	return Rect{Pos: PosD(x, y), Size: SizeD(w, h)}
-}
-
 func RectFromMarginSize(m Size) Rect {
 	return RectFromXY2(m.W, m.H, -m.W, -m.H)
 }
