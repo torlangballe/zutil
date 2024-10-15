@@ -63,6 +63,55 @@ func (crc *CRCommander) CC(c *zcommands.CommandInfo) string {
 	return ""
 }
 
+func (crc *CRCommander) outputRowsTableHeader(tabs *zstr.TabWriter) {
+	fmt.Fprint(tabs, zstr.EscGreen, "chunk\tindex\t")
+	if crc.chunkedRows.opts.HasIncreasingIDFirstInRow {
+		fmt.Fprint(tabs, "id\t")
+	}
+	if crc.chunkedRows.opts.OrdererOffset != 0 {
+		if crc.OrdererIsTime {
+			fmt.Fprint(tabs, "time\t")
+		} else {
+			fmt.Fprint(tabs, "orderer\t")
+		}
+	}
+	for _, col := range crc.otherColumns {
+		fmt.Fprint(tabs, col.header, "\t")
+	}
+	if crc.chunkedRows.opts.MatchIndexOffset != 0 {
+		fmt.Fprint(tabs, "text\t")
+	}
+	fmt.Fprint(tabs, zstr.EscNoColor, "\n")
+}
+
+func (crc *CRCommander) Row(c *zcommands.CommandInfo, a struct {
+	ID int64 `zui:"desc:row ID to show"`
+}) string {
+	switch c.Type {
+	case zcommands.CommandExpand:
+		return ""
+	case zcommands.CommandHelp:
+		return "lists rows in the table"
+	}
+	w := c.Session.TermSession.Writer()
+	tabs := zstr.NewTabWriter(w)
+	tabs.MaxColumnWidth = 60
+	isIDOrderer := true
+	rowBytes, chunkIndex, rowIndex, exact, err := crc.chunkedRows.BinarySearch(a.ID, isIDOrderer)
+	if err != nil {
+		fmt.Fprintln(w, zstr.EscMagenta, err, zstr.EscNoColor)
+		return ""
+	}
+	if !exact {
+		fmt.Fprintln(w, zstr.EscMagenta, "id", a.ID, "not found")
+		return ""
+	}
+	crc.outputRowsTableHeader(tabs)
+	crc.outputRow(c, tabs, rowBytes, chunkIndex, rowIndex)
+	tabs.Flush()
+	return ""
+}
+
 func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
 	ChunkIndex *int    `zui:"title:ci,desc:Start Chunk"`
 	Index      *int    `zui:"title:i,desc:Start Index"`
@@ -103,24 +152,7 @@ func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
 	tabs.MaxColumnWidth = 60
 
 	start := time.Now()
-	fmt.Fprint(tabs, zstr.EscGreen, "chunk\tindex\t")
-	if crc.chunkedRows.opts.HasIncreasingIDFirstInRow {
-		fmt.Fprint(tabs, "id\t")
-	}
-	if crc.chunkedRows.opts.OrdererOffset != 0 {
-		if crc.OrdererIsTime {
-			fmt.Fprint(tabs, "time\t")
-		} else {
-			fmt.Fprint(tabs, "orderer\t")
-		}
-	}
-	for _, col := range crc.otherColumns {
-		fmt.Fprint(tabs, col.header, "\t")
-	}
-	if crc.chunkedRows.opts.MatchIndexOffset != 0 {
-		fmt.Fprint(tabs, "text\t")
-	}
-	fmt.Fprint(tabs, zstr.EscNoColor, "\n")
+	crc.outputRowsTableHeader(tabs)
 	i := 0
 	totalRows, err := crc.chunkedRows.Iterate(crc.lastChunkIndex, crc.lastIndex, forward, match, func(row []byte, chunkIndex, index int) bool {
 		crc.outputRow(c, tabs, row, chunkIndex, index)
@@ -131,7 +163,7 @@ func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
 	})
 	tabs.Flush()
 	if err != nil {
-		fmt.Fprintln(tabs, zstr.EscMagenta, err, zstr.EscNoColor)
+		fmt.Fprintln(w, zstr.EscMagenta, err, zstr.EscNoColor)
 		return ""
 	}
 	prompt := ""
@@ -312,7 +344,7 @@ func (crc *CRCommander) Chunk(c *zcommands.CommandInfo, a struct {
 
 	cr := crc.chunkedRows
 	if a.ChunkIndex < cr.bottomChunkIndex || a.ChunkIndex > cr.topChunkIndex {
-		fmt.Fprintln(w, "Chunk Index of of bounds:", a.ChunkIndex, "[", cr.bottomChunkIndex, "-", cr.topChunkIndex, "]")
+		fmt.Fprintln(w, "Chunk Index out of bounds:", a.ChunkIndex, "[", cr.bottomChunkIndex, "-", cr.topChunkIndex, "]")
 		return ""
 	}
 	fpath := cr.chunkFilepath(a.ChunkIndex, isRows)
