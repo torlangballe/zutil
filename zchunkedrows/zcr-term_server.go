@@ -186,7 +186,7 @@ func (crc *CRCommander) orderToString(row []byte) string {
 	o := int64(binary.LittleEndian.Uint64(row[crc.chunkedRows.opts.OrdererOffset:]))
 	if crc.OrdererIsTime {
 		t := time.UnixMicro(o)
-		return ztime.GetNiceSubSecs(t, true, 3) + "\t"
+		return ztime.GetNiceSubSecs(t, 3) + "\t"
 	}
 	return fmt.Sprint(o, "\t")
 }
@@ -207,7 +207,7 @@ func (crc *CRCommander) outputRow(c *zcommands.CommandInfo, tabs *zstr.TabWriter
 		}
 		if col.isTime {
 			t := time.UnixMicro(n)
-			fmt.Fprint(tabs, ztime.GetNiceSubSecs(t, true, 3), "\t")
+			fmt.Fprint(tabs, ztime.GetNiceSubSecs(t, 3), "\t")
 			continue
 		}
 		if len(col.names) != 0 {

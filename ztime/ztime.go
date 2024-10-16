@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -141,11 +142,18 @@ func IsBigTime(t time.Time) bool {
 	return t.UTC() == BigTime
 }
 
+// GetNice returns a nice looking time with relative day.
 func GetNice(t time.Time, secs bool) string {
-	return GetNiceSubSecs(t, secs, 0)
+	subSecs := -1
+	if secs {
+		subSecs = 0
+	}
+
+	return GetNiceSubSecs(t, subSecs)
 }
 
-func GetNiceSubSecs(t time.Time, secs bool, subSecs int) string {
+// GetNiceSubSecs is like GetNice, but adds seconds is subSecs >= 0, and sub-second decimals if > 0
+func GetNiceSubSecs(t time.Time, subSecs int) string {
 	var str string
 	if t.IsZero() {
 		return "null"
@@ -155,7 +163,7 @@ func GetNiceSubSecs(t time.Time, secs bool, subSecs int) string {
 	}
 
 	f := "15:04"
-	if secs {
+	if subSecs != -1 {
 		f += ":05"
 		if subSecs > 0 {
 			f += "." + strings.Repeat("0", subSecs)
@@ -358,7 +366,7 @@ func GetDurationString(d time.Duration, secs, mins, hours bool, subDigits int) (
 	return
 }
 
-func GetNiceIncsOf(start, stop time.Time, incCount int) (inc time.Duration, first time.Time) {
+func GetNiceIncsOf(start, stop time.Time, incCount int) (inc, bigInc time.Duration, first time.Time) {
 	diff := stop.Sub(start)
 	parts := []time.Duration{time.Second, time.Minute, time.Hour, Day}
 
@@ -375,25 +383,46 @@ func GetNiceIncsOf(start, stop time.Time, incCount int) (inc time.Duration, firs
 			bi = i
 		}
 	}
+	ch := -1
+	cm := -1
 	part := parts[bi]
 	bestPart := float64(diff) / float64(part)
 	i := math.Max(1.0, math.Round(bestPart/float64(incCount)))
+	var big float64
 	switch part {
-	case time.Second, time.Minute:
-		i = zmath.GetClosestTo(i, []float64{1, 2, 5, 10, 15, 20, 30})
+	case time.Second:
+		i, big = getClosestAnd2Bigger(i, []float64{1, 2, 5, 10, 15, 20, 30})
+	case time.Minute:
+		cm = 0
+		i, big = getClosestAnd2Bigger(i, []float64{1, 2, 5, 10, 15, 20, 30})
 	case time.Hour:
-		i = zmath.GetClosestTo(i, []float64{1, 2, 3, 6, 12, 24})
+		cm = 0
+		i, big = getClosestAnd2Bigger(i, []float64{1, 2, 3, 6, 12, 24})
 	}
-	s := ChangedPartsOfTime(start, 0, 0, 0, 0)
-	// u := s.Unix()
-	// ui := int64((time.Duration(i) * part) / time.Second)
-	// mod := u % ui
-	// n := u + (ui - mod)
-	// first = time.Unix(n, 0).In(start.Location())
-	first = s
-	// zlog.Info("best:", i, part, s)
+	s := ChangedPartsOfTime(start, ch, cm, 0, 0)
 	inc = time.Duration(i) * part
-	return
+	bigInc = time.Duration(big) * part
+	first = s
+	for !s.After(start) {
+		first = s
+		s = s.Add(bigInc)
+	}
+	return inc, bigInc, first
+}
+
+func getClosestAnd2Bigger(n float64, parts []float64) (close, bigger float64) {
+	close = zmath.GetClosestTo(n, parts)
+	bigger = close
+	i := slices.Index(parts, close)
+	for c := 0; c < 2; c++ {
+		if i < len(parts) {
+			i++
+			bigger = parts[i]
+		} else {
+			bigger *= 2
+		}
+	}
+	return close, bigger
 }
 
 type DurationStruct struct {
