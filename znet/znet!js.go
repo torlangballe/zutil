@@ -307,7 +307,10 @@ func ServeHTTPInBackground(address string, certificatesStubPath string, handler 
 	s.Server.Handler = handler
 	s.Server.ReadTimeout = 60 * time.Second
 	s.Server.WriteTimeout = 60 * time.Second
-	s.Server.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	s.Server.TLSConfig = &tls.Config{
+		InsecureSkipVerify: true,
+		// ClientAuth: tls.RequireAndVerifyClientCert, -- this was to test if clients need certificates
+	}
 	s.doneChannel = make(chan bool, 100)
 	var fCRT, fKey string
 	if certificatesStubPath != "" {
