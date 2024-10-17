@@ -13,6 +13,8 @@ import (
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztesting"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -20,9 +22,10 @@ import (
 const rowSize = 24
 
 type Event struct {
-	ID   int64
-	Time int64
-	Text string
+	ID    int64
+	Time  int64
+	Text  string
+	Other string
 }
 
 func (e Event) GetLowerCaseMatchContent() string {
@@ -257,8 +260,66 @@ func testDeleteOldChunk(t *testing.T) {
 	ztesting.Equal(t, sumAfter, 20, "20 after delete")
 }
 
+func testAddReadStress(t *testing.T) {
+	zlog.Warn("testAddReadStress")
+	opts := DefaultLSOpts
+	opts.RowsPerChunk = 2000
+	opts.RowByteSize = rowSize
+	opts.OrdererOffset = 8
+	opts.MatchIndexOffset = 16
+	opts.AuxIndexOffset = 20
+	opts.DirPath = zfile.CreateTempFilePath("zchunkedrows-test")
+	chunkedRows := New(opts)
+
+	stillAdding := true
+	var added []Event
+
+	go func(still *bool, addedPtr *[]Event) {
+		var count int
+		for *still {
+			if len(*addedPtr) == 0 {
+				continue
+			}
+			r := zslice.Random(*addedPtr)
+			rowBytes, ci, ri, exact, err := chunkedRows.BinarySearch(r.ID, true)
+			if err != nil {
+				t.Error(err, r.ID)
+				return
+			}
+			if !exact {
+				t.Error("couldnt't find added exact:", r.ID, ci, ri)
+				return
+			}
+			var ge Event
+			err = chunkedRows.GetAuxData(ci, rowBytes, &ge)
+			if err != nil {
+				t.Error(err, r.ID, len(rowBytes), ci)
+				return
+			}
+			if ge != r {
+				t.Error("not same:", zlog.Full(ge), zlog.Full(r))
+				return
+			}
+			count++
+			if count%100 == 0 {
+				zlog.Warn(count, "gotten while adding")
+			}
+		}
+	}(&stillAdding, &added)
+	for i := 0; i < 10000; i++ {
+		e := &Event{Time: int64(i + 1), Text: zstr.GenerateRandomHexBytes(33), Other: zstr.GenerateRandomHexBytes(20)}
+		row := makeEventBytes(*e)
+		chunkedRows.Add(row, e)
+		added = append(added, *e)
+		if len(added) > 50 {
+			added = added[:50]
+		}
+	}
+	stillAdding = false
+}
+
 func testBadOrder(t *testing.T) {
-	const count = 100
+	const count = 10000
 	zlog.Warn("testBadOrder")
 	chunkedRows := makeChunkedRows("")
 	now := time.Now()
@@ -292,4 +353,5 @@ func TestAll(t *testing.T) {
 	testCorruption(t)
 	testDeleteOldChunk(t)
 	testBadOrder(t)
+	testAddReadStress(t)
 }

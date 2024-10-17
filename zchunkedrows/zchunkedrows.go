@@ -503,7 +503,7 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 		auxPos, err = cr.appendToChunkMMap(cr.topChunkIndex, isAux, auxBytes)
 		if err != nil {
 			cr.truncateChunk(isMatch, cr.topChunkIndex, matchPos)
-			return 0, zlog.Error(err, cr.topChunkIndex)
+			return 0, zlog.Error(err, cr.topChunkIndex, auxBytes != nil)
 		}
 	}
 
@@ -661,6 +661,9 @@ func (cr *ChunkedRows) getChunkRowCount(chunkIndex int) (top int, hasBadChunkAbo
 }
 
 func (cr *ChunkedRows) GetAuxData(chunkIndex int, row []byte, dataPtr any) error {
+	cr.lock.Lock()
+	defer cr.lock.Unlock()
+
 	bjson, _, err := cr.getLineFromChunk(chunkIndex, cr.opts.AuxIndexOffset, isAux, row)
 	if err != nil {
 		return zlog.Error(err, chunkIndex)
@@ -730,7 +733,6 @@ func (cr *ChunkedRows) readRow(index int, bytes []byte, mmap *mmap.File) error {
 }
 
 func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match string, got func(row []byte, chunkIndex, index int) bool) (totalRows int, err error) {
-	zlog.Info("ChunkedRows.Iterate", startChunkIndex, index, forward, match)
 	if cr.isEmpty() {
 		return 0, nil
 	}
