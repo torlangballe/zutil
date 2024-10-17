@@ -104,7 +104,7 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 		endDraw = endDraw.Add(inc)
 	}
 	// drawTicks(canvas, rect, t, end, inc)
-	zlog.Info("niceincs:", inc, t, labelStart, "start:", start, end.Sub(start))
+	// zlog.Info("niceincs:", inc, t, labelStart, "start:", start, end.Sub(start))
 	y := rect.Max().Y
 	for !t.After(endDraw) {
 		x := TimeToX(rect, t, start, end)
