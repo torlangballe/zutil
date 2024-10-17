@@ -35,7 +35,7 @@ func ReceiveToFile(req *http.Request, toPath string, inTemp bool) (path string, 
 	conLen, cerr := GetContentLengthFromHeader(req.Header)
 	calcCRC := int64(crcWriter.Sum32())
 	headerCRC, perr := strconv.ParseInt(req.Header.Get("X-Zcrc"), 10, 64)
-	if conLen != n || calcCRC == 0 || perr != nil || cerr != nil || calcCRC != headerCRC || conLen != n {
+	if conLen != n || calcCRC == 0 || perr != nil || cerr != nil || calcCRC != headerCRC {
 		return path, zlog.Error("incomplete upload. crc:", headerCRC, calcCRC, "len:", conLen, n, perr, cerr, path, req.Header)
 	}
 	return path, nil
