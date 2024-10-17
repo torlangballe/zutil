@@ -415,7 +415,7 @@ func getClosestAnd2Bigger(n float64, parts []float64) (close, bigger float64) {
 	bigger = close
 	i := slices.Index(parts, close)
 	for c := 0; c < 2; c++ {
-		if i < len(parts) {
+		if i < len(parts)-1 {
 			i++
 			bigger = parts[i]
 		} else {
