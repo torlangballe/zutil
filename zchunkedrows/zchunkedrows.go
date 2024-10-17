@@ -546,7 +546,7 @@ func (cr *ChunkedRows) truncateChunk(cType chunkType, chunkIndex int, toPos int6
 }
 
 func (cr *ChunkedRows) deleteChunk(i int) error {
-	zlog.Warn("zchunkedrows.delChunk:", i)
+	// zlog.Warn("zchunkedrows.delChunk:", i)
 	cr.closeMaps(i, true)
 	if i == cr.bottomChunkIndex {
 		cr.bottomChunkIndex++
@@ -660,10 +660,7 @@ func (cr *ChunkedRows) getChunkRowCount(chunkIndex int) (top int, hasBadChunkAbo
 	return top, hasBadChunkAbove
 }
 
-func (cr *ChunkedRows) GetAuxData(chunkIndex int, row []byte, dataPtr any) error {
-	cr.lock.Lock()
-	defer cr.lock.Unlock()
-
+func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr any) error {
 	bjson, _, err := cr.getLineFromChunk(chunkIndex, cr.opts.AuxIndexOffset, isAux, row)
 	if err != nil {
 		return zlog.Error(err, chunkIndex)
@@ -673,6 +670,13 @@ func (cr *ChunkedRows) GetAuxData(chunkIndex int, row []byte, dataPtr any) error
 		return zlog.Error(err, chunkIndex, zstr.Head(string(bjson), 200))
 	}
 	return nil
+}
+
+func (cr *ChunkedRows) GetAuxData(chunkIndex int, row []byte, dataPtr any) error {
+	cr.lock.Lock()
+	err := cr.GetAuxDataUnlocked(chunkIndex, row, dataPtr)
+	cr.lock.Unlock()
+	return err
 }
 
 func (cr *ChunkedRows) getMatchStr(chunkIndex int, row []byte) (string, error) {
