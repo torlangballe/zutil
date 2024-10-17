@@ -261,6 +261,7 @@ func testDeleteOldChunk(t *testing.T) {
 }
 
 func testAddReadStress(t *testing.T) {
+	const max = 10_000
 	zlog.Warn("testAddReadStress")
 	opts := DefaultLSOpts
 	opts.RowsPerChunk = 2000
@@ -301,12 +302,12 @@ func testAddReadStress(t *testing.T) {
 				return
 			}
 			count++
-			if count%100 == 0 {
-				zlog.Warn(count, "gotten while adding")
-			}
+		}
+		if count < max {
+			t.Error("should read at least as many as add:", count, max)
 		}
 	}(&stillAdding, &added)
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < max; i++ {
 		e := &Event{Time: int64(i + 1), Text: zstr.GenerateRandomHexBytes(33), Other: zstr.GenerateRandomHexBytes(20)}
 		row := makeEventBytes(*e)
 		chunkedRows.Add(row, e)
