@@ -714,6 +714,7 @@ func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType,
 	reader := bufio.NewReader(mm)
 	lineBytes, err = reader.ReadBytes(cr.auxMatchRowEndChar)
 	if err != nil {
+		zlog.Error("chunk read fail:", len(lineBytes), "seek:", i, err)
 		cr.onErrorRemoveChunkMapFileIfFirstGet(chunkIndex, cType)
 		return nil, 0, err
 	}
