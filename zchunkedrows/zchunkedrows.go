@@ -858,14 +858,14 @@ type FS struct {
 	size int64
 }
 
-func (cr *ChunkedRows) DeleteOldChunksThan(old time.Time) error {
+func (cr *ChunkedRows) DeleteChunksOlderThan(old time.Time) error {
 	isIDOrderer := false
 	cr.lock.Lock()
 	defer cr.lock.Unlock()
 	t := old.UnixMicro()
-	zlog.Info("ChunkedRows.DeleteOldChunksThan:", old)
+	zlog.Info("ChunkedRows.DeleteChunksOlderThan:", old)
 	index, cpos, err := cr.binarySearchForChunk(t, cr.bottomChunkIndex, cr.topChunkIndex, isIDOrderer)
-	zlog.Info("ChunkedRows.DeleteOldChunksThan2:", index, cpos, err)
+	zlog.Info("ChunkedRows.DeleteChunksOlderThan2:", index, cpos, err)
 	if err != nil {
 		return zlog.Error(err, t)
 	}
@@ -875,6 +875,6 @@ func (cr *ChunkedRows) DeleteOldChunksThan(old time.Time) error {
 	for i := cr.bottomChunkIndex; i < index; i++ {
 		cr.deleteChunk(i)
 	}
-	// zlog.Warn("DeleteOldChunksThan: left", cr.totalRowCount(), cr.bottomChunkIndex, cr.topChunkIndex)
+	// zlog.Warn("DeleteChunksOlderThan: left", cr.totalRowCount(), cr.bottomChunkIndex, cr.topChunkIndex)
 	return nil
 }

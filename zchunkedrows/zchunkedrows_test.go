@@ -252,7 +252,7 @@ func testDeleteOldChunk(t *testing.T) {
 	}
 	sum := chunkedRows.TotalRowCount()
 	ztesting.Equal(t, sum, 100, "100 before delete")
-	chunkedRows.DeleteOldChunksThan(end.Add(-time.Millisecond * 20))
+	chunkedRows.DeleteChunksOlderThan(end.Add(-time.Millisecond * 20))
 	sumAfter := chunkedRows.TotalRowCount()
 	ztesting.Equal(t, sumAfter, 20, "20 after delete")
 }

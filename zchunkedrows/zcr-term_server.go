@@ -327,7 +327,7 @@ func (crc *CRCommander) DelOld(c *zcommands.CommandInfo, a struct {
 		return ""
 	}
 	zlog.Assert(a.Days != 0)
-	crc.chunkedRows.DeleteOldChunksThan(time.Now().Add(-ztime.Day * time.Duration(a.Days)))
+	crc.chunkedRows.DeleteChunksOlderThan(time.Now().Add(-ztime.Day * time.Duration(a.Days)))
 	return ""
 }
 
