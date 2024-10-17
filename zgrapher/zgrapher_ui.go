@@ -280,7 +280,7 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 	if ticks == 0 {
 		return
 	}
-	inc, begin := ztime.GetNiceIncsOf(start, end, ticks)
+	inc, _, begin := ztime.GetNiceIncsOf(start, end, ticks)
 	// zlog.Warn("drawHours1:", v.Job.ID, start, end, span, inc, ticks, v.SecondsPerPixel)
 	// zlog.Warn("drawHours1:", v.Job.ID, ticks, v.Ticks, w, v.Job.PixelWidth(&v.GrapherBase), begin, end)
 	for t := begin; t.Before(end); t = t.Add(inc) {
