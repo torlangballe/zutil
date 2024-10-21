@@ -61,9 +61,8 @@ func RepeatNow(secs float64, perform func() bool) *Repeater {
 var stopped int
 
 func (r *Repeater) Set(secs float64, now bool, perform func() bool) {
-	// zlog.Info("Repeat:", secs, zlog.GetCallingStackString())
 	if r.ticker != nil {
-		r.Stop()
+		r.ticker.Stop()
 	}
 	invokeFunc := zdebug.FileLineAndCallingFunctionString(4, true)
 	r.ticker = time.NewTicker(secs2Dur(secs))
