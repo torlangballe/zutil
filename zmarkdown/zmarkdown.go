@@ -296,7 +296,7 @@ func (m *MarkdownConverter) SetOSSpecificDocKeyValues(os zdevice.OSType) {
 		metaMod = zkeyboard.ModifierCommand
 		altName = "Option"
 	}
-	m.Variables["ZMetaModifier"] = zkeyboard.GetModifiersString(metaMod)
+	m.Variables["ZMetaModifier"] = metaMod.HumanString()
 	m.Variables["ZAltModifier"] = altName
 }
 
