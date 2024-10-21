@@ -16,7 +16,7 @@ func init() {
 	zrest.WrapForTelemetryFunc = WrapHandler
 }
 
-func EnableRedictTelemetry() {
+func EnableRedirectTelemetry() {
 	//	redirectSecsTelemetry = NewHistogramVec("http_redirect_seconds", []float64{0.05, 0.2, 2}, "Seconds a redirect took", URLBaseLabel)
 	redirectSecsTelemetry = NewGaugeVec("http_redirect_seconds", "Seconds a redirect took", URLBaseLabel)
 }
