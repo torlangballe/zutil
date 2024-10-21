@@ -62,6 +62,10 @@ type StrInt struct {
 	Int int64
 }
 
+func StrInt64(s string, i int64) StrInt {
+	return StrInt{Str: s, Int: i}
+}
+
 func GetLevenshteinRatio(a, b string) float64 { // returns distance / min length of a or b
 	len := float64(zint.Min(len(a), len(b)))
 	return float64(GetLevenshteinDistance(a, b)) / len
