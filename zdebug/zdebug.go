@@ -152,7 +152,7 @@ func StoreAndExitError(err error, exit bool) {
 func LoadStoredRestartContextError() {
 	err := KeyValueGetAndDeleteContextErrorFunc(restartContextErrorKey)
 	// fmt.Printf("LoadStoredRestartContextError %+v\n:", err)
-	if err != nil {
-		HandleRestartFunc(err)
-	}
+	// if err != nil {
+	HandleRestartFunc(err)
+	// }
 }
