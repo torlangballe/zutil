@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -22,10 +23,8 @@ type Size struct {
 
 type Sizes []Size
 
-const UndefValue = math.MaxFloat32
-
 var (
-	SizeUndef = Size{W: UndefValue, H: UndefValue}
+	SizeUndef = Size{W: zfloat.Undefined, H: zfloat.Undefined}
 	SizeNull  Size
 )
 
@@ -133,12 +132,12 @@ func (s Size) Area() float64 {
 }
 
 func (s *Size) Maximize(a Size) {
-	if s.W == UndefValue {
+	if s.W == zfloat.Undefined {
 		s.W = a.W
 	} else {
 		s.W = math.Max(s.W, a.W)
 	}
-	if s.H == UndefValue {
+	if s.H == zfloat.Undefined {
 		s.H = a.W
 	} else {
 		s.H = math.Max(s.H, a.H)
@@ -146,12 +145,12 @@ func (s *Size) Maximize(a Size) {
 }
 
 func (s *Size) Minimize(a Size) {
-	if s.W == UndefValue {
+	if s.W == zfloat.Undefined {
 		s.W = a.W
 	} else {
 		s.W = math.Min(s.W, a.W)
 	}
-	if s.H == UndefValue {
+	if s.H == zfloat.Undefined {
 		s.H = a.W
 	} else {
 		s.H = math.Min(s.H, a.H)

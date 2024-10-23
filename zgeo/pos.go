@@ -8,6 +8,7 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zstr"
@@ -19,7 +20,7 @@ type Pos struct {
 }
 
 var (
-	PosUndef = PosD(UndefValue, UndefValue)
+	PosUndef = PosD(zfloat.Undefined, zfloat.Undefined)
 	PosNull  Pos
 )
 

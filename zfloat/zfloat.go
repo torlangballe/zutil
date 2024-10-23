@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const Undefined = math.MaxFloat32
+
 type Slice []float64
 
 func GetAny(i any) (float64, error) {
