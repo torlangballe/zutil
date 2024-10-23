@@ -1087,22 +1087,6 @@ func GetParametersFromURLArgString(str string) map[string]string {
 	return GetParametersFromArgString(str, "&", "=")
 }
 
-// func ReverseSlice(ss *[]string) {
-// 	last := len(*ss) - 1
-// 	for i := 0; i < len(*ss)/2; i++ {
-// 		(*ss)[i], (*ss)[last-i] = (*ss)[last-i], (*ss)[i]
-// 	}
-// }
-
-// func ReversedSlice(ss []string) []string {
-// 	end := len(ss)
-// 	out := make([]string, end)
-// 	for i := 0; i < end; i++ {
-// 		out[end-i-1] = ss[i]
-// 	}
-// 	return out
-// }
-
 func Reversed(s string) string {
 	runes := []rune(s)
 	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
