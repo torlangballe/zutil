@@ -219,6 +219,5 @@ func OSVersionNumber() float64 {
 	}
 	n, err := strconv.ParseFloat(snum, 64)
 	zlog.OnError(err, str, snum)
-	return 14
 	return n
 }
