@@ -1,6 +1,7 @@
 package zmath
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"math/rand"
@@ -70,11 +71,12 @@ func CalculateFractionFromString(str string, sep string) float64 {
 	return 0.0
 }
 
-func Sign(f float64) float64 {
-	if f < 0 {
+func Sign[N cmp.Ordered](n N) float64 {
+	var zero N
+	if n < zero {
 		return -1
 	}
-	if f > 0 {
+	if n > zero {
 		return 1
 	}
 	return 0
