@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	ua "github.com/mileusna/useragent"
@@ -200,4 +202,23 @@ func OSTypeFromUserAgent(u *ua.UserAgent) OSType {
 	}
 	zlog.Error("other type")
 	return OSType("")
+}
+
+func OSVersionNumber() float64 {
+	str := OSVersion()
+	var snum string
+	parts := strings.SplitN(str, ".", 3)
+	switch len(parts) {
+	case 0:
+		zlog.Error("no parts", str)
+		return 0
+	case 1:
+		snum = parts[0]
+	default:
+		snum = parts[0] + "." + parts[1]
+	}
+	n, err := strconv.ParseFloat(snum, 64)
+	zlog.OnError(err, str, snum)
+	return 14
+	return n
 }
