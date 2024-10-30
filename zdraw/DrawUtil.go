@@ -91,21 +91,23 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 	oldDay := -1
 	oldHour := -1
 	oldMin := -1
-	parts := int(rect.Size.W / 20)
+	parts := int(rect.Size.W / 80)
 	ti := ztextinfo.New()
 	ti.Font = zgeo.FontNice(12, zgeo.FontStyleNormal)
-	ti.Alignment = zgeo.TopCenter
+	ti.Alignment = zgeo.TopLeft
 
+	// zlog.Info("DrawHorTimeAxis:", parts)
 	inc, labelInc, t := ztime.GetNiceIncsOf(start, end, parts)
 	labelStart := t
 	endDraw := end
 	if beyond {
-		t = t.Add(-inc)
-		endDraw = endDraw.Add(inc)
+		// t = t.Add(-inc)
+		// endDraw = endDraw.Add(inc)
 	}
 	// drawTicks(canvas, rect, t, end, inc)
 	// zlog.Info("niceincs:", inc, t, labelStart, "start:", start, end.Sub(start))
 	y := rect.Max().Y
+	endTextX := -1000.0
 	for !t.After(endDraw) {
 		x := TimeToX(rect, t, start, end)
 		if x >= rect.Max().X {
@@ -120,36 +122,44 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 		}
 		canvas.SetColor(col)
 		canvas.StrokeVertical(x, y-7, y, 1, zgeo.PathLineSquare)
-		// if isLabel {
 		secs := (inc < time.Minute)
+		ot := t
+		t = t.Add(inc)
+		if x < endTextX || x < 10 {
+			continue
+		}
 		var str string
-		if x > rect.Min().X+30 && t.Day() != oldDay {
+		if ot.Day() != oldDay {
+			col = zgeo.ColorBlack
 			str = ztime.GetNice(t, secs)
-			oldDay = t.Day()
-			oldHour = t.Hour()
-			oldMin = t.Minute()
+			oldDay = ot.Day()
+			oldHour = ot.Hour()
+			oldMin = ot.Minute()
 		} else {
 			var f []string
-			if isLabel && t.Hour() != oldHour {
+			if isLabel && ot.Hour() != oldHour {
 				f = append(f, "15")
-				oldHour = t.Hour()
+				oldHour = ot.Hour()
 			}
-			if t.Minute() != oldMin {
+			if ot.Minute() != oldMin {
 				f = append(f, "04")
-				oldMin = t.Minute()
+				oldMin = ot.Minute()
 			}
 			if secs {
 				f = append(f, "05")
 			}
-			str = t.Format(strings.Join(f, ":"))
+			str = ot.Format(strings.Join(f, ":"))
 		}
 		// zlog.Info("time:", str, x, rect.Max().Y-18)
-		ti.Text = str
-		pos := zgeo.PosD(x, rect.Max().Y-9)
-		ti.Rect = zgeo.RectFromCenterSize(pos, zgeo.SizeD(300, 20))
 		ti.Color = col
-		ti.Draw(canvas)
-		// }
-		t = t.Add(inc)
+		ti.Text = str
+		// zlog.Info("LABEL:", t.Day(), oldDay, str)
+		pos := zgeo.PosD(x-10, 4)
+		ti.Rect = zgeo.Rect{Pos: pos, Size: zgeo.SizeD(300, 20)}
+		s, _, _ := ti.GetBounds()
+		r := zgeo.RectFromCenterSize(pos, s)
+		if r.Pos.X > endTextX+10 {
+			endTextX = ti.Draw(canvas).Max().X
+		}
 	}
 }
