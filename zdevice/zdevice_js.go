@@ -13,6 +13,7 @@ import (
 // https://developer.mozilla.org/en-US/docs/Web/API/Navigator - info about browser/dev
 
 var userAgent *ua.UserAgent
+var CurrentWasmBrowser = WasmBrowser()
 
 func init() {
 	if OS() == MacOSType && WasmBrowser() == "safari" {
