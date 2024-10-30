@@ -9,7 +9,7 @@ import (
 
 type LayoutCell struct {
 	Alignment        Alignment // Alignment is how cell is placed within parent rect and siblings. If AlignmentNone, it is not placed at all
-	Margin           Size      // Margin is the size around object in cell
+	Margin           Rect      // Margin is the size around object in cell
 	MaxSize          Size      // MaxSize is maximum size of object before margin. Can be only W or H
 	MinSize          Size      // MinSize is minimum size of object before margin. Can be only W or H
 	Collapsed        bool      // Collapsed is a cell that currently is not shown or takes up space.
@@ -103,9 +103,9 @@ func calcPreAddedTotalWidth(debugName string, scells []stackCell, spacing float6
 			continue
 		}
 		w += sc.size.W
-		w += sc.Margin.W
+		w -= sc.Margin.Size.W
 		if sc.Alignment&HorCenter != 0 {
-			w += sc.Margin.W
+			w += sc.Margin.Size.W
 		}
 		if i != 0 {
 			w += spacing
@@ -134,9 +134,9 @@ func calcMaxWidth(debugName string, scells []stackCell, spacing float64) float64
 		} else {
 			w += sc.MaxSize.W
 		}
-		w += sc.Margin.W
+		w += -sc.Margin.Size.W
 		if sc.Alignment&HorCenter != 0 {
-			w += sc.Margin.W
+			w -= sc.Margin.Size.W
 		}
 		if i != 0 {
 			w += spacing
@@ -184,32 +184,32 @@ func getPossibleAdjustments(diff float64, scells []stackCell) []float64 {
 // Each cell is increased based on its current width compared to total
 // it does two passes; First ones with a MaxSize or non-expanding, then rest with what is left.
 // it returns *added*, which is sum of width of all added cells
-func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vertical bool, spacing float64) {
-	width, _, _ := calcPreAddedTotalWidth(debugName, scells, spacing) // space, marg
+func addLeftoverSpaceToWidths(debugName string, r Rect, scells *[]stackCell, vertical bool, spacing float64) {
+	width, _, _ := calcPreAddedTotalWidth(debugName, *scells, spacing) // space, marg
 	diff := r.Size.W - width
 
 	var changed bool
-	for i := 0; i < len(scells); i++ {
-		sc := scells[i]
-		// if debugName == "streamgrid" {
-		// 	zlog.Info(width, diff, "addLeftoverSpaceToWidths:", r, sc.Name, sc.size.W, sc.Margin.W, sc.MaxSize, sc.Alignment)
-		// }
+	for i := 0; i < len(*scells); i++ {
+		sc := (*scells)[i]
 		if sc.ShowIfExtraSpace != 0 {
 			if sc.ShowIfExtraSpace <= diff {
-				scells[i].ShowIfExtraSpace = 0
+				(*scells)[i].ShowIfExtraSpace = 0
 				changed = true
 			} else {
-				zslice.RemoveAt(&scells, i)
+				// if debugName == "57178178" {
+				// 	zlog.Info(width, diff, sc.ShowIfExtraSpace, "addLeftoverSpaceToWidths:", r, sc.Name, sc.size.W, sc.Margin, sc.MaxSize, sc.Alignment)
+				// }
+				zslice.RemoveAt(scells, i)
 				i--
 			}
 		}
 	}
 	if changed {
-		width, _, _ = calcPreAddedTotalWidth(debugName, scells, spacing) // space, marg
+		width, _, _ = calcPreAddedTotalWidth(debugName, *scells, spacing) // space, marg
 		diff = r.Size.W - width
 	}
 	adjustableCount := 0.0
-	adj := getPossibleAdjustments(diff, scells) // this gives us how much each cell might be able to be added to. Note this is more than diff, so after adjusting one, ALL adj must be subtracted by amount added.
+	adj := getPossibleAdjustments(diff, *scells) // this gives us how much each cell might be able to be added to. Note this is more than diff, so after adjusting one, ALL adj must be subtracted by amount added.
 	for _, a := range adj {
 		if a != 0 {
 			adjustableCount++
@@ -221,7 +221,7 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 	ndiff := diff
 	for {
 		adjusted := false
-		for i, sc := range scells {
+		for i, sc := range *scells {
 			subtract := adj[i]
 			if subtract == 0 {
 				continue
@@ -233,7 +233,7 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 			if amount > 0 {
 				// zlog.Info("  addLeftoverSpaceToWidths adjust:", amount, sc.Name, subtract, ndiff)
 				adjusted = true
-				scells[i].size.W = w + subtract
+				(*scells)[i].size.W = w + subtract
 				for j := range adj {
 					adj[j] = max(adj[j]-subtract, 0)
 				}
@@ -247,7 +247,7 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 		}
 	}
 	var biggiesTotalWidth float64
-	for i, sc := range scells {
+	for i, sc := range *scells {
 		if adj[i] != 0 {
 			w := sc.size.W
 			if sc.MaxSize.W != 0 {
@@ -257,32 +257,32 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells []stackCell, vert
 		}
 	}
 	zfloat.Maximize(&biggiesTotalWidth, 1)
-	for i, sc := range scells {
+	for i, sc := range *scells {
 		// zlog.Info("addLeftoverSpaceToWidths2:", sc.Name, adj[i], sc.MinSize, sc.MaxSize, sc.OriginalSize, sc.size)
 		if adj[i] != 0 {
 			w := sc.size.W
 			if sc.MaxSize.W != 0 {
 				zfloat.Minimize(&w, sc.MaxSize.W)
 			}
-			newWidth := scells[i].size.W + w/biggiesTotalWidth*diff
+			newWidth := (*scells)[i].size.W + w/biggiesTotalWidth*diff
 			if sc.MaxSize.W != 0 {
 				zfloat.Minimize(&newWidth, sc.MaxSize.W)
 			}
 			// zlog.Info(vertical, biggiesTotalWidth, diff, "addLeftoverSpaceToWidths biggies:", sc.Name, w, newWidth, sc.MaxSize)
-			scells[i].size.W = newWidth
+			(*scells)[i].size.W = newWidth
 		}
 	}
-	for i, sc := range scells {
+	for i, sc := range *scells {
 		if sc.Divider != 0 {
 			div := sc.Divider
 			div2 := div
-			nsize := scells[i-1].size.W + div
+			nsize := (*scells)[i-1].size.W + div
 			if nsize < 20 {
 				div -= (nsize - 20)
 				div2 = 0
 			}
-			scells[i-1].size.W += div
-			scells[i+1].size.W -= div2
+			(*scells)[i-1].size.W += div
+			(*scells)[i+1].size.W -= div2
 			break
 		}
 	}
@@ -301,8 +301,8 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 	// lastCenterWidth := 0.0
 	var wcenter, wright float64
 	for i, sc := range scells {
-		w := sc.size.W + sc.Margin.W
-		if i != 0 {
+		w := sc.size.W - sc.Margin.Size.W
+		if i != len(scells)-1 { // 0
 			w += spacing
 		}
 		if sc.Alignment&HorCenter != 0 {
@@ -324,10 +324,10 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 			}
 			prevAlign = sc.Alignment
 		}
-		w := sc.size.W + sc.Margin.W
-		if sc.Alignment&HorCenter != 0 {
-			w += sc.Margin.W
-		}
+		w := sc.size.W - sc.Margin.Size.W
+		// if sc.Alignment&HorCenter != 0 {
+		// 	w -= sc.Margin.Size.W
+		// }
 		box := RectFromXYWH(x, r.Min().Y, w, r.Size.H)
 		// TODO: if sc.MaxSize.Y != 0 do something!!!
 		// TODO: MarginIsOffset
@@ -342,8 +342,11 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 			a |= VertShrink
 		}
 		vr := box.AlignPro(sc.OriginalSize, a, sc.Margin, sc.MaxSize, sc.MinSize)
-		// if debugName == "streamgrid" {
-		// 	zlog.Info(sc.size.W, sc.Margin.W, "layoutRectsInBoxes1:", r, sc.Name, box, sc.OriginalSize, sc.MaxSize, sc.MinSize, "vr:", vr)
+		// if debugName == "bar" {
+		// 	zlog.Info(spacing, sc.size.W, sc.Margin.Size.W, "layoutRectsInBoxes1:", r, sc.Name, box, sc.OriginalSize, a, sc.Margin, sc.MaxSize, sc.MinSize, "vr:", vr)
+		// }
+		// // if sc.Name == "Profiles" {
+		// 	zlog.Info(sc.size.W, sc.Margin, "layoutRectsInBoxes1:", r, sc.Name, box, sc.OriginalSize, sc.MaxSize, sc.MinSize, "vr:", vr)
 		// }
 		// zlog.Info("layout:", debugName, "rect:", r, sc.Name, "sc.size:", sc.size, sc.MinSize, "  align:", sc.Alignment, "box:", box, sc.OriginalSize, "=", vr)
 		x = box.Max().X + spacing // was vr.Max!!!
@@ -365,7 +368,7 @@ func LayoutCellsInStack(debugName string, rect Rect, vertical bool, spacing floa
 
 	outRects := make([]Rect, len(cells), len(cells))
 	fillFreeInOutRect(debugName, r, vertical, outRects, &scells)
-	addLeftoverSpaceToWidths(debugName, r, scells, vertical, spacing)
+	addLeftoverSpaceToWidths(debugName, r, &scells, vertical, spacing)
 
 	layoutRectsInBoxes(debugName, r, scells, vertical, spacing, outRects)
 	return outRects
@@ -378,7 +381,7 @@ func LayoutGetCellsStackedSize(debugName string, vertical bool, spacing float64,
 
 	h := 0.0
 	for _, sc := range scells {
-		zfloat.Maximize(&h, sc.size.H+sc.Margin.H*2)
+		zfloat.Maximize(&h, sc.size.H-sc.Margin.Size.H)
 	}
 	s = SizeD(w, h)
 	max = SizeD(maxWidth, 0)
