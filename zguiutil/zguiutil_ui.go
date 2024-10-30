@@ -81,6 +81,7 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 	label.SetFont(font)
 	label.SetColor(zstyle.DefaultFGColor().WithOpacity(0.8))
 	stack = zcontainer.StackViewHor("$labelize.stack." + slabel) // give it special name so not easy to mis-search for in recursive search
+	stack.SetChildrenAboveParent(true)
 	stack.SetSpacing(30)
 	stack.SetMargin(zgeo.RectFromXY2(0, 0, -3, 0))
 	a := zgeo.VertCenter
@@ -142,7 +143,7 @@ func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFra
 			header.SetCorner(4)
 			header.SetBGColor(zgeo.ColorWhite)
 		}
-		stack.AddAdvanced(header, zgeo.TopLeft|zgeo.HorExpand, zgeo.SizeD(0, h), zgeo.SizeNull, 0, false)
+		stack.AddAdvanced(header, zgeo.TopLeft|zgeo.HorExpand, zgeo.RectFromXY2(0, h, 0, 0), zgeo.SizeNull, 0, false)
 		label := zlabel.New(title)
 		label.SetObjectName("title")
 		label.SetMaxWidth(400)
