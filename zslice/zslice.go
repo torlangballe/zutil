@@ -122,11 +122,11 @@ func DeleteFromFunc[S any](s *[]S, del func(s S) bool) {
 	}
 }
 
-func CopyTo(to, slice any) {
+func CopyTo(toPtr, slice any) {
 	sliceVal := reflect.ValueOf(slice)
 	destVal := reflect.MakeSlice(sliceVal.Type(), sliceVal.Len(), sliceVal.Len())
 	reflect.Copy(destVal, sliceVal)
-	toVal := reflect.ValueOf(to)
+	toVal := reflect.ValueOf(toPtr)
 	toVal.Elem().Set(destVal)
 }
 
