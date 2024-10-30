@@ -86,9 +86,9 @@ const char *ImageOfWindow(char *winTitle, char *appBundleID, CGRect insetRect, C
         *cgImagePtr = image;
         dispatch_semaphore_signal(sem);
     });
-//    int64_t timeoutAt = dispatch_time(DISPATCH_TIME_NOW, (int64_t)timeoutSecs * NSEC_PER_SEC);
-    // if (dispatch_semaphore_wait(sem, timeoutAt)) {
-    if (dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER)) {
+   int64_t timeoutAt = dispatch_time(DISPATCH_TIME_NOW, (int64_t)timeoutSecs * NSEC_PER_SEC);
+    if (dispatch_semaphore_wait(sem, timeoutAt)) {
+    // if (dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER)) {
         return "timed out";
     } else if (snapErr != nil) {
             NSLog(@"ImageOfWindow Error: %s %@\n", winTitle, snapErr);
