@@ -1,6 +1,7 @@
 package zgeo
 
 import (
+	"fmt"
 	"image"
 	"math"
 
@@ -44,6 +45,26 @@ func RectFromXY2(x, y, x2, y2 float64) Rect {
 
 func RectFromMarginSize(m Size) Rect {
 	return RectFromXY2(m.W, m.H, -m.W, -m.H)
+}
+
+func RectMarginForSizeAndAlign(marg Size, align Alignment) Rect {
+	var rm Rect
+	if align&Left != 0 {
+		rm = RectFromXY2(marg.W, 0, 0, 0)
+	} else if align&Right != 0 {
+		rm = RectFromXY2(0, 0, -marg.W, 0)
+	} else if align&HorCenter != 0 {
+		rm = RectFromXY2(marg.W, 0, -marg.W, 0)
+	}
+	if align&Top != 0 {
+		rm.SetMinY(marg.H)
+	} else if align&Bottom != 0 {
+		rm.SetMaxY(-marg.H)
+	} else if align&VertCenter != 0 {
+		rm.SetMinY(marg.H)
+		rm.SetMaxY(-marg.H)
+	}
+	return rm
 }
 
 func RectFromWH(w, h float64) Rect {
@@ -115,6 +136,18 @@ func (r *Rect) SetMinX(x float64) {
 func (r *Rect) SetMinY(y float64) {
 	r.Size.H += (r.Pos.Y - y)
 	r.Pos.Y = y
+}
+
+func (r *Rect) IncMax(inc Size) {
+	r.Size.W += inc.W
+	r.Size.H += inc.H
+}
+
+func (r *Rect) IncMin(inc Size) {
+	r.Pos.X += inc.W
+	r.Pos.Y += inc.H
+	r.Size.W -= inc.W
+	r.Size.H -= inc.H
 }
 
 func (r Rect) Center() Pos {
@@ -192,18 +225,21 @@ func (r Rect) Contains(pos Pos) bool {
 }
 
 func (r Rect) Align(s Size, align Alignment, marg Size) Rect {
-	return r.AlignPro(s, align, marg, Size{}, Size{})
+	rm := RectMarginForSizeAndAlign(marg, align)
+	return r.AlignPro(s, align, rm, Size{}, Size{})
 }
 
-func (r Rect) AlignPro(s Size, align Alignment, marg, maxSize, minSize Size) Rect {
+func (r Rect) AlignPro(s Size, align Alignment, rmarg Rect, maxSize, minSize Size) Rect {
 	var x float64
 	var y float64
 	var scalex float64
 	var scaley float64
 
+	r.Add(rmarg)
 	var wa = float64(s.W)
 	var wf = float64(r.Size.W)
 
+	var marg Size
 	if align&MarginIsOffset == 0 {
 		wf -= float64(marg.W)
 		if align&HorCenter != 0 {
@@ -214,9 +250,9 @@ func (r Rect) AlignPro(s Size, align Alignment, marg, maxSize, minSize Size) Rec
 	var ha = float64(s.H)
 	var hf = float64(r.Size.H)
 	//        if (align & (VertShrink|VertExpand)) {
-	if align&MarginIsOffset == 0 {
-		hf -= float64(marg.H * 2.0)
-	}
+	// if align&MarginIsOffset == 0 {
+	// 	hf -= float64(marg.H * 2.0)
+	// }
 	if align&HorExpand != 0 && align&VertExpand != 0 {
 		if align&Proportional == 0 {
 			wa = wf
@@ -489,4 +525,12 @@ func CellsSpanInBox(box Rect, cellSize, spacing Size, cellCount int) (x, y int, 
 	s := cellSize.Times(m).Plus(spacing.Times(m.MinusD(1)))
 	r := box.Align(s, Center, Size{})
 	return columns, rows, r
+}
+
+func (r Rect) MinMax() (Pos, Pos) {
+	return r.Min(), r.Max()
+}
+
+func (r Rect) MM() string {
+	return fmt.Sprint(r.Min(), "_", r.Max())
 }
