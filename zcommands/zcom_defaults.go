@@ -131,7 +131,7 @@ func BaseGetNodes(c *CommandInfo, details bool, mode string, where string) strin
 	for name, n := range nodes {
 		fmt.Fprint(tabs, name, "\t")
 		if !details {
-			do, _ := n.(Descriptor)
+			do, _ := n.(zstr.Describer)
 			if do != nil {
 				fmt.Fprint(tabs, "\t", do.GetDescription())
 			}

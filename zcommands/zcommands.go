@@ -84,10 +84,6 @@ type Initer interface {
 	Init()
 }
 
-type Descriptor interface {
-	GetDescription() string
-}
-
 type ColumnGetter interface {
 	GetColumns() []zstr.KeyValue
 }
@@ -427,7 +423,7 @@ func (s *Session) addChildNodes(where, mode string, forExpand bool, m map[string
 		if len(meths) == 0 {
 			_, no := commander.(NodeOwner)
 			_, io := commander.(Initer)
-			_, do := commander.(Descriptor)
+			_, do := commander.(zstr.Describer)
 			// zlog.Info("Not node?:", parent, commander, each.StructField.Name, no, io, do, reflect.TypeOf(commander))
 			if !no && !io && !do {
 				return true // go to next

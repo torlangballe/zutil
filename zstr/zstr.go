@@ -47,6 +47,10 @@ type URLGetter interface {
 	GetURL() string
 }
 
+type Describer interface {
+	GetDescription() string
+}
+
 // GetLowerCaseMatchContenter returns a lower case string to match an item with in searching, newlines must be replaced with spaces or something.
 type GetLowerCaseMatchContenter interface {
 	GetLowerCaseMatchContent() string
