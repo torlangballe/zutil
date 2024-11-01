@@ -16,8 +16,11 @@ var userAgent *ua.UserAgent
 var CurrentWasmBrowser = WasmBrowser()
 
 func init() {
-	if OS() == MacOSType && WasmBrowser() == "safari" {
+	switch CurrentWasmBrowser {
+	case Safari:
 		zgeo.SetSafariDefaultFont()
+	case Chrome:
+		zgeo.SetChromeDefaultFont()
 	}
 }
 
