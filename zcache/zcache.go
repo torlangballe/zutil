@@ -12,6 +12,7 @@ import (
 
 // TODO: rename fixedExpiry to NonExcedableExpiry?
 // TODO: Allow a redis hookup?
+// TODO: Replace with ExpiringMap instead?
 
 type Releaser interface {
 	Release()
