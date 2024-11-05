@@ -889,7 +889,8 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 		}
 	}
 	if bestExID == s.zeroID {
-		// zlog.Warn("NoWorkersToRunJob:", run.Job.DebugName, str, "loads:", len(load))
+		// zlog.Warn("NoWorkersToRunJob:", run.Job.DebugName, str, "
+		str += " load: " + zlog.Full(load)
 		s.setup.HandleSituationFastFunc(*run, NoWorkersToRunJob, str)
 		return false
 	}
