@@ -19,6 +19,7 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
@@ -99,7 +100,7 @@ func (v *GraphView) Update(secsPerPixel int, windowMinutes int, ticks int, on bo
 		v.Job.WindowMinutes = windowMinutes
 		v.SecondsPerPixel = secsPerPixel
 		v.Ticks = ticks
-		v.TickYRange = zmath.MakeRange(0, float64(v.Job.PixelHeight)/2.5)
+		v.TickYRange = zmath.MakeRange(0, float64(v.Job.PixelHeight)/7) // 2.5
 		// zlog.Info("GraphView.Update", v.Job.ID, v.On, zlog.CallingStackString())
 		if on {
 			v.repeater.Set(float64(v.SecondsPerPixel), true, func() bool {
@@ -280,7 +281,8 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 	if ticks == 0 {
 		return
 	}
-	inc, _, begin := ztime.GetNiceIncsOf(start, end, ticks)
+	zlog.Info("BeforeNice:", start, end, int(v.Rect().Size.W/3))
+	inc, _, _, begin := ztime.NiceAxisIncrements(start, end, int(v.Rect().Size.W/3))
 	// zlog.Warn("drawHours1:", v.Job.ID, start, end, span, inc, ticks, v.SecondsPerPixel)
 	// zlog.Warn("drawHours1:", v.Job.ID, ticks, v.Ticks, w, v.Job.PixelWidth(&v.GrapherBase), begin, end)
 	for t := begin; t.Before(end); t = t.Add(inc) {
