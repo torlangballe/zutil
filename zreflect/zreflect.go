@@ -17,6 +17,7 @@ import (
 )
 
 // https://utcc.utoronto.ca/~cks/space/blog/programming/GoAddressableValues
+// https://bitfieldconsulting.com/posts/constraints -- good about generics constraints
 
 var (
 	TimeType = reflect.TypeOf(time.Time{})
