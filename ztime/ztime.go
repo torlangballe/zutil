@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlocale"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zwords"
 )
@@ -71,14 +69,6 @@ var (
 )
 
 // https://github.com/jinzhu/now -- interesting library for getting start of this minute etc
-
-func NewDiffer() Differ {
-	return Differ(time.Now())
-}
-
-func (d Differ) String() string {
-	return time.Since(time.Time(d)).String()
-}
 
 func (jt *JSONTime) UnmarshalJSON(raw []byte) error {
 	s := strings.Trim(string(raw), "\"")
@@ -366,63 +356,74 @@ func GetDurationString(d time.Duration, secs, mins, hours bool, subDigits int) (
 	return
 }
 
-func GetNiceIncsOf(start, stop time.Time, incCount int) (inc, bigInc time.Duration, first time.Time) {
-	diff := stop.Sub(start)
-	parts := []time.Duration{time.Second, time.Minute, time.Hour, Day}
+type FieldInc struct {
+	Field TimeFieldFlags
+	Step  int
+}
 
-	bi := -1
-	logInc := math.Log(float64(incCount))
-	var best float64
-	for i, p := range parts {
-		mult := float64(diff) / (float64(p) * float64(incCount))
-		log := math.Log(mult)
-		delta := math.Abs(log - logInc)
-		//		zlog.Info(i, incCount, mult, delta, log, logInc)
-		if bi == -1 || delta < best {
-			best = delta
-			bi = i
+func (s FieldInc) Product() time.Duration {
+	return s.Field.Duration() * time.Duration(s.Step)
+}
+
+func (f FieldInc) IsModOfTimeZero(t time.Time) bool {
+	switch f.Field {
+	case TimeFieldHours:
+		return t.Hour()%f.Step == 0 && t.Minute() == 0 && t.Second() == 0
+	case TimeFieldMins:
+		return t.Minute()%f.Step == 0 && t.Second() == 0
+	case TimeFieldSecs:
+		return t.Second()%f.Step == 0
+	}
+	return false
+}
+
+// NiceAxisIncrements returns a FieldInc for the smallest duration to increment ticks or markings.
+// The increment is returned as a Field in seconds, minutes or hours and a step rather than just a single duration, to alow further choices to be made.
+func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc time.Duration, labelInc, fullLabelInc FieldInc, first time.Time) {
+	// zlog.Info("Nice:", stop.Sub(start), incCount)
+	type fieldSteps struct {
+		field TimeFieldFlags
+		steps []int
+	}
+	bestPixelInc := math.MaxInt
+	timeDiff := stop.Sub(start)
+	for _, ss := range []fieldSteps{
+		fieldSteps{TimeFieldHours, []int{24, 12, 6, 3, 2, 1}},
+		fieldSteps{TimeFieldMins, []int{30, 20, 15, 10, 5, 2, 1}},
+		fieldSteps{TimeFieldSecs, []int{30, 20, 15, 10, 5, 2, 1}},
+	} {
+		for _, step := range ss.steps {
+			sdur := ss.field.Duration() * time.Duration(step)
+			// zlog.Info("DUR:", sdur, timeDiff, ss.field.Duration(), step, ss.field)
+			parts := int(timeDiff / (sdur))
+			if parts == 0 {
+				continue
+			}
+			pixelInc := pixelLength / parts
+			if pixelInc < 10 && bestPixelInc != math.MaxInt {
+				continue
+			}
+			if pixelInc < bestPixelInc {
+				// zlog.Info("BEST:", ss.field, step, pixelInc, bestPixelInc)
+				bestPixelInc = pixelInc
+				inc = sdur
+				FieldInc := FieldInc{Field: ss.field, Step: step}
+				if pixelInc > 60 {
+					labelInc = FieldInc
+				}
+				if pixelInc > pixelLength/2 {
+					fullLabelInc = FieldInc
+				}
+			}
 		}
 	}
-	ch := -1
-	cm := -1
-	part := parts[bi]
-	bestPart := float64(diff) / float64(part)
-	i := math.Max(1.0, math.Round(bestPart/float64(incCount)))
-	var big float64
-	switch part {
-	case time.Second:
-		i, big = getClosestAnd2Bigger(i, []float64{1, 2, 5, 10, 15, 20, 30})
-	case time.Minute:
-		cm = 0
-		i, big = getClosestAnd2Bigger(i, []float64{1, 2, 5, 10, 15, 20, 30})
-	case time.Hour:
-		cm = 0
-		i, big = getClosestAnd2Bigger(i, []float64{1, 2, 3, 6, 12, 24})
-	}
-	s := ChangedPartsOfTime(start, ch, cm, 0, 0)
-	inc = time.Duration(i) * part
-	bigInc = time.Duration(big) * part
+	s := ChangedPartsOfTime(start, 0, 0, 0, 0)
 	first = s
 	for !s.After(start) {
 		first = s
-		s = s.Add(bigInc)
+		s = s.Add(inc)
 	}
-	return inc, bigInc, first
-}
-
-func getClosestAnd2Bigger(n float64, parts []float64) (close, bigger float64) {
-	close = zmath.GetClosestTo(n, parts)
-	bigger = close
-	i := slices.Index(parts, close)
-	for c := 0; c < 2; c++ {
-		if i < len(parts)-1 {
-			i++
-			bigger = parts[i]
-		} else {
-			bigger *= 2
-		}
-	}
-	return close, bigger
+	return inc, labelInc, fullLabelInc, first
 }
 
 type DurationStruct struct {
@@ -839,4 +840,64 @@ func ParseDate(date string, location *time.Location, flags TimeFieldFlags) (t ti
 		}
 	}
 	return t, faults, nil
+}
+
+func (f TimeFieldFlags) Duration() time.Duration {
+	switch f {
+	case TimeFieldSecs:
+		return time.Second
+	case TimeFieldMins:
+		return time.Minute
+	case TimeFieldHours:
+		return time.Hour
+	case TimeFieldDays:
+		return Day
+	}
+	return 0
+}
+
+func (f TimeFieldFlags) FieldValue(t time.Time) int {
+	switch f {
+	case TimeFieldSecs:
+		return t.Second()
+	case TimeFieldMins:
+		return t.Minute()
+	case TimeFieldHours:
+		return t.Hour()
+	}
+	return 0
+}
+
+func (f TimeFieldFlags) String() string {
+	switch f {
+	case TimeFieldNone:
+		return "none"
+	case TimeFieldSecs:
+		return "secs"
+	case TimeFieldMins:
+		return "mins"
+	case TimeFieldHours:
+		return "hours"
+	case TimeFieldDays:
+		return "days"
+	case TimeFieldMonths:
+		return "months"
+	case TimeFieldYears:
+		return "years"
+	case TimeFieldAMPM:
+		return "ampm"
+	case TimeFieldDateOnly:
+		return "dateonly"
+	case TimeFieldTimeOnly:
+		return "timeonly"
+	case TimeFieldNoCalendar:
+		return "nocalendar"
+	case TimeFieldShortYear:
+		return "shortyear"
+	case TimeFieldStatic:
+		return "static"
+	case TimeFieldNotFutureIfAmbiguous:
+		return "nfia"
+	}
+	return ""
 }
