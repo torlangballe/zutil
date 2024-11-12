@@ -7,12 +7,19 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 )
 
 const MathDegreesToMeters = (111.32 * 1000)
 const MathMetersToDegrees = 1 / MathDegreesToMeters
+
+type Range[N int | int64 | float64] struct {
+	Valid bool
+	Min   N
+	Max   N
+}
 
 func RadToDeg(rad float64) float64 {
 	return rad * 180 / math.Pi
@@ -169,21 +176,37 @@ func Sigmoid(n float64) float64 {
 	return 1 - (1 / (1 + math.Pow(math.E, n*8-4)))
 }
 
-// GetNiceDividesOf divides d into at most max parts.
+// Normalized returns a number scaled by 10's to be between 0 and 10.
+// So 54321 becomes 5.4321 and 0.0123 becomes 1.23.
+func Normalized(n float64) (norm, scale float64) {
+	if n == 0 {
+		return 0, 0
+	}
+	sign := 1.0
+	if n < 0 {
+		n = -n
+		sign = -1
+	}
+	log := math.Floor(math.Log10(n))
+	scale = math.Pow(10.0, log)
+	norm = n / scale * sign
+	return norm, scale
+}
+
+// NiceDividesOf divides s to e into minimum min parts.
 // Good for dividing a graph into lines to show values on x and y-axis
-func GetNiceDividesOf(d float64, max int, isMemory bool) float64 {
-	l := math.Floor(math.Log10(d))
-	n := math.Pow(10.0, l)
-	if isMemory {
-		n = math.Pow(1024.0, math.Ceil(l/3.0))
-		for d/n > float64(max) {
-			n = n * 2.0
-		}
+func NiceDividesOf(s, e float64, max int, niceIncs []float64) (start, inc float64) {
+	inc = (e - s) / float64(max)
+
+	if niceIncs == nil {
+		niceIncs = []float64{1, 2.5, 5}
 	}
-	for d/n < float64(max) {
-		n = n / 2.0
-	}
-	return n
+	norm, scale := Normalized(inc)
+	nice := GetClosestNotSmaller(norm, niceIncs)
+	inc = nice * scale
+	start = RoundToModF64(s, inc)
+	// zlog.Info("Incs:", s, e, max, "->", inc, norm, nice, start)
+	return start, inc
 }
 
 // EaseInOut makes t "ease in" gradually at 0, and easy out, flattening off near 1.
@@ -251,6 +274,18 @@ func RoundToMod64(n, mod int64) int64 {
 	return n - n%mod
 }
 
+func RoundToModF64(n, mod float64) float64 {
+	return n - math.Mod(n, mod)
+}
+
+func RoundUpToModF64(n, mod float64) float64 {
+	r := math.Mod(n, mod)
+	if r == 0 {
+		return n
+	}
+	return n + (mod - r)
+}
+
 // GetNextOfSliceCombinations takes n slices of values, and the current value of each one.
 // It increments to the next value of first set, or 0th and next of second set etc.
 // Returning all possible combinations of the slices, wrapping to start over again.
@@ -285,6 +320,17 @@ func GetNextOfSliceCombinations[S comparable](sets [][]S, current ...*S) {
 	}
 }
 
+func GetClosestNotSmaller(n float64, to []float64) float64 {
+	best := zfloat.Undefined
+	for _, t := range to {
+		a := t - n
+		if best == zfloat.Undefined || a >= 0 && a < best {
+			best = t
+		}
+	}
+	return best
+}
+
 func GetClosestTo(n float64, to []float64) float64 {
 	best := -1
 	for i, t := range to {
@@ -300,12 +346,6 @@ func Swap[N any](a, b *N) {
 	t := *a
 	*a = *b
 	*b = t
-}
-
-type Range[N int | int64 | float64] struct {
-	Valid bool
-	Min   N
-	Max   N
 }
 
 func MakeRange[N int | int64 | float64](min, max N) Range[N] {
