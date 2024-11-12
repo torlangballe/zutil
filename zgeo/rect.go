@@ -150,8 +150,16 @@ func (r *Rect) IncMin(x, y float64) {
 	r.Size.H -= y
 }
 
+func (r Rect) XCenter() float64 {
+	return r.Pos.X + r.Size.W/2
+}
+
+func (r Rect) YCenter() float64 {
+	return r.Pos.Y + r.Size.H/2
+}
+
 func (r Rect) Center() Pos {
-	return r.Pos.Plus(r.Size.DividedByD(2).Pos())
+	return PosD(r.XCenter(), r.YCenter())
 }
 
 func (r *Rect) SetCenter(c Pos) {
