@@ -2,15 +2,19 @@ package zdraw
 
 import (
 	"image/color"
+	"math"
 	"strings"
 	"time"
 
 	"github.com/torlangballe/zui/zcanvas"
 	"github.com/torlangballe/zui/zimage"
+	"github.com/torlangballe/zui/zstyle"
 	"github.com/torlangballe/zui/ztextinfo"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/ztime"
+	"github.com/torlangballe/zutil/zwords"
 )
 
 func DrawAmountPie(rect zgeo.Rect, canvas *zcanvas.Canvas, value, strokeWidth float64, color, strokeColor zgeo.Color) {
@@ -58,24 +62,6 @@ func MergeImages(box zgeo.Size, images []*zimage.ImageGetter, done func(img *zim
 	})
 }
 
-// func drawTicks(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Time, inc time.Duration) {
-// 	parts := int(rect.Size.W / 30)
-// 	t := start
-// 	if inc == 0 {
-// 		inc, t = ztime.GetNiceIncsOf(start, end, parts)
-// 	}
-// 	// zlog.Info("niceincs:", inc, t, start, end, parts, rect)
-// 	y1 := rect.Max().Y - 5
-// 	y2 := rect.Max().Y
-// 	col := zgeo.ColorNewGray(0, 0.2)
-// 	for end.Sub(t) >= 0 {
-// 		x := TimeToX(rect, t, start, end)
-// 		t = t.Add(inc)
-// 		canvas.SetColor(col)
-// 		canvas.StrokeVertical(x, y1, y2, 1, zgeo.PathLineSquare)
-// 	}
-// }
-
 func XToTime(rect zgeo.Rect, x float64, start, end time.Time) time.Time {
 	tdiff := ztime.DurSeconds(end.Sub(start))
 	dur := ztime.SecondsDur((x - rect.Pos.X) / rect.Size.W * tdiff)
@@ -87,79 +73,229 @@ func TimeToX(rect zgeo.Rect, t, start, end time.Time) float64 {
 	return rect.Min().X + ztime.DurSeconds(t.Sub(start))*rect.Size.W/diff
 }
 
-func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Time, beyond bool) {
+func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Time, fullLabelFirst bool, beyond bool, dark bool) {
 	oldDay := -1
 	oldHour := -1
 	oldMin := -1
-	parts := int(rect.Size.W / 80)
 	ti := ztextinfo.New()
 	ti.Font = zgeo.FontNice(12, zgeo.FontStyleNormal)
 	ti.Alignment = zgeo.TopLeft
 
-	// zlog.Info("DrawHorTimeAxis:", parts)
-	inc, labelInc, t := ztime.GetNiceIncsOf(start, end, parts)
-	labelStart := t
+	col := zgeo.ColorBlack
+	if dark {
+		col = zgeo.ColorLightGray
+	}
+	inc, labelFieldStep, fullLabelFieldStep, t := ztime.NiceAxisIncrements(start, end, int(rect.Size.W))
+	// var labelTime time.Time
+	// zlog.Info("INC:", inc, incScale, incStep)
 	endDraw := end
 	if beyond {
 		// t = t.Add(-inc)
 		// endDraw = endDraw.Add(inc)
 	}
 	// drawTicks(canvas, rect, t, end, inc)
-	// zlog.Info("niceincs:", inc, t, labelStart, "start:", start, end.Sub(start))
 	y := rect.Max().Y
 	endTextX := -1000.0
-	for !t.After(endDraw) {
+	// labelTime = t
+	count := 0
+
+	for !t.After(endDraw.Add(inc * 10)) {
+		count++
+		if count > 10000 { // sanity test
+			zlog.Info("Break")
+			return
+		}
 		x := TimeToX(rect, t, start, end)
 		if x >= rect.Max().X {
 			break
 		}
-		isLabel := (t == labelStart)
-		// zlog.Info("tick:", t, isLabel)
-		col := zgeo.ColorNewGray(0, 0.3)
-		if isLabel {
-			col = zgeo.ColorBlack
-			labelStart = labelStart.Add(labelInc)
+		isLabel := labelFieldStep.IsModOfTimeZero(t)
+		w := 1.0
+		var fullLabel bool
+		if fullLabelFirst {
+			fullLabel = (t.Day() != oldDay)
+		} else {
+			fullLabel = fullLabelFieldStep.IsModOfTimeZero(t)
 		}
-		canvas.SetColor(col)
-		canvas.StrokeVertical(x, y-7, y, 1, zgeo.PathLineSquare)
-		secs := (inc < time.Minute)
-		ot := t
-		t = t.Add(inc)
-		if x < endTextX || x < 10 {
+		strokeCol := col
+		if fullLabel {
+			w = 2
+		} else if !isLabel {
+			strokeCol = strokeCol.WithOpacity(0.3)
+		}
+		canvas.SetColor(strokeCol)
+		canvas.StrokeVertical(x, y-7, y, w, zgeo.PathLineSquare)
+		secs := (inc <= time.Second*10)
+		if x < endTextX+8 {
+			t = t.Add(inc)
 			continue
 		}
 		var str string
-		if ot.Day() != oldDay {
-			col = zgeo.ColorBlack
+		if fullLabel {
+			secs = (fullLabelFieldStep.Field == ztime.TimeFieldSecs)
 			str = ztime.GetNice(t, secs)
-			oldDay = ot.Day()
-			oldHour = ot.Hour()
-			oldMin = ot.Minute()
+			oldDay = t.Day()
+			oldHour = t.Hour()
+			oldMin = t.Minute()
 		} else {
-			var f []string
-			if isLabel && ot.Hour() != oldHour {
-				f = append(f, "15")
-				oldHour = ot.Hour()
+			if !isLabel {
+				t = t.Add(inc)
+				continue
 			}
-			if ot.Minute() != oldMin {
-				f = append(f, "04")
-				oldMin = ot.Minute()
+			var f []string
+			if t.Hour() != oldHour {
+				if oldHour != -1 {
+					f = append(f, "15")
+				}
+				oldHour = t.Hour()
+			}
+			if t.Minute() != oldMin {
+				if oldMin != -1 {
+					str := "04"
+					if len(f) == 0 {
+						str = "04m"
+					}
+					f = append(f, str)
+				}
+				oldMin = t.Minute()
 			}
 			if secs {
-				f = append(f, "05")
+				str := "05"
+				if len(f) == 0 {
+					str = "05s"
+				}
+				f = append(f, str)
 			}
-			str = ot.Format(strings.Join(f, ":"))
+			str = t.Format(strings.Join(f, ":"))
 		}
-		// zlog.Info("time:", str, x, rect.Max().Y-18)
 		ti.Color = col
-		ti.Text = str
-		// zlog.Info("LABEL:", t.Day(), oldDay, str)
-		pos := zgeo.PosD(x-10, 4)
-		ti.Rect = zgeo.Rect{Pos: pos, Size: zgeo.SizeD(300, 20)}
-		s, _, _ := ti.GetBounds()
-		r := zgeo.RectFromCenterSize(pos, s)
-		if r.Pos.X > endTextX+10 {
-			endTextX = ti.Draw(canvas).Max().X
+		if fullLabel {
+			ti.Color = col.MixedColor(zgeo.ColorCyan, 0.5)
 		}
+		ti.Text = str
+		pos := zgeo.PosD(x-10, 4)
+		// if fullLabel {
+		// 	zlog.Info("FullLabel", secs, fullLabelFieldStep, t, x, endTextX, str)
+		// }
+		ti.Rect = zgeo.Rect{Pos: pos, Size: zgeo.SizeD(500, 20)}
+		// s, _, _ := ti.GetBounds()
+		// r := zgeo.RectFromCenterSize(pos, s)
+		// if r.Pos.X > endTextX+10 {
+		endTextX = ti.Draw(canvas).Max().X
+		// }
+		t = t.Add(inc)
+	}
+}
+
+type GraphType string
+
+const (
+	GraphTypeBar  GraphType = "bar"
+	GraphTypeLine GraphType = "line"
+)
+
+type AxisInfo struct {
+	Min               float64
+	Max               float64
+	Color             zgeo.Color
+	StrokeWidth       float64
+	Font              *zgeo.Font
+	LabelAlign        zgeo.Alignment
+	SignificantDigits int
+}
+
+type GraphRow struct {
+	Axis           AxisInfo
+	Type           GraphType
+	Start          time.Time
+	End            time.Time
+	Width          float64
+	GraphColor     zgeo.Color
+	PullValuesFunc func(i *int) (val, x float64, done bool)
+}
+
+func MakeAxisInfo() AxisInfo {
+	return AxisInfo{
+		Color:             zstyle.DefaultFGColor(),
+		StrokeWidth:       1,
+		Font:              zgeo.FontDefault(-2),
+		LabelAlign:        zgeo.Left,
+		SignificantDigits: 1,
+	}
+}
+
+func MakeGraphRow() GraphRow {
+	return GraphRow{
+		Width:      2,
+		GraphColor: zstyle.DefaultFGColor(),
+		Axis:       MakeAxisInfo(),
+	}
+}
+
+func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, canvas *zcanvas.Canvas) {
+	const lines = 6
+	canvas.SetColor(a.Color)
+	y0, inc := zmath.NiceDividesOf(a.Min, a.Max, lines, nil)
+	// zlog.Info("NICEDIVS:", y0, inc, "for", gr.Min, gr.Max, 6)
+	y1 := zmath.RoundUpToModF64(a.Max, inc)
+	a.Font.Size = math.Floor(rect.Size.H / lines)
+	yScale := (y1 - y0) / rect.Size.H
+	// zlog.Info("DrawGraphRow1", y0, y1, yScale, rect.Size.H)
+	for y := y0 + inc; y < y1; y += inc {
+		pixy := rect.Max().Y - (y-y0)/yScale
+		// zlog.Info("DrawGraphRow Y", y, y-y0, (y-y0)/vdiff, (y-y0)/vdiff*rect.Size.H, pixy)
+		if a.LabelAlign != zgeo.AlignmentNone {
+			ti := ztextinfo.New()
+			ti.Rect = rect
+			ti.Rect.Pos.Y = pixy - a.Font.Size/2
+			ti.Rect.Size.H = a.Font.Size
+			ti.Alignment = zgeo.VertCenter | a.LabelAlign
+			ti.Font = a.Font
+			ti.Text = zwords.NiceFloat(y, a.SignificantDigits)
+			ti.Color = a.Color
+			box := ti.Draw(canvas)
+			// zlog.Info("DrawGraphRow", rect.Min().X, rect.Max().X, aColor)
+			if a.LabelAlign == zgeo.Left || a.LabelAlign == zgeo.HorCenter {
+				canvas.StrokeHorizontal(box.Max().X, rect.Max().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
+			}
+			if a.LabelAlign == zgeo.Right || a.LabelAlign == zgeo.HorCenter {
+				canvas.StrokeHorizontal(rect.Min().X, box.Min().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
+			}
+		}
+	}
+}
+
+func DrawGraphRow(gr *GraphRow, rect zgeo.Rect, canvas *zcanvas.Canvas) {
+	canvas.SetColor(gr.GraphColor)
+	i := 0
+	y0, inc := zmath.NiceDividesOf(gr.Axis.Min, gr.Axis.Max, 6, nil)
+	y1 := zmath.RoundUpToModF64(gr.Axis.Max, inc)
+	yScale := (y1 - y0) / rect.Size.H
+	// zlog.Info("NICEDIVS:", y0, inc, "for", gr.Min, gr.Max, 6)
+	path := zgeo.PathNew()
+	for {
+		val, x, done := gr.PullValuesFunc(&i)
+		if done {
+			break
+		}
+		pixy := rect.Max().Y - (val-y0)/yScale
+		switch gr.Type {
+		case GraphTypeLine:
+			pos := zgeo.PosD(x, pixy)
+			if path.IsEmpty() {
+				path.MoveTo(pos)
+			} else {
+				path.LineTo(pos)
+			}
+		case GraphTypeBar:
+			r := zgeo.RectFromXYWH(x-gr.Width, pixy, gr.Width, rect.Max().Y-2)
+			path.Empty()
+			path.AddRect(r, zgeo.SizeBoth(2))
+			canvas.FillPath(path)
+		}
+	}
+	switch gr.Type {
+	case GraphTypeLine:
+		canvas.StrokePath(path, gr.Width, zgeo.PathLineButt)
 	}
 }
