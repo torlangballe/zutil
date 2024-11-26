@@ -19,15 +19,16 @@ import (
 )
 
 const (
-	ISO8601Format       = "2006-01-02T15:04:05-0700"
-	ISO8601NoZoneFormat = "2006-01-02T15:04:05"
-	ISO8601DateFormat   = "2006-01-02"
-	ShortFormat         = "2006-01-02 15:04"
-	JavascriptFormat    = "2006-01-02T15:04:05-07:00"
-	JavascriptISO       = "2006-01-02T15:04:05.999Z"
-	FullCompact         = "06-Jan-02T15:04:05.9"
-	NiceFormat          = "15:04:05 02-Jan-2006" // MaxSize of GetNice()
-	RFC3339NoZ          = "2006-01-02T15:04:05-07:00"
+	ISO8601Format           = "2006-01-02T15:04:05-0700"
+	ISO8601NoZoneFormat     = "2006-01-02T15:04:05"
+	ISO8601DateFormat       = "2006-01-02"
+	ShortFormat             = "2006-01-02 15:04"
+	JavascriptFormat        = "2006-01-02T15:04:05-07:00"
+	JavascriptFormatWithSub = "2006-01-02T15:04:05.999-07:00"
+	JavascriptISO           = "2006-01-02T15:04:05.999Z"
+	FullCompact             = "06-Jan-02T15:04:05.9"
+	NiceFormat              = "15:04:05 02-Jan-2006" // MaxSize of GetNice()
+	RFC3339NoZ              = "2006-01-02T15:04:05-07:00"
 
 	Day  = time.Hour * time.Duration(24)
 	Week = Day * time.Duration(7)
@@ -138,7 +139,6 @@ func GetNice(t time.Time, secs bool) string {
 	if secs {
 		subSecs = 0
 	}
-
 	return GetNiceSubSecs(t, subSecs)
 }
 
