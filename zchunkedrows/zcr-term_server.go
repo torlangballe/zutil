@@ -55,7 +55,7 @@ func (crc *CRCommander) CC(c *zcommands.CommandInfo) string {
 	case zcommands.CommandExpand:
 		return ""
 	case zcommands.CommandHelp:
-		return "clear cursor for continues 'rows' command"
+		return "clear cursor for continuos 'rows' command"
 	}
 	crc.lastChunkIndex = -1
 	crc.lastIndex = -1
