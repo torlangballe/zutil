@@ -26,7 +26,7 @@ import (
 type Cache struct {
 	WorkDir            string
 	cacheName          string
-	getURL             string
+	GetURL             string
 	urlPrefix          string
 	ServeEmptyImage    bool
 	DeleteAfter        time.Duration // Delete files when modified more than this long ago
@@ -73,8 +73,8 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	c.DeleteRatio = 1
 	c.NestInHashFolders = true
 	path := zstr.Concat("/", urlPrefix, cacheName)
-	//	c.getURL = zstr.Concat("/", zrest.AppURLPrefix, path)
-	c.getURL = path
+	//	c.GetURL = zstr.Concat("/", zrest.AppURLPrefix, path)
+	c.GetURL = path
 	// err := os.MkdirAll(c.workDir+cacheName, 0775|os.ModeDir)
 	// if err != nil {
 	// 	zlog.Error(zlog.FatalLevel, "zfilecaches.Init mkdir failed", err)
@@ -100,7 +100,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 		zlog.Info("Deleted in cache:", dir, time.Since(start))
 		return true
 	})
-	// zlog.Info("zfilecache Init:", c.WorkDir+cacheName, c.getURL, path)
+	// zlog.Info("zfilecache Init:", c.WorkDir+cacheName, c.GetURL, path)
 	return c
 }
 
@@ -180,11 +180,19 @@ func (c *Cache) IsCached(name string) bool {
 }
 
 func (c *Cache) GetURLForName(name string) string {
-	str := zstr.Concat("/", c.getURL, name) // zrest.AppURLPrefix,
+	str := zstr.Concat("/", c.GetURL, name) // zrest.AppURLPrefix,
 	if c.UseToken {
 		str += "?token=" + c.getToken()
 	}
 	return str
+}
+
+func (c *Cache) GetNameFromURL(surl string) string {
+	var name string
+	surl = zstr.HeadUntil(surl, "?")
+	has := zstr.HasPrefix(surl, c.GetURL, &name)
+	zlog.ErrorIf(!has, surl)
+	return zfile.RemovedExtension(name)
 }
 
 func (c *Cache) HandlerWithCheckToken(h http.Handler) http.Handler {
