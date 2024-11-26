@@ -133,23 +133,19 @@ func Keys[K comparable, V any](m map[K]V) []K {
 
 func SortedKeys[K comparable, V any](m map[K]V, less func(a, b V) bool) []K {
 	keys := Keys(m)
-	i := 0
-	for k := range m {
-		keys[i] = k
-	}
 	sort.Slice(keys, func(i, j int) bool {
 		return less(m[keys[i]], m[keys[j]])
 	})
 	return keys
 }
 
-func KeySortedValues[K comparable, V any](m map[K]V, less func(a, b V) bool) []V {
+func KeySortedKeyValues[K comparable, V any](m map[K]V, less func(a, b V) bool) ([]K, []V) {
 	keys := SortedKeys(m, less)
 	vals := make([]V, len(keys))
 	for i, k := range keys {
 		vals[i] = m[k]
 	}
-	return vals
+	return keys, vals
 }
 
 func AllValues[K comparable, V any](m map[K]V) []V {
@@ -185,4 +181,12 @@ func GetValueInRecursiveMap(m map[string]any, slashPath string) (any, error) {
 // Usefull since maps are shared and you want to avoid clearing a shared map.
 func EmptyOf[K comparable, V any](m map[K]V) map[K]V {
 	return map[K]V{}
+}
+
+func Copy[K comparable, V any](m map[K]V) map[K]V {
+	n := EmptyOf(m)
+	for k, v := range m {
+		n[k] = v
+	}
+	return n
 }
