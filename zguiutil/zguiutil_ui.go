@@ -176,7 +176,7 @@ func CreateLockIconForView(view zview.View) zview.View {
 		view.Native().SetUsable(false)
 	}
 	label.SetPressedHandler("$press.lock", zkeyboard.ModifierNone, func() {
-		u := view.Native().Usable()
+		u := view.Native().IsUsable()
 		view.Native().SetUsable(!u)
 	})
 	vh, _ := view.(zview.ValueHandler)
