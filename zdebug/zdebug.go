@@ -28,7 +28,7 @@ var (
 	KeyValueSaveContextErrorFunc         func(key string, object any)
 	KeyValueGetAndDeleteContextErrorFunc func(key string) (err error)
 
-	AllProfileTypes = []string{"heap", "profile", "block", "mutex"}
+	AllProfileTypes = []string{"heap", "cpu", "block", "mutex"}
 
 	HandleRestartFunc func(err error)
 )

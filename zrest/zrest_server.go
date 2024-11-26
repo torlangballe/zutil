@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/pprof"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -34,6 +33,12 @@ var (
 	HasTelemetryFunc     = func() bool { return false }
 	WrapForTelemetryFunc func(handlerName string, handlerFunc http.HandlerFunc) http.HandlerFunc
 )
+
+func init() {
+	zdebug.AppURLPrefix = func() string {
+		return AppURLPrefix
+	}
+}
 
 func AddLegalCORSAddress(add string) {
 	LegalCORSOrigins = append(LegalCORSOrigins, add)
@@ -215,11 +220,4 @@ func Handle(pattern string, handler http.Handler) {
 	http.Handle(spath, handler)
 	zprocess.PopProcess(p)
 	CurrentInRequests--
-}
-
-func SetProfilingHandler(router *mux.Router) {
-	for _, name := range zdebug.AllProfileTypes {
-		path := zdebug.ProfilingURLPrefix + name
-		AddSubHandler(router, path, pprof.Handler(name))
-	}
 }
