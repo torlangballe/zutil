@@ -41,7 +41,7 @@ func RemoveAt(slice any, index int) error {
 	slicePtrValue := reflect.ValueOf(slice)
 	sliceValue := slicePtrValue.Elem()
 	if index < 0 || index >= sliceValue.Len() {
-		return zlog.Error("index out of range:", index, zdebug.CallingStackString())
+		return zlog.Error("index out of range:", index, sliceValue.Len(), zdebug.CallingStackString())
 	}
 	sliceValue.Set(reflect.AppendSlice(sliceValue.Slice(0, index), sliceValue.Slice(index+1, sliceValue.Len())))
 	return nil
@@ -254,4 +254,13 @@ func AddOrReplace[S any](slice *[]S, add S, equal func(a, b S) bool) {
 		}
 	}
 	*slice = append(*slice, add)
+}
+
+func InsertSorted[S any](slice []S, insert S, less func(a, b S) bool) []S {
+	for i, s := range slice {
+		if less(s, insert) {
+			return slices.Insert(slice, i, insert)
+		}
+	}
+	return append(slice, insert)
 }
