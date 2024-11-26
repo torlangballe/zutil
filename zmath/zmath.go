@@ -12,6 +12,10 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
+type Number interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~float32 | ~float64
+}
+
 const MathDegreesToMeters = (111.32 * 1000)
 const MathMetersToDegrees = 1 / MathDegreesToMeters
 
@@ -197,7 +201,6 @@ func Normalized(n float64) (norm, scale float64) {
 // Good for dividing a graph into lines to show values on x and y-axis
 func NiceDividesOf(s, e float64, max int, niceIncs []float64) (start, inc float64) {
 	inc = (e - s) / float64(max)
-
 	if niceIncs == nil {
 		niceIncs = []float64{1, 2.5, 5}
 	}
@@ -205,7 +208,7 @@ func NiceDividesOf(s, e float64, max int, niceIncs []float64) (start, inc float6
 	nice := GetClosestNotSmaller(norm, niceIncs)
 	inc = nice * scale
 	start = RoundToModF64(s, inc)
-	// zlog.Info("Incs:", s, e, max, "->", inc, norm, nice, start)
+	// zlog.Info("Incs:", inc1, s, e, max, "->", inc, norm, nice, start)
 	return start, inc
 }
 
@@ -324,7 +327,7 @@ func GetClosestNotSmaller(n float64, to []float64) float64 {
 	best := zfloat.Undefined
 	for _, t := range to {
 		a := t - n
-		if best == zfloat.Undefined || a >= 0 && a < best {
+		if a >= 0 && (best == zfloat.Undefined || a < best) {
 			best = t
 		}
 	}
@@ -350,6 +353,10 @@ func Swap[N any](a, b *N) {
 
 func MakeRange[N int | int64 | float64](min, max N) Range[N] {
 	return Range[N]{Valid: true, Min: min, Max: max}
+}
+
+func (r Range[N]) Length() N {
+	return r.Max - r.Min
 }
 
 func (r Range[N]) Added(n N) Range[N] {
@@ -431,4 +438,12 @@ func GetRangeMaxes[N int | int64 | float64](rs []Range[N]) []N {
 		}
 	}
 	return all
+}
+
+type numeric interface {
+	Number | time.Duration
+}
+
+func Abs[T numeric](x T) T {
+	return T(math.Float64frombits(math.Float64bits(float64(x)) &^ (1 << 63)))
 }
