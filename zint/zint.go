@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -20,6 +21,8 @@ var dummy int
 
 // SizeOfInt is the size of an int type
 var SizeOfInt = int(unsafe.Sizeof(dummy))
+
+const Undefined = math.MaxInt
 
 func Abs64(i int64) int64 {
 	if i >= 0 {
