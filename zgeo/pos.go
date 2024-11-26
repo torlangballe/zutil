@@ -28,6 +28,10 @@ func PosF(x, y float32) Pos {
 	return PosD(float64(x), float64(y))
 }
 
+func PosI(x, y int) Pos {
+	return PosD(float64(x), float64(y))
+}
+
 func PosD(x, y float64) Pos {
 	return Pos{X: x, Y: y}
 }
