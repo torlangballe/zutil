@@ -476,7 +476,7 @@ func TruncateFile(fpath string, maxBytes int64, reduce float64, fromEnd bool) er
 	if err != nil {
 		return err
 	}
-	file.Seek(diff, os.SEEK_SET)
+	file.Seek(diff, io.SeekStart)
 	err = WriteToFileAtomically(fpath, func(writeTo io.Writer) error {
 		n, cerr := io.Copy(writeTo, file)
 		fmt.Println("{nolog}TruncateFile write:", n, cerr)
