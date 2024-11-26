@@ -15,6 +15,7 @@ import (
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zpresent"
 	"github.com/torlangballe/zui/zview"
+	"github.com/torlangballe/zui/zwidgets"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zfile"
@@ -41,7 +42,8 @@ func doProfiling(ptype string) []byte {
 	return o
 }
 
-func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zlabel.Label) {
+func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zlabel.Label, *zwidgets.ActivityView) {
+	var activity *zwidgets.ActivityView
 	v := zcontainer.StackViewHor(name + "-stack")
 	button := zbutton.New("download " + name)
 	v.Add(button, zgeo.CenterLeft)
@@ -56,11 +58,16 @@ func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zla
 	label.SetPressWithModifierToClipboard(zkeyboard.ModifierNone)
 	v.Add(label, zgeo.CenterLeft)
 	in.Add(v, zgeo.CenterLeft|zgeo.HorExpand)
-	return button, label
+
+	if name == "cpu" {
+		activity = zwidgets.NewActivityView(zgeo.SizeBoth(14))
+		v.Add(activity, zgeo.CenterLeft)
+	}
+	return button, label, activity
 }
 
 func addGUIProfileRow(in *zcontainer.StackView, name, ptype string) {
-	button, _ := addRow(in, name, ptype)
+	button, _, _ := addRow(in, name, ptype)
 	if ptype == "" {
 		ptype = name
 	}
@@ -72,7 +79,7 @@ func addGUIProfileRow(in *zcontainer.StackView, name, ptype string) {
 }
 
 func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
-	button, _ := addRow(in, name, ptype)
+	button, _, activity := addRow(in, name, ptype)
 	surl := zapp.URLStub()
 	if ip != "" {
 		u := zapp.URL() // for scheme+port
@@ -89,7 +96,11 @@ func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 		return
 	})
 	button.SetPressedHandler("", zkeyboard.ModifierNone, func() {
-		zview.DownloadURI(surl, name)
+		if activity != nil {
+			activity.Start()
+			ztimer.StartIn(10, activity.Stop)
+		}
+		go zview.DownloadURI(surl, name)
 	})
 }
 
@@ -110,9 +121,11 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string,
 	for _, name := range zdebug.AllProfileTypes {
 		addDownloadRow(frame, "", name, name)
 	}
-	for name, ip := range otherIPs {
-		frame, _ = makeFrame(&v.StackView, name)
-		addDownloadRow(frame, ip, "heap", "heap")
+	for device, ip := range otherIPs {
+		frame, _ = makeFrame(&v.StackView, device)
+		for _, name := range []string{"heap", "cpu"} {
+			addDownloadRow(frame, ip, name, name)
+		}
 	}
 	frame, _ = makeFrame(&v.StackView, "Enable GUI named log sections")
 	zlog.EnablerList.Range(func(k, v any) bool {
