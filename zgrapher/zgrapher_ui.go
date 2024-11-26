@@ -19,7 +19,6 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
@@ -281,7 +280,7 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 	if ticks == 0 {
 		return
 	}
-	zlog.Info("BeforeNice:", start, end, int(v.Rect().Size.W/3))
+	// zlog.Info("BeforeNice:", start, end, int(v.Rect().Size.W/3))
 	inc, _, _, begin := ztime.NiceAxisIncrements(start, end, int(v.Rect().Size.W/3))
 	// zlog.Warn("drawHours1:", v.Job.ID, start, end, span, inc, ticks, v.SecondsPerPixel)
 	// zlog.Warn("drawHours1:", v.Job.ID, ticks, v.Ticks, w, v.Job.PixelWidth(&v.GrapherBase), begin, end)
