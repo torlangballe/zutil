@@ -195,13 +195,14 @@ const (
 )
 
 type AxisInfo struct {
-	Min               float64
-	Max               float64
-	Color             zgeo.Color
+	ValueRange        zmath.Range[float64]
+	LineColor         zgeo.Color
+	TextColor         zgeo.Color
 	StrokeWidth       float64
 	Font              *zgeo.Font
 	LabelAlign        zgeo.Alignment
 	SignificantDigits int
+	Postfix           string
 }
 
 type GraphRow struct {
@@ -216,7 +217,8 @@ type GraphRow struct {
 
 func MakeAxisInfo() AxisInfo {
 	return AxisInfo{
-		Color:             zstyle.DefaultFGColor(),
+		TextColor:         zstyle.DefaultFGColor(),
+		LineColor:         zstyle.DefaultFGColor().WithOpacity(0.2),
 		StrokeWidth:       1,
 		Font:              zgeo.FontDefault(-2),
 		LabelAlign:        zgeo.Left,
@@ -234,33 +236,40 @@ func MakeGraphRow() GraphRow {
 
 func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, canvas *zcanvas.Canvas) {
 	const lines = 6
-	canvas.SetColor(a.Color)
-	y0, inc := zmath.NiceDividesOf(a.Min, a.Max, lines, nil)
-	// zlog.Info("NICEDIVS:", y0, inc, "for", gr.Min, gr.Max, 6)
-	y1 := zmath.RoundUpToModF64(a.Max, inc)
-	a.Font.Size = math.Floor(rect.Size.H / lines)
+	// zlog.Info("DrawBackgroundHorGraphLines:", rect, a)
+	y0, inc := zmath.NiceDividesOf(a.ValueRange.Min, a.ValueRange.Max, lines, nil)
+	// zlog.Info("NICEDIVS:", y0, inc, "for", a.ValueRange.Min, a.ValueRange.Max, lines)
+	y1 := zmath.RoundUpToModF64(a.ValueRange.Max, inc)
+	a.Font.Size = min(10, math.Floor((rect.Size.H+2)*2/lines))
 	yScale := (y1 - y0) / rect.Size.H
 	// zlog.Info("DrawGraphRow1", y0, y1, yScale, rect.Size.H)
+	ti := ztextinfo.New()
+	ti.Rect = rect.Expanded(zgeo.SizeD(-3, 0))
+	ti.Font = a.Font
+	ti.Color = a.TextColor
 	for y := y0 + inc; y < y1; y += inc {
+		var lastX = math.MaxFloat64
 		pixy := rect.Max().Y - (y-y0)/yScale
+		ti.Rect.Pos.Y = pixy - a.Font.Size/2
+		ti.Rect.Size.H = a.Font.Size
 		// zlog.Info("DrawGraphRow Y", y, y-y0, (y-y0)/vdiff, (y-y0)/vdiff*rect.Size.H, pixy)
-		if a.LabelAlign != zgeo.AlignmentNone {
-			ti := ztextinfo.New()
-			ti.Rect = rect
-			ti.Rect.Pos.Y = pixy - a.Font.Size/2
-			ti.Rect.Size.H = a.Font.Size
-			ti.Alignment = zgeo.VertCenter | a.LabelAlign
-			ti.Font = a.Font
-			ti.Text = zwords.NiceFloat(y, a.SignificantDigits)
-			ti.Color = a.Color
+		for _, align := range []zgeo.Alignment{zgeo.Left | zgeo.HorCenter, zgeo.Right} {
+			if a.LabelAlign&align == 0 {
+				continue
+			}
+			ti.Alignment = zgeo.VertCenter | align
+			ti.Text = zwords.NiceFloat(y, a.SignificantDigits) + a.Postfix
 			box := ti.Draw(canvas)
-			// zlog.Info("DrawGraphRow", rect.Min().X, rect.Max().X, aColor)
-			if a.LabelAlign == zgeo.Left || a.LabelAlign == zgeo.HorCenter {
-				canvas.StrokeHorizontal(box.Max().X, rect.Max().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
+			// zlog.Info("DrawGraphRow", ti.Color, ti.Text)
+			if lastX != math.MaxFloat64 {
+				canvas.SetColor(a.LineColor) // We have to set this each time, as ti.Draw() above with set it too
+				canvas.StrokeHorizontal(lastX, box.Min().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
 			}
-			if a.LabelAlign == zgeo.Right || a.LabelAlign == zgeo.HorCenter {
-				canvas.StrokeHorizontal(rect.Min().X, box.Min().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
-			}
+			lastX = box.Max().X
+		}
+		if a.LabelAlign&zgeo.Right == 0 {
+			canvas.SetColor(a.LineColor)
+			canvas.StrokeHorizontal(lastX, rect.Max().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
 		}
 	}
 }
@@ -268,8 +277,8 @@ func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, canvas *zcanvas.Ca
 func DrawGraphRow(gr *GraphRow, rect zgeo.Rect, canvas *zcanvas.Canvas) {
 	canvas.SetColor(gr.GraphColor)
 	i := 0
-	y0, inc := zmath.NiceDividesOf(gr.Axis.Min, gr.Axis.Max, 6, nil)
-	y1 := zmath.RoundUpToModF64(gr.Axis.Max, inc)
+	y0, inc := zmath.NiceDividesOf(gr.Axis.ValueRange.Min, gr.Axis.ValueRange.Max, 6, nil)
+	y1 := zmath.RoundUpToModF64(gr.Axis.ValueRange.Max, inc)
 	yScale := (y1 - y0) / rect.Size.H
 	// zlog.Info("NICEDIVS:", y0, inc, "for", gr.Min, gr.Max, 6)
 	path := zgeo.PathNew()
