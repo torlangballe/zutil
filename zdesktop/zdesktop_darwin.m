@@ -6,6 +6,9 @@
 
 #include <string.h>
 
+// interesting about using gpu:
+// https://adrianhesketh.com/2022/03/31/use-m1-gpu-with-go/
+
 BOOL forceScreenRecording = true;
 
 struct WinInfo {
