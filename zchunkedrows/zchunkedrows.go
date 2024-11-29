@@ -193,9 +193,10 @@ func (cr *ChunkedRows) appendToChunkMMap(chunkIndex int, cType chunkType, data [
 	if err != nil {
 		return 0, err
 	}
-	path := cr.chunkFilepath(chunkIndex, cType)
-	preFileLen = zfile.Size(path)
-	mmap.Seek(0, io.SeekEnd)
+	preFileLen, err = mmap.Seek(0, io.SeekEnd)
+	if err != nil {
+		return 0, zlog.Error("error seeking to end:", err, chunkIndex, cType)
+	}
 	n, err := mmap.Write(data)
 	if err != nil {
 		zlog.Error("write:", n, len(data), chunkIndex, preFileLen, isAux, err)
@@ -209,6 +210,7 @@ func (cr *ChunkedRows) appendToChunkMMap(chunkIndex int, cType chunkType, data [
 		zlog.Error("write sync:", n, len(data), chunkIndex, preFileLen, isAux, err)
 		return //0, zlog.Error("write:", chunkIndex, isAux, err)
 	}
+	path := cr.chunkFilepath(chunkIndex, cType)
 	if cType == isRows && zfile.Size(path) != int64(cr.topChunkRowCount*cr.opts.RowByteSize) {
 		zlog.Error("fs.size and row size not the same!", n, len(data), chunkIndex, zfile.Size(path), cr.topChunkRowCount*cr.opts.RowByteSize)
 	}
@@ -419,7 +421,6 @@ func (cr *ChunkedRows) incrementRowOrChunk() {
 }
 
 // Add keeps adding rows's to the top chunk, with optional aux data in aux chunks.
-// it calls checkIfAtEndOfChunk afterwards to get ready in next chunk.
 func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 	var err error
 	var match string
@@ -585,6 +586,7 @@ func (cr *ChunkedRows) handleLoadedTopRow(mm *os.File) error {
 	var hasBadChunkAbove bool
 	cr.topChunkRowCount, hasBadChunkAbove = cr.getChunkRowCount(cr.topChunkIndex)
 
+	topRowIndexOnLoad = cr.topChunkRowCount
 	lastRow := make([]byte, cr.opts.RowByteSize)
 	err := cr.readRow(cr.topChunkRowCount-1, lastRow, mm)
 	if zlog.OnError(err) {
@@ -636,6 +638,8 @@ func (cr *ChunkedRows) getChunkRowCount(chunkIndex int) (top int, hasBadChunkAbo
 	return top, hasBadChunkAbove
 }
 
+var topRowIndexOnLoad int
+
 func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr any) error {
 	bjson, _, err := cr.getLineFromChunk(chunkIndex, cr.opts.AuxIndexOffset, isAux, row)
 	if err != nil {
@@ -643,7 +647,7 @@ func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr an
 	}
 	err = json.Unmarshal(bjson, dataPtr)
 	if err != nil {
-		return zlog.Error(err, chunkIndex, zstr.Head(string(bjson), 200))
+		return zlog.Error(err, chunkIndex, "topRowIndexOnLoad:", topRowIndexOnLoad, zstr.Head(string(bjson), 200))
 	}
 	return nil
 }
