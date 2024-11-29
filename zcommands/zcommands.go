@@ -113,10 +113,10 @@ func NewCommander(rootNode any, term *zterm.Terminal) *Commander {
 		s.nodeHistory = []namedNode{nn}
 		s.TermSession = ts
 		c.sessions[s.id] = s
-		zlog.Info("LOADPATH?:", zkeyvalue.DefaultStore != nil)
+		// zlog.Info("LOADPATH?:", zkeyvalue.DefaultStore != nil)
 		if zkeyvalue.DefaultStore != nil {
 			path, _ := zkeyvalue.DefaultStore.GetString(lastCDKVKey)
-			zlog.Info("LOADPATH:", path)
+			// zlog.Info("LOADPATH:", path)
 			if path != "" {
 				s.changeDirectory(path)
 			}
