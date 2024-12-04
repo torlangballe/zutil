@@ -32,6 +32,7 @@ func NewBucketFilter(start, period float64) *BucketFilter {
 	f := &BucketFilter{}
 	f.Type = BucketNearest
 	f.startPos = start
+	// zlog.Info("NewBucket:", zlog.Pointer(f), start, period)
 	f.period = period
 	f.currentCellPos = start
 	f.bestPayload = nil
@@ -58,7 +59,7 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 		f.bestPos = pos
 		f.bestVal = val
 		f.currentCellPos = f.startPos + RoundToModF64(pos-f.startPos, f.period)
-		// zlog.Info("aggregate new:", zlog.Pointer(f), time.UnixMicro((int64(pos))), "current:", time.UnixMicro((int64(f.currentCellPos))), time.Duration(pos-f.currentCellPos), time.Duration(f.period)*time.Microsecond)
+		// zlog.Info("aggregate new:", f.startPos, zlog.Pointer(f), time.UnixMicro((int64(pos))), "current:", time.UnixMicro((int64(f.currentCellPos))), time.Duration(pos-f.currentCellPos), time.Duration(f.period)*time.Microsecond)
 		return
 	}
 	switch f.Type {
@@ -79,6 +80,7 @@ func (f *BucketFilter) Set(payload any, pos, val float64) {
 		return
 	}
 	if pos >= f.currentCellPos+f.period {
+		// zlog.Info("buck.Flush from set:", zlog.Pointer(f), pos)
 		f.Flush()
 	}
 	f.aggregate(payload, pos, val)
