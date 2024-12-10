@@ -47,6 +47,8 @@ type URLGetter interface {
 	GetURL() string
 }
 
+type URLWrapper string
+
 type Describer interface {
 	GetDescription() string
 }
@@ -68,6 +70,10 @@ type StrInt struct {
 
 func StrInt64(s string, i int64) StrInt {
 	return StrInt{Str: s, Int: i}
+}
+
+func (u URLWrapper) GetURL() string {
+	return string(u)
 }
 
 func GetLevenshteinRatio(a, b string) float64 { // returns distance / min length of a or b
