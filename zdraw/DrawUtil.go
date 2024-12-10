@@ -3,7 +3,6 @@ package zdraw
 import (
 	"image/color"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/torlangballe/zui/zcanvas"
@@ -73,21 +72,18 @@ func TimeToX(rect zgeo.Rect, t, start, end time.Time) float64 {
 	return rect.Min().X + ztime.DurSeconds(t.Sub(start))*rect.Size.W/diff
 }
 
-func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Time, fullLabelFirst bool, beyond bool, dark bool) {
+func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Time, beyond bool, dark bool) {
 	oldDay := -1
-	oldHour := -1
-	oldMin := -1
 	ti := ztextinfo.New()
-	ti.Font = zgeo.FontNice(12, zgeo.FontStyleNormal)
 	ti.Alignment = zgeo.TopLeft
 
 	col := zgeo.ColorBlack
 	if dark {
 		col = zgeo.ColorLightGray
 	}
-	inc, labelFieldStep, fullLabelFieldStep, t := ztime.NiceAxisIncrements(start, end, int(rect.Size.W))
+	inc, labelFieldStep, t := ztime.NiceAxisIncrements(start, end, int(rect.Size.W))
 	// var labelTime time.Time
-	// zlog.Info("INC:", inc, incScale, incStep)
+	// zlog.Info("INC:", inc, labelFieldStep, t)
 	endDraw := end
 	if beyond {
 		// t = t.Add(-inc)
@@ -110,70 +106,44 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 			break
 		}
 		isLabel := labelFieldStep.IsModOfTimeZero(t)
-		w := 1.0
-		var fullLabel bool
-		if fullLabelFirst {
-			fullLabel = (t.Day() != oldDay)
-		} else {
-			fullLabel = fullLabelFieldStep.IsModOfTimeZero(t)
-		}
+		w := 2.0
 		strokeCol := col
-		if fullLabel {
-			w = 2
-		} else if !isLabel {
+		textOverlap := (x < endTextX+8)
+		dayLabel := (count > 1 && oldDay != t.Day() && t.Second() == 0 && x < rect.Size.W-100)
+		if !isLabel {
+			w = 1
 			strokeCol = strokeCol.WithOpacity(0.3)
+		} else if dayLabel {
+			strokeCol = zgeo.ColorOrange
 		}
 		canvas.SetColor(strokeCol)
 		canvas.StrokeVertical(x, y-7, y, w, zgeo.PathLineSquare)
+		ti.Color = col
 		secs := (inc <= time.Second*10)
-		if x < endTextX+8 {
+		if textOverlap {
 			t = t.Add(inc)
 			continue
 		}
 		var str string
-		if fullLabel {
-			secs = (fullLabelFieldStep.Field == ztime.TimeFieldSecs)
+		if !isLabel {
+			t = t.Add(inc)
+			continue
+		}
+		if dayLabel {
+			secs = (labelFieldStep.Field == ztime.TimeFieldSecs)
 			str = ztime.GetNice(t, secs)
 			oldDay = t.Day()
-			oldHour = t.Hour()
-			oldMin = t.Minute()
+			ti.Color = zgeo.ColorOrange
 		} else {
-			if !isLabel {
-				t = t.Add(inc)
-				continue
-			}
-			var f []string
-			if t.Hour() != oldHour {
-				if oldHour != -1 {
-					f = append(f, "15")
-				}
-				oldHour = t.Hour()
-			}
-			if t.Minute() != oldMin {
-				if oldMin != -1 {
-					str := "04"
-					if len(f) == 0 {
-						str = "04m"
-					}
-					f = append(f, str)
-				}
-				oldMin = t.Minute()
-			}
+			format := "15:04"
 			if secs {
-				str := "05"
-				if len(f) == 0 {
-					str = "05s"
-				}
-				f = append(f, str)
+				format += ":05"
 			}
-			str = t.Format(strings.Join(f, ":"))
+			str = t.Format(format)
 		}
-		ti.Color = col
-		if fullLabel {
-			ti.Color = col.MixedColor(zgeo.ColorCyan, 0.5)
-		}
+		ti.Font = zgeo.FontNice(12, zgeo.FontStyleNormal)
 		ti.Text = str
-		pos := zgeo.PosD(x-10, 4)
+		pos := zgeo.PosD(x-10, 3)
 		// if fullLabel {
 		// 	zlog.Info("FullLabel", secs, fullLabelFieldStep, t, x, endTextX, str)
 		// }
