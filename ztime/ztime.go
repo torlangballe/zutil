@@ -379,7 +379,7 @@ func (f FieldInc) IsModOfTimeZero(t time.Time) bool {
 
 // NiceAxisIncrements returns a FieldInc for the smallest duration to increment ticks or markings.
 // The increment is returned as a Field in seconds, minutes or hours and a step rather than just a single duration, to alow further choices to be made.
-func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc time.Duration, labelInc, fullLabelInc FieldInc, first time.Time) {
+func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc time.Duration, labelInc FieldInc, first time.Time) {
 	// zlog.Info("Nice:", stop.Sub(start), incCount)
 	type fieldSteps struct {
 		field TimeFieldFlags
@@ -408,11 +408,8 @@ func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc time.Durati
 				bestPixelInc = pixelInc
 				inc = sdur
 				FieldInc := FieldInc{Field: ss.field, Step: step}
-				if pixelInc > 60 {
+				if pixelInc > 80 {
 					labelInc = FieldInc
-				}
-				if pixelInc > pixelLength/2 {
-					fullLabelInc = FieldInc
 				}
 			}
 		}
@@ -423,7 +420,7 @@ func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc time.Durati
 		first = s
 		s = s.Add(inc)
 	}
-	return inc, labelInc, fullLabelInc, first
+	return inc, labelInc, first
 }
 
 type DurationStruct struct {
