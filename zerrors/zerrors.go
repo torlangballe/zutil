@@ -124,6 +124,13 @@ func (ce *ContextError) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	for k, v := range ce.KeyValues {
+		if strings.HasSuffix(k, "Link") {
+			str := fmt.Sprint(v)
+			if strings.HasPrefix(str, "http://") || strings.HasPrefix(str, "https://") {
+				ce.KeyValues[k] = zstr.URLWrapper(str)
+			}
+			continue
+		}
 		if k == "Code File" {
 			var sname, sline string
 			str := reflect.ValueOf(v).String()
