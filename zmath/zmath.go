@@ -10,6 +10,7 @@ import (
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zwords"
 )
 
 type Number interface {
@@ -24,6 +25,8 @@ type Range[N int | int64 | float64] struct {
 	Min   N
 	Max   N
 }
+
+type RangeF64 = Range[float64]
 
 func RadToDeg(rad float64) float64 {
 	return rad * 180 / math.Pi
@@ -373,6 +376,15 @@ func (r Range[N]) Added(n N) Range[N] {
 
 func (r *Range[N]) Add(n N) {
 	*r = r.Added(n)
+}
+
+func (r *Range[N]) NiceString(digits int) string {
+	if !r.Valid {
+		return "invalid"
+	}
+	min := zwords.NiceFloat(float64(r.Min), digits)
+	max := zwords.NiceFloat(float64(r.Max), digits)
+	return min + " - " + max
 }
 
 // Contracted reduces the range to only just include n at min or max, depending on which is nearer.
