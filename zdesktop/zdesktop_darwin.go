@@ -336,6 +336,9 @@ func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect) (img image.
 	captureLock.Unlock()
 
 	if serr != "" || cgImage == C.CGImageRef(C.NULL) {
+		if serr == "timed out" {
+			zlog.Info("GetImageForWindowTitle timed out:", title)
+		}
 		return nil, zlog.Error(serr)
 	}
 	image, err := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), zgeo.Rect{}, 1)

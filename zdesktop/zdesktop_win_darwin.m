@@ -75,7 +75,11 @@ const char *ImageOfWindow(char *winTitle, char *appBundleID, CGRect insetRect, C
     NSString *nsapp = [NSString stringWithUTF8String:appBundleID];
     __block NSString *snapErr = nil;
     __block dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+    __block bool timedOut = false;
     imageOfWindow(nstitle, nsapp, insetRect, ^(CGImageRef image, NSString *err) {
+        if (timedOut) {
+            NSLog(@"ImageOfWindow That Timed out finally finished: %s\n", winTitle);
+        }
         [nstitle release];
         [nsapp release];
         if (err != nil) {
@@ -89,6 +93,7 @@ const char *ImageOfWindow(char *winTitle, char *appBundleID, CGRect insetRect, C
    int64_t timeoutAt = dispatch_time(DISPATCH_TIME_NOW, (int64_t)timeoutSecs * NSEC_PER_SEC);
     if (dispatch_semaphore_wait(sem, timeoutAt)) {
     // if (dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER)) {
+        timedOut = true;
         return "timed out";
     } else if (snapErr != nil) {
             NSLog(@"ImageOfWindow Error: %s %@\n", winTitle, snapErr);
