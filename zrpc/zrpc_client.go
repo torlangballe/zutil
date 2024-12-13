@@ -119,12 +119,16 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 	surl, _ := zhttp.MakeURLWithArgs(c.callURL, urlArgs)
 	// zlog.Warn("CALL:", surl)
 	dict := zdict.Dict{"RPC Method": method, "TimeoutSecs": timeoutSecs}
+	// now := time.Now()
 	_, err = zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
 		limitID := zlog.Limit("zrpc.Post.Err." + method)
 		zlog.Info(limitID, "zrpc Post", surl, err)
 		return nil, zerrors.MakeContextError(dict, "Post to Remote URL", err)
 	}
+	// if method == "TimelineCalls.GetEvents" {
+	// 	zlog.Info("Called:", method, time.Since(now), len(rp.Result), resp.Header)
+	// }
 	if rp.AuthenticationInvalid { // check this first, will probably be an error also
 		zlog.Info("zprc AuthenticationInvalid:", method, c.AuthToken, c.KeepTokenOnAuthenticationInvalid)
 		if !c.KeepTokenOnAuthenticationInvalid {
