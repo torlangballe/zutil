@@ -647,7 +647,7 @@ func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr an
 	}
 	err = json.Unmarshal(bjson, dataPtr)
 	if err != nil {
-		return zlog.Error(err, chunkIndex, "topRowIndexOnLoad:", topRowIndexOnLoad, zstr.Head(string(bjson), 200))
+		return zlog.Error(err, chunkIndex, "topRowIndexOnLoad:", topRowIndexOnLoad, zstr.Head(string(bjson), 200), zdebug.CallingStackString())
 	}
 	return nil
 }
