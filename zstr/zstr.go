@@ -23,7 +23,10 @@ import (
 	"github.com/torlangballe/zutil/zint"
 )
 
-const Digits = "0123456789"
+const (
+	Digits                      = "0123456789"
+	UTFPostModifierForRoundRect = "\xe2\x83\xa3"
+)
 
 type StrIDer interface {
 	GetStrID() string
