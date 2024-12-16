@@ -107,7 +107,7 @@ func (crc *CRCommander) Row(c *zcommands.CommandInfo, a struct {
 		return ""
 	}
 	crc.outputRowsTableHeader(tabs)
-	crc.outputRow(c, tabs, rowBytes, chunkIndex, rowIndex)
+	crc.outputRow(c, tabs, rowBytes, chunkIndex, rowIndex, nil)
 	tabs.Flush()
 	return ""
 }
@@ -154,8 +154,8 @@ func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
 	start := time.Now()
 	crc.outputRowsTableHeader(tabs)
 	i := 0
-	totalRows, err := crc.chunkedRows.Iterate(crc.lastChunkIndex, crc.lastIndex, forward, match, func(row []byte, chunkIndex, index int) bool {
-		crc.outputRow(c, tabs, row, chunkIndex, index)
+	totalRows, err := crc.chunkedRows.Iterate(crc.lastChunkIndex, crc.lastIndex, forward, match, func(row []byte, chunkIndex, index int, err error) bool {
+		crc.outputRow(c, tabs, row, chunkIndex, index, err)
 		i++
 		crc.lastChunkIndex = chunkIndex
 		crc.lastIndex = index
@@ -191,7 +191,7 @@ func (crc *CRCommander) orderToString(row []byte) string {
 	return fmt.Sprint(o, "\t")
 }
 
-func (crc *CRCommander) outputRow(c *zcommands.CommandInfo, tabs *zstr.TabWriter, row []byte, chunkIndex, index int) {
+func (crc *CRCommander) outputRow(c *zcommands.CommandInfo, tabs *zstr.TabWriter, row []byte, chunkIndex, index int, err error) {
 	fmt.Fprint(tabs, chunkIndex, "\t", index, "\t")
 	if crc.chunkedRows.opts.HasIncreasingIDFirstInRow {
 		id := int64(binary.LittleEndian.Uint64(row[0:]))
@@ -230,7 +230,65 @@ func (crc *CRCommander) outputRow(c *zcommands.CommandInfo, tabs *zstr.TabWriter
 		}
 		fmt.Fprint(tabs, match, "\t")
 	}
+	if err != nil {
+		fmt.Fprint(tabs, zstr.EscMagenta, err, zstr.EscNoColor, "\t")
+	} else {
+		fmt.Fprint(tabs, "\t")
+	}
 	fmt.Fprint(tabs, "\n")
+}
+
+func (crc *CRCommander) Checkup(c *zcommands.CommandInfo) string {
+	switch c.Type {
+	case zcommands.CommandExpand:
+		return ""
+	case zcommands.CommandHelp:
+		return "Show information about the chunked rows."
+	}
+	w := c.Session.TermSession.Writer()
+	ci := -1
+	count := 0
+	forward := false
+	chunkErrCount := 0
+	_, err := crc.chunkedRows.Iterate(crc.chunkedRows.topChunkIndex, crc.chunkedRows.topChunkRowCount-1, forward, "", func(rowBytes []byte, chunkIndex, rowIndex int, err error) bool {
+		if chunkIndex != ci {
+			if ci != -1 {
+				var serr string
+				rc, bad := crc.chunkedRows.getChunkRowCount(ci)
+				if bad {
+					serr = "Bad row size"
+				}
+				if chunkErrCount != 0 {
+					serr = fmt.Sprintf("%d Errors", chunkErrCount)
+				}
+				fmt.Fprintln(w, "Chunk:", ci, "Rows:", count, "/", rc, zstr.EscMagenta, serr, zstr.EscNoColor)
+			}
+			ci = chunkIndex
+			count = 0
+			chunkErrCount = 0
+		}
+		if err != nil {
+			if chunkErrCount == 0 {
+				fmt.Fprintln(w, "Chunk/Row", chunkIndex, rowIndex, "Error:", zstr.EscMagenta, err, zstr.EscNoColor)
+			}
+			chunkErrCount++
+		} else {
+			count++
+			m := map[string]any{}
+			err = crc.chunkedRows.GetAuxDataUnlocked(chunkIndex, rowBytes, &m)
+			if err != nil {
+				if chunkErrCount == 0 {
+					fmt.Fprintln(w, "Chunk/Row", chunkIndex, rowIndex, "Read Aux Error:", zstr.EscMagenta, err, zstr.EscNoColor)
+				}
+				chunkErrCount++
+			}
+		}
+		return true
+	})
+	if err != nil {
+		fmt.Fprintln(w, err)
+	}
+	return ""
 }
 
 func (crc *CRCommander) Info(c *zcommands.CommandInfo) string {

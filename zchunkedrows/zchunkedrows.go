@@ -205,11 +205,11 @@ func (cr *ChunkedRows) appendToChunkMMap(chunkIndex int, cType chunkType, data [
 	if err == nil && n != len(data) {
 		return 0, zlog.Error("wrote wrong size:", n, chunkIndex, isAux)
 	}
-	err = mmap.Sync()
-	if err != nil {
-		zlog.Error("write sync:", n, len(data), chunkIndex, preFileLen, isAux, err)
-		return //0, zlog.Error("write:", chunkIndex, isAux, err)
-	}
+	// err = mmap.Sync()
+	// if err != nil {
+	// 	zlog.Error("write sync:", n, len(data), chunkIndex, preFileLen, isAux, err)
+	// 	return //0, zlog.Error("write:", chunkIndex, isAux, err)
+	// }
 	path := cr.chunkFilepath(chunkIndex, cType)
 	if cType == isRows && zfile.Size(path) != int64(cr.topChunkRowCount*cr.opts.RowByteSize) {
 		zlog.Error("fs.size and row size not the same!", n, len(data), chunkIndex, zfile.Size(path), cr.topChunkRowCount*cr.opts.RowByteSize)
@@ -428,6 +428,8 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 	var auxPos int64 = -1
 	var matchPos int64 = -1
 
+	// prof := zlog.NewProfile(0.0001, "ChunkedRows Add:", len(rowBytes))
+	// defer prof.End("")
 	if cr.opts.OrdererOffset != 0 {
 		o := int64(binary.LittleEndian.Uint64(rowBytes[cr.opts.OrdererOffset:]))
 		if o < cr.lastOrdererValue && !zdebug.IsInTests {
@@ -647,7 +649,7 @@ func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr an
 	}
 	err = json.Unmarshal(bjson, dataPtr)
 	if err != nil {
-		return zlog.Error(err, chunkIndex, "topRowIndexOnLoad:", topRowIndexOnLoad, zstr.Head(string(bjson), 200), zdebug.CallingStackString())
+		return zlog.Error(err, chunkIndex, "topRowIndexOnLoad:", topRowIndexOnLoad, zstr.Head(string(bjson), 200))
 	}
 	return nil
 }
@@ -717,7 +719,7 @@ func (cr *ChunkedRows) readRow(index int, bytes []byte, mmap *os.File) error {
 	return nil
 }
 
-func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match string, got func(row []byte, chunkIndex, index int) bool) (totalRows int, err error) {
+func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match string, got func(row []byte, chunkIndex, index int, err error) bool) (totalRows int, err error) {
 	if cr.isEmpty() {
 		return 0, nil
 	}
@@ -770,27 +772,30 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 		if mmap == nil {
 			mmap, err = cr.getMemoryMap(chunkIndex, isRows)
 			if zlog.OnError(err, chunkIndex) {
+				got(row, chunkIndex, index, err)
 				return 0, err
 			}
 		}
 		err = cr.readRow(index, row, mmap)
-		if err != nil {
-			zlog.Warn("iter.ReadRow: err", chunkIndex, index, err)
-			return 0, err
-		}
 		skip := false
-		if match != "" {
+		if err != nil {
+			skip = true
+			got(row, chunkIndex, index, err)
+			zlog.Warn("iter.ReadRow: err", chunkIndex, index, err)
+		} else if match != "" {
 			str, err := cr.getMatchStr(chunkIndex, row)
 			// zlog.Warn("iter.getMatch", chunkIndex, index, str, err)
 			if err != nil {
+				skip = true
+				got(row, chunkIndex, index, err)
 				// zlog.Warn("iter.ReadRow: getMatch err", chunkIndex, index, err)
-				return 0, zlog.Error(err, chunkIndex, index)
+				continue
 			}
 			if !strings.Contains(str, match) {
 				skip = true
 			}
 		}
-		if !skip && !got(row, chunkIndex, index) {
+		if !skip && !got(row, chunkIndex, index, nil) {
 			break
 		}
 		if forward {
