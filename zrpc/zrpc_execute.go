@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
@@ -239,7 +240,9 @@ func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.T
 		rp, err = e.callMethodName(ctx, ci, method, args, requestHTTPDataClient)
 		// zlog.Info("zrpc callWithDeadline: callMethod done:", method, err, method, zlog.Pointer(e))
 		if err != nil {
-			zlog.Error("callWithDeadline execute error:", expires, from, err)
+			if !zdebug.IsInTests {
+				zlog.Error("callWithDeadline execute error:", expires, from, err)
+			}
 			rp.Error = err.Error()
 		}
 		deadline, ok := ctx.Deadline()
