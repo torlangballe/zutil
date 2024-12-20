@@ -231,7 +231,7 @@ func (c Color) Mixed(withColor Color, amount float32) Color {
 	return ColorNew(r, g, b, a)
 }
 
-// MixedColor creates a color with HS from withColor and BA from c.
+// MixedColor creates a color using HSBA with HS from withColor and BA from c.
 // It is then mixed into c, effectively changing its color.
 func (c Color) MixedColor(withColor Color, amount float32) Color {
 	if !withColor.Valid {

@@ -330,7 +330,7 @@ func (d Items) FindName(name string) *Item {
 func (d Items) FindValue(v any) *Item {
 	var empty *Item
 	for i, di := range d {
-		// zlog.Info("FV:", di.Value, "==", v, reflect.DeepEqual(di.Value, v), di.Value == nil, v == nil, reflect.ValueOf(v).Kind(), reflect.ValueOf(v).Type())
+		// fmt.Println("FV:", di.Value, "==", v, reflect.DeepEqual(di.Value, v), di.Value == nil, v == nil, reflect.TypeOf(di.Value), reflect.TypeOf(v))
 		if reflect.DeepEqual(di.Value, v) {
 			// zlog.Info("zdict.Items FindValue: Found value for", v, i)
 			return &d[i]
