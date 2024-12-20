@@ -94,7 +94,6 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 	endTextX := -1000.0
 	// labelTime = t
 	count := 0
-
 	for !t.After(endDraw.Add(inc * 10)) {
 		count++
 		if count > 10000 { // sanity test
@@ -109,11 +108,12 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 		w := 2.0
 		strokeCol := col
 		textOverlap := (x < endTextX+8)
+		onHour := (t.Second() == 0 && t.Minute() == 0)
 		dayLabel := (count > 1 && oldDay != t.Day() && t.Second() == 0 && x < rect.Size.W-100)
-		if !isLabel {
+		if !isLabel && !onHour {
 			w = 1
 			strokeCol = strokeCol.WithOpacity(0.3)
-		} else if dayLabel {
+		} else if dayLabel && !textOverlap {
 			strokeCol = zgeo.ColorOrange
 		}
 		canvas.SetColor(strokeCol)
@@ -205,7 +205,7 @@ func MakeGraphRow() GraphRow {
 }
 
 func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, canvas *zcanvas.Canvas) {
-	const lines = 6
+	const lines = 5
 	// zlog.Info("DrawBackgroundHorGraphLines:", rect, a)
 	y0, inc := zmath.NiceDividesOf(a.ValueRange.Min, a.ValueRange.Max, lines, nil)
 	// zlog.Info("NICEDIVS:", y0, inc, "for", a.ValueRange.Min, a.ValueRange.Max, lines)
