@@ -19,6 +19,7 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
@@ -100,7 +101,6 @@ func (v *GraphView) Update(secsPerPixel int, windowMinutes int, ticks int, on bo
 		v.SecondsPerPixel = secsPerPixel
 		v.Ticks = ticks
 		v.TickYRange = zmath.MakeRange(0, float64(v.Job.PixelHeight)/7) // 2.5
-		// zlog.Info("GraphView.Update", v.Job.ID, v.On, zlog.CallingStackString())
 		if on {
 			v.repeater.Set(float64(v.SecondsPerPixel), true, func() bool {
 				v.requestParts()
@@ -197,7 +197,7 @@ func (v *GraphView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View
 	canvas.SetColor(zgeo.ColorNewGray(0, 0.05))
 	canvas.FillRect(r)
 
-	// zlog.Info("draw", v.SecondsPerPixel, v.Job.ID, rect, zlog.CallingStackString())
+	// zlog.Info("draw", v.SecondsPerPixel, v.Job.ID, rect)
 	i := 0
 	offset := v.forEachPart(func(name string, r zgeo.Rect, first bool) {
 		img := v.drawn[name]
@@ -325,6 +325,7 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 }
 
 func (v *GraphView) ClearSelectedTime() {
+	zlog.Info("GV.ClearSelectedTime")
 	v.dragStartTime = time.Time{}
 	v.dragEndTime = time.Time{}
 	v.Expose()
@@ -333,8 +334,6 @@ func (v *GraphView) ClearSelectedTime() {
 func (v *GraphView) handleGraphUpDownMoved(pos zgeo.Pos, down zbool.BoolInd) bool {
 	switch down {
 	case zbool.True:
-		v.dragStartX = pos.X
-		v.dragStartTime = v.TimeForX(int(pos.X))
 		if zkeyboard.ModifiersAtPress != 0 {
 			return true
 		}
@@ -345,6 +344,8 @@ func (v *GraphView) handleGraphUpDownMoved(pos zgeo.Pos, down zbool.BoolInd) boo
 			}
 			return false
 		}
+		v.dragStartX = pos.X
+		v.dragStartTime = v.TimeForX(int(pos.X))
 		return true
 	case zbool.Unknown:
 		if zkeyboard.ModifiersAtPress != 0 {
@@ -352,6 +353,7 @@ func (v *GraphView) handleGraphUpDownMoved(pos zgeo.Pos, down zbool.BoolInd) boo
 		}
 		if !v.dragStartTime.IsZero() && math.Abs(pos.X-v.dragStartX) > 3 {
 			v.dragEndTime = v.TimeForX(int(pos.X))
+			// zlog.Info("DRAGGING in Select!", v.dragStartTime, v.dragStartTime.IsZero(), v.dragEndTime)
 			v.Expose()
 		}
 		return true
@@ -367,7 +369,6 @@ func (v *GraphView) handleGraphUpDownMoved(pos zgeo.Pos, down zbool.BoolInd) boo
 		if v.dragEndTime.Before(v.dragStartTime) {
 			zreflect.Swap(&v.dragStartTime, &v.dragEndTime)
 		}
-		// zlog.Info("Graph Select!", v.dragStartTime, v.dragEndTime)
 		if v.HandleSelectedTime != nil {
 			v.HandleSelectedTime(v.dragStartTime, v.dragEndTime)
 		}
