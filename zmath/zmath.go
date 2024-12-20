@@ -205,13 +205,13 @@ func Normalized(n float64) (norm, scale float64) {
 func NiceDividesOf(s, e float64, max int, niceIncs []float64) (start, inc float64) {
 	inc = (e - s) / float64(max)
 	if niceIncs == nil {
-		niceIncs = []float64{1, 2.5, 5}
+		niceIncs = []float64{1, 2.5, 5, 10}
 	}
 	norm, scale := Normalized(inc)
 	nice := GetClosestNotSmaller(norm, niceIncs)
 	inc = nice * scale
 	start = RoundToModF64(s, inc)
-	// zlog.Info("Incs:", inc1, s, e, max, "->", inc, norm, nice, start)
+	// zlog.Info("Incs:", s, e, max, "->", inc, norm, nice, start)
 	return start, inc
 }
 
