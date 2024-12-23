@@ -117,7 +117,6 @@ func CPUUsage(maxCores int) (out []float64) {
 	coresVirtual, _ := cpu.Counts(true)
 	coresPhysical, _ := cpu.Counts(false)
 
-	zlog.Info("CPUUsage:", coresVirtual, coresPhysical)
 	threads := coresVirtual / coresPhysical
 	percpu := true
 	var vals []float64
