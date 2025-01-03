@@ -62,7 +62,7 @@ type ChunkedRows struct {
 	topChunkIndex      int
 	topChunkRowCount   int
 	currentID          int64
-	lock               deadlock.Mutex
+	rwLock             deadlock.RWMutex
 	auxMatchRowEndChar byte // this should always be '\n', but can be changed for unit tests
 	lastOrdererValue   int64
 }
@@ -108,7 +108,7 @@ func (cr *ChunkedRows) GetStorageSize() (rows, aux, match int64) {
 	if cr.isEmpty() {
 		return 0, 0, 0
 	}
-	cr.lock.Lock()
+	cr.rwLock.RLock()
 	for i := cr.bottomChunkIndex; i <= cr.topChunkIndex; i++ {
 		rows += zfile.Size(cr.chunkFilepath(i, isRows))
 		if cr.opts.MatchIndexOffset != 0 {
@@ -118,7 +118,7 @@ func (cr *ChunkedRows) GetStorageSize() (rows, aux, match int64) {
 			aux += zfile.Size(cr.chunkFilepath(i, isAux))
 		}
 	}
-	cr.lock.Unlock()
+	cr.rwLock.RUnlock()
 	return rows, aux, match
 }
 
@@ -132,9 +132,9 @@ func (cr *ChunkedRows) totalRowCount() int {
 }
 
 func (cr *ChunkedRows) TotalRowCount() int {
-	cr.lock.Lock()
+	cr.rwLock.RLock()
 	n := cr.totalRowCount()
-	cr.lock.Unlock()
+	cr.rwLock.RUnlock()
 	return n
 }
 
@@ -256,11 +256,11 @@ func (cr *ChunkedRows) getMemoryMap(chunkIndex int, cType chunkType) (mm *os.Fil
 
 func (cr *ChunkedRows) Close() {
 	// cr.CloseAllOutFiles()
-	cr.lock.Lock()
+	// cr.rwLock.Lock()
 	// if cr.delayAddTimer != nil {
 	// 	cr.delayAddTimer.Stop()
 	// }
-	cr.lock.Unlock()
+	//cr.rwLock.Unlock()
 }
 
 // diffDir: 0 means it's in index chunk, 1 means chunk has bigger first value so goto before, 1 means last in chunk is smaller, go to next
@@ -300,8 +300,8 @@ func (cr *ChunkedRows) isInChunk(index int, o int64, isIDOrderer bool) (diffDir 
 }
 
 func (cr *ChunkedRows) BinarySearchForChunk(find int64, isIDOrderer bool) (i int, pos ChunkPos, err error) {
-	cr.lock.Lock()
-	defer cr.lock.Unlock()
+	cr.rwLock.RLock()
+	defer cr.rwLock.RUnlock()
 	return cr.binarySearchForChunk(find, cr.bottomChunkIndex, cr.topChunkIndex, isIDOrderer)
 }
 
@@ -343,8 +343,8 @@ func (cr *ChunkedRows) BinarySearch(find int64, isIDOrderer bool) (row []byte, c
 	if cr.isEmpty() {
 		return nil, 0, 0, false, nil
 	}
-	cr.lock.Lock()
-	defer cr.lock.Unlock()
+	cr.rwLock.RLock()
+	defer cr.rwLock.RUnlock()
 
 	// zlog.Warn("BinarySearch", time.UnixMicro(find), isIDOrderer)
 	var pos ChunkPos
@@ -461,8 +461,8 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 		auxBytes = append(djson, cr.auxMatchRowEndChar)
 	}
 
-	cr.lock.Lock()
-	defer cr.lock.Unlock()
+	cr.rwLock.Lock()
+	defer cr.rwLock.Unlock()
 
 	cr.incrementRowOrChunk()
 	if auxData != nil {
@@ -537,8 +537,8 @@ func (cr *ChunkedRows) isEmpty() bool {
 
 func (cr *ChunkedRows) load() error {
 	zfile.MakeDirAllIfNotExists(cr.opts.DirPath)
-	cr.lock.Lock()
-	defer cr.lock.Unlock()
+	cr.rwLock.Lock()
+	defer cr.rwLock.Unlock()
 	ctypes := []chunkType{isAux, isRows, isMatch}
 
 	var ranges = map[chunkType]zmath.Range[int]{}
@@ -655,9 +655,9 @@ func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr an
 }
 
 func (cr *ChunkedRows) GetAuxData(chunkIndex int, row []byte, dataPtr any) error {
-	cr.lock.Lock()
+	cr.rwLock.RLock()
 	err := cr.GetAuxDataUnlocked(chunkIndex, row, dataPtr)
-	cr.lock.Unlock()
+	cr.rwLock.RUnlock()
 	return err
 }
 
@@ -728,8 +728,8 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 	}
 	match = strings.ToLower(match)
 	// zlog.Warn("Iter1:", cr.bottomChunkIndex, cr.topChunkIndex, cr.topChunkRowCount, "in:", startChunkIndex, index, forward)
-	cr.lock.Lock()
-	defer cr.lock.Unlock()
+	cr.rwLock.RLock()
+	defer cr.rwLock.RUnlock()
 	chunkIndex := startChunkIndex
 	if index >= cr.opts.RowsPerChunk {
 		return 0, zlog.NewError("index too big for chunk", index, cr.opts.RowsPerChunk)
@@ -764,7 +764,7 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 	var mmap *os.File
 	count := 0
 	for {
-		if count%50000 == 0 && count != 0 {
+		if count%500000 == 0 && count != 0 {
 			zlog.Info("chunked.Iterate:", count, chunkIndex, index, match)
 		}
 		var err error
@@ -852,8 +852,8 @@ type FS struct {
 
 func (cr *ChunkedRows) DeleteChunksOlderThan(old time.Time) error {
 	isIDOrderer := false
-	cr.lock.Lock()
-	defer cr.lock.Unlock()
+	cr.rwLock.Lock()
+	defer cr.rwLock.Unlock()
 	t := old.UnixMicro()
 	zlog.Info("ChunkedRows.DeleteChunksOlderThan:", old)
 	index, cpos, err := cr.binarySearchForChunk(t, cr.bottomChunkIndex, cr.topChunkIndex, isIDOrderer)
