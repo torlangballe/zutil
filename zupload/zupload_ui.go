@@ -116,7 +116,7 @@ func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string
 	v.DropWell.HandleDroppedFile = v.handleGivenFile
 	v.DropWell.HandleDropPreflight = v.checkExtensions
 
-	v.activity = zwidgets.NewActivityView(zgeo.SizeBoth(16))
+	v.activity = zwidgets.NewActivityView(zgeo.SizeBoth(16), zgeo.ColorBlack)
 	v.Add(v.activity, zgeo.CenterLeft)
 }
 

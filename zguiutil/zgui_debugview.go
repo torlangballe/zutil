@@ -60,7 +60,7 @@ func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zla
 	in.Add(v, zgeo.CenterLeft|zgeo.HorExpand)
 
 	if name == "cpu" {
-		activity = zwidgets.NewActivityView(zgeo.SizeBoth(14))
+		activity = zwidgets.NewActivityView(zgeo.SizeBoth(14), zgeo.ColorBlack)
 		v.Add(activity, zgeo.CenterLeft)
 	}
 	return button, label, activity
