@@ -142,7 +142,7 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 	start := time.Now()
 	defer func() {
 		if time.Since(start) > time.Second*2 && mtype.Method.Name != "ReversePoll" { // ReversePoll waits for some result, so can take time on purpose
-			zlog.Info("🟪Slow zrpc excute:", mtype.Method.Name, time.Since(start), err)
+			zlog.Info("🟪Warning: Slow zrpc excute:", mtype.Method.Name, time.Since(start), err)
 		}
 	}()
 	var argv, replyv reflect.Value
