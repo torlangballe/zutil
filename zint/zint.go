@@ -263,6 +263,14 @@ func SetAny(numPtr any, i int64) error {
 	return nil
 }
 
+func IsInt(i any) bool {
+	switch i.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return true
+	}
+	return false
+}
+
 func GetAny(i any) (int64, error) {
 	if i == nil {
 		return 0, errors.New("is nil")

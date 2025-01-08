@@ -66,6 +66,14 @@ func GetAny(i any) (float64, error) {
 	return 0, errors.New(fmt.Sprint("zfloat.GetAny bad type:", reflect.TypeOf(i)))
 }
 
+func IsFloat(n any) bool {
+	switch n.(type) {
+	case float64, float32:
+		return true
+	}
+	return false
+}
+
 func SetAny(num any, f float64) error {
 	switch n := num.(type) {
 	case *float32:
