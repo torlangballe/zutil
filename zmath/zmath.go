@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"reflect"
 	"time"
 
 	"github.com/torlangballe/zutil/zfloat"
@@ -458,4 +459,15 @@ type numeric interface {
 
 func Abs[T numeric](x T) T {
 	return T(math.Float64frombits(math.Float64bits(float64(x)) &^ (1 << 63)))
+}
+
+func NiceNumberString(a any) (string, bool) {
+	if zint.IsInt(a) {
+		i := reflect.ValueOf(a).Int()
+		return zint.MakeHumanFriendly(i), true
+	}
+	if zfloat.IsFloat(a) {
+		return fmt.Sprintf("%f", a), true
+	}
+	return "", false
 }
