@@ -3,11 +3,13 @@
 package zguiutil
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/torlangballe/zui/zcanvas"
 	"github.com/torlangballe/zui/zcheckbox"
 	"github.com/torlangballe/zui/zcontainer"
+	"github.com/torlangballe/zui/zimageview"
 	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zstyle"
@@ -20,6 +22,8 @@ import (
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/ztimer"
 )
+
+const FrameHeaderName = "header"
 
 func NewBar(title string) (*zcontainer.StackView, *zlabel.Label) {
 	var label *zlabel.Label
@@ -125,8 +129,8 @@ var DefaultFrameStyling = zstyle.Styling{
 }
 
 var DefaultFrameTitleStyling = zstyle.Styling{
-	FGColor: zstyle.DefaultFGColor().WithOpacity(0.7),
-	Font:    *zgeo.FontNice(zgeo.FontDefaultSize, zgeo.FontStyleBold),
+	FGColor: zstyle.DefaultFGColor().WithOpacity(0.6).Mixed(zgeo.ColorBlue, 0.2),
+	Font:    *zgeo.FontNice(zgeo.FontDefaultSize, zgeo.FontStyleBoldItalic),
 }
 
 func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFrame bool, styling, titleStyling zstyle.Styling) (header *zcontainer.StackView) {
@@ -135,7 +139,7 @@ func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFra
 	fs.Font = zgeo.Font{}
 	stack.SetStyling(fs)
 	if title != "" {
-		header = zcontainer.StackViewHor("header")
+		header = zcontainer.StackViewHor(FrameHeaderName)
 		header.SetSpacing(2)
 		h := -8.0
 		if titleOnFrame {
@@ -190,4 +194,19 @@ func CreateLockIconForView(view zview.View) zview.View {
 		})
 	}
 	return label
+}
+
+func MakeTriangleArrow(forward bool) *zimageview.ImageView {
+	sdir := "left"
+	if forward {
+		sdir = "right"
+	}
+	path := fmt.Sprintf("images/triangle-%s-gray.png", sdir)
+	iv := zimageview.New(nil, true, path, zgeo.SizeD(24, 18))
+	key := zkeyboard.KeyLeftArrow
+	if forward {
+		key = zkeyboard.KeyRightArrow
+	}
+	iv.KeyboardShortcut.Key = key
+	return iv
 }
