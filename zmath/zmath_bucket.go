@@ -18,9 +18,14 @@ type BucketResult struct {
 	BestVal        float64
 	BestPos        float64
 	BestPayload    any
+	FirstPayload   any
 	LastPayload    any
 	MaxVal         float64
+	MaxPayload     any
+	MinPayload     any
 	MinVal         float64
+	Count          int
+	BestIndex      int // how far into Count inputs BestVal is
 }
 
 // BucketFilter accepts pos+values, aggregating all that are within a repeating pos period
@@ -60,10 +65,15 @@ func (f *BucketFilter) Flush() {
 
 func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 	f.LastPayload = payload
+	f.Count++
 	// zlog.Info("aggregate1:", zlog.Pointer(f), time.UnixMicro(int64(pos)), f.BestPayload != nil)
 	if f.BestPayload == nil {
+		f.Count = 0
 		f.MinVal = val
 		f.MaxVal = val
+		f.FirstPayload = payload
+		f.MaxPayload = payload
+		f.MinPayload = payload
 		f.BestPayload = payload
 		f.BestPos = pos
 		f.BestVal = val
@@ -71,8 +81,14 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 		// zlog.Info("aggregate new:", f.startPos, zlog.Pointer(f), time.UnixMicro((int64(pos))), "current:", time.UnixMicro((int64(f.currentCellPos))), time.Duration(pos-f.CurrentCellPos), time.Duration(f.period)*time.Microsecond)
 		return
 	}
-	f.MinVal = min(f.MinVal, val)
-	f.MaxVal = min(f.MaxVal, val)
+	if f.MinVal > val {
+		f.MinVal = val
+		f.MinPayload = payload
+	}
+	if f.MaxVal < val {
+		f.MaxVal = val
+		f.MaxPayload = payload
+	}
 	var add bool
 	switch f.Type {
 	case BucketMax:
@@ -82,6 +98,7 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 		add = (math.Abs(f.BestPos-mid) > math.Abs(pos-mid))
 	}
 	if add {
+		f.BestIndex = f.Count - 1
 		f.BestPos = pos
 		f.BestVal = val
 		f.BestPayload = payload
