@@ -147,7 +147,7 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string,
 	AddKVOptionToGrid(grid, zgraphana.URLPrefix)
 	AddKVOptionToGrid(grid, zgraphana.DashboardUID)
 	AddKVOptionToGrid(grid, prometheusPortOpt)
-	link := zlabel.NewLink("dashboard", "")
+	link := zlabel.NewLink("dashboard", "", true)
 	header.Add(link, zgeo.CenterRight)
 	timer := ztimer.RepeatForeverNow(1, func() {
 		pref := zgraphana.URLPrefix.Get()
