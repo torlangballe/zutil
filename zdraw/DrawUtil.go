@@ -209,7 +209,8 @@ func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, canvas *zcanvas.Ca
 	// zlog.Info("DrawBackgroundHorGraphLines:", rect, a)
 	y0, inc := zmath.NiceDividesOf(a.ValueRange.Min, a.ValueRange.Max, lines, nil)
 	// zlog.Info("NICEDIVS:", y0, inc, "for", a.ValueRange.Min, a.ValueRange.Max, lines)
-	y1 := zmath.RoundUpToModF64(a.ValueRange.Max, inc)
+	// y1 := zmath.RoundUpToModF64(a.ValueRange.Max, inc)
+	y1 := a.ValueRange.Max
 	a.Font.Size = min(10, math.Floor((rect.Size.H+2)*2/lines))
 	yScale := (y1 - y0) / rect.Size.H
 	// zlog.Info("DrawGraphRow1", y0, y1, yScale, rect.Size.H)
@@ -220,6 +221,7 @@ func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, canvas *zcanvas.Ca
 	for y := y0 + inc; y < y1; y += inc {
 		var lastX = math.MaxFloat64
 		pixy := rect.Max().Y - (y-y0)/yScale
+		pixy = math.Floor(pixy) - 2 // HACK!!!!!
 		ti.Rect.Pos.Y = pixy - a.Font.Size/2
 		ti.Rect.Size.H = a.Font.Size
 		// zlog.Info("DrawGraphRow Y", y, y-y0, (y-y0)/vdiff, (y-y0)/vdiff*rect.Size.H, pixy)
@@ -244,13 +246,14 @@ func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, canvas *zcanvas.Ca
 	}
 }
 
+/*
 func DrawGraphRow(gr *GraphRow, rect zgeo.Rect, canvas *zcanvas.Canvas) {
 	canvas.SetColor(gr.GraphColor)
 	i := 0
 	y0, inc := zmath.NiceDividesOf(gr.Axis.ValueRange.Min, gr.Axis.ValueRange.Max, 6, nil)
 	y1 := zmath.RoundUpToModF64(gr.Axis.ValueRange.Max, inc)
 	yScale := (y1 - y0) / rect.Size.H
-	// zlog.Info("NICEDIVS:", y0, inc, "for", gr.Min, gr.Max, 6)
+	// zlog.Info("NICEDIVS:", y0, y1, inc, gr.Axis.ValueRange)
 	path := zgeo.PathNew()
 	for {
 		val, x, done := gr.PullValuesFunc(&i)
@@ -278,3 +281,4 @@ func DrawGraphRow(gr *GraphRow, rect zgeo.Rect, canvas *zcanvas.Canvas) {
 		canvas.StrokePath(path, gr.Width, zgeo.PathLineButt)
 	}
 }
+*/
