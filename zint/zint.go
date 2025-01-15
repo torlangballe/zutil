@@ -271,16 +271,11 @@ func IsInt(i any) bool {
 	return false
 }
 
-func GetAny(i any) (int64, error) {
+func FromAnyInt(i any) (int64, error) {
 	if i == nil {
 		return 0, errors.New("is nil")
 	}
 	switch n := i.(type) {
-	case bool:
-		if n {
-			return 1, nil
-		}
-		return 0, nil
 	case int:
 		return int64(n), nil
 	case int8:
@@ -301,6 +296,26 @@ func GetAny(i any) (int64, error) {
 		return int64(n), nil
 	case uint64:
 		return int64(n), nil
+	}
+	val := reflect.ValueOf(i)
+	switch val.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return int64(val.Int()), nil
+	}
+	return 0, fmt.Errorf("bad kind %v", reflect.ValueOf(i).Kind())
+}
+
+func GetAny(i any) (int64, error) {
+	n, err := FromAnyInt(i)
+	if err == nil {
+		return n, nil
+	}
+	switch n := i.(type) {
+	case bool:
+		if n {
+			return 1, nil
+		}
+		return 0, nil
 	case float32:
 		return int64(n), nil
 	case float64:
@@ -316,8 +331,6 @@ func GetAny(i any) (int64, error) {
 			return 1, nil
 		}
 		return 0, nil
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return int64(val.Int()), nil
 	case reflect.Float32, reflect.Float64:
 		return int64(val.Float()), nil
 	case reflect.String:
@@ -325,7 +338,6 @@ func GetAny(i any) (int64, error) {
 		return n, err
 	}
 	return 0, fmt.Errorf("bad kind %v", reflect.ValueOf(i).Kind())
-
 }
 
 // GetItem makes Slice worth with MenuView MenuItems interface
