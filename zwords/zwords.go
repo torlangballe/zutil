@@ -33,6 +33,9 @@ var TSL = func(str, langCode string) string {
 func getSizeString(b int64, multiples int64, suffix, langCode string, maxSignificant int) string {
 	prefs := []string{"", "K", "M", "G", "T", "P"}
 	var n int64 = 1
+	if maxSignificant == 0 {
+		maxSignificant = 1
+	}
 	for _, pref := range prefs {
 		if b < n*multiples {
 			return NiceFloat(float64(b)/float64(n), maxSignificant) + " " + pref + suffix
