@@ -10,12 +10,13 @@ type BucketType string
 
 const (
 	BucketNearest BucketType = "nearest"
-	BucketMax     BucketType = "max"
+	BucketAverage BucketType = "max"
 )
 
 type BucketResult struct {
 	CurrentCellPos float64
 	BestVal        float64
+	ValueSum       float64
 	BestPos        float64
 	BestPayload    any
 	FirstPayload   any
@@ -25,7 +26,8 @@ type BucketResult struct {
 	MinPayload     any
 	MinVal         float64
 	Count          int
-	BestIndex      int // how far into Count inputs BestVal is
+	BestIndex      int  // how far into Count inputs BestVal is
+	IsOutsideFlush bool // true if this result is due to a outside-forced flush
 }
 
 // BucketFilter accepts pos+values, aggregating all that are within a repeating pos period
@@ -51,10 +53,10 @@ func NewBucketFilter(start, period float64) *BucketFilter {
 	return f
 }
 
-func (f *BucketFilter) Flush() {
+func (f *BucketFilter) Flush(fromOutside bool) {
 	if f.BestPayload != nil {
+		f.IsOutsideFlush = fromOutside
 		periodIndex := int((f.CurrentCellPos - f.startPos) / f.period)
-		// zlog.Info("Flush:", zlog.Pointer(f), periodIndex, f.BestPayload != nil, "current:", time.UnixMicro(int64(f.CurrentCellPos)), "best:", time.UnixMicro(int64(f.bestPos)))
 		f.GotFunc(f.BucketResult, periodIndex)
 		f.BestPayload = nil
 		f.LastPayload = nil
@@ -66,9 +68,10 @@ func (f *BucketFilter) Flush() {
 func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 	f.LastPayload = payload
 	f.Count++
-	// zlog.Info("aggregate1:", zlog.Pointer(f), time.UnixMicro(int64(pos)), f.BestPayload != nil)
+	f.ValueSum += val
 	if f.BestPayload == nil {
-		f.Count = 0
+		f.ValueSum = val
+		f.Count = 1
 		f.MinVal = val
 		f.MaxVal = val
 		f.FirstPayload = payload
@@ -78,7 +81,7 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 		f.BestPos = pos
 		f.BestVal = val
 		f.CurrentCellPos = f.startPos + RoundToModF64(pos-f.startPos, f.period)
-		// zlog.Info("aggregate new:", f.startPos, zlog.Pointer(f), time.UnixMicro((int64(pos))), "current:", time.UnixMicro((int64(f.currentCellPos))), time.Duration(pos-f.CurrentCellPos), time.Duration(f.period)*time.Microsecond)
+		// zlog.Info("aggregate new:", f.CurrentCellPos, f.Count)
 		return
 	}
 	if f.MinVal > val {
@@ -91,8 +94,6 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 	}
 	var add bool
 	switch f.Type {
-	case BucketMax:
-		add = (val > f.MaxVal)
 	case BucketNearest:
 		mid := f.CurrentCellPos + f.period/2
 		add = (math.Abs(f.BestPos-mid) > math.Abs(pos-mid))
@@ -102,6 +103,7 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 		f.BestPos = pos
 		f.BestVal = val
 		f.BestPayload = payload
+		// zlog.Info("aggregate1:", f.Count, f.BestIndex, f.CurrentCellPos)
 	}
 }
 
@@ -113,7 +115,8 @@ func (f *BucketFilter) Set(payload any, pos, val float64) {
 	}
 	if pos >= f.CurrentCellPos+f.period {
 		// zlog.Info("buck.Flush from set:", zlog.Pointer(f), pos)
-		f.Flush()
+		fromOutside := false
+		f.Flush(fromOutside)
 	}
 	f.aggregate(payload, pos, val)
 }
