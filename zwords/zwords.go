@@ -56,8 +56,13 @@ func GetMemoryString(b int64, langCode string, maxSignificant int) string {
 
 // NiceFloat converts a float to string, with only significant amount of post-comma digits
 func NiceFloat(f float64, significant int) string {
-	format := fmt.Sprintf("%%.%df", significant)
-	s := fmt.Sprintf(format, f)
+	var s string
+	if significant == 0 {
+		s = fmt.Sprintf("%f", f)
+	} else {
+		format := fmt.Sprintf("%%.%df", significant)
+		s = fmt.Sprintf(format, f)
+	}
 	if strings.ContainsRune(s, '.') {
 		zstr.HasSuffix(s, "0", &s)
 		zstr.HasSuffix(s, "0", &s)
