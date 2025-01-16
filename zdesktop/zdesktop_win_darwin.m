@@ -27,7 +27,7 @@ void imageOfWindow(NSString *winTitle, NSString *appBundleID, CGRect insetRect, 
             }
         }
         if (appBundleID != nil && foundApp == nil) {
-            got(nil, @"app not found");
+            got(nil, @"App not Found");
             return;
         }
         for (SCWindow *win in shareableContent.windows) {
@@ -37,7 +37,7 @@ void imageOfWindow(NSString *winTitle, NSString *appBundleID, CGRect insetRect, 
             }
         }
         if (foundWin == nil) {
-            got(nil, @"window not found for capture");
+            got(nil, @"Window not Found for Capture");
             return;
         }
         SCContentFilter *filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:foundWin];
