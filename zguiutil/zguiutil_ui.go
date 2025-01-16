@@ -201,7 +201,7 @@ func MakeTriangleArrow(forward bool) *zimageview.ImageView {
 	if forward {
 		sdir = "right"
 	}
-	path := fmt.Sprintf("images/triangle-%s-gray.png", sdir)
+	path := fmt.Sprintf("images/zcore/triangle-%s-gray.png", sdir)
 	iv := zimageview.New(nil, true, path, zgeo.SizeD(24, 18))
 	key := zkeyboard.KeyLeftArrow
 	if forward {
