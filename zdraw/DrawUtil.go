@@ -204,14 +204,13 @@ func MakeGraphRow() GraphRow {
 	}
 }
 
-func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, canvas *zcanvas.Canvas) {
-	const lines = 5
+func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, lines int, canvas *zcanvas.Canvas) {
 	// zlog.Info("DrawBackgroundHorGraphLines:", rect, a)
 	y0, inc := zmath.NiceDividesOf(a.ValueRange.Min, a.ValueRange.Max, lines, nil)
 	// zlog.Info("NICEDIVS:", y0, inc, "for", a.ValueRange.Min, a.ValueRange.Max, lines)
 	// y1 := zmath.RoundUpToModF64(a.ValueRange.Max, inc)
 	y1 := a.ValueRange.Max
-	a.Font.Size = min(10, math.Floor((rect.Size.H+2)*2/lines))
+	a.Font.Size = min(10, math.Floor((rect.Size.H+2)*2/float64(lines)))
 	yScale := (y1 - y0) / rect.Size.H
 	// zlog.Info("DrawGraphRow1", y0, y1, yScale, rect.Size.H)
 	ti := ztextinfo.New()
