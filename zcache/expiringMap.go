@@ -87,6 +87,11 @@ func (m *ExpiringMap[K, V]) Remove(k K) {
 	m.lockedMap.Remove(k)
 }
 
+func (m *ExpiringMap[K, V]) RemoveAll() {
+	m.changed = true
+	m.lockedMap.RemoveAll()
+}
+
 func (m *ExpiringMap[K, V]) ForEach(f func(key K, value V) bool) {
 	m.lockedMap.ForEach(func(key K, val struct {
 		value   V
@@ -101,4 +106,8 @@ func (m *ExpiringMap[K, V]) ForAll(f func(key K, value V)) {
 		f(key, value)
 		return true
 	})
+}
+
+func (m *ExpiringMap[K, V]) Count() int {
+	return m.lockedMap.Count()
 }
