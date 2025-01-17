@@ -3,6 +3,7 @@ package zmath
 import (
 	"math"
 
+	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -14,20 +15,21 @@ const (
 )
 
 type BucketResult struct {
-	CurrentCellPos float64
-	BestVal        float64
-	ValueSum       float64
-	BestPos        float64
-	BestPayload    any
-	FirstPayload   any
-	LastPayload    any
-	MaxVal         float64
-	MaxPayload     any
-	MinPayload     any
-	MinVal         float64
-	Count          int
-	BestIndex      int  // how far into Count inputs BestVal is
-	IsOutsideFlush bool // true if this result is due to a outside-forced flush
+	CurrentCellPos     float64
+	BestVal            float64
+	ValueSum           float64
+	BestPos            float64
+	BestPayload        any
+	FirstPayload       any
+	LastPayload        any
+	MaxVal             float64
+	MaxPayload         any
+	MinPayload         any
+	MinVal             float64
+	Count              int
+	BestIndex          int                             // how far into Count inputs BestVal is
+	IsOutsideFlush     bool                            // true if this result is due to a outside-forced flush
+	IsBestOverrideFunc func(payload any) zbool.BoolInd // if not nil and returns true, set best for current payload, if false don't. undef is use normal method
 }
 
 // BucketFilter accepts pos+values, aggregating all that are within a repeating pos period
@@ -93,10 +95,21 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 		f.MaxPayload = payload
 	}
 	var add bool
-	switch f.Type {
-	case BucketNearest:
-		mid := f.CurrentCellPos + f.period/2
-		add = (math.Abs(f.BestPos-mid) > math.Abs(pos-mid))
+	if f.IsBestOverrideFunc != nil {
+		best := f.IsBestOverrideFunc(payload)
+		if !best.IsUnknown() {
+			add = best.IsTrue()
+			if !add {
+				return
+			}
+		}
+	}
+	if !add {
+		switch f.Type {
+		case BucketNearest:
+			mid := f.CurrentCellPos + f.period/2
+			add = (math.Abs(f.BestPos-mid) > math.Abs(pos-mid))
+		}
 	}
 	if add {
 		f.BestIndex = f.Count - 1
