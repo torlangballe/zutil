@@ -59,6 +59,8 @@ type SQLTime struct {
 }
 type Differ time.Time
 
+type EpochTime time.Time // (un)marshals to epoch time in json
+
 // Distant is a very far-future time when you want to do things forever etc
 var (
 	Distant                  = time.Unix(1<<62, 0)
@@ -897,4 +899,19 @@ func (f TimeFieldFlags) String() string {
 		return "nfia"
 	}
 	return ""
+}
+
+func (e *EpochTime) UnmarshalJSON(b []byte) error {
+	n, err := strconv.ParseInt(string(b), 10, 64)
+	if err != nil {
+		return err
+	}
+	*e = EpochTime(time.Unix(n, 0))
+	return nil
+}
+
+func (e EpochTime) MarshalJSON() ([]byte, error) {
+	n := time.Time(e).Unix()
+	str := strconv.FormatInt(n, 10)
+	return []byte(str), nil
 }
