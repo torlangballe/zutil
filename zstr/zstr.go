@@ -20,6 +20,7 @@ import (
 	"unicode/utf8"
 
 	uuidv4 "github.com/bitactro/UUIDv4"
+	"github.com/google/uuid"
 	"github.com/torlangballe/zutil/zint"
 )
 
@@ -526,6 +527,11 @@ func GenerateRandomHexBytes(byteCount int) string {
 
 func GenerateUUID() string {
 	return uuidv4.GenerateUUID4()
+}
+
+func GenerateTimeUUID() string {
+	n := uuid.New()
+	return n.String()
 }
 
 // IsRuneASCIIPrintable returns true if b is ascii and not control-character (space returns true)
@@ -1348,4 +1354,12 @@ func KeyValuesFindForKey(keyVals []KeyValue, key string) (*KeyValue, int) {
 		}
 	}
 	return nil, -1
+}
+
+func JoinFunc[S any](s []S, sep string, get func(s any) string) string {
+	var parts []string
+	for _, ss := range s {
+		parts = append(parts, fmt.Sprint(get(ss)))
+	}
+	return strings.Join(parts, sep)
 }
