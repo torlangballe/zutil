@@ -99,7 +99,7 @@ func BaseGetNodes(c *CommandInfo, details bool, mode string, where string) strin
 	if c.Type == CommandHelp {
 		str := "list nodes. Nodes are like directories, but with commands and content."
 		if details {
-			str += "\tAdds columns of detailed information."
+			str += "\tShows columns of detailed information."
 		}
 		return str
 	}
@@ -121,6 +121,7 @@ func BaseGetNodes(c *CommandInfo, details bool, mode string, where string) strin
 				}
 			}
 		}
+		zstr.AddToSet(&cols, "desc")
 		fmt.Fprint(tabs, zstr.EscGreen)
 		fmt.Fprint(tabs, "node\t")
 		for _, c := range cols {
@@ -130,12 +131,7 @@ func BaseGetNodes(c *CommandInfo, details bool, mode string, where string) strin
 	}
 	for name, n := range nodes {
 		fmt.Fprint(tabs, name, "\t")
-		if !details {
-			do, _ := n.(zstr.Describer)
-			if do != nil {
-				fmt.Fprint(tabs, "\t", do.GetDescription())
-			}
-		} else {
+		if details {
 			var nodeCols []zstr.KeyValue
 			cg, _ := n.(ColumnGetter)
 			if cg != nil {
@@ -148,6 +144,10 @@ func BaseGetNodes(c *CommandInfo, details bool, mode string, where string) strin
 				}
 				fmt.Fprint(tabs, "\t")
 			}
+		}
+		do, _ := n.(zstr.Describer)
+		if do != nil {
+			fmt.Fprint(tabs, do.GetDescription())
 		}
 		fmt.Fprint(tabs, "\n")
 	}
