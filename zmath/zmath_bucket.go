@@ -133,3 +133,14 @@ func (f *BucketFilter) Set(payload any, pos, val float64) {
 	}
 	f.aggregate(payload, pos, val)
 }
+
+func (f *BucketFilter) SetValueInPosRange(payload any, posStart, posEnd, val float64) {
+	// zlog.Info("buck.Set:", zlog.Pointer(f), time.UnixMicro(int64(pos)), val)
+	if posStart < f.CurrentCellPos || posEnd < f.CurrentCellPos {
+		zlog.Error("val before start:", payload, posStart, posEnd, f.CurrentCellPos)
+		return
+	}
+	for pos := posStart; pos <= posEnd; pos += f.period {
+		f.Set(payload, pos, val)
+	}
+}
