@@ -141,8 +141,8 @@ func BaseGetNodes(c *CommandInfo, details bool, mode string, where string) strin
 				kv, _ := zstr.KeyValuesFindForKey(nodeCols, c)
 				if kv != nil {
 					fmt.Fprint(tabs, kv.Value)
+					fmt.Fprint(tabs, "\t")
 				}
-				fmt.Fprint(tabs, "\t")
 			}
 		}
 		do, _ := n.(zstr.Describer)
