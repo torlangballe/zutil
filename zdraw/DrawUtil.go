@@ -109,7 +109,11 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 		strokeCol := col
 		textOverlap := (x < endTextX+8)
 		onHour := (t.Second() == 0 && t.Minute() == 0)
-		dayLabel := (count > 1 && oldDay != t.Day() && t.Second() == 0 && x < rect.Size.W-100)
+		isRound := t.Second() == 0
+		if end.Sub(start) < time.Minute {
+			isRound = (t.Second()%10 == 0)
+		}
+		dayLabel := (count > 1 && oldDay != t.Day() && isRound && x < rect.Size.W-100)
 		if !isLabel && !onHour {
 			w = 1
 			strokeCol = strokeCol.WithOpacity(0.3)
