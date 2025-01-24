@@ -22,6 +22,8 @@ import (
 	uuidv4 "github.com/bitactro/UUIDv4"
 	"github.com/google/uuid"
 	"github.com/torlangballe/zutil/zint"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -870,22 +872,22 @@ func RangeStringLines(str string, skipEmpty bool, f func(s string) bool) {
 	}
 }
 
-// func GetStringSliceFromIntBase10(ids []int64) []string {
-// 	s := make([]string, len(ids))
-// 	for i := range ids {
-// 		s[i] = strconv.FormatInt(ids[i], 10)
-// 	}
-// 	return s
-// }
+// TitledWords Makes first letter of each word title-case (mostly upper case).
+// It currently just does it in english.
+func TitledWords(str string) string {
+	if str == "" {
+		return ""
+	}
+	return cases.Title(language.English, cases.NoLower).String(str)
+}
 
-func FirstToTitleCase(str string) (out string) {
+func FirstToTitleCase(str string) string {
 	if str == "" {
 		return ""
 	}
 	r := []rune(str)
 	r[0] = unicode.ToTitle(r[0])
-	out = string(r)
-	return
+	return string(r)
 }
 
 func FirstToLower(str string) (out string) {
