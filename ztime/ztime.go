@@ -915,3 +915,29 @@ func (e EpochTime) MarshalJSON() ([]byte, error) {
 	str := strconv.FormatInt(n, 10)
 	return []byte(str), nil
 }
+
+func addDurationPart(parts *[]string, d int, name string) {
+	if d == 0 {
+		return
+	}
+	*parts = append(*parts, zwords.Pluralize(name, d))
+}
+
+func DurationToVerbal(d time.Duration, useSecs bool) string {
+	var parts []string
+	h, m, s, _ := GetDurationHourMinSec(d)
+	if h >= 24 {
+		addDurationPart(&parts, h/24, "day")
+		h = h % 24
+	}
+	addDurationPart(&parts, h, "hour")
+	addDurationPart(&parts, m, "minute")
+	if useSecs {
+		addDurationPart(&parts, s, "second")
+	}
+	lp := len(parts)
+	if lp > 1 {
+		parts = append(parts[:lp-1], "and", parts[lp-1])
+	}
+	return strings.Join(parts, " ")
+}
