@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"golang.org/x/exp/constraints"
 )
 
 const Undefined = math.MaxFloat32
@@ -294,19 +296,39 @@ func ToStrings64(floats []float64) (s []string) {
 	return
 }
 
-func Sum(all []float64) float64 {
-	var a float64
-	for _, f := range all {
-		a += f
-	}
-	return a
-}
-
-func Average(f []float64) float64 {
-	return Sum(f) / float64(len(f))
-}
-
 func KeepFractionDigits(f float64, digits int) float64 {
 	m := math.Pow10(digits)
 	return math.Trunc(f*m) / m
+}
+
+func Sum[R constraints.Float](all []R) float64 {
+	var s float64
+	for _, f := range all {
+		s += float64(f)
+	}
+	return s
+}
+
+func Average[R constraints.Float](r []R) float64 {
+	return float64(Sum(r)) / float64(len(r))
+}
+
+func Max[R constraints.Float](r []R) float64 {
+	var max float64
+	for i, f := range r {
+		if i == 0 || max < float64(f) {
+			max = float64(f)
+		}
+	}
+	return max
+}
+
+func Min[R constraints.Float](r []R) float64 {
+	var min float64
+	for i, f := range r {
+		if i == 0 || min > float64(f) {
+			min = float64(f)
+		}
+	}
+	return min
 }
