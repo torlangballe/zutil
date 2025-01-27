@@ -1004,17 +1004,25 @@ func IsUpper(b byte) bool {
 func PadCamelCase(str, pad string) string {
 	big := ""
 	out := ""
+	needsPad := false
 	if len(str) == 3 {
 		if IsUpper(str[0]) && !IsUpper(str[1]) && IsUpper(str[2]) {
 			return str
 		}
 	}
 	for _, r := range str {
+		if r == ' ' || r == '_' {
+			out += big + string(r)
+			big = ""
+			needsPad = false
+			continue
+		}
 		if r == unicode.ToUpper(r) {
-			if big == "" && out != "" {
+			if big == "" && needsPad {
 				out += pad
 			}
 			big += string(r)
+			needsPad = true
 		} else {
 			if len(big) > 0 {
 				if len(big) == 1 {
@@ -1031,6 +1039,7 @@ func PadCamelCase(str, pad string) string {
 				big = ""
 			}
 			out += string(r)
+			needsPad = true
 		}
 	}
 	out += big
