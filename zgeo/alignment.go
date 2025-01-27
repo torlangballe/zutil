@@ -159,6 +159,14 @@ func (a Alignment) Swapped() Alignment {
 	return o
 }
 
+func (a Alignment) Has(mask Alignment) bool {
+	return a&mask != 0
+}
+
+func (a Alignment) HasAll(mask Alignment) bool {
+	return a&mask == mask
+}
+
 func (a Alignment) Subtracted(sub Alignment) Alignment {
 	return Alignment(a & Alignment(^uint64(sub)))
 }
