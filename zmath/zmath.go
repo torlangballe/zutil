@@ -18,6 +18,10 @@ type Number interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~float32 | ~float64
 }
 
+type Real interface {
+	~float32 | ~float64
+}
+
 const MathDegreesToMeters = (111.32 * 1000)
 const MathMetersToDegrees = 1 / MathDegreesToMeters
 
