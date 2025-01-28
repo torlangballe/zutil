@@ -719,7 +719,10 @@ func (cr *ChunkedRows) readRow(index int, bytes []byte, mmap *os.File) error {
 	return nil
 }
 
-func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match string, got func(row []byte, chunkIndex, index int, err error) bool) (totalRows int, err error) {
+// Iterate  starts in chunk startChunkIndex at row indexInRow. If skipFunc<>nil and returns true for the row,
+// and match <> "" and is contained in the row's match text, got is called.
+// If got returns true, the next or previous row is used depending on forward.
+func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, match string, skipFunc func(row []byte) bool, got func(row []byte, chunkIndex, index int, err error) bool) (totalRows int, err error) {
 	if cr.isEmpty() {
 		return 0, nil
 	}
@@ -731,19 +734,19 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 	cr.rwLock.RLock()
 	defer cr.rwLock.RUnlock()
 	chunkIndex := startChunkIndex
-	if index >= cr.opts.RowsPerChunk {
-		return 0, zlog.NewError("index too big for chunk", index, cr.opts.RowsPerChunk)
+	if indexInRow >= cr.opts.RowsPerChunk {
+		return 0, zlog.NewError("index too big for chunk", indexInRow, cr.opts.RowsPerChunk)
 	}
 	if startChunkIndex == -1 {
 		if forward {
 			chunkIndex = cr.bottomChunkIndex
-			if index < 0 || index >= cr.opts.RowsPerChunk {
-				return 0, zlog.NewError("index outside range:", index)
+			if indexInRow < 0 || indexInRow >= cr.opts.RowsPerChunk {
+				return 0, zlog.NewError("index outside range:", indexInRow)
 			}
 		} else {
 			chunkIndex = cr.topChunkIndex
-			if index == -1 {
-				index = cr.topChunkRowCount - 1
+			if indexInRow == -1 {
+				indexInRow = cr.topChunkRowCount - 1
 			}
 		}
 	} else {
@@ -753,11 +756,11 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 		if startChunkIndex < cr.bottomChunkIndex {
 			return 0, zlog.NewError("startChunkIndex before bottomChunkIndex", startChunkIndex, cr.bottomChunkIndex)
 		}
-		if index < 0 {
-			return 0, zlog.NewError("index < 0 for chunk not -1", index, cr.opts.RowsPerChunk)
+		if indexInRow < 0 {
+			return 0, zlog.NewError("index < 0 for chunk not -1", indexInRow, cr.opts.RowsPerChunk)
 		}
-		if startChunkIndex == cr.topChunkIndex && index >= cr.topChunkRowCount {
-			return 0, zlog.NewError("index after top row in top chunk", startChunkIndex, "==", cr.topChunkIndex, index, ">=", cr.topChunkRowCount)
+		if startChunkIndex == cr.topChunkIndex && indexInRow >= cr.topChunkRowCount {
+			return 0, zlog.NewError("index after top row in top chunk", startChunkIndex, "==", cr.topChunkIndex, indexInRow, ">=", cr.topChunkRowCount)
 		}
 	}
 	row := make([]byte, cr.opts.RowByteSize)
@@ -765,46 +768,51 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 	count := 0
 	for {
 		if count%500000 == 0 && count != 0 {
-			zlog.Info("chunked.Iterate:", count, chunkIndex, index, match)
+			zlog.Info("chunked.Iterate:", count, chunkIndex, indexInRow, match)
 		}
 		var err error
 		count++
 		if mmap == nil {
 			mmap, err = cr.getMemoryMap(chunkIndex, isRows)
 			if zlog.OnError(err, chunkIndex) {
-				got(row, chunkIndex, index, err)
+				got(row, chunkIndex, indexInRow, err)
 				return 0, err
 			}
 		}
-		err = cr.readRow(index, row, mmap)
+		err = cr.readRow(indexInRow, row, mmap)
 		skip := false
 		if err != nil {
 			skip = true
-			got(row, chunkIndex, index, err)
-			zlog.Warn("iter.ReadRow: err", chunkIndex, index, err)
-		} else if match != "" {
-			str, err := cr.getMatchStr(chunkIndex, row)
-			// zlog.Warn("iter.getMatch", chunkIndex, index, str, err)
-			if err != nil {
-				skip = true
-				got(row, chunkIndex, index, err)
-				// zlog.Warn("iter.ReadRow: getMatch err", chunkIndex, index, err)
-				continue
+			got(row, chunkIndex, indexInRow, err)
+			zlog.Warn("iter.ReadRow: err", chunkIndex, indexInRow, err)
+		} else {
+			if skipFunc != nil {
+				skip = skipFunc(row)
 			}
-			if !strings.Contains(str, match) {
-				skip = true
+			if !skip && match != "" {
+				str, err := cr.getMatchStr(chunkIndex, row)
+				// zlog.Warn("iter.getMatch", chunkIndex, index, str, err)
+				if err != nil {
+					skip = true
+					got(row, chunkIndex, indexInRow, err)
+					// zlog.Warn("iter.ReadRow: getMatch err", chunkIndex, index, err)
+					continue
+				}
+				if !strings.Contains(str, match) {
+					skip = true
+				}
 			}
 		}
-		if !skip && !got(row, chunkIndex, index, nil) {
+		if !skip && !got(row, chunkIndex, indexInRow, nil) {
 			break
 		}
 		if forward {
-			index++
-			if chunkIndex == cr.topChunkIndex && index >= cr.topChunkRowCount {
+			indexInRow++
+			if chunkIndex == cr.topChunkIndex && indexInRow >= cr.topChunkRowCount {
 				break
 			}
-			if index >= cr.opts.RowsPerChunk {
-				index = 0
+			if indexInRow >= cr.opts.RowsPerChunk {
+				indexInRow = 0
 				chunkIndex++
 				if chunkIndex > cr.topChunkIndex {
 					break
@@ -812,9 +820,9 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, index int, forward bool, match s
 				mmap = nil
 			}
 		} else {
-			index--
-			if index < 0 {
-				index = cr.opts.RowsPerChunk - 1
+			indexInRow--
+			if indexInRow < 0 {
+				indexInRow = cr.opts.RowsPerChunk - 1
 				chunkIndex--
 				if chunkIndex < cr.bottomChunkIndex {
 					break

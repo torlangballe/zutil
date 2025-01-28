@@ -154,7 +154,7 @@ func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
 	start := time.Now()
 	crc.outputRowsTableHeader(tabs)
 	i := 0
-	totalRows, err := crc.chunkedRows.Iterate(crc.lastChunkIndex, crc.lastIndex, forward, match, func(row []byte, chunkIndex, index int, err error) bool {
+	totalRows, err := crc.chunkedRows.Iterate(crc.lastChunkIndex, crc.lastIndex, forward, match, nil, func(row []byte, chunkIndex, index int, err error) bool {
 		crc.outputRow(c, tabs, row, chunkIndex, index, err)
 		i++
 		crc.lastChunkIndex = chunkIndex
@@ -250,7 +250,7 @@ func (crc *CRCommander) Checkup(c *zcommands.CommandInfo) string {
 	count := 0
 	forward := false
 	chunkErrCount := 0
-	_, err := crc.chunkedRows.Iterate(crc.chunkedRows.topChunkIndex, crc.chunkedRows.topChunkRowCount-1, forward, "", func(rowBytes []byte, chunkIndex, rowIndex int, err error) bool {
+	_, err := crc.chunkedRows.Iterate(crc.chunkedRows.topChunkIndex, crc.chunkedRows.topChunkRowCount-1, forward, "", nil, func(rowBytes []byte, chunkIndex, rowIndex int, err error) bool {
 		if chunkIndex != ci {
 			if ci != -1 {
 				var serr string
