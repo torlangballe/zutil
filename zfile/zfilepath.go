@@ -2,12 +2,12 @@ package zfile
 
 import (
 	"mime"
-	"net/url"
 	"os/user"
 	"path"
 	"runtime"
 	"strings"
 
+	"github.com/subosito/gozaru"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -38,9 +38,8 @@ func ChangedExtension(spath, ext string) string {
 }
 
 func SanitizeStringForFilePath(s string) string {
-	s = url.QueryEscape(s)
-	s = zstr.FileEscapeReplacer.Replace(s)
-
+	s = path.Clean(s)
+	s = gozaru.Sanitize(s)
 	return s
 }
 
