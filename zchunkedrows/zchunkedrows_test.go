@@ -162,7 +162,7 @@ func testLoad(t *testing.T) {
 func joinOrderForIterator(chunkedRows *ChunkedRows, startChunkIndex, index int, forward bool) string {
 	var orderers []string
 	var ierr error
-	_, err := chunkedRows.Iterate(startChunkIndex, index, forward, "", func(row []byte, chunkIndex, index int, err error) bool {
+	_, err := chunkedRows.Iterate(startChunkIndex, index, forward, "", nil, func(row []byte, chunkIndex, index int, err error) bool {
 		if err != nil {
 			ierr = err
 			return false
@@ -220,7 +220,7 @@ func testIterate(t *testing.T) {
 }
 
 func testCorruption(t *testing.T) {
-	zlog.Warn("testCorruption")
+	zlog.Warn("testCorruption, this should show .getLineFromChunk() and truncateChunk() errors")
 	const count = 5
 	names := []string{"john", "sally", "bill", "fred", "jill", "peter", "tor", "paul"}
 	opts := DefaultLSOpts

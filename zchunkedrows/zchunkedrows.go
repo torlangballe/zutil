@@ -173,7 +173,7 @@ func (cr *ChunkedRows) closeMaps(chunkIndex int, remove bool) {
 		if mm != nil {
 			mm.Close()
 			delete(cmap, chunkIndex)
-			zlog.Warn("closeMap", chunkIndex, cType, cmap[chunkIndex])
+			// zlog.Warn("closeMap", chunkIndex, cType, cmap[chunkIndex])
 		}
 		if remove {
 			// zlog.Warn("zChunkedRows.RemoveChunk:", chunkIndex)
