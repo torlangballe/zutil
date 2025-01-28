@@ -1,6 +1,8 @@
 module github.com/torlangballe/zutil
 
-go 1.22
+go 1.22.0
+
+toolchain go1.23.1
 
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
@@ -14,6 +16,7 @@ require (
 	github.com/go-mmap/mmap v0.7.0
 	github.com/gomodule/redigo v1.8.9
 	github.com/google/gopacket v1.1.19
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/gosnmp/gosnmp v1.37.0
@@ -28,14 +31,16 @@ require (
 	github.com/sendgrid/sendgrid-go v3.13.0+incompatible
 	github.com/sergi/go-diff v1.3.1
 	github.com/shirou/gopsutil/v4 v4.24.9
+	github.com/subosito/gozaru v0.0.0-20190625071150-416082cce636
 	github.com/timest/gomanuf v0.0.0-20230209100256-466f396c9305
 	github.com/torlangballe/blackfridayV2 v0.0.0-20230907135525-adceae2f31a8
 	github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
 	github.com/torlangballe/zui v0.0.0-20241024094449-7d14b61596af
-	golang.org/x/crypto v0.31.0
-	golang.org/x/net v0.28.0
-	golang.org/x/sys v0.28.0
+	golang.org/x/crypto v0.32.0
+	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
+	golang.org/x/net v0.34.0
+	golang.org/x/sys v0.29.0
 	golang.org/x/text v0.21.0
 	modernc.org/sqlite v1.27.0
 )
@@ -56,7 +61,6 @@ require (
 	github.com/gobwas/ws v1.3.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/lufia/plan9stats v0.0.0-20240909124753-873cd0166683 // indirect
@@ -74,10 +78,10 @@ require (
 	github.com/tklauser/numcpus v0.9.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/image v0.13.0 // indirect
-	golang.org/x/mod v0.20.0 // indirect
+	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
-	golang.org/x/tools v0.24.0 // indirect
+	golang.org/x/term v0.28.0 // indirect
+	golang.org/x/tools v0.29.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	lukechampine.com/uint128 v1.3.0 // indirect
 	modernc.org/cc/v3 v3.41.0 // indirect
