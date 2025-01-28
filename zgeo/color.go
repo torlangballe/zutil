@@ -438,9 +438,13 @@ func (c Color) GoColor() (gcol color.NRGBA64) {
 	return
 }
 
-func (c Color) GoGrayColor() (gcol color.Gray) {
-	gray := c.GrayScale()
+func GoGrayColor(gray float32) color.Gray {
 	return color.Gray{Y: uint8(gray * 255)}
+}
+
+func (c Color) GoGrayColor() color.Gray {
+	gray := c.GrayScale()
+	return GoGrayColor(gray)
 }
 
 func ColorRandom() Color {
