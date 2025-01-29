@@ -1,9 +1,11 @@
 package zmap
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -131,7 +133,14 @@ func Keys[K comparable, V any](m map[K]V) []K {
 	return keys
 }
 
-func SortedKeys[K comparable, V any](m map[K]V, less func(a, b V) bool) []K {
+func Sorted[S ~[]E, E cmp.Ordered](x S) []E {
+	n := make([]E, len(x))
+	copy(n, x)
+	slices.Sort(n)
+	return n
+}
+
+func FuncSortedKeys[K comparable, V any](m map[K]V, less func(a, b V) bool) []K {
 	keys := Keys(m)
 	sort.Slice(keys, func(i, j int) bool {
 		return less(m[keys[i]], m[keys[j]])
@@ -140,7 +149,7 @@ func SortedKeys[K comparable, V any](m map[K]V, less func(a, b V) bool) []K {
 }
 
 func KeySortedKeyValues[K comparable, V any](m map[K]V, less func(a, b V) bool) ([]K, []V) {
-	keys := SortedKeys(m, less)
+	keys := FuncSortedKeys(m, less)
 	vals := make([]V, len(keys))
 	for i, k := range keys {
 		vals[i] = m[k]
