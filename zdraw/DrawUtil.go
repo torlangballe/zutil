@@ -224,27 +224,32 @@ func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, lines int, canvas 
 	for y := y0 + inc; y < y1; y += inc {
 		var lastX = math.MaxFloat64
 		pixy := rect.Max().Y - (y-y0)/yScale
-		pixy = math.Floor(pixy) - 2 // HACK!!!!!
-		ti.Rect.Pos.Y = pixy - a.Font.Size/2
-		ti.Rect.Size.H = a.Font.Size
-		// zlog.Info("DrawGraphRow Y", y, y-y0, (y-y0)/vdiff, (y-y0)/vdiff*rect.Size.H, pixy)
-		for _, align := range []zgeo.Alignment{zgeo.Left | zgeo.HorCenter, zgeo.Right} {
-			if a.LabelAlign&align == 0 {
-				continue
+		pixy = math.Floor(pixy)
+		tx := 0.0
+		if a.TextColor.Valid {
+			ti.Rect.Pos.Y = pixy - a.Font.Size/2
+			ti.Rect.Size.H = a.Font.Size
+			// zlog.Info("DrawGraphRow Y", y, y-y0, (y-y0)/vdiff, (y-y0)/vdiff*rect.Size.H, pixy)
+			for _, align := range []zgeo.Alignment{zgeo.Left | zgeo.HorCenter, zgeo.Right} {
+				if a.LabelAlign&align == 0 {
+					continue
+				}
+				ti.Alignment = zgeo.VertCenter | align
+				ti.Text = zwords.NiceFloat(y, a.SignificantDigits) + a.Postfix
+				box := ti.Draw(canvas)
+				if a.LineColor.Valid && lastX != math.MaxFloat64 {
+					// zlog.Info("DrawGraphRow", a.LineColor)
+					canvas.SetColor(a.LineColor) // We have to set this each time, as ti.Draw() above with set it too
+					canvas.StrokeHorizontal(lastX, box.Min().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
+				}
+				lastX = box.Max().X
 			}
-			ti.Alignment = zgeo.VertCenter | align
-			ti.Text = zwords.NiceFloat(y, a.SignificantDigits) + a.Postfix
-			box := ti.Draw(canvas)
-			// zlog.Info("DrawGraphRow", ti.Color, ti.Text)
-			if lastX != math.MaxFloat64 {
-				canvas.SetColor(a.LineColor) // We have to set this each time, as ti.Draw() above with set it too
-				canvas.StrokeHorizontal(lastX, box.Min().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
-			}
-			lastX = box.Max().X
+			tx = lastX
 		}
-		if a.LabelAlign&zgeo.Right == 0 {
+		if a.LineColor.Valid && (!a.TextColor.Valid || !a.LabelAlign.Has(zgeo.Right)) {
+			// zlog.Info("DrawGraphRow2", a.LineColor)
 			canvas.SetColor(a.LineColor)
-			canvas.StrokeHorizontal(lastX, rect.Max().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
+			canvas.StrokeHorizontal(tx, rect.Max().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
 		}
 	}
 }
