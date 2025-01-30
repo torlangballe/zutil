@@ -65,7 +65,7 @@ func TestParseDate(t *testing.T) {
 		str := fmt.Sprintf("16:35 %d", day+1)
 		ztesting.Equal(t, parseDate(str, TimeFieldNotFutureIfAmbiguous), date(16, 35, 0, day+1, month-1, year), "ambiguous future1")
 	}
-	if month < 12 {
+	if month < 12 && day < 28 {
 		str := fmt.Sprintf("16:35 %d-%d", day, month+1)
 		ztesting.Equal(t, parseDate(str, TimeFieldNotFutureIfAmbiguous), date(16, 35, 0, day, month+1, year-1), "ambiguous future2")
 	}
