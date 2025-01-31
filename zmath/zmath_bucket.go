@@ -40,16 +40,16 @@ type BucketFilter struct {
 	Type    BucketType
 	GotFunc func(result BucketResult, periodIndex int)
 
-	period   float64
-	startPos float64
+	Period   float64
+	StartPos float64
 }
 
 func NewBucketFilter(start, period float64) *BucketFilter {
 	f := &BucketFilter{}
 	f.Type = BucketNearest
-	f.startPos = start
+	f.StartPos = start
 	// zlog.Info("NewBucket:", zlog.Pointer(f), start, period)
-	f.period = period
+	f.Period = period
 	f.CurrentCellPos = start
 	f.BestPayload = nil
 	return f
@@ -58,13 +58,17 @@ func NewBucketFilter(start, period float64) *BucketFilter {
 func (f *BucketFilter) Flush(fromOutside bool) {
 	if f.BestPayload != nil {
 		f.IsOutsideFlush = fromOutside
-		periodIndex := int((f.CurrentCellPos - f.startPos) / f.period)
+		periodIndex := int((f.CurrentCellPos - f.StartPos) / f.Period)
 		f.GotFunc(f.BucketResult, periodIndex)
 		f.BestPayload = nil
 		f.LastPayload = nil
 	} else {
 		// zlog.Info("NoFlush:", zlog.Pointer(f))
 	}
+}
+
+func (f *BucketFilter) BucketStartForPos(pos float64) float64 {
+	return f.StartPos + RoundToModF64(pos-f.StartPos, f.Period)
 }
 
 func (f *BucketFilter) aggregate(payload any, pos, val float64) {
@@ -82,7 +86,7 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 		f.BestPayload = payload
 		f.BestPos = pos
 		f.BestVal = val
-		f.CurrentCellPos = f.startPos + RoundToModF64(pos-f.startPos, f.period)
+		f.CurrentCellPos = f.BucketStartForPos(pos)
 		// zlog.Info("aggregate new:", f.CurrentCellPos, f.Count)
 		return
 	}
@@ -107,7 +111,7 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 	if !add {
 		switch f.Type {
 		case BucketNearest:
-			mid := f.CurrentCellPos + f.period/2
+			mid := f.CurrentCellPos + f.Period/2
 			add = (math.Abs(f.BestPos-mid) > math.Abs(pos-mid))
 		}
 	}
@@ -126,7 +130,7 @@ func (f *BucketFilter) Set(payload any, pos, val float64) {
 		zlog.Error("val before start:", payload, pos, f.CurrentCellPos)
 		return
 	}
-	if pos >= f.CurrentCellPos+f.period {
+	if pos >= f.CurrentCellPos+f.Period {
 		// zlog.Info("buck.Flush from set:", zlog.Pointer(f), pos)
 		fromOutside := false
 		f.Flush(fromOutside)
@@ -140,7 +144,7 @@ func (f *BucketFilter) SetValueInPosRange(payload any, posStart, posEnd, val flo
 		zlog.Error("val before start:", payload, posStart, posEnd, f.CurrentCellPos)
 		return
 	}
-	for pos := posStart; pos <= posEnd; pos += f.period {
+	for pos := posStart; pos <= posEnd; pos += f.Period {
 		f.Set(payload, pos, val)
 	}
 }
