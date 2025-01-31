@@ -47,6 +47,7 @@ type Parameters struct {
 	Headers               map[string]string
 	SkipVerifyCertificate bool
 	PrintBody             bool
+	ShowCURLCall          bool
 	Args                  map[string]string
 	TimeoutSecs           float64
 	UseHTTPS              bool
@@ -155,6 +156,17 @@ func SendBody(surl string, params Parameters, send, receive any) (*http.Response
 			}
 		}
 		params.Body = bout
+		if params.ShowCURLCall {
+			str := "curl -v -X " + string(params.Method) + " "
+			if params.Body != nil {
+				str += "-d " + zprocess.QuoteCommandLineArgument(string(params.Body)) + " "
+			}
+			for n, v := range params.Headers {
+				str += "--header " + zprocess.QuoteCommandLineArgument(n+": "+v) + " "
+			}
+			str += zprocess.QuoteCommandLineArgument(surl)
+			fmt.Println(zstr.EscCyan+str, zstr.EscNoColor)
+		}
 	}
 	resp, _, err := SendBytesOrFromReader(surl, params)
 	// if err != nil {
