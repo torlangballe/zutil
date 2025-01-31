@@ -147,7 +147,11 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 		}
 		t, got := p.(time.Time)
 		if got {
-			parts[i] = t.Local().Format("02-Jan-2006 15:04:05.999-07")
+			if t.IsZero() {
+				parts[i] = "zero"
+			} else {
+				parts[i] = t.Local().Format("02-Jan-2006 15:04:05.999-07")
+			}
 		}
 		rl, got := p.(LimitID)
 		if got {
