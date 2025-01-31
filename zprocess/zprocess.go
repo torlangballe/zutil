@@ -3,7 +3,9 @@ package zprocess
 import (
 	"context"
 	"math/rand"
+	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,40 +24,6 @@ type OnceWait struct {
 	inited bool
 	wg     sync.WaitGroup
 }
-
-// type TimedMutex chan struct{}
-
-// func NewTimedMutex() TimedMutex {
-// 	m := make(chan struct{}, 1)
-// 	return m
-// }
-
-// func (m TimedMutex) Lock() error {
-// 	return m.lock(false)
-// }
-
-// func (m TimedMutex) FailLock() error {
-// 	return m.lock(true)
-// }
-
-// func (m TimedMutex) lock(fail bool) error {
-// 	select {
-// 	case m <- struct{}{}:
-// 		break
-// 		// lock acquired
-// 	case <-time.After(time.Second * 10):
-// 		err := zlog.NewError("lock timed out")
-// 		if fail {
-// 			return err
-// 		}
-// 		zlog.Error(err, zlog.CallingStackString())
-// 	}
-// 	return nil
-// }
-
-// func (m TimedMutex) Unlock() {
-// 	<-m
-// }
 
 var (
 	MainThreadExeCh chan func()
@@ -234,4 +202,17 @@ func RunAndWaitForFuncInMainThread(f func()) {
 	}
 	zlog.Info("here")
 	wg.Wait()
+}
+
+// QuoteCommandLineArgument makes a string possible to use as an argument in a unix shell
+// Not that this is just for other uses than os/exec which escapes arguments.
+func QuoteCommandLineArgument(s string) string {
+	if len(s) == 0 {
+		return "''"
+	}
+	regEx := regexp.MustCompile(`[^\w@%+=:,./-]`)
+	if regEx.MatchString(s) {
+		return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+	}
+	return s
 }
