@@ -28,10 +28,6 @@ func PosF(x, y float32) Pos {
 	return PosD(float64(x), float64(y))
 }
 
-func PosI(x, y int) Pos {
-	return PosD(float64(x), float64(y))
-}
-
 func PosD(x, y float64) Pos {
 	return Pos{X: x, Y: y}
 }
@@ -284,9 +280,8 @@ func (p Pos) Round() Pos {
 	return Pos{math.Round(p.X), math.Round(p.Y)}
 }
 
-type IPos struct {
-	X int
-	Y int
+func (p Pos) Average() float64 {
+	return (p.X + p.Y) / 2
 }
 
 func (p Pos) Value() (driver.Value, error) {
@@ -329,4 +324,17 @@ func GetHemisphereDirectionsFromGeoAlignment(alignment Alignment, separator, lan
 		str = zstr.Concat(separator, str, TSL("East", langCode)) // General name for north as in north-east wind etc
 	}
 	return str
+}
+
+type IPos struct {
+	X int
+	Y int
+}
+
+func (p *IPos) ToPos() Pos {
+	return PosD(float64(p.X), float64(p.Y))
+}
+
+func PosI(x, y int) Pos {
+	return PosD(float64(x), float64(y))
 }

@@ -363,6 +363,10 @@ func (s Size) Swapped() Size {
 	return Size{s.H, s.W}
 }
 
+func (s Size) ISize() ISize {
+	return ISize{W: int(s.W), H: int(s.H)}
+}
+
 type ISize struct {
 	W int `json:"w"`
 	H int `json:"h"`
