@@ -21,16 +21,16 @@ import (
 type CellularNetworkType int
 type OSType string
 type ArchitectureType string
-
 type BrowserType string
 
 const (
-	Safari      BrowserType = "safari"
-	Chrome      BrowserType = "chrome"
-	Edge        BrowserType = "edge"
-	Firefox     BrowserType = "firefox"
-	Default     BrowserType = "default"
-	BrowserNone BrowserType = ""
+	Safari         BrowserType = "safari"
+	Chrome         BrowserType = "chrome"
+	Edge           BrowserType = "edge"
+	Firefox        BrowserType = "firefox"
+	HeadlessChrome BrowserType = "headless-chrome"
+	Default        BrowserType = "default"
+	BrowserNone    BrowserType = ""
 )
 
 var (
