@@ -39,5 +39,9 @@ func SetWindowRectForTitle(title, app string, rect zgeo.Rect) (winPID int64, err
 }
 
 func GetImageForWindowTitle(title, app string, insetRect zgeo.Rect) (img image.Image, err error) {
-	return nil, 0, nil
+	return nil, nil
+}
+
+func GetAppIDOfBrowser(btype zdevice.BrowserType) string {
+	return ""
 }
