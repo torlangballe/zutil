@@ -67,12 +67,8 @@ func NiceFloat(f float64, significant int) string {
 		s = fmt.Sprintf(format, f)
 	}
 	if strings.ContainsRune(s, '.') {
-		zstr.HasSuffix(s, "0", &s)
-		zstr.HasSuffix(s, "0", &s)
-		zstr.HasSuffix(s, "0", &s)
-		zstr.HasSuffix(s, "0", &s)
-		zstr.HasSuffix(s, "0", &s)
-		zstr.HasSuffix(s, "0", &s)
+		for zstr.HasSuffix(s, "0", &s) {
+		}
 		zstr.HasSuffix(s, ".", &s)
 	}
 	return s
