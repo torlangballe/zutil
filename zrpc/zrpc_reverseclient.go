@@ -20,7 +20,7 @@ import (
 
 // Reverse calling functionality allows the "server" to set up a "reverse client", and call methods on clients (called reverse receivers) that usually only call in to it.
 // This allows instant calling of methods on a browser for example.
-// It is done by the clients polling if the server has any calls, executing them, and returning the resukt in the next poll.
+// It is done by the clients polling if the server has any calls, executing them, and returning the result in the next poll.
 
 type ReverseClientsOwner struct {
 	HandleNewReverseReceiverFunc func(id string, rc *ReverseClient)
