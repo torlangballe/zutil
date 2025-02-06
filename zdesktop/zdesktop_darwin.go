@@ -88,7 +88,7 @@ func GetCachedPIDForAppName(app string) (int64, error) {
 	return pid, nil
 }
 
-func GetAppIdOfBrowser(btype zdevice.BrowserType) string {
+func GetAppIDOfBrowser(btype zdevice.BrowserType) string {
 	switch btype {
 	case zdevice.Safari:
 		return "com.apple.Safari"
