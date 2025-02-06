@@ -32,11 +32,12 @@ type Client struct {
 	KeepTokenOnAuthenticationInvalid bool    // if KeepTokenOnAuthenticationInvalid is true, the auth token isn't cleared on failure to authenticate
 	SkipVerifyCertificate            bool    // if true, no certificate checking is done for https calls
 	PrefixURL                        string  // Stores PrefixURL, so easy to compare if it needs changing
+	ID                               string
 
 	gettingResources zmap.LockMap[string, bool]
 	pollGetters      zmap.LockMap[string, func()]
 	callURL          string
-	ID               string
+	localExecutor    *Executor // if set, the call just calls method on executor instead
 }
 
 // client is structure to store received info from the call
@@ -58,6 +59,17 @@ var (
 	registeredResources []string
 	EnableLogClient     zlog.Enabler
 )
+
+func NewClientWithLocalExecutor(e *Executor, id string) *Client {
+	c := &Client{}
+	c.localExecutor = e
+	if id == "" {
+		id = zstr.GenerateRandomHexBytes(12)
+	}
+	c.ID = id
+	c.TimeoutSecs = 20
+	return c
+}
 
 // NewClient creates a client with a url prefix, adding zrest.AppURLPrefix
 // This is
@@ -101,7 +113,38 @@ func (c *Client) Call(method string, input, result any) error {
 	return err
 }
 
+func (c *Client) doLocalCall(method string, timeoutSecs float64, input, result any) error {
+	var ci ClientInfo
+	// cp := callPayloadReceive{Method: method, Args: input, ClientID:c.ID}
+	// cp := CallPayload{Method: method, Args: input}
+	// cp.ClientID = c.ID
+	// ci.Type = "zrpc"
+	ci.ClientID = c.ID
+	// ci.Token = token
+	// ci.UserID = userID
+	// ci.Request = req
+	// ci.UserAgent = req.UserAgent()
+	// ci.IPAddress = req.RemoteAddr
+	// sdate := req.Header.Get(dateHeaderID)
+	// stimeout := req.Header.Get(timeoutHeaderID)
+	// timeoutSecs, _ := strconv.ParseFloat(stimeout, 64)
+	// ci.SendDate, _ =  time.Parse(ztime.JavascriptISO, sdate)
+	expires := time.Now().Add(ztime.SecondsDur(timeoutSecs))
+	raw, err := json.Marshal(input)
+	// expires := time.Now().Add(ztime.SecondsDur(timeoutSecs))
+	lrp, err := c.localExecutor.callWithDeadline(ci, method, expires, raw, nil)
+	if err == nil {
+		return err
+	}
+	reflect.ValueOf(result).Elem().Set(reflect.ValueOf(lrp.Result))
+	return nil
+}
+
 func (c *Client) callWithTransportError(method string, timeoutSecs float64, input, result any) (err error, terr error) {
+	if c.localExecutor != nil {
+		err = c.doLocalCall(method, timeoutSecs, input, result)
+		return err, nil
+	}
 	var rp clientReceivePayload
 	cp := CallPayload{Method: method, Args: input}
 	cp.ClientID = c.ID
@@ -237,7 +280,7 @@ func (c *Client) RegisterPollGetter(resID string, get func()) {
 
 func requestHTTPDataFields(s any, requestHTTPDataClient *Client, debugInfo string) error {
 	var wg sync.WaitGroup
-	var outErr error
+	outErr := new(error)
 	rv := reflect.ValueOf(s)
 	if rv.Kind() != reflect.Pointer || rv.Elem().Kind() != reflect.Struct {
 		return nil
@@ -252,7 +295,7 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client, debugInfo strin
 			}
 			data, _ := each.ReflectValue.Interface().([]byte)
 			if data == nil {
-				outErr = zlog.Error("client: field isn't []byte:", each.StructField.Name, debugInfo)
+				*outErr = zlog.Error("client: field isn't []byte:", each.StructField.Name, debugInfo)
 				return true
 			}
 			if len(data) == 0 {
@@ -269,7 +312,7 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client, debugInfo strin
 			str := string(data)
 			id, err := strconv.ParseInt(str, 10, 64)
 			if err != nil {
-				outErr = zlog.Error("client: id wasn't valid:", str, err, each.StructField.Name, debugInfo)
+				*outErr = zlog.Error("client: id wasn't valid:", str, err, each.StructField.Name, debugInfo)
 				return true
 			}
 			wg.Add(1)
@@ -277,12 +320,12 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client, debugInfo strin
 				reader, err := requestHTTPDataClient.RequestTemporaryServe(id)
 				defer wg.Done()
 				if err != nil {
-					outErr = zlog.Error("RequestTemporaryServe req err:", err, id, each.StructField.Name, debugInfo)
+					*outErr = zlog.Error("RequestTemporaryServe req err:", err, id, each.StructField.Name, debugInfo)
 					return
 				}
 				buf, err := io.ReadAll(reader)
 				if err != nil {
-					outErr = zlog.Error("RequestTemporaryServe read err:", err, id, each.StructField.Name, debugInfo)
+					*outErr = zlog.Error("RequestTemporaryServe read err:", err, id, each.StructField.Name, debugInfo)
 					return
 				}
 				rval.SetBytes(buf)
@@ -292,7 +335,7 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client, debugInfo strin
 		wg.Wait()
 		return true
 	})
-	return outErr
+	return *outErr
 }
 
 // RequestTemporaryServe requests to get data bytes with id set up with AddToTemporaryServe() in executor.
