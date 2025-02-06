@@ -69,10 +69,10 @@ type Scheduler[I comparable] struct {
 	runs      []Run[I]
 	zeroID    I
 	timer     *time.Timer
-	Debug     zmap.LockMap[I, JobDebug]
 	timerOn   bool
 	stopped   bool
 	started   bool
+	Debug     zmap.LockMap[I, JobDebug]
 }
 
 type Job[I comparable] struct {
@@ -80,17 +80,19 @@ type Job[I comparable] struct {
 	DebugName    string
 	Duration     time.Duration // How long job should run for. 0 is until stopped.
 	Cost         float64       // Cost is how much of an executor's CostCapacity the job uses.
-	changedCount int           // changedCount is an incremented when job changes. Must be flushed then.
+	Attributes   int64
+	changedCount int // changedCount is an incremented when job changes. Must be flushed then.
 }
 
 type Executor[I comparable] struct {
-	ID           I
-	Paused       bool
-	CostCapacity float64
-	KeptAliveAt  time.Time
-	DebugName    string
-	SettingsHash int64 // other settings for executor, if changed cause restart
-	changedCount int   // changedCount is an incremented when executor changes. Must be flushed then
+	ID               I
+	Paused           bool
+	CostCapacity     float64
+	KeptAliveAt      time.Time
+	AcceptAttributes int64 // if non-zero, only if all of job's Attributes are in AcceptAttributes will it run
+	DebugName        string
+	SettingsHash     int64 // other settings for executor, if changed cause restart
+	changedCount     int   // changedCount is an incremented when executor changes. Must be flushed then
 }
 
 type Run[I comparable] struct {
@@ -498,7 +500,6 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 			}
 		}
 	}
-
 	if e.Paused {
 		// zlog.Warn("shouldStopJob paused:", caps, existingCap, unrunCost, run.Job.ID, s.setup.KeepJobsBeyondAtEndUntilEnoughSlack, left, run.Job.Cost)
 		if s.setup.KeepJobsBeyondAtEndUntilEnoughSlack == 0 {
@@ -842,6 +843,10 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 		e, _ := s.findExecutor(exID)
 		if e == nil {
 			str += " NoExecutor "
+			continue
+		}
+		if e.AcceptAttributes != 0 && run.Job.Attributes != 0 && e.AcceptAttributes&run.Job.Attributes != run.Job.Attributes {
+			zlog.Info("zscheduler: Skipping executor for job with Attribute:", run.Job.Attributes)
 			continue
 		}
 		// if e == nil {
