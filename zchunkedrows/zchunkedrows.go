@@ -623,11 +623,6 @@ func (cr *ChunkedRows) handleLoadedTopRow(mm *os.File) error {
 		}
 		cr.closeMaps(cr.topChunkIndex, false)
 	}
-	for _, cType := range []chunkType{isAux, isRows, isMatch} {
-		path := cr.chunkFilepath(cr.topChunkIndex, cType)
-		size := zfile.Size(path)
-		zlog.Info("StartSize:", cType, size)
-	}
 	cr.currentID = int64(binary.LittleEndian.Uint64(lastRow[0:]))
 	return nil
 }
