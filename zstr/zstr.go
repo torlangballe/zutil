@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -21,6 +22,7 @@ import (
 
 	uuidv4 "github.com/bitactro/UUIDv4"
 	"github.com/google/uuid"
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -1378,4 +1380,32 @@ func JoinFunc[S any](s []S, sep string, get func(s any) string) string {
 		parts = append(parts, fmt.Sprint(get(ss)))
 	}
 	return strings.Join(parts, sep)
+}
+
+func SetStringToAny(toPtr any, from string) error {
+	switch t := toPtr.(type) {
+	case *bool:
+		if from == "true" || from == "TRUE" || from == "1" {
+			*t = true
+		} else {
+			return errors.New("not bool")
+		}
+	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64:
+		n, err := strconv.ParseInt(from, 10, 64)
+		if err != nil {
+			return err
+		}
+		zint.SetAny(toPtr, n)
+	case *float32, *float64:
+		n, err := strconv.ParseFloat(from, 64)
+		if err != nil {
+			return err
+		}
+		zfloat.SetAny(toPtr, n)
+	case *string:
+		*t = from
+	default:
+		return fmt.Errorf("SetStringToAny: bad type: %v %v", from, reflect.TypeOf(toPtr))
+	}
+	return nil
 }
