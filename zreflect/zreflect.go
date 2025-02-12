@@ -7,11 +7,9 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -465,34 +463,6 @@ func HashAnyToInt64(a interface{}, add string) int64 {
 	str := fmt.Sprintf("%v", a) + add
 	// fmt.Println("HashAnyToInt64", str)
 	return zint.HashTo64(str)
-}
-
-func SetStringToAny(toPtr any, from string) error {
-	switch t := toPtr.(type) {
-	case *bool:
-		if from == "true" || from == "TRUE" || from == "1" {
-			*t = true
-		} else {
-			*t = false
-		}
-	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64:
-		n, err := strconv.ParseInt(from, 10, 64)
-		if err != nil {
-			fmt.Println("SetAny1:", err)
-		}
-		zint.SetAny(toPtr, n)
-	case *float32, *float64:
-		n, err := strconv.ParseFloat(from, 64)
-		if err != nil {
-			fmt.Println("SetAny2:", err, from)
-		}
-		zfloat.SetAny(toPtr, n)
-	case *string:
-		*t = from
-	default:
-		return fmt.Errorf("SetStringToAny: bad type: %v %v", from, reflect.TypeOf(toPtr))
-	}
-	return nil
 }
 
 func Swap[A any](a, b *A) {

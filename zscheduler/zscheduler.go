@@ -17,14 +17,14 @@ import (
 
 type Setup[I comparable] struct {
 	ExecutorAliveDuration                 time.Duration                                     // ExecutorAliveDuration is how often an executor needs to say it's alive to be considered operatable. 0 means always alive.
-	SimultaneousStarts                    int                                               // SimultaneousStarts is how many jobs can start while anotherone is starting and hasn't reached rnuning state yet. See also MinDurationBetweenSimultaneousStarts.
+	SimultaneousStarts                    int                                               // SimultaneousStarts is how many jobs can start while another one is starting and hasn't reached running state yet. See also MinDurationBetweenSimultaneousStarts.
 	MinDurationBetweenSimultaneousStarts  time.Duration                                     // MinDurationBetweenSimultaneousStarts is how long to wait to do next start if SimultaneousStarts > 1.
 	LoadBalanceIfCostDifference           float64                                           // If LoadBalanceIfCostDifference > 0, once all jobs are running, switch job to an executor with more capacity left if difference > this.
 	KeepJobsBeyondAtEndUntilEnoughSlack   time.Duration                                     // If KeepJobsBeyondAtEndUntilEnoughSlack > 0, a job isn't stopped at Duration end if there's other jobs not in run state yet, yet are stopped if they go beyond this duration extra.
 	SlowStartJobFuncTimeout               time.Duration                                     // SlowStartJobFuncTimeout is how long starting a job with StartJobOnExecutorFunc can go until timeout.
 	SlowStopJobFuncTimeout                time.Duration                                     // SlowStopJobFuncTimeout is like SlowStartJobFuncTimeout/StopJobOnExecutorFunc but for stopping.
 	TotalMaxJobCount                      int                                               // The scheduler wont start another job if active jobs >= TotalMaxJobCount.
-	JobIsRunningOnSuccessfullStart        bool                                              // Set JobIsRunningOnSuccessfullStart to set a job as running once its start function completes successfully. Otherwise use the JobIsRunningCh channel.
+	JobIsRunningOnSuccessfulStart         bool                                              // Set JobIsRunningOnSuccessfulStart to set a job as running once its start function completes successfully. Otherwise use the JobIsRunningCh channel.
 	ChangingJobRestartsIt                 bool                                              // If ChangingJobRestartsIt is set, jobs are restarted when changed with ChangeExecutorCh.
 	GracePeriodForJobsOnExecutorCh        time.Duration                                     // GracePeriodForJobsOnExecutorCh is amount of slack from start to not stop jobs not reported in executor yet.
 	StartJobOnExecutorFunc                func(run Run[I], ctx context.Context) error       `zui:"-"` // StartJobOnExecutorFunc is called to start a job. It is done on a goroutine and is assumed to take a while or time out.
@@ -52,7 +52,7 @@ type Scheduler[I comparable] struct {
 	JobIsRunningCh          chan I                 // Write a JobID to JobIsRunningCh to flag it as now running. Not needed if JobIsRunningOnSuccessfullStart true.
 	AddExecutorCh           chan Executor[I]       // Write an Executor to AddExecutorCh to add an executor. Jobs will start/balance onto it as needed.
 	RemoveExecutorCh        chan I                 //  Write an executor ID to RemoveExecutorCh to remove it. Jobs on it will immediately be stopped and restarted.
-	ChangeExecutorCh        chan Executor[I]       // Wriite an executor with existing ID to ChangeExecutorCh to change it. Jobs on it will be restarted if anything but DebugName is changed.
+	ChangeExecutorCh        chan Executor[I]       // Write an executor with existing ID to ChangeExecutorCh to change it. Jobs on it will be restarted if anything but DebugName is changed.
 	FlushExecutorJobsCh     chan I                 // Write an executor ID to FlushExecutorJobsCh to restart all jobs on it.
 	SetExecutorIsAliveCh    chan I                 // Write an executor ID to SetExecutorIsAliveCh to keep it alive at least with frequency ExecutorAliveDuration.
 	SetJobsOnExecutorCh     chan JobsOnExecutor[I] // Write a list of job ids and executor id to SetJobsOnExecutorCh to update what is running on the executor. Since the executor might crash, this keeps jobs in sync.
@@ -65,14 +65,15 @@ type Scheduler[I comparable] struct {
 	endRunCh    chan I        // endRunCh sets a run to after stopped status
 	removeRunCh chan I        // removeRunCh does local remove of a run
 
-	executors []Executor[I]
-	runs      []Run[I]
-	zeroID    I
-	timer     *time.Timer
-	timerOn   bool
-	stopped   bool
-	started   bool
-	Debug     zmap.LockMap[I, JobDebug]
+	executors       []Executor[I]
+	runs            []Run[I]
+	zeroID          I
+	timer           *time.Timer
+	timerOn         bool
+	stopped         bool
+	started         bool
+	triedToRunIndex int
+	Debug           zmap.LockMap[I, JobDebug]
 }
 
 type Job[I comparable] struct {
@@ -96,16 +97,17 @@ type Executor[I comparable] struct {
 }
 
 type Run[I comparable] struct {
-	Job         Job[I]    `zui:"flatten"`
-	ExecutorID  I         `zui:"title:ExID"`
-	Count       int       `zui:"allowempty"`
-	StartedAt   time.Time `zui:"allowempty"`
-	RanAt       time.Time `zui:"allowempty"`
-	StoppedAt   time.Time `zui:"allowempty"`
-	Removing    bool      `zui:"allowempty"`
-	Stopping    bool      `zui:"allowempty"`
-	MilestoneAt time.Time `zui:"allowempty"` // MilestoneAt is a time a significant sub-task was achieved. See StopJobIfSinceMilestoneLessThan above.
-	ErrorAt     time.Time `zui:"allowempty"` // ErrorAt is last time an error occured on this job/run. Used to de-prioritize jobs with recent errors when starting new jobs.
+	Job             Job[I]    `zui:"flatten"`
+	ExecutorID      I         `zui:"title:ExID"`
+	Count           int       `zui:"allowempty"`
+	StartedAt       time.Time `zui:"allowempty"`
+	RanAt           time.Time `zui:"allowempty"`
+	StoppedAt       time.Time `zui:"allowempty"`
+	Removing        bool      `zui:"allowempty"`
+	Stopping        bool      `zui:"allowempty"`
+	MilestoneAt     time.Time `zui:"allowempty"` // MilestoneAt is a time a significant sub-task was achieved. See StopJobIfSinceMilestoneLessThan above.
+	ErrorAt         time.Time `zui:"allowempty"` // ErrorAt is last time an error occurred on this job/run. Used to de-prioritize jobs with recent errors when starting new jobs.
+	triedToRunIndex int
 
 	starting             bool
 	executorChangedCount int
@@ -120,7 +122,7 @@ type SituationType string
 
 const (
 	NoWorkersToRunJob           SituationType = "no workers fit to run job"
-	RemoveJobFromExecutorFailed SituationType = "remove job from exector failed"
+	RemoveJobFromExecutorFailed SituationType = "remove job from executor failed"
 	ErrorStartingJob            SituationType = "error starting job"
 	ExecutorHasExpired          SituationType = "executor is no longer alive"
 	MaximumJobsReached          SituationType = "maximum jobs reached"
@@ -296,7 +298,7 @@ func DefaultSetup[I comparable]() Setup[I] {
 	s.MinDurationBetweenSimultaneousStarts = 0
 	s.KeepJobsBeyondAtEndUntilEnoughSlack = 0
 	s.HandleSituationFastFunc = func(run Run[I], s SituationType, details string) {}
-	s.JobIsRunningOnSuccessfullStart = false
+	s.JobIsRunningOnSuccessfulStart = false
 	return s
 }
 
@@ -419,7 +421,7 @@ func (s *Scheduler[I]) addJob(job Job[I], outsideRequest bool) {
 func (s *Scheduler[I]) runnableExecutorIDs() map[I]bool {
 	m := map[I]bool{}
 	for _, e := range s.executors {
-		// zlog.Warn("runnableExecutorIDs?:", s.isExecutorAlive(&e))
+		// zlog.Warn("runnableExecutorIDs?:", e.Paused, s.isExecutorAlive(&e))
 		if !e.Paused && s.isExecutorAlive(&e) {
 			m[e.ID] = true
 		}
@@ -553,7 +555,7 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 	return false, "No reason to stop"
 }
 
-// isBetterRunCandidate prioritzes being run longest ago, if not having an error and other does, or having error longer ago.
+// isBetterRunCandidate prioritizes being run longest ago, if not having an error and other does, or having error longer ago.
 func isBetterRunCandidate[I comparable](is, other *Run[I]) bool {
 	// zlog.Warn("isBetterRunCandidate:", is.Job.ID, is.ErrorAt, other.Job.ID, other.ErrorAt)
 	if !is.ErrorAt.IsZero() && other.ErrorAt.IsZero() {
@@ -568,7 +570,7 @@ func isBetterRunCandidate[I comparable](is, other *Run[I]) bool {
 	if is.StoppedAt.Before(other.StoppedAt) {
 		return true
 	}
-	return false
+	return other.triedToRunIndex == 0 || is.triedToRunIndex < other.triedToRunIndex
 }
 
 var ssLock sync.Mutex
@@ -623,7 +625,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			// zlog.Warn(i, "loop:", r.Job.ID, r.ErrorAt, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
 			if r.ExecutorID == s.zeroID && !r.Stopping && r.StartedAt.IsZero() {
 				if oldestRun == nil || isBetterRunCandidate[I](&r, oldestRun) {
-					// zlog.Warn(i, "set oldestRun:", len(s.runs), oldestRun != nil, s.runs[i].Job.ID, ssCount, r.ErrorAt)
+					zlog.Warn(i, "set oldestRun:", len(s.runs), oldestRun != nil, s.runs[i].Job.DebugName, s.runs[i].Job.ID, ssCount, r.ErrorAt)
 					oldestRun = &s.runs[i]
 				}
 			}
@@ -634,6 +636,9 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			runLeft += r.Job.Cost / capacities[r.ExecutorID].capacity
 			rDiff := s.setup.LoadBalanceIfCostDifference / capacities[r.ExecutorID].capacity
 			for exID, cap := range capacities {
+				if cap.attributes&r.Job.Attributes != r.Job.Attributes {
+					continue
+				}
 				if exID == r.ExecutorID {
 					continue
 				}
@@ -747,7 +752,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 	// zlog.Warn("SetNextTimer:", d)
 	// if d < -time.Second {
 	if d <= -20*time.Millisecond {
-		limit := zlog.Limit("zsched.NextTime.", timerJob)
+		limit := zlog.Limit("zscheduler.NextTime.", timerJob)
 		zlog.Warn(limit, "NextTime set to past:", d, "for:", timerJob, nextReason)
 	}
 	// zlog.Warn("SetTimer:", time.Now().Add(d))
@@ -759,6 +764,7 @@ type capacity struct {
 	load               float64
 	capacity           float64
 	startingCount      int
+	attributes         int64
 	mostRecentStarting time.Time //!!!!!!!!!!!!!! use this to not run 2 jobs on same worker after each other!
 }
 
@@ -802,7 +808,7 @@ func (s *Scheduler[I]) calculateLoadOfUsableExecutors() map[I]capacity {
 		if !runnableEx[e.ID] {
 			continue
 		}
-		m[e.ID] = capacity{capacity: e.CostCapacity}
+		m[e.ID] = capacity{capacity: e.CostCapacity, attributes: e.AcceptAttributes}
 	}
 	for _, r := range s.runs {
 		if !runnableEx[r.ExecutorID] {
@@ -836,7 +842,9 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 	// var bestCapacity float64
 	var bestFull float64
 	now := time.Now()
-	// zlog.Warn("startJob1:", run.Job.ID, run.ExecutorID, len(s.executors), load, run.Job.Duration, run.Stopping, run.StoppedAt)
+	s.triedToRunIndex++
+	run.triedToRunIndex = s.triedToRunIndex
+	// zlog.Warn("startJob1:", run.Job.ID, "att:", run.Job.Attributes, run.ExecutorID, "exes:", len(s.executors), "load:", load, run.Job.Duration, run.Stopping, run.StoppedAt)
 	var str string
 	for exID, cap := range load {
 		// zlog.Warn("startJob On exe?", exID, cap.load)
@@ -845,8 +853,9 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 			str += " NoExecutor "
 			continue
 		}
-		if e.AcceptAttributes != 0 && run.Job.Attributes != 0 && e.AcceptAttributes&run.Job.Attributes != run.Job.Attributes {
-			zlog.Info("zscheduler: Skipping executor for job with Attribute:", run.Job.Attributes)
+		// zlog.Warn("zscheduler: att:", e.DebugName, e.AcceptAttributes, run.Job.Attributes)
+		if run.Job.Attributes&e.AcceptAttributes != run.Job.Attributes {
+			zlog.Warn("zscheduler: Skipping executor for job with Attribute:", run.Job.Attributes, "job:", run.Job.DebugName, "exe:", e.AcceptAttributes, "ename:", e.DebugName)
 			continue
 		}
 		// if e == nil {
@@ -866,7 +875,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 		}
 		if cap.startingCount > 0 && s.setup.SimultaneousStarts != 0 && s.setup.SimultaneousStarts > 1 {
 			if time.Since(cap.mostRecentStarting) < s.setup.MinDurationBetweenSimultaneousStarts {
-				str += " SimultaniousStarts "
+				str += " SimultaneousStarts "
 				continue
 			}
 		}
@@ -894,7 +903,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 		}
 	}
 	if bestExID == s.zeroID {
-		// zlog.Warn("NoWorkersToRunJob:", run.Job.DebugName, str, "
+		// zlog.Warn("NoWorkersToRunJob:", run.Job.DebugName, str)
 		str += " load: " + zlog.Full(load)
 		s.setup.HandleSituationFastFunc(*run, NoWorkersToRunJob, str)
 		return false
@@ -905,7 +914,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 	// 	zlog.Warn("startJob:", run.Job.DebugName, bestExID, e.DebugName, str, e.changedCount)
 	// }
 
-	// zlog.Warn("startJob:", run.Job.DebugName, bestExID, e.DebugName, str, e.changedCount)
+	// zlog.Warn("startJob2:", run.Job.DebugName, bestExID, e.DebugName, str, e.changedCount)
 	s.setDebugState(run.Job.ID, false, true, false, false)
 	run.StoppedAt = time.Time{}
 	run.Removing = false
@@ -925,6 +934,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 	go func() {
 		err := s.setup.StartJobOnExecutorFunc(runCopy, ctx)
 		r, _ := s.findRun(jobID)
+		// zlog.Warn("startJob3:", jobID, r != nil, err)
 		if r == nil {
 			reason := zstr.Spaced("Job deleted during execute:", jobID, err)
 			s.setup.HandleSituationFastFunc(runCopy, ErrorStartingJob, reason)
@@ -940,9 +950,9 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 		}
 		r.ErrorAt = time.Time{}
 		r.starting = false
-		if s.setup.JobIsRunningOnSuccessfullStart {
+		if s.setup.JobIsRunningOnSuccessfulStart {
 			if !r.StoppedAt.IsZero() || r.Stopping || r.ExecutorID == s.zeroID || r.Removing || s.stopped {
-				// zlog.Warn("Job Start ended with job/sheduler stopping", jobID)
+				// zlog.Warn("Job Start ended with job/scheduler stopping", jobID)
 			} else {
 				s.JobIsRunningCh <- jobID
 			}
@@ -965,6 +975,7 @@ func (s *Scheduler[I]) changeExecutor(e Executor[I]) {
 	// if changed {
 	// 	zlog.Warn("changeExecutor", fe.CostCapacity, e.CostCapacity, fe.SettingsHash, e.SettingsHash, (fe.CostCapacity != e.CostCapacity || fe.SettingsHash != e.SettingsHash))
 	// }
+	fe.AcceptAttributes = e.AcceptAttributes
 	fe.CostCapacity = e.CostCapacity
 	fe.DebugName = e.DebugName
 	fe.Paused = e.Paused
@@ -989,6 +1000,7 @@ func (s *Scheduler[I]) addExecutor(e Executor[I]) {
 func (s *Scheduler[I]) changeJob(job Job[I]) {
 	for i, r := range s.runs {
 		if r.Job.ID == job.ID {
+			s.runs[i].Job.Attributes = job.Attributes
 			s.runs[i].Job.DebugName = job.DebugName
 			s.runs[i].Job.Duration = job.Duration
 			s.runs[i].Job.Cost = job.Cost
