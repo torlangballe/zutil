@@ -675,19 +675,24 @@ func FormatJSON(input []byte) (out string, err error) {
 	return
 }
 
-// SplitN splits str with sep, putting each part into parts string pointers.
-// It stops if parts when there is no more parts arguments. if a part in nil, it is skipped
-func SplitN(str, sep string, parts ...*string) bool {
-	slice := strings.SplitN(str, sep, len(parts))
+// SplitN splits str with sep, putting each part into partsPtr pointers to any.
+// Only pointers to strings, ints, floats and bools are supported, as done by SetStringToAny().
+// It stops when there is no more parts arguments. if a part is nil, it is skipped.
+// It fails if there are more or less parts than arguments.
+func SplitN(str, sep string, partsPtr ...any) bool {
+	slice := strings.SplitN(str, sep, len(partsPtr))
 	for i, s := range slice {
-		if len(parts) <= i {
+		if len(partsPtr) <= i {
 			break
 		}
-		if parts[i] != nil {
-			*parts[i] = s
+		if partsPtr[i] != nil {
+			err := SetStringToAny(partsPtr[i], s)
+			if err != nil {
+				return false
+			}
 		}
 	}
-	return len(slice) == len(parts)
+	return len(slice) == len(partsPtr)
 }
 
 func SplitByAnyOf(str string, seps []string, skipEmpty bool) []string {
