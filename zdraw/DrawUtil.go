@@ -9,6 +9,7 @@ import (
 	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zui/zstyle"
 	"github.com/torlangballe/zui/ztextinfo"
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
@@ -208,6 +209,13 @@ func MakeGraphRow() GraphRow {
 	}
 }
 
+func ValToY(val float64, cellHeight float64, valRange zmath.RangeF64) float64 {
+	y := cellHeight * ((val - valRange.Min) / valRange.Length())
+	zfloat.Maximize(&y, 1)
+	// y = math.Ceil(y)
+	return cellHeight - y
+}
+
 func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, lines int, canvas *zcanvas.Canvas) {
 	// zlog.Info("DrawBackgroundHorGraphLines:", rect, a)
 	y0, inc := zmath.NiceDividesOf(a.ValueRange.Min, a.ValueRange.Max, lines, nil)
@@ -215,7 +223,7 @@ func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, lines int, canvas 
 	// y1 := zmath.RoundUpToModF64(a.ValueRange.Max, inc)
 	y1 := a.ValueRange.Max
 	a.Font.Size = min(10, math.Floor((rect.Size.H+2)*2/float64(lines)))
-	yScale := (y1 - y0) / rect.Size.H
+	// yScale := (y1 - a.ValueRange.Min) / rect.Size.H
 	// zlog.Info("DrawGraphRow1", y0, y1, yScale, rect.Size.H)
 	ti := ztextinfo.New()
 	ti.Rect = rect.Expanded(zgeo.SizeD(-3, 0))
@@ -223,8 +231,9 @@ func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, lines int, canvas 
 	ti.Color = a.TextColor
 	for y := y0 + inc; y < y1; y += inc {
 		var lastX = math.MaxFloat64
-		pixy := rect.Max().Y - (y-y0)/yScale
-		pixy = math.Floor(pixy)
+		pixy := ValToY(y, rect.Size.H, a.ValueRange)
+		// rect.Max().Y - (y-a.ValueRange.Min)/yScale
+		// pixy = math.Floor(pixy)
 		tx := 0.0
 		if a.TextColor.Valid {
 			ti.Rect.Pos.Y = pixy - a.Font.Size/2
@@ -235,7 +244,8 @@ func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, lines int, canvas 
 					continue
 				}
 				ti.Alignment = zgeo.VertCenter | align
-				ti.Text = zwords.NiceFloat(y, a.SignificantDigits) + a.Postfix
+				// ti.Text = zwords.NiceFloat(y, a.SignificantDigits) + a.Postfix
+				ti.Text = zwords.NiceFloat(y, 0) + a.Postfix
 				box := ti.Draw(canvas)
 				if a.LineColor.Valid && lastX != math.MaxFloat64 {
 					// zlog.Info("DrawGraphRow", a.LineColor)
