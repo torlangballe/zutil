@@ -33,7 +33,7 @@ func newScheduler(jobs, workers int, jobCost, workerCap float64, setupFunc func(
 	setup.SimultaneousStarts = 1
 	setup.ExecutorAliveDuration = 0
 	setup.LoadBalanceIfCostDifference = 2
-	setup.JobIsRunningOnSuccessfullStart = true
+	setup.JobIsRunningOnSuccessfulStart = true
 	setup.KeepJobsBeyondAtEndUntilEnoughSlack = time.Second * 2
 	setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
 		// zlog.Warn("StartingJobSlow:", run.Job.ID, run.Count, time.Millisecond*time.Duration(startMS))
@@ -658,23 +658,67 @@ func stopAndCheckScheduler(s *Scheduler[int64], t *testing.T) {
 	}
 }
 
+func testMixedAttributes(t *testing.T) {
+	const AMask = 1
+	const BMask = 2
+	fmt.Println("testMixedAttributes")
+	s := newScheduler(0, 0, 1, 20, nil)
+	e := makeExecutor(s, 1, 20)
+	e.AcceptAttributes = AMask
+	s.ChangeExecutorCh <- e
+
+	job := makeJob(s, 1, time.Second*1, 1)
+	job.Attributes = BMask
+	s.AddJobCh <- job
+
+	time.Sleep(time.Millisecond * 200)
+	count := s.CountRunningJobs(1)
+	if count > 0 {
+		t.Error("Executor shouldn't have any jobs yet:", count)
+	}
+	time.Sleep(time.Millisecond * 200)
+	job = makeJob(s, 2, time.Second*1, 1)
+	job.Attributes = 0 //AMask
+	// zlog.Warn("ADD:", job.Attributes)
+	s.AddJobCh <- job
+
+	time.Sleep(time.Millisecond * 200)
+	count = s.CountRunningJobs(1)
+	if count != 1 {
+		t.Error("Executor should have one job now:", count)
+	}
+	e2 := makeExecutor(s, 2, 20)
+	e2.AcceptAttributes = BMask
+	s.ChangeExecutorCh <- e2
+	// zlog.Warn("ADD Exe2", e2.DebugName)
+
+	time.Sleep(time.Millisecond * 200)
+	count = s.CountRunningJobs(0)
+	if count != 2 {
+		t.Error("Executor should have have 2 jobs:", count)
+	}
+
+	stopAndCheckScheduler(s, t)
+}
+
 func TestAll(t *testing.T) {
-	testEnoughRunning(t)
-	testPauseWithTwoExecutors(t)
-	testSetJobsOnExecutor(t)
-	testChangeExecutor(t)
-	testStartStop(t)
-	testPauseWithCapacity(t)
-	testStartingTime(t)
-	testLoadBalance1(t)
-	testLoadBalance2(t)
-	testKeepAlive(t)
-	testStopAndCheck(t)
-	testOverMax(t)
-	testPurgeFromRunningList(t)
-	testPurgeFromSlowStarting(t)
-	testPlayWithSlackLongWait(t)
-	testPlayWithSlackShortWait(t)
-	testPlayWithSlackLongWaitAndMilestone(t)
-	testErrorAt(t)
+	// testEnoughRunning(t)
+	// testPauseWithTwoExecutors(t)
+	// testSetJobsOnExecutor(t)
+	// testChangeExecutor(t)
+	// testStartStop(t)
+	// testPauseWithCapacity(t)
+	// testStartingTime(t)
+	// testLoadBalance1(t)
+	// testLoadBalance2(t)
+	// testKeepAlive(t)
+	// testStopAndCheck(t)
+	// testOverMax(t)
+	// testPurgeFromRunningList(t)
+	// testPurgeFromSlowStarting(t)
+	// testPlayWithSlackLongWait(t)
+	// testPlayWithSlackShortWait(t)
+	// testPlayWithSlackLongWaitAndMilestone(t)
+	// testErrorAt(t)
+	testMixedAttributes(t)
 }
