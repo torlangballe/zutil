@@ -6,42 +6,44 @@ toolchain go1.23.1
 
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
+	github.com/aws/aws-lambda-go v1.47.0
 	github.com/bitactro/UUIDv4 v0.0.0-20220313143507-9a5732793937
 	github.com/bramvdbogaerde/go-scp v1.2.1
 	github.com/chromedp/cdproto v0.0.0-20240417023356-ab6d61991462
 	github.com/chromedp/chromedp v0.9.5
-	github.com/creack/pty v1.1.23
+	github.com/creack/pty v1.1.24
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gliderlabs/ssh v0.3.5
-	github.com/go-mmap/mmap v0.7.0
 	github.com/gomodule/redigo v1.8.9
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/gosnmp/gosnmp v1.37.0
+	github.com/graphql-go/graphql v0.8.1
 	github.com/jezek/xgb v1.1.1
 	github.com/lib/pq v1.10.9
 	github.com/matishsiao/goInfo v0.0.0-20210923090445-da2e3fa8d45f
 	github.com/mileusna/useragent v1.3.4
 	github.com/mitchellh/go-ps v1.0.0
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/riywo/loginshell v0.0.0-20200815045211-7d26008be1ab
 	github.com/sasha-s/go-deadlock v0.3.5
 	github.com/sendgrid/sendgrid-go v3.13.0+incompatible
 	github.com/sergi/go-diff v1.3.1
-	github.com/shirou/gopsutil/v4 v4.24.9
+	github.com/shirou/gopsutil/v4 v4.25.1
 	github.com/subosito/gozaru v0.0.0-20190625071150-416082cce636
 	github.com/timest/gomanuf v0.0.0-20230209100256-466f396c9305
 	github.com/torlangballe/blackfridayV2 v0.0.0-20230907135525-adceae2f31a8
 	github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
-	github.com/torlangballe/zui v0.0.0-20241024094449-7d14b61596af
+	github.com/torlangballe/zui v0.0.0-20250205141754-b43080eb7172
 	golang.org/x/crypto v0.32.0
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
+	golang.org/x/exp v0.0.0-20250207012021-f9890c6ad9f3
 	golang.org/x/net v0.34.0
-	golang.org/x/sys v0.29.0
-	golang.org/x/text v0.21.0
+	golang.org/x/sys v0.30.0
+	golang.org/x/text v0.22.0
 	modernc.org/sqlite v1.27.0
 )
 
@@ -53,7 +55,7 @@ require (
 	github.com/chromedp/sysutil v1.0.0 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/ebitengine/purego v0.8.1 // indirect
+	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/fogleman/gg v1.3.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
@@ -79,8 +81,8 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/term v0.28.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	lukechampine.com/uint128 v1.3.0 // indirect
