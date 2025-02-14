@@ -28,11 +28,6 @@ import (
 	"golang.org/x/text/language"
 )
 
-const (
-	Digits                      = "0123456789"
-	UTFPostModifierForRoundRect = "\xe2\x83\xa3"
-)
-
 type StrIDer interface {
 	GetStrID() string
 }
@@ -75,6 +70,12 @@ type StrInt struct {
 	Str string
 	Int int64
 }
+
+const (
+	Digits = "0123456789"
+)
+
+var UTFPostModifierForRoundRect = "\xe2\x83\xa3"
 
 func StrInt64(s string, i int64) StrInt {
 	return StrInt{Str: s, Int: i}

@@ -22,6 +22,9 @@ func init() {
 	case Chrome:
 		zgeo.SetChromeDefaultFont()
 	}
+	if OS() != MacOSType {
+		zstr.UTFPostModifierForRoundRect = ""
+	}
 }
 
 func getUserAgentInfo() *ua.UserAgent {
