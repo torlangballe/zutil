@@ -151,7 +151,7 @@ func StoreAndExitError(err error, exit bool) {
 
 func LoadStoredRestartContextError() {
 	err := KeyValueGetAndDeleteContextErrorFunc(restartContextErrorKey)
-	// fmt.Printf("LoadStoredRestartContextError %+v\n:", err)
+	// fmt.Printf("LoadStoredRestartContextError %+v\n:", err) // don't use zlog due to dependency cycle
 	// if err != nil {
 	HandleRestartFunc(err)
 	// }
