@@ -11,7 +11,7 @@ type BucketType string
 
 const (
 	BucketNearest BucketType = "nearest"
-	BucketAverage BucketType = "max"
+	BucketLargest BucketType = "largest"
 )
 
 type BucketResult struct {
@@ -27,9 +27,9 @@ type BucketResult struct {
 	MinPayload         any
 	MinVal             float64
 	Count              int
-	BestIndex          int                             // how far into Count inputs BestVal is
-	IsOutsideFlush     bool                            // true if this result is due to a outside-forced flush
-	IsBestOverrideFunc func(payload any) zbool.BoolInd // if not nil and returns true, set best for current payload, if false don't. undef is use normal method
+	BestIndex          int                                              // how far into Count inputs BestVal is
+	IsOutsideFlush     bool                                             // true if this result is due to a outside-forced flush
+	IsBestOverrideFunc func(f *BucketFilter, payload any) zbool.BoolInd // if not nil and returns true, set best for current payload, if false don't. undef is use normal method
 }
 
 // BucketFilter accepts pos+values, aggregating all that are within a repeating pos period
@@ -100,7 +100,7 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 	}
 	var add bool
 	if f.IsBestOverrideFunc != nil {
-		best := f.IsBestOverrideFunc(payload)
+		best := f.IsBestOverrideFunc(f, payload)
 		if !best.IsUnknown() {
 			add = best.IsTrue()
 			if !add {
@@ -113,6 +113,8 @@ func (f *BucketFilter) aggregate(payload any, pos, val float64) {
 		case BucketNearest:
 			mid := f.CurrentCellPos + f.Period/2
 			add = (math.Abs(f.BestPos-mid) > math.Abs(pos-mid))
+		case BucketLargest:
+			add = (val > f.BestVal)
 		}
 	}
 	if add {
