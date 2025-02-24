@@ -625,7 +625,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			// zlog.Warn(i, "loop:", r.Job.ID, r.ErrorAt, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
 			if r.ExecutorID == s.zeroID && !r.Stopping && r.StartedAt.IsZero() {
 				if oldestRun == nil || isBetterRunCandidate[I](&r, oldestRun) {
-					zlog.Warn(i, "set oldestRun:", len(s.runs), oldestRun != nil, s.runs[i].Job.DebugName, s.runs[i].Job.ID, ssCount, r.ErrorAt)
+					// zlog.Warn(i, "set oldestRun:", len(s.runs), oldestRun != nil, s.runs[i].Job.DebugName, s.runs[i].Job.ID, ssCount, r.ErrorAt)
 					oldestRun = &s.runs[i]
 				}
 			}
