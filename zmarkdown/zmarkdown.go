@@ -44,6 +44,7 @@ type MarkdownConverter struct {
 	Variables       zdict.Dict
 	FileSystem      fs.FS
 	TableOfContents bool
+	AbsolutePrefix  string
 }
 
 func pdfGrabber(w io.Writer, url string) chromedp.Tasks {
@@ -103,8 +104,11 @@ func (m *MarkdownConverter) ConvertToHTMLFromString(w io.Writer, fullmd, name st
 	params := blackfriday.HTMLRendererParameters{}
 	params.Title = name
 	params.Flags = blackfriday.CompletePage | blackfriday.HrefTargetBlank
+	//!!		params.Flags |= blackfriday.TOC
 	params.CSS = zrest.AppURLPrefix + "css/zcore/github-markdown.css"
+	zlog.Info("MarkDown CSS:", params.CSS)
 	renderer := blackfriday.NewHTMLRenderer(params)
+	renderer.AbsolutePrefix = m.AbsolutePrefix
 	output := blackfriday.Run([]byte(input),
 		blackfriday.WithExtensions(extensions|blackfriday.AutoHeadingIDs),
 		blackfriday.WithRenderer(renderer))
