@@ -50,7 +50,6 @@ type Parameters struct {
 	ShowCURLCall          bool
 	Args                  map[string]string
 	TimeoutSecs           float64
-	UseHTTPS              bool
 	Method                string
 	ContentType           string
 	Body                  []byte
@@ -447,16 +446,18 @@ func makeContextErrorFromError(err error, title, surl, method string) zerrors.Co
 	return zerrors.MakeContextError(dict, title, err)
 }
 
-func GetRedirectedURL(surl string) (string, error) {
+func GetRedirectedURL(surl string, skipVerifyCertificate bool) (string, error) {
 	var log string
 	start := time.Now()
-	req, err := http.NewRequest("HEAD", surl, nil)
+	params := MakeParameters()
+	params.TimeoutSecs = 5
+	params.SkipVerifyCertificate = skipVerifyCertificate
+	req, client, err := MakeRequest(surl, params)
+	// req, err := http.NewRequest("HEAD", surl, nil)
 	if err != nil {
 		ie := makeContextErrorFromError(err, "Get Redirected URL", surl, "HEAD")
 		return surl, ie
 	}
-	client := http.Client{}
-	client.Timeout = time.Second * 5
 	lastUrlQuery := surl
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		log += fmt.Sprintf("%s %v\n", req.URL.String(), time.Since(start))
