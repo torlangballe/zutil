@@ -1,3 +1,12 @@
+// A *Scheduler* starts *Job*s on *Executor*s, trying to balance the workload
+// Each Job has a *Cost*, and each executor a *CostCapacity*.
+// Jobs can have a Duration or go until stopped.
+// The scheduler assumes jobs take a considerable time to start and end,
+// and can get congested if too many are starting at once, so has
+// SimultaneousStarts and MinDurationBetweenSimultaneousStarts parameters.
+// With these constraints, priority is to start jobs as soon as possible on any executor with enough capacity.
+// All changes to a Scheduler are done through channels
+
 package zscheduler
 
 import (
@@ -35,14 +44,6 @@ type Setup[I comparable] struct {
 	// MinimumTimeBetweenSpecificJobStarts  time.Duration
 }
 
-// A *Scheduler* starts *Job*s on *Executor*s, trying to balance the workload
-// Each Job has a *Cost*, and each executor a *CostCapacity*.
-// Jobs can have a Duration or go until stopped.
-// The scheduler assumes jobs take a considerable time to start and end,
-// and can get congested if too many are starting at once, so has
-// SimultaneousStarts and MinDurationBetweenSimultaneousStarts parameters.
-// With these constraints, priority is to start jobs as soon as possible on any executor with enough capacity.
-// All changes to a Scheduler are done through channels
 type Scheduler[I comparable] struct {
 	// The channels are made in NewScheduler()
 	StopJobCh               chan I                 // Write a Job ID to StopJobCh to stop the job.
