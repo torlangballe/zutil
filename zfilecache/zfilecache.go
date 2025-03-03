@@ -20,20 +20,23 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/zstr"
+	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
 )
 
 type Cache struct {
 	WorkDir            string
-	cacheName          string
 	GetURL             string
-	urlPrefix          string
 	ServeEmptyImage    bool
 	DeleteAfter        time.Duration // Delete files when modified more than this long ago
 	UseToken           bool          // Not implemented
 	DeleteRatio        float32       // When deleting files, only do some of sub-folders (randomly) each time 0.1 is do 10% of them at random
 	NestInHashFolders  bool
 	InterceptServeFunc func(w http.ResponseWriter, req *http.Request, file *string) bool // return true if handled
+
+	urlPrefix  string
+	cacheName  string
+	lastDelete time.Time
 }
 
 func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -61,6 +64,11 @@ func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	http.ServeFile(w, req, file)
 }
 
+func (cache *Cache) SetDays(days float64) {
+	dur := time.Duration(float64(ztime.Day) * days)
+	cache.DeleteAfter = dur
+}
+
 func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	// if strings.HasPrefix(urlPrefix, "/") {
 	// 	zlog.Error("url should not start with /", urlPrefix)
@@ -81,7 +89,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	// }
 	// zlog.Info("zfilecache.AddHandler:", path)
 	zrest.AddSubHandler(router, path, c)
-	ztimer.RepeatNow(1800+200*rand.Float64(), func() bool {
+	ztimer.RepeatNow(2, func() bool {
 		start := time.Now()
 		if c.DeleteAfter == 0 {
 			return false
@@ -90,6 +98,11 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 		if zfile.NotExists(dir) {
 			return true
 		}
+		if ztime.Since(c.lastDelete) < 1800+200*rand.Float64() {
+			return true
+		}
+		zlog.Info("DeleteCache:", dir, time.Since(c.lastDelete))
+		c.lastDelete = start
 		cutoff := time.Now().Add(-c.DeleteAfter)
 		err := zfile.DeleteOldInSubFolders(dir, time.Millisecond*1, cutoff, c.DeleteRatio, func(p float32, count, total int) {
 			zlog.Info("DeleteCache:", dir, int(p*100), count, "/", total)
@@ -102,6 +115,10 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 	})
 	// zlog.Info("zfilecache Init:", c.WorkDir+cacheName, c.GetURL, path)
 	return c
+}
+
+func (c *Cache) ForceDelete() {
+	c.lastDelete = time.Time{}
 }
 
 func (c *Cache) getToken() string {
