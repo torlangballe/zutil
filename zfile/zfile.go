@@ -372,8 +372,7 @@ func RemoveAllQuicklyWithRename(dir string) error {
 		return zlog.NewError(err, dir, newName)
 	}
 	go func() {
-		RemoveContents(newName)
-		os.Remove(newName)
+		os.RemoveAll(newName)
 	}()
 	return nil
 }
