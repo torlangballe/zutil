@@ -53,7 +53,7 @@ func NewGrapher(router *mux.Router, deleteDays int, grapherName, folderPath stri
 	g := &Grapher{}
 	g.SecondsPerPixel = secondsPerPixel
 	folderName := makeCacheFoldername(secondsPerPixel, grapherName)
-	g.cache = zfilecache.Init(router, folderPath, "caches/", folderName)
+	g.cache = zfilecache.Init(router, folderPath, "zgrapher/", folderName)
 	g.cache.InterceptServeFunc = func(w http.ResponseWriter, req *http.Request, file *string) bool {
 		return interceptServe(g, w, req, file)
 	}
@@ -70,7 +70,7 @@ func NewGrapher(router *mux.Router, deleteDays int, grapherName, folderPath stri
 
 // interceptServe sniffs a request for alarm-graphs, and starts rendering if it is outside ones already cached or current.
 func interceptServe(g *Grapher, w http.ResponseWriter, req *http.Request, file *string) bool {
-	// zlog.Info("zgrapher: interceptServe", req.URL.String(), zfile.Exists(file))
+	zlog.Info("zgrapher: interceptServe", req.URL.String(), zfile.Exists(*file))
 	_, fullName := path.Split(req.URL.Path)
 	name := fullName
 	if !zstr.HasSuffix(name, ".png", &name) {

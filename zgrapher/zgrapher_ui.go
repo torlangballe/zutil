@@ -163,7 +163,7 @@ func (v *GraphView) requestParts() {
 			return
 		}
 		folderName := makeCacheFoldername(v.SecondsPerPixel, v.grapherName)
-		surl := zfile.JoinPathParts(v.ImagePathPrefix, "caches", folderName, name)
+		surl := zfile.JoinPathParts(v.ImagePathPrefix, "zgrapher", folderName, name)
 		surl += "?tick=" + zstr.GenerateRandomHexBytes(12)
 		zimage.FromPath(surl, false, func(img *zimage.Image) {
 			if img == nil {
