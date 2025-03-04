@@ -32,7 +32,7 @@ type Cache struct {
 	UseToken           bool          // Not implemented
 	DeleteRatio        float32       // When deleting files, only do some of sub-folders (randomly) each time 0.1 is do 10% of them at random
 	NestInHashFolders  bool
-	InterceptServeFunc func(w http.ResponseWriter, req *http.Request, file *string) bool // return true if handled
+	InterceptServeFunc func(w http.ResponseWriter, req *http.Request, file *string) bool // return true if handled. file set on call, can be changed
 
 	urlPrefix  string
 	cacheName  string
@@ -95,8 +95,9 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 			return false
 		}
 		dir := zfile.JoinPathParts(c.WorkDir, c.urlPrefix, c.cacheName)
-		if zfile.NotExists(dir) {
-			return true
+		err := zfile.MakeDirAllIfNotExists(dir)
+		if zlog.OnError(err) {
+			return false
 		}
 		if ztime.Since(c.lastDelete) < 1800+200*rand.Float64() {
 			return true
@@ -104,7 +105,7 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 		zlog.Info("DeleteCache:", dir, time.Since(c.lastDelete))
 		c.lastDelete = start
 		cutoff := time.Now().Add(-c.DeleteAfter)
-		err := zfile.DeleteOldInSubFolders(dir, time.Millisecond*1, cutoff, c.DeleteRatio, func(p float32, count, total int) {
+		err = zfile.DeleteOldInSubFolders(dir, time.Millisecond*1, cutoff, c.DeleteRatio, func(p float32, count, total int) {
 			zlog.Info("DeleteCache:", dir, int(p*100), count, "/", total)
 		})
 		if err != nil {
