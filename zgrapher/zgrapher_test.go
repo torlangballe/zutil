@@ -68,7 +68,7 @@ func checkImageForTime(t *testing.T, at time.Time, job SJob, g Grapher) bool {
 	start := calculateWindowStart(at, windowMinutes)
 	name := job.storageNameForTime(start)
 	folderName := makeCacheFoldername(g.SecondsPerPixel, grapherName)
-	surl := zfile.JoinPathParts(imagePathPrefix, "caches", folderName, name)
+	surl := zfile.JoinPathParts(imagePathPrefix, "zgrapher", folderName, name)
 	surl += "?tick=" + zstr.GenerateRandomHexBytes(12)
 	// zlog.Info("Request:", r, surl)
 	img, _, err := zimage.GoImageFromURL(surl)
