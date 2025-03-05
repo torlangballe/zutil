@@ -13,8 +13,10 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
@@ -621,6 +623,35 @@ func WorkingDirPathToAbsolute(wpath string) string {
 	}
 	wd, _ := os.Getwd()
 	return zstr.Concat("/", wd, wpath)
+}
+
+func IsDirWritable(path string) (bool, error) {
+	zlog.Assert(runtime.GOOS == "linux")
+	info, err := os.Stat(path)
+	if err != nil {
+		return false, errors.New("Path doesn't exist")
+	}
+
+	err = nil
+	if !info.IsDir() {
+		return false, errors.New("Path isn't a directory")
+	}
+	// Check if the user bit is enabled in file permission
+	if info.Mode().Perm()&(1<<(uint(7))) == 0 {
+		zlog.Info("Write permission bit is not set on this file for user")
+		return false, nil
+	}
+
+	var stat syscall.Stat_t
+	if err = syscall.Stat(path, &stat); err != nil {
+		return false, errors.New("Unable to get stat")
+	}
+
+	err = nil
+	if uint32(os.Geteuid()) != stat.Uid {
+		return false, nil
+	}
+	return true, nil
 }
 
 // merge fs.FS interface inspiration:
