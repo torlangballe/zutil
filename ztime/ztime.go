@@ -902,7 +902,8 @@ func (f TimeFieldFlags) String() string {
 }
 
 func (e *EpochTime) UnmarshalJSON(b []byte) error {
-	n, err := strconv.ParseInt(string(b), 10, 64)
+	str := strings.Trim(string(b), `"`)
+	n, err := strconv.ParseInt(str, 10, 64)
 	if err != nil {
 		return err
 	}
