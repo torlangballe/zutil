@@ -150,7 +150,8 @@ func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFra
 		stack.AddAdvanced(header, zgeo.TopLeft|zgeo.HorExpand, zgeo.RectFromXY2(0, h, 0, 0), zgeo.SizeNull, 0, false).NotInGrid = true
 		label := zlabel.New(title)
 		label.SetObjectName("title")
-		label.SetMaxWidth(400)
+		label.SetMaxCalculateWidth(400)
+		label.SetMaxLinesBasedOnTextLines(3)
 		label.SetWrap(ztextinfo.WrapTailTruncate)
 		label.SetPressWithModifierToClipboard(zkeyboard.ModifierAlt)
 		ts := DefaultFrameTitleStyling.MergeWith(titleStyling)
