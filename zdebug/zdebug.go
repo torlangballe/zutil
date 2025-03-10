@@ -142,7 +142,9 @@ func RecoverFromPanic(exit bool, invokeFunc string) {
 }
 
 func StoreAndExitError(err error, exit bool) {
-	KeyValueSaveContextErrorFunc(restartContextErrorKey, err)
+	if KeyValueSaveContextErrorFunc != nil {
+		KeyValueSaveContextErrorFunc(restartContextErrorKey, err)
+	}
 	if exit {
 		os.Exit(-1)
 	}
