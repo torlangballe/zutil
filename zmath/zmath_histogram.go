@@ -7,11 +7,11 @@ import (
 )
 
 type Histogram struct {
-	Step         float64  // Step is interval of each bar
-	Range        RangeF64 // Range Max is 10 if you want values from uo to 10.999999...
-	Classes      []int
-	OutlierBelow int
-	OutlierAbove int
+	Step         float64  `json:",omitempty"` // Step is interval of each bar
+	Range        RangeF64 `json:",omitempty"` // Range Max is 10 if you want values from uo to 10.999999...
+	Classes      []int    `json:",omitempty"`
+	OutlierBelow int      `json:",omitempty"`
+	OutlierAbove int      `json:",omitempty"`
 }
 
 func (h *Histogram) Setup(step, min, max float64) {
