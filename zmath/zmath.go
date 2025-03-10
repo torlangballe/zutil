@@ -22,9 +22,6 @@ type Real interface {
 	~float32 | ~float64
 }
 
-const MathDegreesToMeters = (111.32 * 1000)
-const MathMetersToDegrees = 1 / MathDegreesToMeters
-
 type Range[N int | int64 | float64] struct {
 	Valid bool
 	Min   N
@@ -32,6 +29,9 @@ type Range[N int | int64 | float64] struct {
 }
 
 type RangeF64 = Range[float64]
+
+const MathDegreesToMeters = (111.32 * 1000)
+const MathMetersToDegrees = 1 / MathDegreesToMeters
 
 func RadToDeg(rad float64) float64 {
 	return rad * 180 / math.Pi
