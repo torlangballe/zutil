@@ -143,16 +143,15 @@ func Model() string {
 	return "Server"
 }
 
-func FreeAndUsedDiskSpace(path string) (free int64, used int64) {
+func FreeUsedAndTotalDiskSpace(path string) (free, used, total int64) {
 	if path == "" {
 		path = "/"
 	}
 	s, err := disk.Usage(path)
 	if err != nil {
-		return 0, 0
+		return 0, 0, 0
 	}
-	// zlog.Info("FreeAndUsedDiskSpace", path, int64(s.Free), int64(s.Used))
-	return int64(s.Free), int64(s.Used)
+	return int64(s.Free), int64(s.Used), int64(s.Total)
 }
 
 // func BootTime() (time.Time, error) {

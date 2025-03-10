@@ -117,8 +117,8 @@ func OSPlatform() string {
 	return ""
 }
 
-func FreeAndUsedDiskSpace(path string) (int64, int64) {
-	return 0, 0
+func FreeUsedAndTotalDiskSpace(path string) (int64, int64, int64) {
+	return 0, 0, 0
 }
 
 func IsWifiEnabled() bool {
