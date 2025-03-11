@@ -133,12 +133,12 @@ func Keys[K comparable, V any](m map[K]V) []K {
 	return keys
 }
 
-func Sorted[S ~[]E, E cmp.Ordered](x S) []E {
-	n := make([]E, len(x))
-	copy(n, x)
-	slices.Sort(n)
-	return n
-}
+// func Sorted[S ~[]E, E cmp.Ordered](x S) []E {
+// 	n := make([]E, len(x))
+// 	copy(n, x)
+// 	slices.Sort(n)
+// 	return n
+// }
 
 func FuncSortedKeys[K comparable, V any](m map[K]V, less func(a, b V) bool) []K {
 	keys := Keys(m)
@@ -148,7 +148,17 @@ func FuncSortedKeys[K comparable, V any](m map[K]V, less func(a, b V) bool) []K 
 	return keys
 }
 
-func KeySortedKeyValues[K comparable, V any](m map[K]V, less func(a, b V) bool) ([]K, []V) {
+func KeySortedValues[K cmp.Ordered, V any](m map[K]V) []V {
+	keys := Keys(m)
+	slices.Sort(keys)
+	out := make([]V, len(keys))
+	for i, k := range keys {
+		out[i] = m[k]
+	}
+	return out
+}
+
+func SortedKeyValues[K comparable, V any](m map[K]V, less func(a, b V) bool) ([]K, []V) {
 	keys := FuncSortedKeys(m, less)
 	vals := make([]V, len(keys))
 	for i, k := range keys {
