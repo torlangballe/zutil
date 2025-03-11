@@ -10,7 +10,7 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 )
 
-func UnmarshalFromFile(to interface{}, fpath string, allowNoFile bool) error {
+func UnmarshalFromFile(to any, fpath string, allowNoFile bool) error {
 	if allowNoFile && zfile.NotExists(fpath) {
 		return nil
 	}
@@ -28,7 +28,7 @@ func UnmarshalFromFile(to interface{}, fpath string, allowNoFile bool) error {
 
 // MarshalToFile marshals from into a json byte stream that is written to fpath.
 // It happens atomically using a temporary file
-func MarshalToFile(from interface{}, fpath string) error {
+func MarshalToFile(from any, fpath string) error {
 	return zfile.WriteToFileAtomically(fpath, func(file io.Writer) error {
 		encoder := json.NewEncoder(file)
 		encoder.SetIndent("  ", "  ")
