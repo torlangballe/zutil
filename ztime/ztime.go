@@ -609,17 +609,13 @@ func ChangedPartsOfTime(t time.Time, h, m, s, ns int) time.Time {
 	return time.Date(y, month, d, ch, cm, cs, cns, t.Location())
 }
 
+// IncreasePartsOfDate in
 func IncreasePartsOfDate(t time.Time, y, m, d int) time.Time {
 	cy, cm, cd := t.Date()
-	if y != -1 {
-		cy = y
-	}
-	if m != -1 {
-		cm += time.Month(m)
-	}
-	if d != -1 {
-		cd = d
-	}
+	cy += y
+
+	cm += time.Month(m)
+	cd += d
 	h, min, s := t.Clock()
 	ns := t.Nanosecond()
 	return time.Date(cy, cm, cd, h, min, s, ns, t.Location())
