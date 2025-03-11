@@ -609,6 +609,22 @@ func ChangedPartsOfTime(t time.Time, h, m, s, ns int) time.Time {
 	return time.Date(y, month, d, ch, cm, cs, cns, t.Location())
 }
 
+func IncreasePartsOfDate(t time.Time, y, m, d int) time.Time {
+	cy, cm, cd := t.Date()
+	if y != -1 {
+		cy = y
+	}
+	if m != -1 {
+		cm += time.Month(m)
+	}
+	if d != -1 {
+		cd = d
+	}
+	h, min, s := t.Clock()
+	ns := t.Nanosecond()
+	return time.Date(cy, cm, cd, h, min, s, ns, t.Location())
+}
+
 // ChangedPartsOfDate changes the year, month or day part of a time
 // Only non -1 parts changed.
 func ChangedPartsOfDate(t time.Time, y int, m time.Month, d int) time.Time {
@@ -645,10 +661,11 @@ func OnThisHour(t time.Time, incHour int) time.Time {
 
 func OnThisDay(t time.Time, incDay int) time.Time {
 	on := GetStartOfDay(t)
-	if on == t {
+	zlog.Info("OnThisDay", on, incDay)
+	if incDay == 0 || on == t {
 		return on
 	}
-	return ChangedPartsOfDate(on, 0, 0, incDay)
+	return IncreasePartsOfDate(on, 0, 0, incDay)
 }
 
 func DaysSince2000FromTime(t time.Time) int {
