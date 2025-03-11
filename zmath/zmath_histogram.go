@@ -1,8 +1,6 @@
 package zmath
 
 import (
-	"math"
-
 	"github.com/torlangballe/zutil/zlog"
 )
 
@@ -15,7 +13,7 @@ type Histogram struct {
 }
 
 func (h *Histogram) Setup(step, min, max float64) {
-	zlog.Assert(math.Mod(max-min, step) == 0)
+	max = min + RoundUpToModF64(max-min, step)
 	h.Step = step
 	h.Range.Min = min
 	h.Range.Max = max
