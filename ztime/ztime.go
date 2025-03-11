@@ -627,8 +627,28 @@ func ChangedPartsOfDate(t time.Time, y int, m time.Month, d int) time.Time {
 	return time.Date(cy, cm, cd, h, min, s, ns, t.Location())
 }
 
-func OnTheNextHour(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 60, 0, 0, t.Location())
+func OnThisMinute(t time.Time, incMinute int) time.Time {
+	on := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, t.Location())
+	if incMinute == 0 {
+		return on
+	}
+	return ChangedPartsOfTime(on, 0, incMinute, 0, 0)
+}
+
+func OnThisHour(t time.Time, incHour int) time.Time {
+	on := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location())
+	if incHour == 0 {
+		return on
+	}
+	return ChangedPartsOfTime(on, incHour, 0, 0, 0)
+}
+
+func OnThisDay(t time.Time, incDay int) time.Time {
+	on := GetStartOfDay(t)
+	if on == t {
+		return on
+	}
+	return ChangedPartsOfDate(on, 0, 0, incDay)
 }
 
 func DaysSince2000FromTime(t time.Time) int {
