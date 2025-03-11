@@ -613,7 +613,6 @@ func ChangedPartsOfTime(t time.Time, h, m, s, ns int) time.Time {
 func IncreasePartsOfDate(t time.Time, y, m, d int) time.Time {
 	cy, cm, cd := t.Date()
 	cy += y
-
 	cm += time.Month(m)
 	cd += d
 	h, min, s := t.Clock()
@@ -657,7 +656,6 @@ func OnThisHour(t time.Time, incHour int) time.Time {
 
 func OnThisDay(t time.Time, incDay int) time.Time {
 	on := GetStartOfDay(t)
-	zlog.Info("OnThisDay", on, incDay)
 	if incDay == 0 || on == t {
 		return on
 	}
