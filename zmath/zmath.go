@@ -206,7 +206,7 @@ func Normalized(n float64) (norm, scale float64) {
 }
 
 // NiceDividesOf divides s to e into minimum min parts.
-// Good for dividing a graph into lines to show values on x and y-axis
+// Good for dividing a graph into lines to show values on x and y-axis.
 func NiceDividesOf(s, e float64, max int, niceIncs []float64) (start, inc float64) {
 	inc = (e - s) / float64(max)
 	if niceIncs == nil {
@@ -218,6 +218,25 @@ func NiceDividesOf(s, e float64, max int, niceIncs []float64) (start, inc float6
 	start = RoundToModF64(s, inc)
 	// zlog.Info("Incs:", s, e, max, "->", inc, norm, nice, start)
 	return start, inc
+}
+
+// CellSizeInWidth calculates the size and start ois of a "cell" to fit in width with margins and spacing.
+// It insets them a bit to account for integer widths/spacing not being able to fit in the exact space asked for.
+func CellSizeInWidth(width, spacing, marginMin, marginMax, count int) (size, start int) {
+	ow := width
+	width -= marginMin
+	width -= marginMax
+	s := (width - spacing*(count-1)) / count
+	w := s*count + spacing*(count-1)
+	x := (width - w) / 2
+	zlog.Warn("CellSizeInWidth:", s, "width:", width, "ow:", ow, "count:", count, "w", w, "x:", x, "spacing:", spacing, "margs", marginMin, marginMax)
+	return s, x + marginMin
+}
+
+// CellSizeInWidthF is a convenience function to call CellSizeInWidth with float64's
+func CellSizeInWidthF(width, spacing, marginMin, marginMax float64, count int) (size, start float64) {
+	isize, istart := CellSizeInWidth(int(width), int(spacing), int(marginMin), int(marginMax), count)
+	return float64(isize), float64(istart)
 }
 
 // EaseInOut makes t "ease in" gradually at 0, and easy out, flattening off near 1.
