@@ -31,13 +31,14 @@ func TestDrawHistogram(t *testing.T) {
 	}
 	// barFunc = nil
 	opts := HistDrawOpts{
-		MaxClassIndex:   0,
-		OutlierBelow:    zbool.False,
-		OutlierAbove:    zbool.True,
-		Styling:         styling,
-		PercentCutoff:   60, // If we know the highest percent any of the classes will have, we can set a cutoff to scale them all up
-		ScaleClassValue: 1000,
-		BarValueFunc:    barFunc,
+		MaxClassIndex:      0,
+		OutlierBelow:       zbool.False,
+		OutlierAbove:       zbool.True,
+		Styling:            styling,
+		PercentCutoff:      60, // If we know the highest percent any of the classes will have, we can set a cutoff to scale them all up
+		ScaleClassValue:    1000,
+		CriticalClassValue: 0.3,
+		BarValueFunc:       barFunc,
 	}
 	var h zhistogram.Histogram
 	h.Setup(0.1, 0, 20)
