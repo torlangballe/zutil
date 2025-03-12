@@ -14,3 +14,4 @@
 *.pprof
 .testdata
 go.work
+test.png

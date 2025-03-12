@@ -50,5 +50,5 @@ func TestDrawHistogram(t *testing.T) {
 	DrawHistogram(&h, canvas, zgeo.Rect{Size: s}, opts)
 
 	img := canvas.GoImage(zgeo.RectNull)
-	zimage.GoImageToPNGFile(img, "out.png")
+	zimage.GoImageToPNGFile(img, "test.png")
 }
