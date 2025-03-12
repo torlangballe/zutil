@@ -1,4 +1,4 @@
-package zhistogram
+package zbucket
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 func TestHistogram(t *testing.T) {
 	fmt.Println("TestHistogram")
 
-	b := NewBucketFilter(0, 100, BucketHistogram)
+	b := NewFilter(0, 100, Histogram)
 	b.Histogram.Setup(1, 0, 10)
 
 	dummy := "dummy"
