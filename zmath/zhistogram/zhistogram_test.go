@@ -1,4 +1,4 @@
-package zmath
+package zhistogram
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/torlangballe/zutil/ztesting"
 )
 
-func TestWildCard(t *testing.T) {
+func TestHistogram(t *testing.T) {
 	fmt.Println("TestHistogram")
 
 	b := NewBucketFilter(0, 100, BucketHistogram)
