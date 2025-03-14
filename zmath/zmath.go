@@ -223,13 +223,13 @@ func NiceDividesOf(s, e float64, max int, niceIncs []float64) (start, inc float6
 // CellSizeInWidth calculates the size and start ois of a "cell" to fit in width with margins and spacing.
 // It insets them a bit to account for integer widths/spacing not being able to fit in the exact space asked for.
 func CellSizeInWidth(width, spacing, marginMin, marginMax, count int) (size, start int) {
-	ow := width
+	// ow := width
 	width -= marginMin
 	width -= marginMax
 	s := (width - spacing*(count-1)) / count
 	w := s*count + spacing*(count-1)
 	x := (width - w) / 2
-	zlog.Warn("CellSizeInWidth:", s, "width:", width, "ow:", ow, "count:", count, "w", w, "x:", x, "spacing:", spacing, "margs", marginMin, marginMax)
+	// zlog.Warn("CellSizeInWidth:", s, "width:", width, "ow:", ow, "count:", count, "w", w, "x:", x, "spacing:", spacing, "margs", marginMin, marginMax)
 	return s, x + marginMin
 }
 
