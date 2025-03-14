@@ -64,6 +64,35 @@ func makeLabelizeLabel(text string, postfix string, talign zgeo.Alignment) *zlab
 	return label
 }
 
+func MakeDialogLabel(text string, minWidth float64, maxLines int, isDebug bool) *zlabel.Label {
+	label := zlabel.New(text)
+	label.SetFont(zgeo.FontNice(zgeo.FontDefaultSize, zgeo.FontStyleNormal))
+	label.SetColor(zgeo.ColorBlack)
+	label.SetSelectable(false)
+	label.SetMinWidth(minWidth)
+	label.SetMaxWidth(minWidth)
+	label.SetMaxLines(maxLines)
+	if isDebug {
+		label.SetBGColor(zstyle.DebugBackgroundColor)
+	}
+	label.SetPressWithModifierToClipboard(zkeyboard.ModifierAlt)
+	return label
+}
+
+func AddDialogLabeledTextRow(grid *zcontainer.StackView, title, text, desc string, minWidth float64, maxLines int, isDebug bool) *zcontainer.Cell {
+	label := MakeDialogLabel(text, minWidth, maxLines, isDebug)
+	return AddDialogLabeledRow(grid, title, label, desc, isDebug)
+}
+
+func AddDialogLabeledRow(grid *zcontainer.StackView, title string, field zview.View, desc string, isDebug bool) *zcontainer.Cell {
+	_, stack, cell, _ := Labelize(field, title, 0, zgeo.Left, desc)
+	if isDebug {
+		stack.SetBGColor(zstyle.DebugBackgroundColor)
+	}
+	grid.Add(stack, zgeo.TopLeft|zgeo.HorExpand)
+	return cell
+}
+
 func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment zgeo.Alignment, desc string) (label *zlabel.Label, stack *zcontainer.StackView, viewCell *zcontainer.Cell, descLabel *zlabel.Label) {
 	font := zgeo.FontNice(zgeo.FontDefaultSize, zgeo.FontStyleBold)
 	to, _ := view.(ztextinfo.Owner)
