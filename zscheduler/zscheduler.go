@@ -93,7 +93,7 @@ type Executor[I comparable] struct {
 	KeptAliveAt      time.Time
 	AcceptAttributes int64 // if non-zero, only if all of job's Attributes are in AcceptAttributes will it run
 	DebugName        string
-	SettingsHash     int64 // other settings for executor, if changed cause restart
+	SettingsHash     int64 // other settings for executor, if changed cause restart of jobs. Not used by anything yet...
 	changedCount     int   // changedCount is an incremented when executor changes. Must be flushed then
 }
 
@@ -982,7 +982,7 @@ func (s *Scheduler[I]) changeExecutor(e Executor[I]) {
 	fe.Paused = e.Paused
 	fe.SettingsHash = e.SettingsHash
 	if changed {
-		fe.changedCount++
+		// fe.changedCount++ // Seems unnecessary to flush all jobs cause Capacity changed?
 	}
 	s.startAndStopRuns() // this will handle Paused changed as well as flushing jobs if changedCount increased
 }
