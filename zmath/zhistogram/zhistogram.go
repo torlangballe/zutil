@@ -13,6 +13,8 @@ type Histogram struct {
 	OutlierAbove int            `json:",omitempty"`
 }
 
+// Setup sets up the histogram with a step and min/max range.
+// It calculates the number of classes based on these parameters.
 func (h *Histogram) Setup(step, min, max float64) {
 	max = min + zmath.RoundUpToModF64(max-min, step)
 	h.Step = step
@@ -20,7 +22,7 @@ func (h *Histogram) Setup(step, min, max float64) {
 	h.Range.Max = max
 	h.Range.Valid = true
 	n := int(h.Range.Length() / h.Step)
-	h.Classes = make([]int, n+1)
+	h.Classes = make([]int, n)
 }
 
 func (h *Histogram) Add(value float64) {
@@ -28,12 +30,12 @@ func (h *Histogram) Add(value float64) {
 		h.OutlierBelow++
 		return
 	}
-	if value >= h.Range.Max+h.Step {
+	if value >= h.Range.Max {
 		h.OutlierAbove++
 		return
 	}
 	i := int((value - h.Range.Min) / h.Step)
-	zlog.Assert(i < len(h.Classes), i, len(h.Classes))
+	zlog.Assert(i < len(h.Classes), value, h.Step, i, len(h.Classes))
 	h.Classes[i]++
 }
 
@@ -43,6 +45,15 @@ func (h *Histogram) TotalCount() int {
 		count += c
 	}
 	return count
+}
+
+func (h *Histogram) CountAsRatio(c int) float64 {
+	total := h.TotalCount()
+	return float64(c) / float64(total)
+}
+
+func (h *Histogram) CountAsPercent(c int) int {
+	return int(100 * h.CountAsRatio(c))
 }
 
 func (h *Histogram) MergeIn(in Histogram) {
