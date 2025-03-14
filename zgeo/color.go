@@ -476,7 +476,7 @@ var ColorBlue = ColorNew(0, 0, 1, 1)
 var ColorNavy = ColorNew(0, 0, 0.5, 1)
 var ColorFuchsia = ColorNew(1, 0, 1, 1)
 var ColorPurple = ColorNew(0.5, 0, 0.5, 1)
-var ColorPink = ColorNew(1, 0.8, 0.8, 1)
+var ColorPink = ColorNew(1, 0.2, 1, 1)
 
 var ColorDistinctList = []Color{ColorOrange, ColorCyan, ColorMagenta, ColorGray, ColorBlack, ColorRed, ColorMaroon, ColorYellow, ColorOlive, ColorLime, ColorGreen, ColorDarkGreen, ColorAqua, ColorTeal, ColorBlue, ColorNavy, ColorDarkGray, ColorFuchsia, ColorPurple, ColorLightGray}
 
