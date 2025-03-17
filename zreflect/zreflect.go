@@ -407,7 +407,7 @@ func GetTagValuesForKey(stag reflect.StructTag, key string) (vals []string, igno
 	return vals, false
 }
 
-fun(stag string) (vals []string) {
+func GetTagPartAsCommaValues(stag string) (vals []string) {
 	return zstr.SplitStringWithDoubleAsEscape(stag, ",")
 }
 
