@@ -46,6 +46,9 @@ var (
 
 func setupWithSQLServer(s *SQLServer, executor *zrpc.Executor) {
 	MainServer = s
+	if executor == nil {
+		return
+	}
 	authenticator = executor.Authenticator
 	executor.Register(UsersCalls{})
 	executor.SetAuthNotNeededForMethod("UsersCalls.GetUserForToken")
