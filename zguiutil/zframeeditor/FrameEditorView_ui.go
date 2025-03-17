@@ -238,7 +238,7 @@ func (v *FrameEditorView) updateSize() {
 	s := v.size.DividedByD(v.divSize)
 	v.boxEditor.SetMinSize(s)
 	if v.IsPresented() {
-		zcontainer.ArrangeChildrenAtRootContainer(v)
+		zcontainer.ArrangeChildrenAtRootContainer(v, true)
 	}
 }
 
