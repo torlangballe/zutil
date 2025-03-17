@@ -74,7 +74,6 @@ func TimeToX(rect zgeo.Rect, t, start, end time.Time) float64 {
 }
 
 func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Time, beyond bool, dark bool) {
-	oldDay := -1
 	ti := ztextinfo.New()
 	ti.Alignment = zgeo.TopLeft
 
@@ -83,18 +82,11 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 		col = zgeo.ColorLightGray
 	}
 	inc, labelFieldStep, t := ztime.NiceAxisIncrements(start, end, int(rect.Size.W))
-	// var labelTime time.Time
-	// zlog.Info("INC:", inc, labelFieldStep, t)
 	endDraw := end
-	if beyond {
-		// t = t.Add(-inc)
-		// endDraw = endDraw.Add(inc)
-	}
-	// drawTicks(canvas, rect, t, end, inc)
 	y := rect.Max().Y
 	endTextX := -1000.0
-	// labelTime = t
 	count := 0
+	// zlog.Info("END:", endDraw.Add(inc*10))
 	for !t.After(endDraw.Add(inc * 10)) {
 		count++
 		if count > 10000 { // sanity test
@@ -102,7 +94,7 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 			return
 		}
 		x := TimeToX(rect, t, start, end)
-		if x >= rect.Max().X {
+		if x >= rect.Max().X+200 {
 			break
 		}
 		isLabel := labelFieldStep.IsModOfTimeZero(t)
@@ -110,15 +102,24 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 		strokeCol := col
 		textOverlap := (x < endTextX+8)
 		onHour := (t.Second() == 0 && t.Minute() == 0)
-		isRound := t.Second() == 0
-		if end.Sub(start) < time.Minute {
-			isRound = (t.Second()%10 == 0)
+		diff := end.Sub(start)
+		isRound := t.Second()%10 == 0
+		if diff >= time.Minute && t.Second() != 0 {
+			isRound = false
 		}
-		dayLabel := (count > 1 && oldDay != t.Day() && isRound && x < rect.Size.W-100)
+		if diff >= time.Minute*10 && t.Minute()%10 != 0 {
+			isRound = false
+		}
+		if diff >= time.Hour && t.Minute() != 0 {
+			isRound = false
+		}
+		if diff >= time.Hour*24 && t.Hour() != 0 {
+			isRound = false
+		}
 		if !isLabel && !onHour {
 			w = 1
 			strokeCol = strokeCol.WithOpacity(0.3)
-		} else if dayLabel && !textOverlap {
+		} else if isRound && !textOverlap {
 			strokeCol = zgeo.ColorOrange
 		}
 		canvas.SetColor(strokeCol)
@@ -134,10 +135,11 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 			t = t.Add(inc)
 			continue
 		}
-		if dayLabel {
+		ti.Font = zgeo.FontNice(12, zgeo.FontStyleNormal)
+		if isRound {
 			secs = (labelFieldStep.Field == ztime.TimeFieldSecs)
 			str = ztime.GetNice(t, secs)
-			oldDay = t.Day()
+			ti.Font = zgeo.FontNice(13, zgeo.FontStyleBold)
 			ti.Color = zgeo.ColorOrange
 		} else {
 			format := "15:04"
@@ -146,18 +148,10 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 			}
 			str = t.Format(format)
 		}
-		ti.Font = zgeo.FontNice(12, zgeo.FontStyleNormal)
 		ti.Text = str
 		pos := zgeo.PosD(x-10, 3)
-		// if fullLabel {
-		// 	zlog.Info("FullLabel", secs, fullLabelFieldStep, t, x, endTextX, str)
-		// }
 		ti.Rect = zgeo.Rect{Pos: pos, Size: zgeo.SizeD(500, 20)}
-		// s, _, _ := ti.GetBounds()
-		// r := zgeo.RectFromCenterSize(pos, s)
-		// if r.Pos.X > endTextX+10 {
 		endTextX = ti.Draw(canvas).Max().X
-		// }
 		t = t.Add(inc)
 	}
 }
