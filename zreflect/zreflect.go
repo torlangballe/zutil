@@ -285,6 +285,12 @@ type FieldInfo struct {
 	StructField  reflect.StructField
 }
 
+func (f *FieldInfo) TagKeyValuesForKey(key string) map[string]string {
+	str := f.StructField.Tag.Get(key)
+	vals := GetTagPartAsCommaValues(str)
+	return GetTagCommaValuesAsKeyValues(vals)
+}
+
 func ForEachField(istruct any, flatten func(f reflect.StructField) bool, got func(each FieldInfo) bool) {
 	forEachField(reflect.ValueOf(istruct), flatten, 0, got)
 }
@@ -399,6 +405,28 @@ func GetTagValuesForKey(stag reflect.StructTag, key string) (vals []string, igno
 		return nil, true
 	}
 	return vals, false
+}
+
+fun(stag string) (vals []string) {
+	return zstr.SplitStringWithDoubleAsEscape(stag, ",")
+}
+
+func GetTagCommaValuesAsKeyValues(values []string) (keyVals map[string]string) {
+	keyVals = map[string]string{}
+	for _, value := range values {
+		var key, val string
+		parts := zstr.SplitStringWithDoubleAsEscape(value, ":")
+		if len(parts) == 2 {
+			key = parts[0]
+			val = parts[1]
+		} else {
+			key = value
+		}
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+		keyVals[key] = val
+	}
+	return keyVals
 }
 
 func DeepCopy(destPtr, source any) error {
