@@ -146,7 +146,7 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(rp)
 	if err != nil {
-		zlog.Error("encode rpc result", rp, err)
+		zlog.Error("encode rpc result", cp.Method, rp, err, zdebug.CallingStackString())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
