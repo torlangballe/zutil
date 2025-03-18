@@ -158,6 +158,8 @@ func PosFromGoPoint(point image.Point) Pos {
 }
 
 func (p Pos) PlusD(a float64) Pos      { return Pos{p.X + a, p.Y + a} }
+func (p Pos) PlusX(x float64) Pos      { return Pos{p.X + x, p.Y} }
+func (p Pos) PlusY(y float64) Pos      { return Pos{p.X, p.Y + y} }
 func (p Pos) MinusD(a float64) Pos     { return Pos{p.X - a, p.Y - a} }
 func (p Pos) TimesD(a float64) Pos     { return Pos{p.X * a, p.Y * a} }
 func (p Pos) DividedByD(a float64) Pos { return Pos{p.X / a, p.Y / a} }
