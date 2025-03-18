@@ -105,6 +105,14 @@ func Architecture() ArchitectureType {
 	return ArchitectureTypeNone
 }
 
+func CPUAverage() float64 {
+	all := CPUUsage(1)
+	if len(all) == 0 {
+		return -1
+	}
+	return all[0]
+}
+
 // CPUUsage returns a slice of 0-1 where 1 is 100% of how much each CPU is utilized. Order unknown, but hopefully doesn't change
 // if more than maxCores, it is recursivly halved, summing first half with last
 func CPUUsage(maxCores int) (out []float64) {
