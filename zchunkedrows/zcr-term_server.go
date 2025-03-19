@@ -339,18 +339,18 @@ func (crc *CRCommander) Chunks(c *zcommands.CommandInfo) string {
 			fmt.Fprint(tabs, zint.MakeHumanFriendly(rci), "\t")
 		}
 		fmt.Fprint(tabs, zint.MakeHumanFriendly(cr.opts.RowsPerChunk), "\t")
-		mm, err := cr.getMemoryMap(i, isRows)
+		file, err := cr.getChunkFile(i, isRows)
 		if err != nil {
 			fmt.Fprint(tabs, err, "\t")
 		} else {
 			row := make([]byte, cr.opts.RowByteSize)
-			err = cr.readRow(0, row, mm)
+			err = cr.readRow(0, row, file)
 			if err != nil {
 				fmt.Fprint(tabs, err, "\t")
 			} else {
 				idStart = int64(binary.LittleEndian.Uint64(row[0:]))
 				fmt.Fprint(tabs, idStart, "\t")
-				err = cr.readRow(rci-1, row, mm)
+				err = cr.readRow(rci-1, row, file)
 				if err != nil {
 					fmt.Fprint(tabs, err, "\t")
 				} else {
@@ -358,6 +358,7 @@ func (crc *CRCommander) Chunks(c *zcommands.CommandInfo) string {
 					fmt.Fprint(tabs, idEnd, "\t")
 				}
 			}
+			file.Close()
 		}
 		var col string
 		idDiff := idEnd - idStart + 1
@@ -410,10 +411,11 @@ func (crc *CRCommander) Chunk(c *zcommands.CommandInfo, a struct {
 	rows := int(size) / cr.opts.RowByteSize
 	fmt.Fprintln(w, "Chunk:", a.ChunkIndex, "Rows:", rows)
 	lastID := int64(-1)
-	mm, err := cr.getMemoryMap(a.ChunkIndex, isRows)
+	file, err := cr.getChunkFile(a.ChunkIndex, isRows)
 	if err != nil {
 		fmt.Fprintln(w, "Error getting memory map:", err)
 	}
+	defer file.Close()
 	tabs := zstr.NewTabWriter(w)
 	tabs.MaxColumnWidth = 60
 	fmt.Fprintln(tabs, zstr.EscGreen+"row\ttime\tid\tstatus", zstr.EscNoColor)
@@ -422,7 +424,7 @@ func (crc *CRCommander) Chunk(c *zcommands.CommandInfo, a struct {
 		var line string
 		row := make([]byte, cr.opts.RowByteSize)
 		line += fmt.Sprint(i, "\t")
-		err = cr.readRow(i, row, mm)
+		err = cr.readRow(i, row, file)
 		if err != nil {
 			fmt.Fprint(tabs, line, err, "\t\t\t\n")
 			continue

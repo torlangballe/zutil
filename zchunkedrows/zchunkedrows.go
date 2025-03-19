@@ -56,13 +56,13 @@ type LSOpts struct {
 }
 
 type ChunkedRows struct {
-	maps               map[chunkType]map[int]*os.File
+	// maps               map[chunkType]map[int]*os.File
 	opts               LSOpts
 	bottomChunkIndex   int
 	topChunkIndex      int
 	topChunkRowCount   int
 	currentID          int64
-	rwLock             deadlock.RWMutex
+	lock               deadlock.Mutex
 	auxMatchRowEndChar byte // this should always be '\n', but can be changed for unit tests
 	lastOrdererValue   int64
 }
@@ -89,14 +89,14 @@ func New(opts LSOpts) *ChunkedRows {
 	zfile.MakeDirAllIfNotExists(cr.opts.DirPath)
 	cr.auxMatchRowEndChar = '\n'
 
-	cr.maps = map[chunkType]map[int]*os.File{}
-	cr.maps[isRows] = map[int]*os.File{}
-	if cr.opts.AuxIndexOffset != 0 {
-		cr.maps[isAux] = map[int]*os.File{}
-	}
-	if cr.opts.MatchIndexOffset != 0 {
-		cr.maps[isMatch] = map[int]*os.File{}
-	}
+	// cr.maps = map[chunkType]map[int]*os.File{}
+	// cr.maps[isRows] = map[int]*os.File{}
+	// if cr.opts.AuxIndexOffset != 0 {
+	// 	cr.maps[isAux] = map[int]*os.File{}
+	// }
+	// if cr.opts.MatchIndexOffset != 0 {
+	// 	cr.maps[isMatch] = map[int]*os.File{}
+	// }
 	err := cr.load()
 	if zlog.OnError(err, cr.opts.DirPath) {
 		return nil
@@ -108,7 +108,6 @@ func (cr *ChunkedRows) GetStorageSize() (rows, aux, match int64) {
 	if cr.isEmpty() {
 		return 0, 0, 0
 	}
-	cr.rwLock.RLock()
 	for i := cr.bottomChunkIndex; i <= cr.topChunkIndex; i++ {
 		rows += zfile.Size(cr.chunkFilepath(i, isRows))
 		if cr.opts.MatchIndexOffset != 0 {
@@ -118,7 +117,6 @@ func (cr *ChunkedRows) GetStorageSize() (rows, aux, match int64) {
 			aux += zfile.Size(cr.chunkFilepath(i, isAux))
 		}
 	}
-	cr.rwLock.RUnlock()
 	return rows, aux, match
 }
 
@@ -132,9 +130,9 @@ func (cr *ChunkedRows) totalRowCount() int {
 }
 
 func (cr *ChunkedRows) TotalRowCount() int {
-	cr.rwLock.RLock()
+	// cr.rwLock.RLock()
 	n := cr.totalRowCount()
-	cr.rwLock.RUnlock()
+	// cr.rwLock.RUnlock()
 	return n
 }
 
@@ -163,41 +161,42 @@ func (cr *ChunkedRows) chunkFilepath(i int, cType chunkType) string {
 	return zfile.JoinPathParts(cr.opts.DirPath, name)
 }
 
-func (cr *ChunkedRows) closeMaps(chunkIndex int, remove bool) {
-	for _, cType := range []chunkType{isAux, isRows, isMatch} {
-		cmap := cr.maps[cType]
-		if cmap == nil {
-			continue
-		}
-		mm := cmap[chunkIndex]
-		if mm != nil {
-			mm.Close()
-			delete(cmap, chunkIndex)
-			// zlog.Warn("closeMap", chunkIndex, cType, cmap[chunkIndex])
-		}
-		if remove {
-			// zlog.Warn("zChunkedRows.RemoveChunk:", chunkIndex)
-			fpath := cr.chunkFilepath(chunkIndex, cType)
-			os.Remove(fpath)
-		}
-	}
-}
+// func (cr *ChunkedRows) closeMaps(chunkIndex int, remove bool) {
+// 	for _, cType := range []chunkType{isAux, isRows, isMatch} {
+// 		cmap := cr.maps[cType]
+// 		if cmap == nil {
+// 			continue
+// 		}
+// 		mm := cmap[chunkIndex]
+// 		if mm != nil {
+// 			mm.Close()
+// 			delete(cmap, chunkIndex)
+// 			// zlog.Warn("closeMap", chunkIndex, cType, cmap[chunkIndex])
+// 		}
+// 		if remove {
+// 			// zlog.Warn("zChunkedRows.RemoveChunk:", chunkIndex)
+// 			fpath := cr.chunkFilepath(chunkIndex, cType)
+// 			os.Remove(fpath)
+// 		}
+// 	}
+// }
 
-func (cr *ChunkedRows) appendToChunkMMap(chunkIndex int, cType chunkType, data []byte) (preFileLen int64, err error) {
+func (cr *ChunkedRows) appendToChunkFile(chunkIndex int, cType chunkType, data []byte) (preFileLen int64, err error) {
 	// fs, err := cr.getOrAddOutFile(chunkIndex, cType)
 	// if zlog.OnError(err, chunkIndex, cType, fs) {
 	// 	return 0, err
 	// }
 
-	mmap, err := cr.getMemoryMap(chunkIndex, cType)
+	file, err := cr.getChunkFile(chunkIndex, cType)
 	if err != nil {
 		return 0, err
 	}
-	preFileLen, err = mmap.Seek(0, io.SeekEnd)
+	defer file.Close()
+	preFileLen, err = file.Seek(0, io.SeekEnd)
 	if err != nil {
 		return 0, zlog.Error("error seeking to end:", err, chunkIndex, cType)
 	}
-	n, err := mmap.Write(data)
+	n, err := file.Write(data)
 	if err != nil {
 		zlog.Error("write:", n, len(data), chunkIndex, preFileLen, isAux, err)
 		return //0, zlog.Error("write:", chunkIndex, isAux, err)
@@ -205,11 +204,6 @@ func (cr *ChunkedRows) appendToChunkMMap(chunkIndex int, cType chunkType, data [
 	if err == nil && n != len(data) {
 		return 0, zlog.Error("wrote wrong size:", n, chunkIndex, isAux)
 	}
-	// err = mmap.Sync()
-	// if err != nil {
-	// 	zlog.Error("write sync:", n, len(data), chunkIndex, preFileLen, isAux, err)
-	// 	return //0, zlog.Error("write:", chunkIndex, isAux, err)
-	// }
 	path := cr.chunkFilepath(chunkIndex, cType)
 	if cType == isRows && zfile.Size(path) != int64(cr.topChunkRowCount*cr.opts.RowByteSize) {
 		zlog.Error("fs.size and row size not the same!", n, len(data), chunkIndex, zfile.Size(path), cr.topChunkRowCount*cr.opts.RowByteSize)
@@ -218,12 +212,12 @@ func (cr *ChunkedRows) appendToChunkMMap(chunkIndex int, cType chunkType, data [
 	return preFileLen, nil
 }
 
-func (cr *ChunkedRows) getMemoryMap(chunkIndex int, cType chunkType) (mm *os.File, err error) {
-	cmap := cr.maps[cType]
-	mm = cmap[chunkIndex]
-	if mm != nil {
-		return mm, nil
-	}
+func (cr *ChunkedRows) getChunkFile(chunkIndex int, cType chunkType) (*os.File, error) {
+	// cmap := cr.maps[cType]
+	// mm = cmap[chunkIndex]
+	// if mm != nil {
+	// 	return mm, nil
+	// }
 	fpath := cr.chunkFilepath(chunkIndex, cType)
 	if zfile.NotExists(fpath) {
 		f, err := os.Create(fpath)
@@ -236,14 +230,14 @@ func (cr *ChunkedRows) getMemoryMap(chunkIndex int, cType chunkType) (mm *os.Fil
 	if chunkIndex == cr.topChunkIndex {
 		flags = os.O_RDWR | os.O_CREATE
 	}
-	mm, err = os.OpenFile(fpath, flags, 0644)
+	file, err := os.OpenFile(fpath, flags, 0644)
 	// zlog.Warn("MMAP Open:", fpath, zdebug.CallingStackString())
 	if err != nil {
 		return nil, err
 	}
 	// zlog.Warn("getMemMap", cType, chunkIndex, cmap != nil)
-	cmap[chunkIndex] = mm
-	return mm, nil
+	// cmap[chunkIndex] = mm
+	return file, nil
 }
 
 // func (cr *ChunkedRows) CloseAllOutFiles() {
@@ -264,28 +258,33 @@ func (cr *ChunkedRows) Close() {
 }
 
 // diffDir: 0 means it's in index chunk, 1 means chunk has bigger first value so goto before, 1 means last in chunk is smaller, go to next
-func (cr *ChunkedRows) isInChunk(index int, o int64, isIDOrderer bool) (diffDir int, err error) {
+func (cr *ChunkedRows) isOrdererInChunk(chunkIndex int, o int64, isIDOrderer bool) (diffDir int, err error) {
+	if chunkIndex == cr.topChunkIndex {
+		cr.lock.Lock()
+		defer cr.lock.Unlock()
+	}
 	row := make([]byte, cr.opts.RowByteSize)
-	mm, err := cr.getMemoryMap(index, isRows)
+	file, err := cr.getChunkFile(chunkIndex, isRows)
 	if zlog.OnError(err) {
 		return zbool.Unknown, err
 	}
-	err = cr.readRow(0, row, mm)
+	defer file.Close()
+	err = cr.readRow(0, row, file)
 	if zlog.OnError(err, zdebug.CallingStackString()) {
 		return zbool.Unknown, err
 	}
 	ofirst := cr.getOrderer(row, isIDOrderer)
-	// zlog.Warn("isInChunk", index, o, ofirst)
+	// zlog.Warn("isInChunk", chunkIndex, o, ofirst)
 	if ofirst == o { // we found exact match in first row in chunk
 		return 0, nil
 	}
 	if ofirst > o { // first in chunk is bigger, return diffDir 1, we need to go to prev chunk
 		return 1, nil
 	}
-	topRowIndex, _ := cr.getChunkRowCount(index)
+	topRowIndex, _ := cr.getChunkRowCount(chunkIndex)
 	topRowIndex--
 	// zlog.Warn("isInChunk2", index, topRowIndex)
-	err = cr.readRow(topRowIndex, row, mm)
+	err = cr.readRow(topRowIndex, row, file)
 	if zlog.OnError(err) {
 		return zbool.Unknown, err
 	}
@@ -300,8 +299,8 @@ func (cr *ChunkedRows) isInChunk(index int, o int64, isIDOrderer bool) (diffDir 
 }
 
 func (cr *ChunkedRows) BinarySearchForChunk(find int64, isIDOrderer bool) (i int, pos ChunkPos, err error) {
-	cr.rwLock.RLock()
-	defer cr.rwLock.RUnlock()
+	// cr.rwLock.RLock()
+	// defer cr.rwLock.RUnlock()
 	return cr.binarySearchForChunk(find, cr.bottomChunkIndex, cr.topChunkIndex, isIDOrderer)
 }
 
@@ -311,7 +310,7 @@ func (cr *ChunkedRows) binarySearchForChunk(find int64, bottomChunkIndex, topChu
 		return 0, PosEmpty, nil
 	}
 	mid := (bottomChunkIndex + topChunkIndex) / 2
-	diffDir, err := cr.isInChunk(mid, find, isIDOrderer)
+	diffDir, err := cr.isOrdererInChunk(mid, find, isIDOrderer)
 	if err != nil {
 		return 0, PosNone, err
 	}
@@ -343,8 +342,6 @@ func (cr *ChunkedRows) BinarySearch(find int64, isIDOrderer bool) (row []byte, c
 	if cr.isEmpty() {
 		return nil, 0, 0, false, nil
 	}
-	cr.rwLock.RLock()
-	defer cr.rwLock.RUnlock()
 
 	// zlog.Warn("BinarySearch", time.UnixMicro(find), isIDOrderer)
 	var pos ChunkPos
@@ -353,19 +350,24 @@ func (cr *ChunkedRows) BinarySearch(find int64, isIDOrderer bool) (row []byte, c
 	if err != nil {
 		return nil, 0, 0, false, err
 	}
-	mmap, err := cr.getMemoryMap(chunkIndex, isRows)
+	if chunkIndex == cr.topChunkIndex {
+		cr.lock.Lock()
+		defer cr.lock.Unlock()
+	}
+	file, err := cr.getChunkFile(chunkIndex, isRows)
 	if err != nil {
 		return nil, 0, 0, false, err
 	}
+	defer file.Close()
 	if pos == PosAboveInChunk || pos == PosAboveOutside {
 		row = make([]byte, cr.opts.RowByteSize)
-		err = cr.readRow(cr.topChunkRowCount-1, row, mmap)
+		err = cr.readRow(cr.topChunkRowCount-1, row, file)
 		zlog.OnError(err, find, isIDOrderer, cr.topChunkRowCount-1)
 		return row, chunkIndex, cr.topChunkRowCount - 1, false, err
 	}
 	rowCount, _ := cr.getChunkRowCount(chunkIndex)
 	// zlog.Warn("BinarySearch", cr.topChunkIndex, find, chunkIndex, "range", 0, rowCount-1)
-	row, rowIndex, exact, err = cr.binarySearchForRow(find, mmap, 0, rowCount-1, rowCount-1, isIDOrderer)
+	row, rowIndex, exact, err = cr.binarySearchForRow(find, file, 0, rowCount-1, rowCount-1, isIDOrderer)
 	if err != nil {
 		return nil, 0, 0, false, err
 	}
@@ -461,18 +463,18 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 		auxBytes = append(djson, cr.auxMatchRowEndChar)
 	}
 
-	cr.rwLock.Lock()
-	defer cr.rwLock.Unlock()
+	cr.lock.Lock()
+	defer cr.lock.Unlock()
 
 	cr.incrementRowOrChunk()
 	if auxData != nil {
 		if cr.opts.MatchIndexOffset != 0 {
-			matchPos, err = cr.appendToChunkMMap(cr.topChunkIndex, isMatch, []byte(match+string(cr.auxMatchRowEndChar)))
+			matchPos, err = cr.appendToChunkFile(cr.topChunkIndex, isMatch, []byte(match+string(cr.auxMatchRowEndChar)))
 			if err != nil {
 				return 0, zlog.Error(err, cr.topChunkIndex)
 			}
 		}
-		auxPos, err = cr.appendToChunkMMap(cr.topChunkIndex, isAux, auxBytes)
+		auxPos, err = cr.appendToChunkFile(cr.topChunkIndex, isAux, auxBytes)
 		if err != nil {
 			cr.truncateChunk(isMatch, cr.topChunkIndex, matchPos)
 			return 0, zlog.Error(err, cr.topChunkIndex, auxBytes != nil)
@@ -491,9 +493,9 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 		id = cr.currentID
 		binary.LittleEndian.PutUint64(rowBytes[0:], uint64(id))
 	}
-	_, err = cr.appendToChunkMMap(cr.topChunkIndex, isRows, rowBytes)
+	_, err = cr.appendToChunkFile(cr.topChunkIndex, isRows, rowBytes)
 	if err != nil {
-		zlog.Info("appendToChunkMMap Err", err, cr.topChunkIndex, isRows, len(rowBytes))
+		zlog.Info("appendToChunkFile Err", err, cr.topChunkIndex, isRows, len(rowBytes))
 		cr.topChunkRowCount--
 		cr.currentID--
 		cr.truncateChunk(isAux, cr.topChunkIndex, auxPos)
@@ -521,7 +523,7 @@ func (cr *ChunkedRows) truncateChunk(cType chunkType, chunkIndex int, toPos int6
 
 func (cr *ChunkedRows) deleteChunk(i int) error {
 	zlog.Warn("zchunkedrows.delChunk:", i)
-	cr.closeMaps(i, true)
+	// cr.closeMaps(i, true)
 	if i == cr.bottomChunkIndex {
 		cr.bottomChunkIndex++
 	}
@@ -537,8 +539,8 @@ func (cr *ChunkedRows) isEmpty() bool {
 
 func (cr *ChunkedRows) load() error {
 	zfile.MakeDirAllIfNotExists(cr.opts.DirPath)
-	cr.rwLock.Lock()
-	defer cr.rwLock.Unlock()
+	cr.lock.Lock()
+	defer cr.lock.Unlock()
 	ctypes := []chunkType{isAux, isRows, isMatch}
 
 	var ranges = map[chunkType]zmath.Range[int]{}
@@ -574,23 +576,24 @@ func (cr *ChunkedRows) load() error {
 		cr.deleteChunk(cr.topChunkIndex)
 	}
 	// zlog.Warn("Loaded:", maxes, cr.bottomChunkIndex, cr.topChunkIndex)
-	mm, err := cr.getMemoryMap(cr.topChunkIndex, isRows)
+	file, err := cr.getChunkFile(cr.topChunkIndex, isRows)
 	if err != nil {
 		return zlog.Error(err, cr.topChunkIndex)
 	}
-	err = cr.handleLoadedTopRow(mm)
+	err = cr.handleLoadedTopRow(file)
+	file.Close()
 	//TODO: Check if top (or all) aux and row chunks have same top value(s)
 
 	return nil
 }
 
-func (cr *ChunkedRows) handleLoadedTopRow(mm *os.File) error {
+func (cr *ChunkedRows) handleLoadedTopRow(file *os.File) error {
 	var hasBadChunkAbove bool
 	cr.topChunkRowCount, hasBadChunkAbove = cr.getChunkRowCount(cr.topChunkIndex)
 
 	topRowIndexOnLoad = cr.topChunkRowCount
 	lastRow := make([]byte, cr.opts.RowByteSize)
-	err := cr.readRow(cr.topChunkRowCount-1, lastRow, mm)
+	err := cr.readRow(cr.topChunkRowCount-1, lastRow, file)
 	if zlog.OnError(err) {
 		return err
 	}
@@ -607,7 +610,7 @@ func (cr *ChunkedRows) handleLoadedTopRow(mm *os.File) error {
 		}
 	}
 	if hasBadChunkAbove {
-		err = cr.readRow(cr.topChunkRowCount-1, lastRow, mm)
+		err = cr.readRow(cr.topChunkRowCount-1, lastRow, file)
 		if zlog.OnError(err) {
 			return err
 		}
@@ -621,7 +624,7 @@ func (cr *ChunkedRows) handleLoadedTopRow(mm *os.File) error {
 			}
 			cr.truncateChunk(ctype, cr.topChunkIndex, endPos)
 		}
-		cr.closeMaps(cr.topChunkIndex, false)
+		// cr.closeMaps(cr.topChunkIndex, false)
 	}
 	cr.currentID = int64(binary.LittleEndian.Uint64(lastRow[0:]))
 	return nil
@@ -650,9 +653,11 @@ func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr an
 }
 
 func (cr *ChunkedRows) GetAuxData(chunkIndex int, row []byte, dataPtr any) error {
-	cr.rwLock.RLock()
+	if chunkIndex == cr.topChunkIndex {
+		cr.lock.Lock()
+		cr.lock.Unlock()
+	}
 	err := cr.GetAuxDataUnlocked(chunkIndex, row, dataPtr)
-	cr.rwLock.RUnlock()
 	return err
 }
 
@@ -671,24 +676,24 @@ func (cr *ChunkedRows) onErrorRemoveChunkMapFileIfFirstGet(chunkIndex int, cType
 	zlog.Warn("onErrorRemoveChunkMapFileIfFirstGet1", chunkIndex, cType, cr.topChunkIndex, cr.topChunkRowCount, zdebug.CallingStackString())
 	if chunkIndex == cr.topChunkIndex && cr.topChunkRowCount == 0 {
 		zlog.Warn("onErrorRemoveChunkMapFileIfFirstGet:", chunkIndex, cType)
-		cr.closeMaps(chunkIndex, true)
+		// cr.closeMaps(chunkIndex, true)
 	}
 }
 
 func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType, row []byte) (lineBytes []byte, endPos int64, err error) {
-	mm, err := cr.getMemoryMap(chunkIndex, cType)
+	file, err := cr.getChunkFile(chunkIndex, cType)
 	if err != nil {
 		return nil, 0, zlog.Error(err, chunkIndex, offset, cType)
 	}
 	i := binary.LittleEndian.Uint32(row[offset : offset+4])
 
-	_, err = mm.Seek(int64(i), io.SeekStart)
+	_, err = file.Seek(int64(i), io.SeekStart)
 	// zlog.Warn("getLineFromChunk", i, err, chunkIndex, offset, cType)
 	if err != nil {
 		cr.onErrorRemoveChunkMapFileIfFirstGet(chunkIndex, cType)
 		return nil, 0, zlog.Error(err, i, chunkIndex, offset, cType)
 	}
-	reader := bufio.NewReader(mm)
+	reader := bufio.NewReader(file)
 	lineBytes, err = reader.ReadBytes(cr.auxMatchRowEndChar)
 	if err != nil {
 		zlog.Error("chunk read fail:", len(lineBytes), "seek:", i, err)
@@ -696,7 +701,7 @@ func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType,
 		return nil, 0, err
 	}
 	lineBytes = lineBytes[:len(lineBytes)-1]
-	// scanner := bufio.NewScanner(mm)
+	// scanner := bufio.NewScanner(file)
 	// if !scanner.Scan() {
 	// 	return nil, 0, zlog.NewError("Error scanning chunk:", scanner.Err(), i, offset, cType, chunkIndex)
 	// }
@@ -705,9 +710,9 @@ func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType,
 	return lineBytes, endPos, nil
 }
 
-func (cr *ChunkedRows) readRow(index int, bytes []byte, mmap *os.File) error {
+func (cr *ChunkedRows) readRow(index int, bytes []byte, file *os.File) error {
 	// zlog.Warn("readRow:", index)
-	n, err := mmap.ReadAt(bytes, int64(index*cr.opts.RowByteSize))
+	n, err := file.ReadAt(bytes, int64(index*cr.opts.RowByteSize))
 	if n != cr.opts.RowByteSize || err != nil {
 		return zlog.Error("couldn't read row:", index, n, cr.opts.RowByteSize, err) // , zdebug.CallingStackString())
 	}
@@ -726,8 +731,6 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, ma
 	}
 	match = strings.ToLower(match)
 	// zlog.Warn("Iter1:", cr.bottomChunkIndex, cr.topChunkIndex, cr.topChunkRowCount, "in:", startChunkIndex, index, forward)
-	cr.rwLock.RLock()
-	defer cr.rwLock.RUnlock()
 	chunkIndex := startChunkIndex
 	if indexInRow >= cr.opts.RowsPerChunk {
 		return 0, zlog.NewError("index too big for chunk", indexInRow, cr.opts.RowsPerChunk)
@@ -759,7 +762,7 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, ma
 		}
 	}
 	row := make([]byte, cr.opts.RowByteSize)
-	var mmap *os.File
+	var file *os.File
 	count := 0
 	for {
 		if count%500000 == 0 && count != 0 {
@@ -767,14 +770,14 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, ma
 		}
 		var err error
 		count++
-		if mmap == nil {
-			mmap, err = cr.getMemoryMap(chunkIndex, isRows)
+		if file == nil {
+			file, err = cr.getChunkFile(chunkIndex, isRows)
 			if zlog.OnError(err, chunkIndex) {
 				got(row, chunkIndex, indexInRow, err)
 				return 0, err
 			}
 		}
-		err = cr.readRow(indexInRow, row, mmap)
+		err = cr.readRow(indexInRow, row, file)
 		skip := false
 		if err != nil {
 			skip = true
@@ -812,7 +815,8 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, ma
 				if chunkIndex > cr.topChunkIndex {
 					break
 				}
-				mmap = nil
+				file.Close()
+				file = nil
 			}
 		} else {
 			indexInRow--
@@ -822,9 +826,13 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, ma
 				if chunkIndex < cr.bottomChunkIndex {
 					break
 				}
-				mmap = nil
+				file.Close()
+				file = nil
 			}
 		}
+	}
+	if file != nil {
+		file.Close()
 	}
 	return count, nil
 }
@@ -855,8 +863,6 @@ type FS struct {
 
 func (cr *ChunkedRows) DeleteChunksOlderThan(old time.Time) error {
 	isIDOrderer := false
-	cr.rwLock.Lock()
-	defer cr.rwLock.Unlock()
 	t := old.UnixMicro()
 	zlog.Info("ChunkedRows.DeleteChunksOlderThan:", old)
 	index, cpos, err := cr.binarySearchForChunk(t, cr.bottomChunkIndex, cr.topChunkIndex, isIDOrderer)
