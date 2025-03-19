@@ -762,20 +762,25 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, ma
 		}
 	}
 	row := make([]byte, cr.opts.RowByteSize)
-	var file *os.File
+	oldChunkIndex := -1
 	count := 0
+	var file *os.File
 	for {
 		if count%500000 == 0 && count != 0 {
 			zlog.Info("chunked.Iterate:", count, chunkIndex, indexInRow, match)
 		}
 		var err error
 		count++
-		if file == nil {
+		if oldChunkIndex != chunkIndex {
+			if file != nil {
+				file.Close()
+			}
 			file, err = cr.getChunkFile(chunkIndex, isRows)
 			if zlog.OnError(err, chunkIndex) {
 				got(row, chunkIndex, indexInRow, err)
 				return 0, err
 			}
+			oldChunkIndex = chunkIndex
 		}
 		err = cr.readRow(indexInRow, row, file)
 		skip := false
