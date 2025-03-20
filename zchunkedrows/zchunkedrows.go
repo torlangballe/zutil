@@ -204,9 +204,12 @@ func (cr *ChunkedRows) appendToChunkFile(chunkIndex int, cType chunkType, data [
 	if err == nil && n != len(data) {
 		return 0, zlog.Error("wrote wrong size:", n, chunkIndex, isAux)
 	}
-	path := cr.chunkFilepath(chunkIndex, cType)
-	if cType == isRows && zfile.Size(path) != int64(cr.topChunkRowCount*cr.opts.RowByteSize) {
-		zlog.Error("fs.size and row size not the same!", n, len(data), chunkIndex, zfile.Size(path), cr.topChunkRowCount*cr.opts.RowByteSize)
+	// path := cr.chunkFilepath(chunkIndex, cType)
+	if cType == isRows {
+		offset, err := file.Seek(0, os.SEEK_END)
+		if err == nil && offset != int64(cr.topChunkRowCount*cr.opts.RowByteSize) {
+			zlog.Error("fs.size and row size not the same!", n, len(data), chunkIndex, offset, cr.topChunkRowCount*cr.opts.RowByteSize)
+		}
 	}
 	// zlog.Info("appendRowToChunkMap", cType, cr.fileLengths[cType], "tcrc:", cr.topChunkRowCount, cr.topChunkRowCount*cr.opts.RowByteSize, "ci:", cr.topChunkIndex, len(data), err)
 	return preFileLen, nil
