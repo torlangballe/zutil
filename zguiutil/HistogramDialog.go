@@ -30,7 +30,7 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 	builder := zlabel.NewStyledTextBuilder()
 	builder.Default.Gap = 16
 	blue := zgeo.ColorNew(0.2, 0.2, 1, 1)
-	builder.AddLabelsRowToVertStack(grid, blue, zgeo.FontStyleBold, zstyle.Start, name, "Count", "Percent of Total")
+	builder.AddLabelsRowToVertStack(grid, blue, zgeo.FontStyleBold, zstyle.Start, name, "Percent of Total", "Count")
 	barVal := h.Range.Min
 	for _, c := range h.Classes {
 		sclass := zwords.NiceFloat(barVal, 0) + "-" + zwords.NiceFloat(barVal+h.Step, 0)
@@ -45,7 +45,7 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 		if criticalVal != 0 && barVal >= criticalVal {
 			param = zgeo.ColorRed
 		}
-		builder.AddLabelsRowToVertStack(grid, param, zstyle.Start, zgeo.FontStyleBold, sclass, scount, spercent)
+		builder.AddLabelsRowToVertStack(grid, param, zstyle.Start, zgeo.FontStyleBold, sclass, spercent, scount)
 		barVal += h.Step
 		barVal = zfloat.KeepFractionDigits(barVal, 7)
 	}
