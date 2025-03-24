@@ -162,6 +162,9 @@ func getPossibleAdjustments(diff float64, scells []stackCell) []float64 {
 			if sc.MinSize.W != 0 {
 				adj[i] = math.Min(0, sc.MinSize.W-w)
 			}
+			if sc.Alignment&HorShrink != 0 {
+				adj[i] = diff
+			}
 			// zlog.Info(i, "pos:", diff, sc.Name, w, sc.MinSize.W, "adj", adj[i])
 			continue
 		}
@@ -210,11 +213,15 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells *[]stackCell, ver
 	}
 	adjustableCount := 0.0
 	adj := getPossibleAdjustments(diff, *scells) // this gives us how much each cell might be able to be added to. Note this is more than diff, so after adjusting one, ALL adj must be subtracted by amount added.
+	// if debugName == "Shaka Util Error.FV" {
+	// 	zlog.Info("addLeftoverSpaceToWidths:", r.Size.W, width, diff, adj)
+	// }
 	for _, a := range adj {
 		if a != 0 {
 			adjustableCount++
 		}
 	}
+
 	// if debugName == "streamgrid" {
 	// 	zlog.Info("addLeftoverSpaceToWidths2:", debugName, r.Size.W, width, diff, adj)
 	// }
@@ -228,8 +235,10 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells *[]stackCell, ver
 			}
 			w := math.Max(1, sc.size.W)
 			shouldAdjust := ndiff / adjustableCount
-			// zlog.Info("adj:", sc.size, shouldAdjust, ndiff, sc.Name, subtract)
 			amount := math.Min(subtract, shouldAdjust)
+			// if debugName == "Shaka Util Error.FV" {
+			// 	zlog.Info("adj:", sc.size, shouldAdjust, ndiff, sc.Name, subtract, amount)
+			// }
 			if amount > 0 {
 				// zlog.Info("  addLeftoverSpaceToWidths adjust:", amount, sc.Name, subtract, ndiff)
 				adjusted = true
