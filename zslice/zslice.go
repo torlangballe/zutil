@@ -130,6 +130,19 @@ func CopyTo(toPtr, slice any) {
 	toVal.Elem().Set(destVal)
 }
 
+func NewCopy(slice any) any {
+	sliceVal := reflect.ValueOf(slice)
+	if sliceVal.Type().Elem().Kind() == reflect.Interface {
+		zlog.Info("NewCopy:", sliceVal.Type().Elem().Kind(), sliceVal.Type().Elem().Elem().Kind())
+		// sliceVal = sliceVal.Type().Elem()
+	}
+	destVal := reflect.MakeSlice(sliceVal.Type(), sliceVal.Len(), sliceVal.Len())
+	destNew := reflect.New(destVal.Type())
+	destNew.Elem().Set(destVal)
+	reflect.Copy(destNew.Elem(), sliceVal)
+	return destNew.Interface()
+}
+
 func IndexOf(length int, is func(i int) bool) int {
 	for i := 0; i < length; i++ {
 		if is(i) {
