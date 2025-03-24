@@ -14,6 +14,7 @@ import (
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zerrors"
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -145,34 +146,37 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 			parts = append(parts[:i], parts[i+1:]...)
 			pos += int(n)
 		}
-		t, got := p.(time.Time)
-		if got {
-			if t.IsZero() {
+		switch v := p.(type) {
+		case time.Time:
+			if v.IsZero() {
 				parts[i] = "zero"
 			} else {
-				parts[i] = t.Local().Format("02-Jan-2006 15:04:05.999-07")
+				parts[i] = v.Local().Format("02-Jan-2006 15:04:05.999-07")
 			}
-		}
-		rl, got := p.(LimitID)
-		if got {
+		case LimitID:
 			parts = append(parts[:i], parts[i+1:]...) // can't use zslice.RemoveAt() as it would create cyclical import
 			i--
-			tl, _ := rateLimiters.Load(rl)
+			tl, _ := rateLimiters.Load(v)
 			if tl != nil {
-				t := tl.(time.Time)
-				if time.Since(t) < time.Second {
+				if time.Since(tl.(time.Time)) < time.Second {
 					return nil
 				}
 			}
-			rateLimiters.Store(rl, now)
-		}
-		enable, got := p.(Enabler)
-		if got {
-			if !bool(enable) {
+			rateLimiters.Store(v, now)
+		case Enabler:
+			if !bool(v) {
 				return nil
 			}
 			parts = append(parts[:i], parts[i+1:]...) // can't use zslice as it would create cyclical import
 			i--
+		case int:
+			if v >= 100000 {
+				parts[i] = zint.MakeHumanFriendly(v)
+			}
+		case int64:
+			if v >= 100000 {
+				parts[i] = zint.MakeHumanFriendly(v)
+			}
 		}
 	}
 	col := ""
