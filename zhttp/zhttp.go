@@ -452,10 +452,10 @@ func GetRedirectedURL(surl string, skipVerifyCertificate bool) (string, error) {
 	params := MakeParameters()
 	params.TimeoutSecs = 5
 	params.SkipVerifyCertificate = skipVerifyCertificate
+	// params.Method = http.MethodHead
 	req, client, err := MakeRequest(surl, params)
-	// req, err := http.NewRequest("HEAD", surl, nil)
 	if err != nil {
-		ie := makeContextErrorFromError(err, "Get Redirected URL", surl, "HEAD")
+		ie := makeContextErrorFromError(err, "Get Redirected URL/Make Request", surl, "Head")
 		return surl, ie
 	}
 	lastUrlQuery := surl
@@ -476,7 +476,7 @@ func GetRedirectedURL(surl string, skipVerifyCertificate bool) (string, error) {
 		if zstr.HasPrefix(text, `Head "`+surl+`": `, &text) {
 			err = errors.New(text)
 		}
-		ie := makeContextErrorFromError(err, "Get Redirected URL: Get Head", surl, "HEAD")
+		ie := makeContextErrorFromError(err, "Get Redirected URL", surl, "Head")
 		err = ie
 		u, _ := url.Parse(surl)
 		startDNS := time.Now()
