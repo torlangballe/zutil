@@ -94,11 +94,14 @@ const char *ImageOfWindow(char *winTitle, char *appBundleID, CGRect insetRect, C
     if (dispatch_semaphore_wait(sem, timeoutAt)) {
     // if (dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER)) {
         timedOut = true;
+        dispatch_release(sem);
         return "timed out";
     } else if (snapErr != nil) {
             NSLog(@"ImageOfWindow Error: %s %@\n", winTitle, snapErr);
             [snapErr getCString:cerr maxLength:1024 encoding:NSUTF8StringEncoding];
+            dispatch_release(sem);
             return cerr;
     }
+    dispatch_release(sem);
     return "";
 }
