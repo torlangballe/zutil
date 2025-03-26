@@ -333,7 +333,7 @@ type IPos struct {
 	Y int
 }
 
-func (p *IPos) ToPos() Pos {
+func (p *IPos) Pos() Pos {
 	return PosD(float64(p.X), float64(p.Y))
 }
 
