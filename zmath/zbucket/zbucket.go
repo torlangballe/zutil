@@ -27,6 +27,7 @@ type Filter struct {
 type Result struct {
 	CurrentCellPos     float64
 	BestVal            float64
+	LastVal            float64
 	ValueSum           float64
 	BestPos            float64
 	BestPayload        any
@@ -37,8 +38,8 @@ type Result struct {
 	MinPayload         any
 	MinVal             float64
 	Count              int
-	BestIndex          int                                              // how far into Count inputs BestVal is
-	IsFlushedWithin    bool                                             // true if this result is due to a outside-forced flush
+	BestIndex          int                                        // how far into Count inputs BestVal is
+	IsFlushedWithin    bool                                       // true if this result is due to a outside-forced flush
 	IsBestOverrideFunc func(f *Filter, payload any) zbool.BoolInd // if not nil and returns true, set best for current payload, if false don't. undef is use normal method
 	Histogram          *zhistogram.Histogram
 }
@@ -92,6 +93,7 @@ func (f *Filter) StartForPos(pos float64) float64 {
 
 func (f *Filter) aggregate(payload any, pos, val float64) {
 	f.LastPayload = payload
+	f.LastVal = val
 	f.Count++
 	f.ValueSum += val
 	if f.BestPayload == nil {
