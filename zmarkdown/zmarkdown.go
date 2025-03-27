@@ -281,10 +281,12 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 	if zlog.OnError(err, spath) {
 		return
 	}
-	_, _, stub, _ := zfile.Split(spath)
+	debugMode := (req.URL.Query().Get("zdev") == "1")
 	osType := zdevice.OSTypeFromUserAgentString(req.Header.Get("User-Agent"))
-	m.SetOSSpecificDocKeyValues(osType)
+	// zlog.Info("MarkdownConverter.ServeAsHTML:", req.URL, debugMode)
+	m.SetBrowserSpecificDocKeyValues(osType, debugMode)
 
+	_, _, stub, _ := zfile.Split(spath)
 	zrest.AddCORSHeaders(w, req)
 	err = m.ConvertToHTMLFromString(w, input, stub)
 	if err != nil {
@@ -293,7 +295,7 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 	}
 }
 
-func (m *MarkdownConverter) SetOSSpecificDocKeyValues(os zdevice.OSType) {
+func (m *MarkdownConverter) SetBrowserSpecificDocKeyValues(os zdevice.OSType, debugMode bool) {
 	metaMod := zkeyboard.ModifierControl
 	altName := zkeyboard.AltModifierConstName
 	if os == zdevice.MacOSType {
@@ -302,6 +304,7 @@ func (m *MarkdownConverter) SetOSSpecificDocKeyValues(os zdevice.OSType) {
 	}
 	m.Variables["ZMetaModifier"] = metaMod.HumanString()
 	m.Variables["ZAltModifier"] = altName
+	m.Variables["ZDebugOwnerMode"] = debugMode
 }
 
 func outputValue(empty bool, k, v string) string {
