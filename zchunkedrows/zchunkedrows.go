@@ -31,6 +31,7 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zmath"
+	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -683,8 +684,15 @@ func (cr *ChunkedRows) onErrorRemoveChunkMapFileIfFirstGet(chunkIndex int, cType
 	}
 }
 
+var firstError = true
+
 func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType, row []byte) (lineBytes []byte, endPos int64, err error) {
 	file, err := cr.getChunkFile(chunkIndex, cType)
+	if err != nil && firstError {
+		firstError = false
+		lines := zprocess.GetOpenDiskFileNames()
+		zlog.Info("OpenFiles:", strings.Join(lines, "\n"))
+	}
 	if err != nil {
 		return nil, 0, zlog.Error(err, chunkIndex, offset, cType)
 	}
