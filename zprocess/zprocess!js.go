@@ -294,6 +294,16 @@ func GetOpenFileCount() int {
 	return count - 1
 }
 
+func GetOpenDiskFileNames() []string {
+	pid := os.Getpid()
+	str, err := RunCommand("lsof", 6, "-a", "-p", pid, "/") // -n inhibits the conversion of network numbers to host names for network files.
+	if zlog.OnError(err, str) {
+		return nil
+	}
+	lines := zstr.SplitByNewLines(str, true)
+	return lines
+}
+
 func RestartSelf() error {
 	self, err := os.Executable()
 	if err != nil {
