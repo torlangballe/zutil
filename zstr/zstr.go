@@ -1168,38 +1168,6 @@ func SplitInTwo(str string, sep string) (string, string) {
 	return "", ""
 }
 
-/*
-// ScanLinesWithCR is a replacement for bufio.Scanner
-func ScanLinesWithCR(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if atEOF && len(data) == 0 {
-		return 0, nil, nil
-	}
-	var cr bool
-	for i := 0; i < len(data); i++ {
-		if data[i] == '\r' {
-			if i == len(data)-1 {
-				return i + 1, data[0:i], nil
-			}
-			cr = true
-		} else if data[i] == '\n' {
-			end := i
-			if cr {
-				end--
-			}
-			return i + 1, data[0:end], nil
-		} else {
-			if cr {
-				return i, data[0 : i-1], nil
-			}
-		}
-	}
-	if atEOF {
-		return len(data), data, nil
-	}
-	return 0, nil, nil
-}
-*/
-
 func NewLineScanner(reader io.Reader, ctx context.Context, got func(line string, err error)) *bufio.Scanner {
 	s := bufio.NewScanner(reader)
 	go func() {
@@ -1216,7 +1184,7 @@ func NewLineScanner(reader io.Reader, ctx context.Context, got func(line string,
 	return s
 }
 
-func IsTypableASCII(s string) bool {
+func IsTypeableASCII(s string) bool {
 	for i := 0; i < len(s); i++ {
 		c := s[i]
 		if c < ' ' || c > unicode.MaxASCII {
