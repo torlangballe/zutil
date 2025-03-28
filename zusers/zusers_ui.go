@@ -77,8 +77,9 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	if UserNameIsEmail {
 		style.KeyboardType = zkeyboard.TypeEmailAddress
 	}
+	style.AutoCapType = zkeyboard.AutoCapNone
 	usernameField := ztext.NewView(username, style, 30, 1)
-	str := "username must be a ascii characters"
+	str := "username must be an ASCII characters"
 	if UserNameIsEmail {
 		str = "must be a valid email address"
 	}
@@ -184,12 +185,12 @@ func validateFields(user, pass *ztext.TextView, login, register *zbutton.Button)
 			usable = false
 		}
 	} else {
-		if !zstr.IsTypableASCII(text) {
+		if !zstr.IsTypeableASCII(text) {
 			usable = false
 		}
 	}
 	text = pass.Text()
-	if !zstr.IsTypableASCII(text) {
+	if !zstr.IsTypeableASCII(text) {
 		usable = false
 	}
 	if len(text) < MinimumPasswordLength {
@@ -236,6 +237,7 @@ func checkAndDoAuth() {
 		CurrentUser.UserName = user.UserName
 		CurrentUser.Permissions = user.Permissions
 		CurrentUser.Token = zrpc.MainClient.AuthToken
+		zlog.Info("GetUserForToken:", CurrentUser.UserID)
 		if AuthenticatedFunc != nil {
 			AuthenticatedFunc(nil)
 		}
