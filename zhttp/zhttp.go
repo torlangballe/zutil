@@ -460,11 +460,15 @@ func GetRedirectedURL(surl string, skipVerifyCertificate bool) (string, error) {
 	}
 	lastUrlQuery := surl
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		log += fmt.Sprintf("%s %v\n", req.URL.String(), time.Since(start))
+		if req == nil {
+			log += fmt.Sprintf("GetRedirectedURL:  req==nil", time.Since(start))
+		} else {
+			log += fmt.Sprintf("%s %v\n", req.URL.String(), time.Since(start))
+			lastUrlQuery = req.URL.String()
+		}
 		if len(via) > 10 {
 			return zlog.Error("too many redirects")
 		}
-		lastUrlQuery = req.URL.String()
 		return nil
 	}
 	resp, err := client.Do(req)
@@ -820,4 +824,9 @@ func SendForFile(surl string, crc, length int64, params Parameters) error {
 	params.Headers["Content-Length"] = fmt.Sprint(length) // we set it here in case we still have a reader but know it
 	_, err = Post(surl, params, nil, nil)
 	return err
+}
+
+func HostFromURL(surl string) string {
+	u, _ := url.Parse(surl)
+	return u.Host
 }
