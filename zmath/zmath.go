@@ -494,3 +494,27 @@ func NiceNumberString(a any) (string, bool) {
 	}
 	return "", false
 }
+
+var countMap = map[string]map[string]int{}
+
+// For a given group and key GetDistinctCountForKeyGroup returns a increasing number for each key asked for within each group
+func GetDistinctCountForKeyGroup(group, key any) int {
+	sgroup := fmt.Sprint(group)
+	skey := fmt.Sprint(key)
+	m := countMap[sgroup]
+	if key == nil {
+		return len(m)
+	}
+	if m == nil {
+		m = map[string]int{}
+	}
+	n, got := m[skey]
+	if got {
+		return n
+	}
+	n = len(m) + 1
+	// zlog.Info("GetDistinctCountForKeyGroup:", key, group, n, m, countMap)
+	m[skey] = n
+	countMap[sgroup] = m
+	return n
+}

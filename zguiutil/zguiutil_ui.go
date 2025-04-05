@@ -20,6 +20,7 @@ import (
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/ztimer"
 )
 
@@ -72,6 +73,7 @@ func MakeDialogLabel(text string, minWidth float64, maxLines int, isDebug bool) 
 	label.SetMinWidth(minWidth)
 	label.SetMaxWidth(minWidth)
 	label.SetMaxLines(maxLines)
+	label.SetWrap(ztextinfo.WrapTailTruncate)
 	if isDebug {
 		label.SetBGColor(zstyle.DebugBackgroundColor)
 	}
@@ -239,4 +241,10 @@ func MakeTriangleArrow(forward bool) *zimageview.ImageView {
 	}
 	iv.KeyboardShortcut.Key = key
 	return iv
+}
+
+func GetDistinctColorForKeyGroup(group, key any) zgeo.Color {
+	n := zmath.GetDistinctCountForKeyGroup(group, key)
+	i := n % len(zgeo.ColorDistinctList)
+	return zgeo.ColorDistinctList[i]
 }
