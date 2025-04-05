@@ -20,21 +20,14 @@ type HistDrawOpts struct {
 	OutlierBelow       zbool.BoolInd
 	OutlierAbove       zbool.BoolInd
 	Styling            zstyle.Styling
-	CriticalClassValue float64 // if a class bar has value >= this, show in red
-	PercentCutoff      int     // If we know the highest percent any of the classes will have, we can set a cutoff to scale them all up
-	SignificantDigits  int     // For bar-bottom labels
-	BarValueFunc       func(v float64) string
+	CriticalClassValue float64                             // if a class bar has value >= this, show in red
+	PercentCutoff      int                                 // If we know the highest percent any of the classes will have, we can set a cutoff to scale them all up
+	SignificantDigits  int                                 // For bar-bottom labels
+	BarNameFunc        func(n string) (string, zgeo.Color) // this is for transforming named classes' names and getting a color for it, if Valid
 }
 
 func DrawHistogram(h *zhistogram.Histogram, canvas *zcanvas.Canvas, rect zgeo.Rect, opts HistDrawOpts) {
-	// canvas.SetColor(zgeo.ColorBlack)
-	// canvas.FillRect(rect)
-
 	rect.Add(opts.Styling.Margin)
-
-	// canvas.SetColor(zgeo.ColorGreen)
-	// canvas.FillRect(rect)
-
 	totalCount := h.TotalCount()
 	if totalCount == 0 {
 		return
@@ -45,9 +38,8 @@ func DrawHistogram(h *zhistogram.Histogram, canvas *zcanvas.Canvas, rect zgeo.Re
 	}
 	bars := classCount
 	for i := range bars {
-		totalCount += h.Classes[i]
+		totalCount += h.Classes[i].Count
 	}
-	// zlog.Warn("Draw:", opts.OutlierBelow)
 
 	drawBelow := shouldDrawOutlier(&bars, opts.OutlierBelow, h.OutlierBelow)
 	drawAbove := shouldDrawOutlier(&bars, opts.OutlierAbove, h.OutlierAbove)
@@ -57,54 +49,63 @@ func DrawHistogram(h *zhistogram.Histogram, canvas *zcanvas.Canvas, rect zgeo.Re
 	barAdd := barThickness + opts.Styling.Spacing
 	r := zgeo.RectFromXYWH(x, 0, float64(barThickness), rect.Size.H)
 	if drawBelow && h.OutlierBelow != 0 {
-		drawBar(h, canvas, r, opts, "<", h.OutlierBelow, true, false)
+		drawBar(h, canvas, r, opts, opts.Styling.BGColor, "<", h.OutlierBelow, true, false)
 		r.Pos.X += barAdd
 	}
 	barVal := h.Range.Min
 	for i := range classCount {
 		var str string
-		barVal += h.Step
-		// zlog.Warn("barVal:", barVal, h.Step)
-		sig := 7 // we do this so it doesn't do weird things like be 0.1, 0.2, 0.300000000001, 0.4 etc
-		if opts.SignificantDigits != 0 {
-			sig = opts.SignificantDigits + 1 // need to add 1 or we round down any changes
-		}
-		barVal = zfloat.KeepFractionDigits(barVal, sig)
-		val := barVal
-		if opts.BarValueFunc != nil {
-			str = opts.BarValueFunc(barVal)
+		col := opts.Styling.BGColor
+		if h.IsNames {
+			str = h.Classes[i].Label
+			if opts.BarNameFunc != nil {
+				var bcol zgeo.Color
+				str, bcol = opts.BarNameFunc(str)
+				if bcol.Valid {
+					col = bcol
+				}
+			}
 		} else {
+			barVal += h.Step
+			sig := 7 // we do this so it doesn't do weird things like be 0.1, 0.2, 0.300000000001, 0.4 etc
+			if opts.SignificantDigits != 0 {
+				sig = opts.SignificantDigits + 1 // need to add 1 or we round down any changes
+			}
+			barVal = zfloat.KeepFractionDigits(barVal, sig)
 			if opts.SignificantDigits == 0 {
-				str = fmt.Sprint(int(val))
+				str = fmt.Sprint(int(barVal))
 			} else {
-				str = zwords.NiceFloat(val, opts.SignificantDigits)
+				str = zwords.NiceFloat(barVal, opts.SignificantDigits)
 			}
 			// zlog.Warn("Label:", len(h.Classes), str, val, barVal)
 		}
 		critical := opts.CriticalClassValue != 0 && barVal > opts.CriticalClassValue
-		// zlog.Warn("CRIT:", critical, barVal, opts.CriticalClassValue)
-		drawBar(h, canvas, r, opts, str, h.Classes[i], false, critical)
+		drawBar(h, canvas, r, opts, col, str, h.Classes[i].Count, false, critical)
 		r.Pos.X += barAdd
 	}
 	if drawAbove && h.OutlierAbove != 0 {
 		// zlog.Info("DrawOutlierAbove:", h.OutlierAbove)
-		drawBar(h, canvas, r, opts, ">", h.OutlierAbove, true, false)
+		drawBar(h, canvas, r, opts, opts.Styling.BGColor, ">", h.OutlierAbove, true, false)
 	}
 }
 
-func drawBar(h *zhistogram.Histogram, canvas *zcanvas.Canvas, rect zgeo.Rect, opts HistDrawOpts, label string, count int, isOutlier, isCritical bool) {
-	labelBoxHeight := opts.Styling.Font.Size * 1.5
+func drawBar(h *zhistogram.Histogram, canvas *zcanvas.Canvas, rect zgeo.Rect, opts HistDrawOpts, col zgeo.Color, label string, count int, isOutlier, isCritical bool) {
+	labelBoxHeight := opts.Styling.Font.Size * 1
+	if h.IsNames {
+		labelBoxHeight *= 2
+	}
 	ti := ztextinfo.New()
 	ti.Font = &opts.Styling.Font
 	ti.Rect = rect
-	ti.Rect.SetMinY(rect.Size.H - labelBoxHeight + opts.Styling.Font.Size/3)
-	ti.Alignment = zgeo.Center
+	bottom := rect.Size.H - labelBoxHeight + opts.Styling.Font.Size/3 + 2
+	ti.Rect.SetMinY(bottom)
+	ti.Rect.Size.H += 4
+	ti.Alignment = zgeo.TopCenter
 	ti.Color = opts.Styling.FGColor
 	ti.Text = label
 	ti.Draw(canvas)
 
-	// zlog.Warn("DrawBar:", rect, label, count, total)
-	rect.Size.H -= labelBoxHeight
+	rect.Size.H = bottom - 2
 	ratio := h.CountAsRatio(count)
 	max := 1.0
 	if opts.PercentCutoff != 0 {
@@ -113,7 +114,6 @@ func drawBar(h *zhistogram.Histogram, canvas *zcanvas.Canvas, rect zgeo.Rect, op
 	y := ratio * rect.Size.H / max
 	rect.SetMinY(rect.Size.H - y)
 	path := zgeo.PathNewRect(rect, zgeo.SizeBoth(opts.Styling.Corner))
-	col := opts.Styling.BGColor
 	if isOutlier {
 		col = col.Mixed(zgeo.ColorRed, 0.5)
 	}

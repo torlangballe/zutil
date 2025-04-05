@@ -26,8 +26,8 @@ func TestDrawHistogram(t *testing.T) {
 		Spacing: 5,
 		Margin:  zgeo.RectFromMarginSize(zgeo.SizeD(4, 4)),
 	}
-	barFunc := func(v float64) string {
-		return fmt.Sprint(int(v*1000), "ms")
+	barFunc := func(n string) string {
+		return n + "ms"
 	}
 	// barFunc = nil
 	opts := HistDrawOpts{
@@ -37,7 +37,7 @@ func TestDrawHistogram(t *testing.T) {
 		Styling:            styling,
 		PercentCutoff:      60, // If we know the highest percent any of the classes will have, we can set a cutoff to scale them all up
 		CriticalClassValue: 0.3,
-		BarValueFunc:       barFunc,
+		BarNameFunc:        barFunc,
 	}
 	var h zhistogram.Histogram
 	h.Setup(0.1, 0, 20)

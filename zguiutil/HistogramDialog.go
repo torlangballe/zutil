@@ -15,7 +15,7 @@ import (
 	"github.com/torlangballe/zutil/zwords"
 )
 
-func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalVal float64, att *zpresent.Attributes, transformClass func(bar float64) string) {
+func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalVal float64, att *zpresent.Attributes, transformName func(n string) (string, zgeo.Color)) {
 	v := zcontainer.StackViewVert("histogram")
 	v.SetMarginS(zgeo.SizeD(12, 12))
 	grid := zcontainer.StackViewVert("grid")
@@ -30,13 +30,28 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 	builder := zlabel.NewStyledTextBuilder()
 	builder.Default.Gap = 16
 	blue := zgeo.ColorNew(0.2, 0.2, 1, 1)
-	builder.AddLabelsRowToVertStack(grid, blue, zgeo.FontStyleBold, zstyle.Start, name, "Percent of Total", "Count")
+	builder.AddLabelsRowToVertStack(grid, blue, zgeo.FontStyleBold, zstyle.Start, name, "% of Total", "Count")
 	barVal := h.Range.Min
-	for _, c := range h.Classes {
-		sclass := zwords.NiceFloat(barVal, 0) + "-" + zwords.NiceFloat(barVal+h.Step, 0)
-		scount := fmt.Sprint(c)
-		spercent := fmt.Sprint(h.CountAsPercent(c), "%")
-		if c == 0 {
+	for i, c := range h.Classes {
+		var sclass string
+		var col zgeo.Color
+		if h.IsNames {
+			sclass = h.Classes[i].Label
+			before := sclass
+			if transformName != nil {
+				sclass, col = transformName(sclass)
+			}
+			if sclass == "" {
+				sclass = fmt.Sprint("none:", before)
+			}
+		} else {
+			sa := zwords.NiceFloat(barVal, 0)
+			sb := zwords.NiceFloat(barVal+h.Step, 0)
+			sclass = sa + "-" + sb
+		}
+		spercent := fmt.Sprint(h.CountAsPercent(c.Count), "%")
+		scount := fmt.Sprint(c.Count)
+		if c.Count == 0 {
 			spercent = ""
 			scount = " "
 		}
@@ -45,7 +60,12 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 		if criticalVal != 0 && barVal >= criticalVal {
 			param = zgeo.ColorRed
 		}
-		builder.AddLabelsRowToVertStack(grid, param, zstyle.Start, zgeo.FontStyleBold, sclass, spercent, scount)
+		h1 := builder.AddLabelsRowToVertStack(grid, param, zstyle.Start, zgeo.FontStyleBold, sclass, spercent, scount)
+		if col.Valid && len(h.Classes) > 1 {
+			h1.SetBGColor(col)
+			h1.SetCorner(2)
+			h1.SetMarginS(zgeo.SizeD(2, 0))
+		}
 		barVal += h.Step
 		barVal = zfloat.KeepFractionDigits(barVal, 7)
 	}
