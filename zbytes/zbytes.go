@@ -116,6 +116,9 @@ func CountReadUntilError(reader io.Reader) (int64, error) {
 }
 
 func CalculateCRC32(data []byte, seed int64) int64 {
+	if seed == 0 {
+		seed = crc32.Castagnoli
+	}
 	buf := bytes.NewBuffer(data)
 	crc := crc32.New(crc32.MakeTable(uint32(seed)))
 	io.Copy(crc, buf)
