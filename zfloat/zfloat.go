@@ -112,21 +112,26 @@ func SetAny(num any, f float64) error {
 	return nil
 }
 
-func IsInSlice(n float64, slice []float64) bool {
-	for _, s := range slice {
+func Index(n float64, slice []float64) int {
+	for i, s := range slice {
 		if s == n {
-			return true
+			return i
 		}
 	}
-	return false
+	return -1
 }
 
-func AddToSet(slice *[]float64, n float64) bool {
-	if !IsInSlice(n, *slice) {
-		*slice = append(*slice, n)
-		return true
+func IsInSlice(n float64, slice []float64) bool {
+	return Index(n, slice) != -1
+}
+
+func AddToSet(slice *[]float64, n float64) int {
+	i := Index(n, *slice)
+	if i != -1 {
+		return i
 	}
-	return false
+	*slice = append(*slice, n)
+	return len(*slice) - 1
 }
 
 func Max32(a, b float32) float32 {
