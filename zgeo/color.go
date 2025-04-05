@@ -478,7 +478,7 @@ var ColorFuchsia = ColorNew(1, 0, 1, 1)
 var ColorPurple = ColorNew(0.5, 0, 0.5, 1)
 var ColorPink = ColorNew(1, 0.2, 1, 1)
 
-var ColorDistinctList = []Color{ColorOrange, ColorCyan, ColorMagenta, ColorGray, ColorBlack, ColorRed, ColorMaroon, ColorYellow, ColorOlive, ColorLime, ColorGreen, ColorDarkGreen, ColorAqua, ColorTeal, ColorBlue, ColorNavy, ColorDarkGray, ColorFuchsia, ColorPurple, ColorLightGray}
+var ColorDistinctList = []Color{ColorOrange, ColorCyan, ColorMagenta, ColorRed, ColorMaroon, ColorYellow, ColorOlive, ColorLime, ColorGreen, ColorGray, ColorDarkGreen, ColorAqua, ColorTeal, ColorBlue, ColorNavy, ColorDarkGray, ColorFuchsia, ColorPurple, ColorLightGray}
 
 func KelvinToColor(kelvin float32) Color {
 	var r, g, b int
