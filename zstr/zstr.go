@@ -506,6 +506,9 @@ func SlicesAreEqual(aset, bset []string) bool {
 
 func AddToSet(strs *[]string, str ...string) int {
 	var count int
+	if len(str) == 0 {
+		panic("nothing added") // in case we forget to add something, happened already...
+	}
 	for _, s := range str {
 		if StringsContain(*strs, s) {
 			continue
@@ -596,9 +599,9 @@ func HasSuffix(str, suffix string, rest *string) bool {
 	return false
 }
 
-func TrimCommonExtremity(slice []string, head bool) string {
-	stub := SliceCommonExtremity(slice, head)
-	//	fmt.Println("TrimCommonExtremity:", stub, head)
+func TrimCommonExtremityInSlice(slice []string, head bool) string {
+	stub := CommonExtremityOfSlice(slice, head)
+	fmt.Println("TrimCommonExtremityInSlice", head, slice, stub)
 	if stub != "" {
 		for i, s := range slice {
 			if head {
@@ -611,7 +614,19 @@ func TrimCommonExtremity(slice []string, head bool) string {
 	return stub
 }
 
-func SliceCommonExtremity(slice []string, head bool) string {
+func TrimmedCommonExtremitiesInSlice(slice []string, head, tail bool) []string {
+	n := make([]string, len(slice))
+	copy(n, slice)
+	if head {
+		TrimCommonExtremityInSlice(n, true)
+	}
+	if tail {
+		TrimCommonExtremityInSlice(n, false)
+	}
+	return n
+}
+
+func CommonExtremityOfSlice(slice []string, head bool) string {
 	length := len(slice)
 	if length == 0 {
 		return ""

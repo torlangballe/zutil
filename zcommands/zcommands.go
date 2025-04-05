@@ -259,7 +259,7 @@ func (s *Session) expandForList(stub string, list []string, prefix string) (newL
 	}
 	s.TermSession.Writeln("\n" + strings.Join(commands, " "))
 	var add string
-	diff := zstr.SliceCommonExtremity(commands, true)
+	diff := zstr.CommonExtremityOfSlice(commands, true)
 	zstr.HasPrefix(diff, stub, &add)
 	if diff != "" {
 		zlog.Info("expandForList:", diff, add, stub, prefix, zdebug.CallingStackString())
