@@ -3,14 +3,17 @@ package zreflect
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -285,10 +288,21 @@ type FieldInfo struct {
 	StructField  reflect.StructField
 }
 
-func (f *FieldInfo) TagKeyValuesForKey(key string) map[string]string {
-	str := f.StructField.Tag.Get(key)
-	vals := GetTagPartAsCommaValues(str)
-	return GetTagCommaValuesAsKeyValues(vals)
+func (f *FieldInfo) TagKeyValuesForKey(key string) (vals map[string]string, skip bool) {
+	return TagKeyValuesForKeyInStructField(&f.StructField, key)
+}
+
+func TagKeyValuesForKeyInStructField(sf *reflect.StructField, key string) (vals map[string]string, skip bool) {
+	str := sf.Tag.Get(key)
+	return TagKeyValuesFromString(str)
+}
+
+func TagKeyValuesFromString(str string) (vals map[string]string, skip bool) {
+	cvalues, skip := TagPartAsCommaValues(str)
+	if skip {
+		return nil, true
+	}
+	return TagCommaValuesAsKeyValues(cvalues), false
 }
 
 func ForEachField(istruct any, flatten func(f reflect.StructField) bool, got func(each FieldInfo) bool) {
@@ -394,24 +408,24 @@ func GetTagAsMap(stag string) map[string][]string {
 	return nil
 }
 
-func GetTagValuesForKey(stag reflect.StructTag, key string) (vals []string, ignore bool) {
+func TagValuesForKey(stag reflect.StructTag, key string) (vals []string, ignore bool) {
 	str, got := stag.Lookup(key)
 	// fmt.Println("GetTagValuesForKey", str, got, stag, key)
 	if !got {
 		return nil, false
 	}
-	vals = zstr.SplitStringWithDoubleAsEscape(str, ",")
+	return TagPartAsCommaValues(str)
+}
+
+func TagPartAsCommaValues(stag string) (vals []string, ignore bool) {
+	vals = zstr.SplitStringWithDoubleAsEscape(stag, ",")
 	if len(vals) == 1 && vals[0] == "-" {
 		return nil, true
 	}
 	return vals, false
 }
 
-func GetTagPartAsCommaValues(stag string) (vals []string) {
-	return zstr.SplitStringWithDoubleAsEscape(stag, ",")
-}
-
-func GetTagCommaValuesAsKeyValues(values []string) (keyVals map[string]string) {
+func TagCommaValuesAsKeyValues(values []string) (keyVals map[string]string) {
 	keyVals = map[string]string{}
 	for _, value := range values {
 		var key, val string
@@ -522,4 +536,48 @@ func GetZTags(tagMap map[string][]string, tagName string) (keyVals []zstr.KeyVal
 		keyVals = append(keyVals, zstr.KeyValue{Key: key, Value: val})
 	}
 	return keyVals, false
+}
+
+func MakeTypeNameWithPackage(rtype reflect.Type) string {
+	_, pkg := path.Split(rtype.PkgPath())
+	return pkg + "." + rtype.Name()
+}
+
+var creators zmap.LockMap[string, reflect.Type]
+
+func RegisterCreatorForType(s any) {
+	rtype := reflect.TypeOf(s)
+	name := MakeTypeNameWithPackage(rtype)
+	fmt.Println("RegisterCreatorForType:", name, rtype)
+	creators.Set(name, rtype)
+}
+
+func NewForRegisteredType(name string) (any, error) {
+	rtype, got := creators.Get(name)
+	if !got {
+		return nil, errors.New("Not found: " + name)
+	}
+	n := reflect.New(rtype).Interface()
+	fmt.Println("NewForRegisteredType:", name, rtype, reflect.TypeOf(n))
+	return n, nil
+}
+
+func SetReflectValForRegisteredType(setInRVal *reflect.Value, typeName string) error {
+	aPtr, err := NewForRegisteredType(typeName)
+	if err != nil {
+		fmt.Println(err, typeName)
+		return err
+	}
+	data, err := json.Marshal(setInRVal.Interface())
+	if err != nil {
+		fmt.Println(err, typeName)
+		return err
+	}
+	err = json.Unmarshal(data, aPtr)
+	if err != nil {
+		fmt.Println(err, typeName)
+		return err
+	}
+	*setInRVal = reflect.ValueOf(aPtr).Elem()
+	return nil
 }
