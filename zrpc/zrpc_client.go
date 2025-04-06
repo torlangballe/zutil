@@ -286,7 +286,7 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client, debugInfo strin
 		return nil
 	}
 	zreflect.ForEachField(s, zreflect.FlattenAll, func(each zreflect.FieldInfo) bool {
-		parts, _ := zreflect.GetTagValuesForKey(each.StructField.Tag, "zrpc")
+		parts, _ := zreflect.TagValuesForKey(each.StructField.Tag, "zrpc")
 		// zlog.Info("zrpc.requestHTTPDataFields1:", each.StructField.Name)
 		if zstr.StringsContain(parts, "http") {
 			if !each.ReflectValue.CanSet() {

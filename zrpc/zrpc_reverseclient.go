@@ -237,7 +237,7 @@ func registerReverseHTTPDataFields(s any) {
 		return
 	}
 	zreflect.ForEachField(s, zreflect.FlattenAll, func(each zreflect.FieldInfo) bool {
-		parts, _ := zreflect.GetTagValuesForKey(each.StructField.Tag, "zrpc")
+		parts, _ := zreflect.TagValuesForKey(each.StructField.Tag, "zrpc")
 		if zstr.StringsContain(parts, "http") {
 			if !each.ReflectValue.CanSet() {
 				zlog.Error("can't set zrpc:http field. RPC call needs pointer passed as arg:", each.StructField.Name)
