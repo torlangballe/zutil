@@ -77,10 +77,13 @@ func MakeAnElementOfSliceType(slice any) any {
 }
 
 func AddAtEnd(slicePtr any, add any) int {
-	rptr := reflect.ValueOf(slicePtr)
-	rval := rptr.Elem()
-	rval = reflect.Append(rval, reflect.ValueOf(add))
-	rptr.Elem().Set(rval)
+	return RValAddAtEnd(reflect.ValueOf(slicePtr), reflect.ValueOf(add))
+}
+
+func RValAddAtEnd(slicePtr, add reflect.Value) int {
+	rval := slicePtr.Elem()
+	rval = reflect.Append(rval, add)
+	slicePtr.Elem().Set(rval)
 	return rval.Len() - 1
 }
 
