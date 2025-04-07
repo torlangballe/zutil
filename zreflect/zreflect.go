@@ -384,9 +384,9 @@ func FieldForName(istruct any, flatten func(f reflect.StructField) bool, name st
 	return finfo, found
 }
 
-// GetTagAsMap returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
 var tagRegEx, _ = regexp.Compile(`(\w+)\s*:"([^"]*)"\s*`) // http://regoio.herokuapp.com
 
+// GetTagAsMap returns a map of label:[vars] `json:"id, omitempty"` -> json : [id, omitempty]
 func GetTagAsMap(stag string) map[string][]string {
 	if stag != "" {
 		m := map[string][]string{}
@@ -508,29 +508,4 @@ func Swap[A any](a, b *A) {
 	t := *a
 	*a = *b
 	*b = t
-}
-
-// GetZTags get's all tags that are structured with k:v, parts etc, like zui
-func GetZTags(tagMap map[string][]string, tagName string) (keyVals []zstr.KeyValue, skip bool) {
-	zuiParts, got := tagMap[tagName]
-	if !got {
-		return nil, false
-	}
-	for _, part := range zuiParts {
-		if part == "-" {
-			return nil, true
-		}
-		var key, val string
-		parts := zstr.SplitStringWithDoubleAsEscape(part, ":")
-		if len(parts) == 2 {
-			key = parts[0]
-			val = parts[1]
-		} else {
-			key = part
-		}
-		key = strings.TrimSpace(key)
-		val = strings.TrimSpace(val)
-		keyVals = append(keyVals, zstr.KeyValue{Key: key, Value: val})
-	}
-	return keyVals, false
 }
