@@ -32,7 +32,7 @@ type StructRegistrar[I any] struct {
 func (r *StructRegistrar[I]) Register(structure any, info I) string {
 	rtype := reflect.TypeOf(structure)
 	typeName := MakeTypeNameWithPackage(rtype)
-	fmt.Println("RegisterCreatorForType:", typeName, rtype)
+	// fmt.Println("RegisterCreatorForType:", typeName, rtype)
 	row := regRow[I]{rtype: rtype, info: info}
 	r.m.Set(typeName, row)
 	return typeName
