@@ -47,6 +47,7 @@ type Result struct {
 const (
 	Nearest   Type = "nearest"
 	Largest   Type = "largest"
+	Smallest  Type = "smallest"
 	Histogram Type = "histogram"
 )
 
@@ -139,6 +140,8 @@ func (f *Filter) aggregate(payload any, pos, val float64) {
 			add = (math.Abs(f.BestPos-mid) > math.Abs(pos-mid))
 		case Largest:
 			add = (val > f.BestVal)
+		case Smallest:
+			add = (val < f.BestVal)
 		case Histogram:
 			f.Histogram.Add(val)
 			add = true
