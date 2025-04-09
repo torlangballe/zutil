@@ -54,7 +54,7 @@ func PrintMemoryStats() {
 	}
 	procsCount := GetOngoingProcsCountFunc()
 	cpu := int(AverageCPUFunc() * 100)
-	fmt.Printf("MemAlloc@%s: %s TotalAlloc:%s Sys:%s RSS:%s CPU:%d NumGC:%d Gos:%d Files:%d Repeaters:%d Ongoing:%d\n", time.Now().Local().Format("15:04"), memStr(m.Alloc), memStr(m.TotalAlloc), memStr(m.Sys), memStr(rss), cpu, m.NumGC, goroutines, files, TimersGoingCountFunc(), procsCount)
+	fmt.Printf("MemAlloc@%s: %s TotalAlloc:%s Sys:%s RSS:%s CPU:%d%% NumGC:%d Gos:%d Files:%d Repeaters:%d Procs:%d\n", time.Now().Local().Format("15:04"), memStr(m.Alloc), memStr(m.TotalAlloc), memStr(m.Sys), memStr(rss), cpu, m.NumGC, goroutines, files, TimersGoingCountFunc(), procsCount)
 }
 
 func PrintAllGoroutines() {
