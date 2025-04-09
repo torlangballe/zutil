@@ -55,12 +55,11 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 			spercent = ""
 			scount = " "
 		}
-		var param any
-		param = zstyle.NoOp
+		textCol := col.ContrastingGray()
 		if criticalVal != 0 && barVal >= criticalVal {
-			param = zgeo.ColorRed
+			textCol = zgeo.ColorRed
 		}
-		h1 := builder.AddLabelsRowToVertStack(grid, param, zstyle.Start, zgeo.FontStyleBold, sclass, spercent, scount)
+		h1 := builder.AddLabelsRowToVertStack(grid, textCol, zstyle.Start, zgeo.FontStyleBold, sclass, spercent, scount)
 		if col.Valid && len(h.Classes) > 1 {
 			h1.SetBGColor(col)
 			h1.SetCorner(2)
