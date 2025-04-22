@@ -31,7 +31,6 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zmath"
-	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -606,7 +605,7 @@ func (cr *ChunkedRows) handleLoadedTopRow(file *os.File) error {
 		if offset == 0 {
 			continue
 		}
-		_, _, err := cr.getLineFromChunk(cr.topChunkIndex, offset, ctype, lastRow)
+		_, _, err := cr.getLineFromChunk(cr.topChunkIndex, offset, ctype, lastRow, nil)
 		if err != nil {
 			hasBadChunkAbove = true
 			cr.topChunkRowCount--
@@ -622,7 +621,7 @@ func (cr *ChunkedRows) handleLoadedTopRow(file *os.File) error {
 			if offset == 0 {
 				continue
 			}
-			_, endPos, err := cr.getLineFromChunk(cr.topChunkIndex, offset, ctype, lastRow)
+			_, endPos, err := cr.getLineFromChunk(cr.topChunkIndex, offset, ctype, lastRow, nil)
 			if err != nil {
 				return err
 			}
@@ -644,8 +643,8 @@ func (cr *ChunkedRows) getChunkRowCount(chunkIndex int) (top int, hasBadChunkAbo
 
 var topRowIndexOnLoad int
 
-func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr any) error {
-	bjson, _, err := cr.getLineFromChunk(chunkIndex, cr.opts.AuxIndexOffset, isAux, row)
+func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr any, cachedFile **os.File) error {
+	bjson, _, err := cr.getLineFromChunk(chunkIndex, cr.opts.AuxIndexOffset, isAux, row, cachedFile)
 	if err != nil {
 		return zlog.Error(err, chunkIndex)
 	}
@@ -656,17 +655,17 @@ func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr an
 	return nil
 }
 
-func (cr *ChunkedRows) GetAuxData(chunkIndex int, row []byte, dataPtr any) error {
+func (cr *ChunkedRows) GetAuxData(chunkIndex int, row []byte, dataPtr any, cachedFile **os.File) error {
 	if chunkIndex == cr.topChunkIndex {
 		cr.lock.Lock()
 		cr.lock.Unlock()
 	}
-	err := cr.GetAuxDataUnlocked(chunkIndex, row, dataPtr)
+	err := cr.GetAuxDataUnlocked(chunkIndex, row, dataPtr, cachedFile)
 	return err
 }
 
-func (cr *ChunkedRows) getMatchStr(chunkIndex int, row []byte) (string, error) {
-	matchBytes, _, err := cr.getLineFromChunk(chunkIndex, cr.opts.MatchIndexOffset, isMatch, row)
+func (cr *ChunkedRows) getMatchStr(chunkIndex int, row []byte, cachedFile **os.File) (string, error) {
+	matchBytes, _, err := cr.getLineFromChunk(chunkIndex, cr.opts.MatchIndexOffset, isMatch, row, cachedFile)
 	if err != nil {
 		return "", zlog.NewError(err, chunkIndex)
 	}
@@ -686,12 +685,16 @@ func (cr *ChunkedRows) onErrorRemoveChunkMapFileIfFirstGet(chunkIndex int, cType
 
 var firstError = true
 
-func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType, row []byte) (lineBytes []byte, endPos int64, err error) {
-	file, err := cr.getChunkFile(chunkIndex, cType)
-	if err != nil && firstError {
-		firstError = false
-		lines := zprocess.GetOpenDiskFileNames()
-		zlog.Info("OpenFiles:", strings.Join(lines, "\n"))
+func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType, row []byte, cachedFile **os.File) (lineBytes []byte, endPos int64, err error) {
+	var file *os.File
+	if cachedFile != nil {
+		file = *cachedFile
+	}
+	if file == nil {
+		file, err = cr.getChunkFile(chunkIndex, cType)
+		if file != nil && cachedFile != nil {
+			*cachedFile = file
+		}
 	}
 	if err != nil {
 		return nil, 0, zlog.Error(err, chunkIndex, offset, cType)
@@ -775,12 +778,12 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, ma
 	row := make([]byte, cr.opts.RowByteSize)
 	oldChunkIndex := -1
 	count := 0
-	var file *os.File
+	var file, matchFile *os.File
 	for {
 		// if count == 4444 {
 		// 	zlog.Info("chunked.procfiles:", strings.Join(zprocess.GetOpenDiskFileNames(), "\n"))
 		// }
-		if count%5000 == 0 && count != 0 {
+		if count%500000 == 0 && count != 0 {
 			zlog.Info("chunked.Iterate: count:", count, "ci:", chunkIndex, "i:", indexInRow, match)
 		}
 		var err error
@@ -807,7 +810,7 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, ma
 				skip = skipFunc(row)
 			}
 			if !skip && match != "" {
-				str, err := cr.getMatchStr(chunkIndex, row)
+				str, err := cr.getMatchStr(chunkIndex, row, &matchFile)
 				// zlog.Warn("iter.getMatch", chunkIndex, index, str, err)
 				if err != nil {
 					skip = true

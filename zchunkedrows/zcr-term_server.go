@@ -224,7 +224,7 @@ func (crc *CRCommander) outputRow(c *zcommands.CommandInfo, tabs *zstr.TabWriter
 		fmt.Fprint(tabs, n, "\t")
 	}
 	if crc.chunkedRows.opts.MatchIndexOffset != 0 {
-		match, err := crc.chunkedRows.getMatchStr(chunkIndex, row)
+		match, err := crc.chunkedRows.getMatchStr(chunkIndex, row, nil)
 		if err != nil {
 			match = err.Error()
 		}
@@ -275,7 +275,7 @@ func (crc *CRCommander) Checkup(c *zcommands.CommandInfo) string {
 		} else {
 			count++
 			m := map[string]any{}
-			err = crc.chunkedRows.GetAuxDataUnlocked(chunkIndex, rowBytes, &m)
+			err = crc.chunkedRows.GetAuxDataUnlocked(chunkIndex, rowBytes, &m, nil)
 			if err != nil {
 				if chunkErrCount == 0 {
 					fmt.Fprintln(w, "Chunk/Row", chunkIndex, rowIndex, "Read Aux Error:", zstr.EscMagenta, err, zstr.EscNoColor)
