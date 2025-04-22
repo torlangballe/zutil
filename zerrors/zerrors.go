@@ -145,3 +145,15 @@ func (ce *ContextError) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
+
+func (ce *ContextError) ValueForKeyWithFormattingSuffix(key string) (any, bool) {
+	if len(ce.KeyValues) == 0 {
+		return nil, false
+	}
+	for k, v := range ce.KeyValues {
+		if strings.HasPrefix(k, key+":") {
+			return v, true
+		}
+	}
+	return nil, false
+}
