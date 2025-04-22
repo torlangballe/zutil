@@ -97,5 +97,5 @@ func DNSLookupToIP4(domain string) (string, error) {
 			return ip.String(), nil
 		}
 	}
-	panic("here")
+	return "", zlog.Error("DNSLookupToIP4 to ip4 failed", ips, domain)
 }
