@@ -38,9 +38,9 @@ type Result struct {
 	MinPayload         any
 	MinVal             float64
 	Count              int
-	BestIndex          int                                        // how far into Count inputs BestVal is
-	IsFlushedWithin    bool                                       // true if this result is due to a outside-forced flush
-	IsBestOverrideFunc func(f *Filter, payload any) zbool.BoolInd // if not nil and returns true, set best for current payload, if false don't. undef is use normal method
+	BestIndex          int                                                     // how far into Count inputs BestVal is
+	IsFlushedWithin    bool                                                    // true if this result is due to a outside-forced flush
+	IsBestOverrideFunc func(f *Filter, payload any, val float64) zbool.BoolInd // if not nil and returns true, set best for current payload, if false don't. undef is use normal method. val is incoming value which might not be easily available in payload
 	Histogram          *zhistogram.Histogram
 }
 
@@ -125,7 +125,7 @@ func (f *Filter) aggregate(payload any, pos, val float64) {
 	}
 	var add bool
 	if f.IsBestOverrideFunc != nil {
-		best := f.IsBestOverrideFunc(f, payload)
+		best := f.IsBestOverrideFunc(f, payload, val)
 		if !best.IsUnknown() {
 			add = best.IsTrue()
 			if !add {
