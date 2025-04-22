@@ -1,7 +1,10 @@
 package zhistogram
 
 import (
+	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
@@ -9,8 +12,8 @@ import (
 )
 
 type Class struct {
-	Count int
-	Label string
+	Count int    `json:",omitempty"`
+	Label string `json:",omitempty"`
 }
 
 type Histogram struct {
@@ -22,6 +25,12 @@ type Histogram struct {
 	OutlierAbove int     `json:",omitempty"`
 
 	IsNames bool `json:",omitempty"`
+}
+
+func (h *Histogram) Copy() Histogram {
+	n := *h
+	n.Classes = slices.Clone(h.Classes)
+	return n
 }
 
 // Setup sets up the histogram with a step and min/max range.
@@ -141,4 +150,43 @@ func (h *Histogram) MaxUsedClassIndex() int {
 		}
 	}
 	return 0
+}
+
+func (h *Histogram) DebugStr() string {
+	str := "["
+	for i, c := range h.Classes {
+		if i != 0 {
+			str += " "
+		}
+		str += fmt.Sprintf("%s:%d", c.Label, c.Count)
+	}
+	str += "]"
+	return str
+}
+
+func (h *Histogram) NamedClassesSortedByLabel() []Class {
+	classes := slices.Clone(h.Classes)
+	if !h.IsNames {
+		return classes
+	}
+	intSortable := true
+	for _, c := range classes {
+		_, err := strconv.Atoi(c.Label)
+		if err != nil {
+			intSortable = false
+			break
+		}
+	}
+	if intSortable {
+		slices.SortFunc(classes, func(a, b Class) int {
+			ia, _ := strconv.Atoi(a.Label)
+			ib, _ := strconv.Atoi(b.Label)
+			return ia - ib
+		})
+		return classes
+	}
+	slices.SortFunc(classes, func(a, b Class) int {
+		return strings.Compare(a.Label, b.Label)
+	})
+	return classes
 }
