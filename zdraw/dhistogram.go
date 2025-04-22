@@ -2,6 +2,8 @@ package zdraw
 
 import (
 	"fmt"
+	"slices"
+	"strconv"
 
 	"github.com/torlangballe/zui/zcanvas"
 	"github.com/torlangballe/zui/zstyle"
@@ -10,6 +12,7 @@ import (
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zmath/zhistogram"
 	"github.com/torlangballe/zutil/zwords"
@@ -52,12 +55,31 @@ func DrawHistogram(h *zhistogram.Histogram, canvas *zcanvas.Canvas, rect zgeo.Re
 		drawBar(h, canvas, r, opts, opts.Styling.BGColor, "<", h.OutlierBelow, true, false)
 		r.Pos.X += barAdd
 	}
+	classes := slices.Clone(h.Classes)
+	if h.IsNames {
+		sortable := true
+		for _, c := range classes {
+			_, err := strconv.Atoi(c.Label)
+			if err != nil {
+				sortable = false
+				break
+			}
+		}
+		zlog.Info("DrawHis:", sortable)
+		if sortable {
+			slices.SortFunc(classes, func(a, b zhistogram.Class) int {
+				ia, _ := strconv.Atoi(a.Label)
+				ib, _ := strconv.Atoi(b.Label)
+				return ia - ib
+			})
+		}
+	}
 	barVal := h.Range.Min
 	for i := range classCount {
 		var str string
 		col := opts.Styling.BGColor
 		if h.IsNames {
-			str = h.Classes[i].Label
+			str = classes[i].Label
 			if opts.BarNameFunc != nil {
 				var bcol zgeo.Color
 				str, bcol = opts.BarNameFunc(str)
@@ -77,10 +99,10 @@ func DrawHistogram(h *zhistogram.Histogram, canvas *zcanvas.Canvas, rect zgeo.Re
 			} else {
 				str = zwords.NiceFloat(barVal, opts.SignificantDigits)
 			}
-			// zlog.Warn("Label:", len(h.Classes), str, val, barVal)
+			// zlog.Warn("Label:", len(classes), str, val, barVal)
 		}
 		critical := opts.CriticalClassValue != 0 && barVal > opts.CriticalClassValue
-		drawBar(h, canvas, r, opts, col, str, h.Classes[i].Count, false, critical)
+		drawBar(h, canvas, r, opts, col, str, classes[i].Count, false, critical)
 		r.Pos.X += barAdd
 	}
 	if drawAbove && h.OutlierAbove != 0 {
