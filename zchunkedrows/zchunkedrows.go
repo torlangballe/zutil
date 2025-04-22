@@ -777,8 +777,11 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, ma
 	count := 0
 	var file *os.File
 	for {
-		if count%500000 == 0 && count != 0 {
-			zlog.Info("chunked.Iterate:", count, chunkIndex, indexInRow, match)
+		// if count == 4444 {
+		// 	zlog.Info("chunked.procfiles:", strings.Join(zprocess.GetOpenDiskFileNames(), "\n"))
+		// }
+		if count%5000 == 0 && count != 0 {
+			zlog.Info("chunked.Iterate: count:", count, "ci:", chunkIndex, "i:", indexInRow, match)
 		}
 		var err error
 		count++
