@@ -74,6 +74,17 @@ func NiceFloat(f float64, significant int) string {
 	return s
 }
 
+func PluralizeEnglishWord(word string) string {
+	var start string
+	if zstr.HasSuffix(word, "s", &start) {
+		return start + "es"
+	}
+	if zstr.HasSuffix(word, "y", &start) {
+		return start + "ies"
+	}
+	return word + "s"
+}
+
 // PluralizeWord returns word if count == 1 or plural if != "".
 // Otherwise it uses langauge-specific rules to pluralize.
 // langCode == "" uses DefaultLanguage
@@ -89,11 +100,7 @@ func PluralizeWord(word string, count float64, langCode, plural string) string {
 			str += word
 			switch langCode {
 			case "", "en", "uk", "us":
-				if strings.HasSuffix(word, "s") {
-					str += "es"
-				} else {
-					str += "s"
-				}
+				str += PluralizeEnglishWord(word)
 			case "no", "da", "sv":
 				str += "er"
 			}
