@@ -88,7 +88,8 @@ func Platform() OSType {
 }
 
 func IsDesktop() bool {
-	return OS() != AndroidType && OS() != IOSType
+	os := OS()
+	return os != AndroidType && os != IOSType
 }
 
 // Architecture returns the main type of CPU used, ARM, AMD64, WASM
