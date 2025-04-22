@@ -15,7 +15,7 @@ import (
 )
 
 type Number interface {
-	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~float32 | ~float64
+	zint.Integer | ~float32 | ~float64
 }
 
 type Real interface {
@@ -23,9 +23,9 @@ type Real interface {
 }
 
 type Range[N int | int64 | float64] struct {
-	Valid bool
-	Min   N
-	Max   N
+	Valid bool `json:",omitempty"`
+	Min   N    `json:",omitempty"`
+	Max   N    `json:",omitempty"`
 }
 
 type RangeF64 = Range[float64]

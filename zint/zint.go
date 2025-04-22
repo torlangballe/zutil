@@ -6,6 +6,7 @@ import (
 	"hash/fnv"
 	"math"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"unsafe"
@@ -15,6 +16,10 @@ type Slice []int
 
 type ID64Setter interface {
 	SetID64(id int64)
+}
+
+type Integer interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64
 }
 
 var dummy int
@@ -134,6 +139,14 @@ func Slice64Contains(slice []int64, n int64) bool {
 		if s == n {
 			return true
 		}
+	}
+	return false
+}
+
+func AddToSet[N Integer](n N, slice *[]N) bool {
+	if !slices.Contains(*slice, n) {
+		*slice = append(*slice, n)
+		return true
 	}
 	return false
 }
