@@ -20,6 +20,7 @@ import (
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/ztimer"
 )
@@ -245,6 +246,7 @@ func MakeTriangleArrow(forward bool) *zimageview.ImageView {
 
 func GetDistinctColorForKeyGroup(group, key any) zgeo.Color {
 	n := zmath.GetDistinctCountForKeyGroup(group, key)
-	i := n % len(zgeo.ColorDistinctList)
+	seed := zint.HashTo32(fmt.Sprint(group))
+	i := (n + int(seed)) % len(zgeo.ColorDistinctList)
 	return zgeo.ColorDistinctList[i]
 }
