@@ -2,9 +2,11 @@ package zreflect
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path"
 	"reflect"
+	"strings"
 
 	"github.com/torlangballe/zutil/zmap"
 )
@@ -52,26 +54,37 @@ func (r *StructRegistrar[I]) NewForType(typeName string) (aPtr any, info I, got 
 		return nil, info, false
 	}
 	n := reflect.New(rtype).Interface()
-	fmt.Println("NewForRegisteredType:", typeName, rtype, reflect.TypeOf(n))
+	// fmt.Println("NewForRegisteredType:", typeName, rtype, reflect.TypeOf(n))
 	return n, info, true
 }
 
-func (r *StructRegistrar[I]) SetRValFromRegisteredType(setInRVal *reflect.Value, typeName string) (info I, err error) {
-	aPtr, info, got := r.NewForType(typeName)
-	if !got {
-		fmt.Println(err, typeName)
-		return info, fmt.Errorf("Type not found: %v", typeName)
+func splitN(str, sep string, a, b *string) bool { // we can't use zstr.SplitN as it's cyclical
+	parts := strings.Split(str, sep)
+	if len(parts) != 2 {
+		return false
 	}
-	data, err := json.Marshal(setInRVal.Interface())
-	if err != nil {
-		fmt.Println(err, typeName)
-		return info, err
+	*a = parts[0]
+	*b = parts[1]
+	return true
+}
+
+func NewStructFromRegisteredTypeName(typeName string, initWithVal any) (a any, tag string, err error) {
+	splitN(typeName, "|", &typeName, &tag)
+	n, _, got := DefaultStructRegistrar.NewForType(typeName)
+	if got {
+		if initWithVal != nil {
+			data, err := json.Marshal(initWithVal)
+			if err != nil {
+				fmt.Println(err, typeName)
+				return nil, "", err
+			}
+			err = json.Unmarshal(data, n)
+			if err != nil {
+				fmt.Println(err, typeName)
+				return nil, "", err
+			}
+		}
+		return n, tag, nil
 	}
-	err = json.Unmarshal(data, aPtr)
-	if err != nil {
-		fmt.Println(err, typeName)
-		return info, err
-	}
-	*setInRVal = reflect.ValueOf(aPtr).Elem()
-	return info, nil
+	return nil, "", errors.New("Not found: " + typeName)
 }
