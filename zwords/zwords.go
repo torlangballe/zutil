@@ -97,12 +97,11 @@ func PluralizeWord(word string, count float64, langCode, plural string) string {
 		if plural != "" {
 			str += plural
 		} else {
-			str += word
 			switch langCode {
 			case "", "en", "uk", "us":
 				str += PluralizeEnglishWord(word)
 			case "no", "da", "sv":
-				str += "er"
+				str += word + "er"
 			}
 		}
 	} else {
