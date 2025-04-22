@@ -139,15 +139,31 @@ func (r *Rect) SetMinY(y float64) {
 }
 
 func (r *Rect) IncMax(x, y float64) {
-	r.Size.W += x
-	r.Size.H += y
+	r.IncMaxX(x)
+	r.IncMaxX(y)
 }
 
 func (r *Rect) IncMin(x, y float64) {
+	r.IncMinX(x)
+	r.IncMinY(y)
+}
+
+func (r *Rect) IncMinX(x float64) {
 	r.Pos.X += x
-	r.Pos.Y += y
 	r.Size.W -= x
+}
+
+func (r *Rect) IncMinY(y float64) {
+	r.Pos.Y += y
 	r.Size.H -= y
+}
+
+func (r *Rect) IncMaxX(x float64) {
+	r.Size.W += x
+}
+
+func (r *Rect) IncMaxY(y float64) {
+	r.Size.H += y
 }
 
 func (r Rect) XCenter() float64 {
