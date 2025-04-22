@@ -1,8 +1,8 @@
 module github.com/torlangballe/zutil
 
-go 1.22.0
+go 1.23.0
 
-toolchain go1.23.1
+toolchain go1.24.1
 
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
@@ -39,11 +39,11 @@ require (
 	github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
 	github.com/torlangballe/zui v0.0.0-20250205141754-b43080eb7172
-	golang.org/x/crypto v0.32.0
+	golang.org/x/crypto v0.37.0
 	golang.org/x/exp v0.0.0-20250207012021-f9890c6ad9f3
 	golang.org/x/net v0.34.0
-	golang.org/x/sys v0.30.0
-	golang.org/x/text v0.22.0
+	golang.org/x/sys v0.32.0
+	golang.org/x/text v0.24.0
 	modernc.org/sqlite v1.27.0
 )
 
@@ -81,8 +81,8 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/image v0.13.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/term v0.29.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
+	golang.org/x/term v0.31.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	lukechampine.com/uint128 v1.3.0 // indirect
