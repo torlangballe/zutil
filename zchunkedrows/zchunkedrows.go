@@ -802,6 +802,7 @@ func (cr *ChunkedRows) Iterate(startChunkIndex, indexInRow int, forward bool, ma
 			if file != nil {
 				file.Close()
 			}
+			matchFile = nil // we need to open a new file
 			file, err = cr.getChunkFile(chunkIndex, isRows)
 			if zlog.OnError(err, chunkIndex) {
 				got(row, chunkIndex, indexInRow, err)
