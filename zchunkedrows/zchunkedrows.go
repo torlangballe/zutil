@@ -525,8 +525,18 @@ func (cr *ChunkedRows) truncateChunk(cType chunkType, chunkIndex int, toPos int6
 }
 
 func (cr *ChunkedRows) deleteChunk(i int) error {
-	zlog.Warn("zchunkedrows.delChunk:", i)
-	// cr.closeMaps(i, true)
+	cTypes := []chunkType{isRows}
+	if cr.opts.MatchIndexOffset != 0 {
+		cTypes = append(cTypes, isMatch)
+	}
+	if cr.opts.AuxIndexOffset != 0 {
+		cTypes = append(cTypes, isAux)
+	}
+	for _, cType := range cTypes {
+		fpath := cr.chunkFilepath(i, cType)
+		err := os.Remove(fpath)
+		zlog.OnError(err, fpath)
+	}
 	if i == cr.bottomChunkIndex {
 		cr.bottomChunkIndex++
 	}
