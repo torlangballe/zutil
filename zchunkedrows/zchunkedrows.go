@@ -205,11 +205,14 @@ func (cr *ChunkedRows) appendToChunkFile(chunkIndex int, cType chunkType, data [
 		return 0, zlog.Error("wrote wrong size:", n, chunkIndex, isAux)
 	}
 	// path := cr.chunkFilepath(chunkIndex, cType)
+	offset, err := file.Seek(0, os.SEEK_END)
 	if cType == isRows {
-		offset, err := file.Seek(0, os.SEEK_END)
 		if err == nil && offset != int64(cr.topChunkRowCount*cr.opts.RowByteSize) {
-			zlog.Error("fs.size and row size not the same!", n, len(data), chunkIndex, offset, cr.topChunkRowCount*cr.opts.RowByteSize)
+			zlog.Error("file size and calculated row size not the same!", n, len(data), chunkIndex, offset, cr.topChunkRowCount*cr.opts.RowByteSize)
 		}
+	}
+	if offset != preFileLen+int64(len(data)) {
+		zlog.Error("Didn't add correct amount of bytes to chunk", offset-preFileLen, "!=", len(data), chunkIndex, preFileLen, offset)
 	}
 	// zlog.Info("appendRowToChunkMap", cType, cr.fileLengths[cType], "tcrc:", cr.topChunkRowCount, cr.topChunkRowCount*cr.opts.RowByteSize, "ci:", cr.topChunkIndex, len(data), err)
 	return preFileLen, nil
@@ -554,7 +557,7 @@ func (cr *ChunkedRows) load() error {
 	zfile.MakeDirAllIfNotExists(cr.opts.DirPath)
 	cr.lock.Lock()
 	defer cr.lock.Unlock()
-	ctypes := []chunkType{isAux, isRows, isMatch}
+	cTypes := []chunkType{isAux, isRows, isMatch}
 
 	var ranges = map[chunkType]zmath.Range[int]{}
 	zfile.Walk(cr.opts.DirPath, "", zfile.WalkOptionGiveNameOnly, func(fname string, info os.FileInfo) error {
@@ -564,7 +567,7 @@ func (cr *ChunkedRows) load() error {
 			if zlog.OnError(err, sn) {
 				return nil
 			}
-			for _, cType := range ctypes {
+			for _, cType := range cTypes {
 				if stub == cType.String() {
 					ranges[cType] = ranges[cType].Added(n)
 				}
@@ -610,8 +613,8 @@ func (cr *ChunkedRows) handleLoadedTopRow(file *os.File) error {
 	if zlog.OnError(err) {
 		return err
 	}
-	ctypes := map[int]chunkType{cr.opts.MatchIndexOffset: isMatch, cr.opts.AuxIndexOffset: isAux}
-	for offset, ctype := range ctypes {
+	cTypes := map[int]chunkType{cr.opts.MatchIndexOffset: isMatch, cr.opts.AuxIndexOffset: isAux}
+	for offset, ctype := range cTypes {
 		if offset == 0 {
 			continue
 		}
@@ -627,7 +630,7 @@ func (cr *ChunkedRows) handleLoadedTopRow(file *os.File) error {
 		if zlog.OnError(err) {
 			return err
 		}
-		for offset, ctype := range ctypes {
+		for offset, ctype := range cTypes {
 			if offset == 0 {
 				continue
 			}
@@ -656,11 +659,11 @@ var topRowIndexOnLoad int
 func (cr *ChunkedRows) GetAuxDataUnlocked(chunkIndex int, row []byte, dataPtr any, cachedFile **os.File) error {
 	bjson, _, err := cr.getLineFromChunk(chunkIndex, cr.opts.AuxIndexOffset, isAux, row, cachedFile)
 	if err != nil {
-		return zlog.Error(err, chunkIndex)
+		return zlog.NewError(err, chunkIndex)
 	}
 	err = json.Unmarshal(bjson, dataPtr)
 	if err != nil {
-		return zlog.Error(err, chunkIndex, "topRowIndexOnLoad:", topRowIndexOnLoad, zstr.Head(string(bjson), 200))
+		return zlog.NewError("unmarshal-json:", err, chunkIndex, "json:", zstr.Head(string(bjson), 2000), zdebug.CallingStackString())
 	}
 	return nil
 }
@@ -674,6 +677,9 @@ func (cr *ChunkedRows) GetAuxData(chunkIndex int, row []byte, dataPtr any, cache
 	return err
 }
 
+// getMatchStr gets the string with text to search-match the row with. It gets it from the *.match file based on
+// position at MatchIndexOffset in row. It can reuse cachedFile if points to something,
+// but this has to be made to point to nil for each new chunkIndex by caller.
 func (cr *ChunkedRows) getMatchStr(chunkIndex int, row []byte, cachedFile **os.File) (string, error) {
 	matchBytes, _, err := cr.getLineFromChunk(chunkIndex, cr.opts.MatchIndexOffset, isMatch, row, cachedFile)
 	if err != nil {
@@ -707,7 +713,7 @@ func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType,
 		}
 	}
 	if err != nil {
-		return nil, 0, zlog.Error(err, chunkIndex, offset, cType)
+		return nil, 0, zlog.NewError(err, chunkIndex, offset, cType)
 	}
 	i := binary.LittleEndian.Uint32(row[offset : offset+4])
 
@@ -715,12 +721,12 @@ func (cr *ChunkedRows) getLineFromChunk(chunkIndex, offset int, cType chunkType,
 	// zlog.Warn("getLineFromChunk", i, err, chunkIndex, offset, cType)
 	if err != nil {
 		cr.onErrorRemoveChunkMapFileIfFirstGet(chunkIndex, cType)
-		return nil, 0, zlog.Error(err, i, chunkIndex, offset, cType)
+		return nil, 0, zlog.NewError(err, i, chunkIndex, offset, cType)
 	}
 	reader := bufio.NewReader(file)
 	lineBytes, err = reader.ReadBytes(cr.auxMatchRowEndChar)
 	if err != nil {
-		zlog.Error("chunk read fail:", len(lineBytes), "seek:", i, err)
+		// zlog.Error("chunk read fail:", len(lineBytes), "seek:", i, err)
 		cr.onErrorRemoveChunkMapFileIfFirstGet(chunkIndex, cType)
 		return nil, 0, err
 	}
