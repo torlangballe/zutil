@@ -210,6 +210,12 @@ func (c Color) OpacityInverted() Color {
 	return c.WithOpacity(1 - c.Opacity())
 }
 
+func (c Color) BrightnessInverted() Color {
+	hsba := c.HSBA()
+	hsba.B = 1 - hsba.B
+	return ColorNewHSBA(hsba)
+}
+
 // Mixed() returns amount portion of withColor and 1-amount of c mixed.
 // amount is first multiplied by withColor's alpha.
 // The resulting alpha is the product of the two color alphas.
