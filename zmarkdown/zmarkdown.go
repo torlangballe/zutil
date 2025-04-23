@@ -45,6 +45,7 @@ type MarkdownConverter struct {
 	FileSystem      fs.FS
 	TableOfContents bool
 	AbsolutePrefix  string
+	HeaderMD        string
 }
 
 func pdfGrabber(w io.Writer, url string) chromedp.Tasks {
@@ -100,7 +101,7 @@ func (m *MarkdownConverter) ConvertToHTMLFromString(w io.Writer, fullmd, name st
 
 	templater := &Templater{TeXFontSize: 14, DPI: 144}
 
-	input := templater.Preprocess(m, fullmd, name)
+	input := templater.Preprocess(m, m.HeaderMD+fullmd, name)
 	params := blackfriday.HTMLRendererParameters{}
 	params.Title = name
 	params.Flags = blackfriday.CompletePage | blackfriday.HrefTargetBlank
@@ -283,7 +284,7 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 	}
 	debugMode := (req.URL.Query().Get("zdev") == "1")
 	osType := zdevice.OSTypeFromUserAgentString(req.Header.Get("User-Agent"))
-	// zlog.Info("MarkdownConverter.ServeAsHTML:", req.URL, debugMode)
+	zlog.Info("MarkdownConverter.ServeAsHTML:", req.URL, debugMode)
 	m.SetBrowserSpecificDocKeyValues(osType, debugMode)
 
 	_, _, stub, _ := zfile.Split(spath)
