@@ -20,8 +20,9 @@ type Filter struct {
 	Type    Type
 	GotFunc func(result Result, periodIndex int)
 
-	Period   float64
-	StartPos float64
+	Period           float64
+	StartPos         float64
+	BestIsOverridden bool
 }
 
 type Result struct {
@@ -98,6 +99,7 @@ func (f *Filter) aggregate(payload any, pos, val float64) {
 	f.Count++
 	f.ValueSum += val
 	if f.BestPayload == nil {
+		f.BestIsOverridden = false
 		f.ValueSum = val
 		f.Count = 1
 		f.MinVal = val
@@ -106,9 +108,16 @@ func (f *Filter) aggregate(payload any, pos, val float64) {
 		f.MaxPayload = payload
 		f.MinPayload = payload
 		f.BestPayload = payload
+		f.BestIndex = 0
 		f.BestPos = pos
 		f.BestVal = val
 		f.CurrentCellPos = f.StartForPos(pos)
+		if f.IsBestOverrideFunc != nil {
+			if f.IsBestOverrideFunc(f, payload, val).IsTrue() {
+				f.BestIsOverridden = true
+			}
+		}
+
 		// zlog.Info("aggregate new:", val, time.UnixMicro(int64(pos)), payload)
 		if f.Type == Histogram {
 			f.Histogram.Add(val)
@@ -128,6 +137,9 @@ func (f *Filter) aggregate(payload any, pos, val float64) {
 		best := f.IsBestOverrideFunc(f, payload, val)
 		if !best.IsUnknown() {
 			add = best.IsTrue()
+			if add {
+				f.BestIsOverridden = true
+			}
 			if !add {
 				return
 			}
