@@ -461,7 +461,7 @@ func GetRedirectedURL(surl string, skipVerifyCertificate bool) (string, error) {
 	lastUrlQuery := surl
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if req == nil {
-			log += fmt.Sprintf("GetRedirectedURL:  req==nil", time.Since(start))
+			log += fmt.Sprint("GetRedirectedURL:  req==nil", time.Since(start))
 		} else {
 			log += fmt.Sprintf("%s %v\n", req.URL.String(), time.Since(start))
 			lastUrlQuery = req.URL.String()
