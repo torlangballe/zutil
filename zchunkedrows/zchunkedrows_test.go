@@ -170,7 +170,7 @@ func joinOrderForIterator(chunkedRows *ChunkedRows, startChunkIndex, index int, 
 		o := chunkedRows.getOrderer(row, false)
 		so := fmt.Sprint(o)
 		if chunkedRows.opts.MatchIndexOffset != 0 {
-			m, err := chunkedRows.getMatchStr(chunkIndex, row)
+			m, err := chunkedRows.getMatchStr(chunkIndex, row, nil)
 			so += m
 			if err != nil {
 				so += "<" + err.Error() + ">"
@@ -300,7 +300,7 @@ func testAddReadStress(t *testing.T) {
 				return
 			}
 			var ge Event
-			err = chunkedRows.GetAuxData(ci, rowBytes, &ge)
+			err = chunkedRows.GetAuxData(ci, rowBytes, &ge, nil)
 			if err != nil {
 				t.Error(err, r.ID, len(rowBytes), ci)
 				return

@@ -53,7 +53,7 @@ func TestGrapher(t *testing.T) {
 	}
 	g.AddJob(job)
 	znet.ServeHTTPInBackground(":7776", "", router)
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 	now := time.Now()
 	if !checkImageForTime(t, now, job, *g) {
 		return
@@ -73,7 +73,7 @@ func checkImageForTime(t *testing.T, at time.Time, job SJob, g Grapher) bool {
 	// zlog.Info("Request:", r, surl)
 	img, _, err := zimage.GoImageFromURL(surl)
 	if err != nil || img == nil {
-		t.Error("get image", err)
+		t.Error("get image", err, surl)
 		return false
 	}
 	var found bool

@@ -26,8 +26,8 @@ func TestDrawHistogram(t *testing.T) {
 		Spacing: 5,
 		Margin:  zgeo.RectFromMarginSize(zgeo.SizeD(4, 4)),
 	}
-	barFunc := func(n string) string {
-		return n + "ms"
+	barFunc := func(n string) (string, zgeo.Color) {
+		return n + "ms", zgeo.ColorBlack
 	}
 	// barFunc = nil
 	opts := HistDrawOpts{
@@ -41,8 +41,12 @@ func TestDrawHistogram(t *testing.T) {
 	}
 	var h zhistogram.Histogram
 	h.Setup(0.1, 0, 20)
-	h.Classes = []int{
-		0, 4, 20, 7, 0, 0,
+	h.Classes = []zhistogram.Class{
+		zhistogram.Class{4, ""},
+		zhistogram.Class{20, ""},
+		zhistogram.Class{7, ""},
+		zhistogram.Class{0, ""},
+		zhistogram.Class{0, ""},
 	}
 	h.OutlierAbove = 5
 	h.OutlierBelow = 3

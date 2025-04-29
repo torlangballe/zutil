@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmath/zhistogram"
 	"github.com/torlangballe/zutil/ztesting"
 )
 
@@ -22,9 +24,10 @@ func TestHistogram(t *testing.T) {
 	ztesting.Equal(t, b.Histogram.TotalCount(), 3)
 	b.Set(dummy, tpos, 5)
 	b.Set(dummy, tpos, 5)
+	zlog.Warn("Classes:", b.Histogram.Classes)
 	ztesting.Equal(t, b.Histogram.TotalCount(), 5)
-	ztesting.Equal(t, b.Histogram.Classes[9], 3)
-	ztesting.Equal(t, b.Histogram.Classes[5], 2)
+	ztesting.Equal(t, b.Histogram.Classes[9], zhistogram.Class{3, ""})
+	ztesting.Equal(t, b.Histogram.Classes[5], zhistogram.Class{2, ""})
 
 	b.Set(dummy, tpos, 10)
 	b.Set(dummy, tpos, 25)
