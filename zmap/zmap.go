@@ -15,7 +15,7 @@ type LockMap[K comparable, V any] struct {
 	Map sync.Map
 }
 
-// Count() returns the nuber of items in the LockMap.
+// Count() returns the number of items in the LockMap.
 // Note: It has to use Range() to go through all and count.
 func (l *LockMap[K, V]) Count() int {
 	var count int
@@ -35,7 +35,8 @@ func (l *LockMap[K, V]) Has(k K) bool {
 	return ok
 }
 
-// If k exists in l, GetSet returns it and true, otherwise k is set with def and def, false is returned
+// If k exists in l, GetSet returns it and true, otherwise k is set with 
+// f and def, false is returned
 func (l *LockMap[K, V]) GetSet(k K, def V) (V, bool) {
 	a, loaded := l.Map.LoadOrStore(k, def)
 	return a.(V), loaded
@@ -176,24 +177,43 @@ func AllValues[K comparable, V any](m map[K]V) []V {
 	return out
 }
 
-// For each /-separated name in m, GetValueInRecursiveMap, if not at end or a map, will recursivly gets next part in that map.
+// For each /-separated name in m, GetValueInRecursiveMap, if not at end or a map, will recursively gets next part in that map.
 func GetValueInRecursiveMap(m map[string]any, slashPath string) (any, error) {
-	for i, part := range strings.Split(slashPath, "/") {
+	parts := strings.Split(slashPath, "/")
+	for i, part := range parts {
 		v, got := m[part]
 		if !got {
 			return nil, errors.New("part not found")
 		}
-		if i == len(slashPath)-1 { // if no more path left, return the map as value
+		if i == len(parts)-1 { // if no more path left, return the map as value
 			return v, nil
 		}
-		m2 := v.(map[string]any)
+		m2, _ := v.(map[string]any)
+		// fmt.Println("Here", m2 != nil, i, len(slashPath), reflect.TypeOf(v))
 		if m2 != nil {
 			m = m2
 			continue
 		}
-		return v, fmt.Errorf("not at end, but not a map: %d %s %+v", i, part, v)
+		return v, fmt.Errorf("get: not at end, but not a map: %d %s %+v map:%+v", i, part, v, m)
 	}
 	return nil, nil // can't get here
+}
+
+func SetValueInRecursiveMap(m map[string]any, slashPath string, val any) error {
+	parts := strings.Split(slashPath, "/")
+	for i, part := range parts {
+		if i == len(parts)-1 {
+			m[part] = val
+			return nil
+		}
+		m2, got := m[part].(map[string]any)
+		if !got {
+			m2 = map[string]any{}
+			m[part] = m2
+		}
+		m = m2
+	}
+	return nil
 }
 
 // EmptyOf returns an empty list like m.
