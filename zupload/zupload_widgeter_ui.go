@@ -23,7 +23,7 @@ func RegisterWidget() {
 	zfields.RegisterWidgeter("zupload", UploadWidgeter{})
 }
 
-func (a UploadWidgeter) Create(f *zfields.Field) zview.View {
+func (a UploadWidgeter) Create(fv *zfields.FieldView, f *zfields.Field) zview.View {
 	min := f.MinWidth
 	if min == 0 {
 		min = 100
