@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zbool"
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -441,12 +443,34 @@ func TagCommaValuesAsKeyValues(values []string) (keyVals map[string]string) {
 }
 
 func DeepCopy(destPtr, source any) error {
+	dv := reflect.ValueOf(destPtr).Elem()
+	sv := reflect.ValueOf(source)
+	if dv.Kind() == reflect.Map && sv.Kind() == reflect.Map { // we do a special case for copying between map[string]<anything> to map[string]string using fmt.Sprintf
+		dt := dv.Type()
+		st := sv.Type()
+		// fmt.Println("DeepCopy1: copy specical map", dv.Len(), dv.IsNil())
+		if dt.Key().Kind() == reflect.String && st.Key().Kind() == reflect.String &&
+			dt.Elem().Kind() == reflect.String && st.Elem().Kind() != reflect.String {
+			// fmt.Println("DeepCopy: copy specical map", dv.Len(), dv.IsNil())
+			if dv.IsNil() {
+				t := reflect.MapOf(dt.Key(), dt.Elem())
+				dv.Set(reflect.MakeMap(t))
+			}
+			for _, keyR := range sv.MapKeys() {
+				str := fmt.Sprint(sv.MapIndex(keyR).Interface())
+				// fmt.Println("DeepCopyN:", keyR.String(), str)
+				dv.SetMapIndex(keyR, reflect.ValueOf(str))
+			}
+			return nil
+		}
+	}
 	buf := bytes.Buffer{}
 	err := gob.NewEncoder(&buf).Encode(source)
 	if err != nil {
 		return err
 	}
-	return gob.NewDecoder(&buf).Decode(destPtr)
+	err = gob.NewDecoder(&buf).Decode(destPtr)
+	return err
 }
 
 // CopyVal makes a copy of rval. If rval is a pointer, it makes a copy of element and returns a pointer
@@ -508,4 +532,63 @@ func Swap[A any](a, b *A) {
 	t := *a
 	*a = *b
 	*b = t
+}
+
+func MapToStruct(m map[string]any, structPtr any) error {
+	var outErr error
+	ForEachField(structPtr, FlattenIfAnonymous, func(each FieldInfo) bool {
+		dtags := GetTagAsMap(string(each.StructField.Tag))["zdict"]
+		name := each.StructField.Name
+		hasTag := (len(dtags) != 0)
+		if hasTag {
+			name = dtags[0]
+		}
+		val := m[name]
+		if val == nil {
+			return true
+		}
+		// fmt.Println("MapToStruct", each.ReflectValue.Kind(), name, each.ReflectValue.Kind(), val)
+		switch each.ReflectValue.Kind() {
+		case reflect.Map:
+			dest := each.ReflectValue.Addr().Interface()
+			err := DeepCopy(dest, val)
+			// fmt.Println("MapToStruct Map:", each.StructField.Name, err, reflect.TypeOf(dest))
+			if err != nil {
+				outErr = fmt.Errorf("%w %s %s", err, each.StructField.Name, name)
+				return false
+			}
+		case reflect.String:
+			str, got := val.(string)
+			if !got {
+				outErr = fmt.Errorf("Not string convertable %s %s", each.StructField.Name, name)
+				return false
+			}
+			each.ReflectValue.Addr().Elem().SetString(str)
+		case reflect.Float32, reflect.Float64:
+			f, err := zfloat.GetAny(val)
+			if err != nil {
+				outErr = fmt.Errorf("%w %s %s", err, each.StructField.Name, name)
+				return false
+			}
+			each.ReflectValue.Addr().Elem().SetFloat(f)
+		case reflect.Int:
+			n, err := zint.GetAny(val)
+			if err != nil {
+				outErr = fmt.Errorf("%w %s %s", err, each.StructField.Name, name)
+				return false
+			}
+			each.ReflectValue.Addr().Elem().SetInt(n)
+		case reflect.Bool:
+			b, isBool := val.(bool)
+			if !isBool {
+				str, _ := val.(string)
+				if str != "" {
+					b = zbool.FromString(str, false)
+				}
+			}
+			each.ReflectValue.Addr().Elem().SetBool(b)
+		}
+		return true
+	})
+	return outErr
 }
