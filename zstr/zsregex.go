@@ -17,7 +17,7 @@ var (
 type RegOpts int
 
 const (
-	RegWithoutMatch RegOpts = 1 << iota
+	RegWithoutMatch RegOpts = 1 << iota // RegWithoutMatch means only include what's in ( ) in the capture string
 	RegWithOutside
 )
 
@@ -131,7 +131,7 @@ func NewWildCardTransformer(wildFrom, wildTo string) (*WildCardTransformer, erro
 func (w *WildCardTransformer) Transform(str string) (string, error) {
 	matches := GetAllCaptures(w.regEx, str)
 	if len(matches) != w.asteriskCount {
-		return "", fmt.Errorf("input string has different nuber of matches than from wildcard wants: %d != %d", len(matches), w.asteriskCount)
+		return "", fmt.Errorf("input string has different number of matches than from wildcard wants: %d != %d", len(matches), w.asteriskCount)
 	}
 	replaced := w.wildTo
 	for _, m := range matches {
