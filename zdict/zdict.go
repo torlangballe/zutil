@@ -10,9 +10,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/torlangballe/zutil/zbool"
-	"github.com/torlangballe/zutil/zfloat"
-	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -216,52 +213,17 @@ func FromStruct(structure any, lowerFirst bool) Dict {
 	return d
 }
 
-func (d Dict) ToStruct(structPtr any) {
-	zreflect.ForEachField(structPtr, zreflect.FlattenIfAnonymous, func(each zreflect.FieldInfo) bool {
-		dtags := zreflect.GetTagAsMap(string(each.StructField.Tag))["zdict"]
-		name := each.StructField.Name
-		hasTag := (len(dtags) != 0)
-		if hasTag {
-			name = dtags[0]
-		}
-		val, got := d[name]
-		if !got && !hasTag {
-			name = zstr.FirstToTitleCase(name)
-			val = d[name]
-		}
-		if val == nil {
-			return true
-		}
-		switch each.ReflectValue.Kind() {
-		case reflect.String:
-			str, got := val.(string)
-			AssertFunc(got, reflect.TypeOf(val), name)
-			each.ReflectValue.Addr().Elem().SetString(str)
-		case reflect.Float32, reflect.Float64:
-			f, err := zfloat.GetAny(val)
-			AssertFunc(err == nil, err, name, each.ReflectValue.Kind())
-			each.ReflectValue.Addr().Elem().SetFloat(f)
-		case reflect.Int:
-			n, err := zint.GetAny(val)
-			AssertFunc(err == nil, err, each.StructField.Name, reflect.TypeOf(val))
-			each.ReflectValue.Addr().Elem().SetInt(n)
-		case reflect.Bool:
-			b, isBool := val.(bool)
-			if !isBool {
-				str, _ := val.(string)
-				if str != "" {
-					b = zbool.FromString(str, false)
-				}
-			}
-			each.ReflectValue.Addr().Elem().SetBool(b)
-		}
-		return true
-	})
-}
-
 func FromURLValues(values url.Values) Dict {
 	m := Dict{}
 	for k, v := range values {
+		if strings.HasPrefix(v[0], "{") && strings.HasSuffix(v[0], "}") {
+			subMap := map[string]string{}
+			err := json.Unmarshal([]byte(v[0]), &subMap)
+			if err == nil {
+				m[k] = subMap
+				continue
+			}
+		}
 		m[k] = v[0]
 	}
 	return m
@@ -273,7 +235,12 @@ func (d Dict) ToURLValues() url.Values {
 		str := fmt.Sprint(v)
 		m, _ := v.(map[string]string)
 		if m != nil {
-			str = zstr.ArgsToString(m, ",", "=", "")
+			data, err := json.Marshal(m)
+			str = string(data)
+			if err != nil {
+				str = "<" + err.Error() + ">"
+			}
+			//			str = zstr.ArgsToString(m, ",", "=", "")
 		}
 		vals.Add(k, str)
 	}
