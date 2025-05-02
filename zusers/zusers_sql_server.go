@@ -32,6 +32,7 @@ func NewSQLServer(db *sql.DB, btype zsql.BaseType, executor *zrpc.Executor) (*SQ
 	s.DB = db
 	s.Type = btype
 	err := s.setup()
+	zlog.Info("NewSQLServer:", executor.Authenticator != nil)
 	setupWithSQLServer(s, executor)
 	return s, err
 }
