@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/url"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -448,15 +449,6 @@ func ExtractLastString(strs *[]string) string {
 	return s
 }
 
-// RemovedFromSlice returns the slice with the first instance of a string == str removed
-func RemovedFromSlice(base []string, str string) (result []string) {
-	i := IndexOf(str, base)
-	if i == -1 {
-		return base
-	}
-	return append(base[:i], base[i+1:]...)
-}
-
 func SliceToLower(slice []string) (out []string) {
 	out = make([]string, len(slice))
 	for i, s := range slice {
@@ -502,6 +494,32 @@ func SlicesAreEqual(aset, bset []string) bool {
 		}
 	}
 	return true
+}
+
+func SetOrClearInSlices(set bool, strs *[]string, removes ...string) {
+	if set {
+		AddToSet(strs, removes...)
+	} else {
+		RemoveFromSet(strs, removes...)
+	}
+}
+
+func RemovedFromSet(strs []string, removes ...string) []string {
+	if len(removes) == 0 {
+		panic("nothing removed")
+	}
+	for _, s := range removes {
+		i := slices.Index(strs, s)
+		if i == -1 {
+			continue
+		}
+		strs = slices.Delete(strs, i, i)
+	}
+	return strs
+}
+
+func RemoveFromSet(strs *[]string, removes ...string) {
+	*strs = RemovedFromSet(*strs, removes...)
 }
 
 func AddToSet(strs *[]string, str ...string) int {

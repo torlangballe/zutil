@@ -179,7 +179,7 @@ func (s *SQLServer) SetAdminForUser(id int64, isAdmin bool) error {
 	if err != nil {
 		return err
 	}
-	perm = zstr.RemovedFromSlice(perm, AdminPermission)
+	perm = zstr.RemovedFromSet(perm, AdminPermission)
 	if isAdmin {
 		perm = append(perm, AdminPermission)
 	}
