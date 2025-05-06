@@ -66,7 +66,7 @@ func getAll() {
 }
 
 func NewOption[V comparable](key string, val V) *zkeyvalue.Option[V] {
-	o := zkeyvalue.NewOption[V](rpcStore, key, val)
+	o := zkeyvalue.NewOption[V](&rpcStore, key, val)
 	AddExternalChangedHandler(key, func(inkey string, value any, isLoad bool) {
 		if inkey == key {
 			// zlog.Info("kvrpc got:", inkey, value, o.Get())

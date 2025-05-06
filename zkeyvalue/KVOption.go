@@ -14,13 +14,13 @@ type Option[V comparable] struct {
 	Key     string
 	Default V
 	value   V
-	store   *Store
+	store   **Store
 	gotten  bool
 }
 
 var optionChangedHandlers []optionChangeHandler
 
-func NewOption[V comparable](store *Store, key string, val V) *Option[V] {
+func NewOption[V comparable](store **Store, key string, val V) *Option[V] {
 	o := &Option[V]{}
 	o.Key = key
 	o.value = val
@@ -32,10 +32,11 @@ func (o *Option[V]) Get() V {
 	if o.gotten {
 		return o.value
 	}
-	if o.store == nil {
-		o.store = DefaultStore
+	if *o.store == nil {
+		var v V
+		return v
 	}
-	if o.store.GetItem(o.Key, &o.value) {
+	if (*o.store).GetItem(o.Key, &o.value) {
 		o.gotten = true
 		return o.value
 	}
@@ -44,15 +45,11 @@ func (o *Option[V]) Get() V {
 }
 
 func (o *Option[V]) Set(v V, callHandle bool) {
-	// zlog.Info("O.Set:", o != nil)
-	if o.value == v {
+	if *o.store == nil || o.value == v {
 		return
 	}
-	if o.store == nil {
-		o.store = DefaultStore
-	}
 	o.value = v
-	err := o.store.SetItem(o.Key, o.value, true)
+	err := (*o.store).SetItem(o.Key, o.value, true)
 	zlog.OnError(err)
 	if !callHandle {
 		return

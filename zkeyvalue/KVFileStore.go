@@ -34,7 +34,6 @@ func NewFileStore(fpath string) *Store {
 	s.Raw = df
 	dir, _ := path.Split(fpath)
 	zfile.MakeDirAllIfNotExists(dir)
-	// zlog.Info("NewFileStore:", path, s.Raw, zlog.CallingStackString())
 	return s
 }
 
@@ -45,21 +44,3 @@ func (d *dictFile) Save() error {
 	d.lock.Unlock()
 	return err
 }
-
-// func (s *FileStore) SetItem(key string, v any) error {
-// 	err := s.DictRawStore().RawSetItem(key, v)
-// 	if err == nil {
-// 		s.Save()
-// 	}
-// 	return err
-// }
-
-// func (s *FileStore) RemoveForKey(key string, sync bool) {
-// 	drs := s.DictRawStore()
-// 	drs.RawRemoveForKey(key, sync)
-// 	s.Save()
-// }
-
-// func (s *FileStore) DictRawStore() *DictRawStore {
-// 	return s.Raw.(*DictRawStore)
-// }

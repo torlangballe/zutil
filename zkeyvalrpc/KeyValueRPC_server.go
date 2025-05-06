@@ -18,7 +18,6 @@ var (
 func Init(storePath string) {
 	rpcStore = zkeyvalue.NewFileStore(storePath)
 	for _, key := range rpcStore.Raw.AllKeys() {
-		// zlog.Info("zkeyvalrpc load:", key, val)
 		f, gotHandler := externalChangeHandlers.Get(key)
 		if gotHandler {
 			val, got := rpcStore.GetItemAsAny(key)
@@ -30,13 +29,11 @@ func Init(storePath string) {
 }
 
 func NewOption[V comparable](key string, val V) *zkeyvalue.Option[V] {
-	o := zkeyvalue.NewOption[V](rpcStore, key, val)
+	o := zkeyvalue.NewOption[V](&rpcStore, key, val)
 	AddExternalChangedHandler(key, func(key string, value any, isLoad bool) {
-		// zlog.Info("zkeyvalrpc ExtHandler:", key)
 		o.SetAny(value, true)
 	})
 	o.AddChangedHandler(func() {
-		// zlog.Info("keyvalrpc changed:", key)
 		zrpc.SetResourceUpdated(ResourceID, "")
 	})
 	return o
