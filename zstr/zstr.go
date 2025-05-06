@@ -513,7 +513,7 @@ func RemovedFromSet(strs []string, removes ...string) []string {
 		if i == -1 {
 			continue
 		}
-		strs = slices.Delete(strs, i, i)
+		strs = append(strs[:i], strs[i+1:]...)
 	}
 	return strs
 }
