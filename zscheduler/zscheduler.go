@@ -82,8 +82,8 @@ type Job[I comparable] struct {
 	DebugName    string
 	Duration     time.Duration // How long job should run for. 0 is until stopped.
 	Cost         float64       // Cost is how much of an executor's CostCapacity the job uses.
-	Attributes   int64
-	changedCount int // changedCount is an incremented when job changes. Must be flushed then.
+	Attributes   []string      `zui:"sep"`
+	changedCount int           // changedCount is an incremented when job changes. Must be flushed then.
 }
 
 type Executor[I comparable] struct {
@@ -91,7 +91,7 @@ type Executor[I comparable] struct {
 	Paused           bool
 	CostCapacity     float64
 	KeptAliveAt      time.Time
-	AcceptAttributes int64 // if non-zero, only if all of job's Attributes are in AcceptAttributes will it run
+	AcceptAttributes []string `zui:"sep"` // if not empty, only if at least ONE of job's Attributes are in AcceptAttributes will it run
 	DebugName        string
 	SettingsHash     int64 // other settings for executor, if changed cause restart of jobs. Not used by anything yet...
 	changedCount     int   // changedCount is an incremented when executor changes. Must be flushed then
@@ -637,7 +637,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			runLeft += r.Job.Cost / capacities[r.ExecutorID].capacity
 			rDiff := s.setup.LoadBalanceIfCostDifference / capacities[r.ExecutorID].capacity
 			for exID, cap := range capacities {
-				if cap.attributes&r.Job.Attributes != r.Job.Attributes {
+				if !zstr.SlicesIntersect(cap.attributes, r.Job.Attributes) {
 					continue
 				}
 				if exID == r.ExecutorID {
@@ -765,7 +765,7 @@ type capacity struct {
 	load               float64
 	capacity           float64
 	startingCount      int
-	attributes         int64
+	attributes         []string
 	mostRecentStarting time.Time //!!!!!!!!!!!!!! use this to not run 2 jobs on same worker after each other!
 }
 
@@ -855,7 +855,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 			continue
 		}
 		// zlog.Warn("zscheduler: att:", e.DebugName, e.AcceptAttributes, run.Job.Attributes)
-		if run.Job.Attributes&e.AcceptAttributes != run.Job.Attributes {
+		if !zstr.SlicesIntersect(run.Job.Attributes, e.AcceptAttributes) {
 			zlog.Warn("zscheduler: Skipping executor for job with Attribute:", run.Job.Attributes, "job:", run.Job.DebugName, "exe:", e.AcceptAttributes, "ename:", e.DebugName)
 			continue
 		}
