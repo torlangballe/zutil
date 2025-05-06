@@ -17,17 +17,22 @@ import (
 	"github.com/torlangballe/zutil/zwords"
 )
 
-func sliceValueString(val reflect.Value, maxChars int) string {
+func sliceValueString(f *zfields.Field, val reflect.Value, maxChars int) string {
+	var str string
 	slice, is := val.Interface().([]float64)
 	if is && len(slice) <= 6 {
 		var parts []string
 		for _, f := range slice {
 			parts = append(parts, zwords.NiceFloat(f, 1))
 		}
-		return strings.Join(parts, " ")
+		str = strings.Join(parts, " ")
+	} else if val.Len() <= 4 && f.StringSep != "" {
+		str = f.JoinSeparatedSlice(val)
 	}
-	slen := val.Len()
-	return zwords.Pluralize("item", slen)
+	if str != "" && (maxChars == 0 || len(str) <= maxChars) {
+		return str
+	}
+	return zwords.Pluralize("item", val.Len())
 }
 
 func getValueString(val reflect.Value, f *zfields.Field, sf reflect.StructField, maxChars int, setStructString bool) (str string, skip bool) {
@@ -61,7 +66,7 @@ func getValueString(val reflect.Value, f *zfields.Field, sf reflect.StructField,
 		t := val.Interface().(time.Time)
 		str = ztime.GetNice(t, true)
 	} else if kind == zreflect.KindSlice {
-		str = sliceValueString(val, maxChars)
+		str = sliceValueString(f, val, maxChars)
 	} else {
 		str = istr
 	}
