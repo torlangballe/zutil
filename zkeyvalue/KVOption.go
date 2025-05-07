@@ -2,6 +2,7 @@ package zkeyvalue
 
 import (
 	"reflect"
+	"runtime"
 
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
@@ -31,6 +32,9 @@ func NewOption[V comparable](store **Store, key string, val V) *Option[V] {
 func (o *Option[V]) Get() V {
 	if o.gotten {
 		return o.value
+	}
+	if o.store == nil && runtime.GOOS == "js" {
+		o.store = &DefaultStore
 	}
 	if *o.store == nil {
 		var v V
