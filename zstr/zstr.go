@@ -475,6 +475,15 @@ func UnionStringSet(aset, bset []string) []string {
 	return aset
 }
 
+func SliceContainsAll(slice, all []string) bool {
+	for _, a := range all {
+		if IndexOf(a, slice) == -1 {
+			return false
+		}
+	}
+	return true
+}
+
 func SlicesIntersect(aset, bset []string) bool {
 	for _, b := range bset {
 		if IndexOf(b, aset) != -1 {
