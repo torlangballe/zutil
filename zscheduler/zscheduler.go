@@ -439,6 +439,14 @@ func (s *Scheduler[I]) hasUnrunJobs() bool {
 	return false
 }
 
+func jobMatchedExecutorAttributes(jobA, exeA []string) bool {
+	if len(exeA) == 0 {
+		return true
+	}
+	c := zstr.SliceContainsAll(jobA, exeA)
+	return c
+}
+
 func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capacity) (stop bool, reason string) {
 	// zlog.Warn("shouldStopJob", run.Job.ID, "@", run.ExecutorID, run.Stopping, e == nil, run.StartedAt.IsZero(), run.RanAt.IsZero())
 	if run.Stopping {
@@ -466,6 +474,10 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 	if !alive {
 		return true, "Not alive"
 	}
+	if !jobMatchedExecutorAttributes(run.Job.Attributes, e.AcceptAttributes) {
+		return true, zstr.Spaced("No attribute:", e.AcceptAttributes, run.Job.Attributes)
+	}
+
 	if e.changedCount != run.executorChangedCount {
 		// zlog.Warn("shouldStopJob changed:", e.changedCount, run.executorChangedCount)
 		return true, zstr.Spaced("executor changeCount changed:", e.changedCount, run.executorChangedCount)
@@ -637,7 +649,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			runLeft += r.Job.Cost / capacities[r.ExecutorID].capacity
 			rDiff := s.setup.LoadBalanceIfCostDifference / capacities[r.ExecutorID].capacity
 			for exID, cap := range capacities {
-				if !zstr.SlicesIntersect(cap.attributes, r.Job.Attributes) {
+				if !jobMatchedExecutorAttributes(r.Job.Attributes, cap.attributes) {
 					continue
 				}
 				if exID == r.ExecutorID {
@@ -854,15 +866,9 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 			str += " NoExecutor "
 			continue
 		}
-		// zlog.Warn("zscheduler: att:", e.DebugName, e.AcceptAttributes, run.Job.Attributes)
-		if !zstr.SlicesIntersect(run.Job.Attributes, e.AcceptAttributes) {
-			zlog.Warn("zscheduler: Skipping executor for job with Attribute:", run.Job.Attributes, "job:", run.Job.DebugName, "exe:", e.AcceptAttributes, "ename:", e.DebugName)
+		if !jobMatchedExecutorAttributes(run.Job.Attributes, e.AcceptAttributes) {
 			continue
 		}
-		// if e == nil {
-		// 	zlog.Warn("Exes:", s.executors)
-		// }
-		// zlog.Warn("startJob1 cap:", exID, e != nil, load)
 		exCap := e.CostCapacity - cap.load
 		exFull := cap.load / e.CostCapacity
 		if exCap < run.Job.Cost {
@@ -972,7 +978,7 @@ func (s *Scheduler[I]) changeExecutor(e Executor[I]) {
 		s.addExecutor(e)
 		return
 	}
-	changed := (fe.CostCapacity != e.CostCapacity || fe.SettingsHash != e.SettingsHash)
+	changed := (fe.CostCapacity != e.CostCapacity || fe.SettingsHash != e.SettingsHash || !zstr.SlicesAreEqual(fe.AcceptAttributes, e.AcceptAttributes))
 	// if changed {
 	// 	zlog.Warn("changeExecutor", fe.CostCapacity, e.CostCapacity, fe.SettingsHash, e.SettingsHash, (fe.CostCapacity != e.CostCapacity || fe.SettingsHash != e.SettingsHash))
 	// }
@@ -1006,9 +1012,11 @@ func (s *Scheduler[I]) changeJob(job Job[I]) {
 			s.runs[i].Job.Duration = job.Duration
 			s.runs[i].Job.Cost = job.Cost
 			if s.setup.ChangingJobRestartsIt {
+				zlog.Warn("ChangeJob Restart", s.runs[i].Job.Attributes)
 				reason := zstr.Spaced("changeJob stop:", job.DebugName)
 				s.stopJob(job.ID, false, false, true, reason)
 			} else {
+				zlog.Warn("ChangeJob:", s.runs[i].Job.Attributes)
 				s.startAndStopRuns() // a new cost could start it for example
 			}
 			return
