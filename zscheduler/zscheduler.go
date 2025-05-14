@@ -439,7 +439,7 @@ func (s *Scheduler[I]) hasUnrunJobs() bool {
 	return false
 }
 
-func jobMatchedExecutorAttributes(jobA, exeA []string) bool {
+func jobMatchesExecutorAttributes(jobA, exeA []string) bool {
 	if len(exeA) == 0 {
 		return true
 	}
@@ -474,7 +474,7 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 	if !alive {
 		return true, "Not alive"
 	}
-	if !jobMatchedExecutorAttributes(run.Job.Attributes, e.AcceptAttributes) {
+	if !jobMatchesExecutorAttributes(run.Job.Attributes, e.AcceptAttributes) {
 		return true, zstr.Spaced("No attribute:", e.AcceptAttributes, run.Job.Attributes)
 	}
 
@@ -649,7 +649,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			runLeft += r.Job.Cost / capacities[r.ExecutorID].capacity
 			rDiff := s.setup.LoadBalanceIfCostDifference / capacities[r.ExecutorID].capacity
 			for exID, cap := range capacities {
-				if !jobMatchedExecutorAttributes(r.Job.Attributes, cap.attributes) {
+				if !jobMatchesExecutorAttributes(r.Job.Attributes, cap.attributes) {
 					continue
 				}
 				if exID == r.ExecutorID {
@@ -866,7 +866,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 			str += " NoExecutor "
 			continue
 		}
-		if !jobMatchedExecutorAttributes(run.Job.Attributes, e.AcceptAttributes) {
+		if !jobMatchesExecutorAttributes(run.Job.Attributes, e.AcceptAttributes) {
 			continue
 		}
 		exCap := e.CostCapacity - cap.load
