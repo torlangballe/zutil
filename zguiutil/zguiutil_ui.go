@@ -12,6 +12,7 @@ import (
 	"github.com/torlangballe/zui/zimageview"
 	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/zlabel"
+	"github.com/torlangballe/zui/zradio"
 	"github.com/torlangballe/zui/zstyle"
 	"github.com/torlangballe/zui/ztext"
 	"github.com/torlangballe/zui/ztextinfo"
@@ -106,12 +107,15 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 		font.Style = zgeo.FontStyleBold
 	}
 	title := slabel
-	checkBox, isCheck := view.(*zcheckbox.CheckBox)
+	checkBox, _ := view.(*zcheckbox.CheckBox)
 	if checkBox != nil && alignment&zgeo.Right != 0 {
 		title = ""
 		_, cstack := zcheckbox.Labelize(checkBox, slabel)
 		view = cstack
 		alignment = alignment.FlippedHorizontal()
+		label.SetPressedDownHandler("for", 0, func() {
+			checkBox.Toggle()
+		})
 	}
 	label = makeLabelizeLabel(title, slabel, zgeo.Right)
 	label.SetFont(font)
@@ -127,17 +131,24 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 	if a&zgeo.Horizontal == 0 {
 		a |= zgeo.Left
 	}
-	// zlog.Info("zgui.Labelzie:", view.Native().Hierarchy(), a, alignment)
 
+	index := -1
+	radio, _ := view.(*zradio.RadioButton)
+	if radio != nil {
+		label.SetPressedDownHandler("for", 0, func() {
+			radio.Toggle()
+		})
+		index = 0
+	}
+	// zlog.Info("zgui.Labelize:", view.Native().Hierarchy(), isRadio, index)
 	cell := stack.Add(label, a)
 	if minLabelWidth != 0 {
 		cell.MinSize.W = minLabelWidth
 	}
-	marg := zgeo.SizeNull
-	if isCheck {
-		// marg.W = -6 // in html cell has a box around it of 20 pixels
-	}
-	viewCell = stack.Add(view, alignment, marg)
+	viewCell = stack.AddAdvanced(view, alignment, zgeo.RectNull, zgeo.SizeNull, index, false)
+	// ztimer.StartIn(1, func() {
+	// 	label.SetFor(view)
+	// })
 
 	if desc != "" {
 		descLabel = makeLabelizeLabel(desc, slabel+".desc", zgeo.Left)
