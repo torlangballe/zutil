@@ -219,7 +219,7 @@ func (e *Executor) callMethodName(ctx context.Context, ci ClientInfo, name strin
 			return e.callMethod(ctx, ci, m, rawArg, requestHTTPDataClient)
 		}
 	}
-	return rp, zlog.NewError("no method registered:", name)
+	return rp, zlog.NewError("no method registered:", name, ci.Request.RemoteAddr)
 }
 
 func (e *Executor) callWithDeadline(ci ClientInfo, method string, expires time.Time, args json.RawMessage, requestHTTPDataClient *Client) (receivePayload, error) {
