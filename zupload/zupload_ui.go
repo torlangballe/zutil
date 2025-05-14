@@ -218,7 +218,7 @@ func (v *UploadView) addUploadButton() {
 	v.selectButton.SetMinWidth(100)
 	len := v.CountChildren()
 	v.AddAdvanced(v.selectButton, zgeo.CenterLeft, zgeo.RectNull, zgeo.SizeNull, len-1, false)
-	v.selectButton.SetUploader(v.handleGivenFile, v.checkExtensions, nil)
+	v.selectButton.SetUploader(v.AcceptExtensions, v.handleGivenFile, v.checkExtensions, nil)
 }
 
 func (v *UploadView) CallHTTUpload(up UploadPayload, data []byte) {
