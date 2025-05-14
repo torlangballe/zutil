@@ -280,3 +280,17 @@ func InsertSorted[S any](slice []S, insert S, less func(a, b S) bool) []S {
 	}
 	return append(slice, insert)
 }
+
+func Pop[S any](s *[]S) S {
+	slen := len(*s)
+	zlog.Assert(slen > 0)
+	top := (*s)[slen-1]
+	*s = (*s)[:slen-1]
+	return top
+}
+
+func Top[S any](s []S) S {
+	slen := len(s)
+	zlog.Assert(slen > 0)
+	return (s)[slen-1]
+}
