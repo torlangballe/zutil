@@ -1385,6 +1385,14 @@ func KeyValuesFindForKey(keyVals []KeyValue, key string) (*KeyValue, int) {
 	return nil, -1
 }
 
+func KeyValuesValueForKey(keyVals []KeyValue, key string) (string, bool) {
+	kv, _ := KeyValuesFindForKey(keyVals, key)
+	if kv == nil {
+		return "", false
+	}
+	return kv.Value, true
+}
+
 func JoinFunc[S any](s []S, sep string, get func(s any) string) string {
 	var parts []string
 	for _, ss := range s {
