@@ -287,16 +287,16 @@ type FieldInfo struct {
 	StructField  reflect.StructField
 }
 
-func (f *FieldInfo) TagKeyValuesForKey(key string) (vals map[string]string, skip bool) {
+func (f *FieldInfo) TagKeyValuesForKey(key string) (vals []zstr.KeyValue, skip bool) {
 	return TagKeyValuesForKeyInStructField(&f.StructField, key)
 }
 
-func TagKeyValuesForKeyInStructField(sf *reflect.StructField, key string) (vals map[string]string, skip bool) {
+func TagKeyValuesForKeyInStructField(sf *reflect.StructField, key string) (vals []zstr.KeyValue, skip bool) {
 	str := sf.Tag.Get(key)
 	return TagKeyValuesFromString(str)
 }
 
-func TagKeyValuesFromString(str string) (vals map[string]string, skip bool) {
+func TagKeyValuesFromString(str string) (vals []zstr.KeyValue, skip bool) {
 	cvalues, skip := TagPartAsCommaValues(str)
 	if skip {
 		return nil, true
@@ -424,8 +424,8 @@ func TagPartAsCommaValues(stag string) (vals []string, ignore bool) {
 	return vals, false
 }
 
-func TagCommaValuesAsKeyValues(values []string) (keyVals map[string]string) {
-	keyVals = map[string]string{}
+func TagCommaValuesAsKeyValues(values []string) []zstr.KeyValue {
+	var keyVals []zstr.KeyValue
 	for _, value := range values {
 		var key, val string
 		parts := zstr.SplitStringWithDoubleAsEscape(value, ":")
@@ -435,9 +435,10 @@ func TagCommaValuesAsKeyValues(values []string) (keyVals map[string]string) {
 		} else {
 			key = value
 		}
-		key = strings.TrimSpace(key)
-		val = strings.TrimSpace(val)
-		keyVals[key] = val
+		var kv zstr.KeyValue
+		kv.Key = strings.TrimSpace(key)
+		kv.Value = strings.TrimSpace(val)
+		keyVals = append(keyVals, kv)
 	}
 	return keyVals
 }
