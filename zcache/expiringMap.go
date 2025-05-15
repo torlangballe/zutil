@@ -78,6 +78,10 @@ func (m *ExpiringMap[K, V]) Get(k K) (V, bool) {
 	return m.get(k, true)
 }
 
+func (m *ExpiringMap[K, V]) Has(k K) bool {
+	return m.lockedMao.Has(k)
+}
+
 func (m *ExpiringMap[K, V]) Peek(k K) (V, bool) {
 	return m.get(k, false)
 }
