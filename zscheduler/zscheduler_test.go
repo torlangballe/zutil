@@ -659,8 +659,8 @@ func stopAndCheckScheduler(s *Scheduler[int64], t *testing.T) {
 }
 
 func testMixedAttributes(t *testing.T) {
-	const AMask = 1
-	const BMask = 2
+	var AMask = []string{"cdn.1"}
+	var BMask = []string{"cdn.2"}
 	fmt.Println("testMixedAttributes")
 	s := newScheduler(0, 0, 1, 20, nil)
 	e := makeExecutor(s, 1, 20)
@@ -678,15 +678,25 @@ func testMixedAttributes(t *testing.T) {
 	}
 	time.Sleep(time.Millisecond * 200)
 	job = makeJob(s, 2, time.Second*1, 1)
-	job.Attributes = 0 //AMask
+	job.Attributes = []string{} //
 	// zlog.Warn("ADD:", job.Attributes)
 	s.AddJobCh <- job
-
 	time.Sleep(time.Millisecond * 200)
 	count = s.CountRunningJobs(1)
 	if count != 1 {
 		t.Error("Executor should have one job now:", count)
 	}
+
+	time.Sleep(time.Millisecond * 200)
+	job = makeJob(s, 3, time.Second*1, 1)
+	job.Attributes = AMask
+	s.AddJobCh <- job
+	time.Sleep(time.Millisecond * 200)
+	count = s.CountRunningJobs(1)
+	if count != 2 {
+		t.Error("Executor should have two jobs now:", count)
+	}
+
 	e2 := makeExecutor(s, 2, 20)
 	e2.AcceptAttributes = BMask
 	s.ChangeExecutorCh <- e2
@@ -694,8 +704,8 @@ func testMixedAttributes(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 200)
 	count = s.CountRunningJobs(0)
-	if count != 2 {
-		t.Error("Executor should have have 2 jobs:", count)
+	if count != 3 {
+		t.Error("Executor should have have 3 jobs:", count)
 	}
 
 	stopAndCheckScheduler(s, t)

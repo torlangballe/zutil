@@ -443,8 +443,31 @@ func jobMatchesExecutorAttributes(jobA, exeA []string) bool {
 	if len(exeA) == 0 {
 		return true
 	}
-	c := zstr.SliceContainsAll(jobA, exeA)
-	return c
+	for _, ja := range jobA {
+		var jpre, jval string
+		if !zstr.SplitN(ja, ".", &jpre, &jval) {
+			zlog.Error("Job attribute not it two parts:", ja)
+			return false
+		}
+		found := false
+		for _, ea := range exeA {
+			var epre, eval string
+			if !zstr.SplitN(ea, ".", &epre, &eval) {
+				zlog.Error("Executor attribute not it two parts:", ea)
+				return false
+			}
+			if epre == jpre {
+				if eval == jval {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capacity) (stop bool, reason string) {
