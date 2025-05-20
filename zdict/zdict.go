@@ -232,15 +232,26 @@ func FromURLValues(values url.Values) Dict {
 func (d Dict) ToURLValues() url.Values {
 	vals := url.Values{}
 	for k, v := range d {
-		str := fmt.Sprint(v)
-		m, _ := v.(map[string]string)
-		if m != nil {
-			data, err := json.Marshal(m)
-			str = string(data)
-			if err != nil {
+		var set bool
+		var str string
+		var err error
+		m, is := v.(map[string]string)
+		if is {
+			if len(m) == 0 {
+				continue
+			}
+			var data []byte
+			data, err = json.Marshal(m)
+			if err == nil {
+				set = true
+				str = string(data)
+			} else {
 				str = "<" + err.Error() + ">"
 			}
 			//			str = zstr.ArgsToString(m, ",", "=", "")
+		}
+		if !set && err == nil {
+			str = fmt.Sprint(v)
 		}
 		vals.Add(k, str)
 	}
