@@ -58,13 +58,6 @@ func (e *ContextError) SetError(err error) {
 	e.KeyValues["Error"] = err.Error()
 }
 
-func (e *ContextError) SetKeyValue(key string, value any) {
-	if e.KeyValues == nil {
-		e.KeyValues = zdict.Dict{}
-	}
-	e.KeyValues[key] = value
-}
-
 func (e *ContextError) GetLowerCaseMatchContent() string {
 	str := e.Title
 	for k, v := range e.KeyValues {
@@ -144,6 +137,13 @@ func (ce *ContextError) UnmarshalJSON(data []byte) error {
 		}
 	}
 	return nil
+}
+
+func (e *ContextError) SetKeyValue(key string, value any) {
+	if e.KeyValues == nil {
+		e.KeyValues = zdict.Dict{}
+	}
+	e.KeyValues[key] = value
 }
 
 func (ce *ContextError) ValueForKeyWithFormattingSuffix(key string) (any, bool) {
