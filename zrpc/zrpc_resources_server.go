@@ -74,8 +74,8 @@ func (r *ZRPCResourceCalls) SetResourceUpdatedFromClient(ci *ClientInfo, resID s
 }
 
 // GetURL is a convenience function to get the contents of a url via the server.
-func (*ZRPCResourceCalls) GetURL(surl *string, reply *[]byte) error {
+func (*ZRPCResourceCalls) GetURL(surl string, reply *[]byte) error {
 	params := zhttp.MakeParameters()
-	_, err := zhttp.Get(*surl, params, reply)
+	_, err := zhttp.Get(surl, params, reply)
 	return err
 }
