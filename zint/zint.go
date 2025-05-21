@@ -402,3 +402,57 @@ func MakeHumanFriendly[N int | int64](n N) string {
 	}
 	return string(out)
 }
+
+func NumberToCircledNumbersString(n int) string {
+	switch n {
+	case 0:
+		return "⓪"
+	case 1:
+		return "①"
+	case 2:
+		return "②"
+	case 3:
+		return "③"
+	case 4:
+		return "④"
+	case 5:
+		return "⑤"
+	case 6:
+		return "⑥"
+	case 7:
+		return "⑦"
+	case 8:
+		return "⑧"
+	case 9:
+		return "⑨"
+	case 10:
+		return "⑩"
+	case 11:
+		return "⑪"
+	case 12:
+		return "⑫"
+	case 13:
+		return "⑬"
+	case 14:
+		return "⑭"
+	case 15:
+		return "⑮"
+	case 16:
+		return "⑯"
+	case 17:
+		return "⑰"
+	case 18:
+		return "⑱"
+	case 19:
+		return "⑲"
+	case 20:
+		return "⑳"
+	}
+	var out string
+	str := strconv.Itoa(n)
+	for _, c := range str {
+		cn := int(c - '0')
+		out += NumberToCircledNumbersString(cn)
+	}
+	return out
+}
