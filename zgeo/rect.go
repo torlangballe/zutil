@@ -140,7 +140,7 @@ func (r *Rect) SetMinY(y float64) {
 
 func (r *Rect) IncMax(x, y float64) {
 	r.IncMaxX(x)
-	r.IncMaxX(y)
+	r.IncMaxY(y)
 }
 
 func (r *Rect) IncMin(x, y float64) {
