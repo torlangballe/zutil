@@ -303,7 +303,7 @@ func (m *MarkdownConverter) SetBrowserSpecificDocKeyValues(os zdevice.OSType, de
 		metaMod = zkeyboard.ModifierCommand
 		altName = zkeyboard.OptionModifierConstName
 	}
-	m.Variables["ZMetaModifier"] = metaMod.HumanString()
+	m.Variables["ZMenuModifier"] = metaMod.HumanString()
 	m.Variables["ZAltModifier"] = altName
 	m.Variables["ZDebugOwnerMode"] = debugMode
 }
