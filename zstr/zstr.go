@@ -533,9 +533,6 @@ func RemoveFromSet(strs *[]string, removes ...string) {
 
 func AddToSet(strs *[]string, str ...string) int {
 	var count int
-	if len(str) == 0 {
-		panic("nothing added") // in case we forget to add something, happened already...
-	}
 	for _, s := range str {
 		if StringsContain(*strs, s) {
 			continue
