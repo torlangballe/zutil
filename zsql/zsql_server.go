@@ -212,38 +212,37 @@ type FieldInfo struct {
 }
 
 func FieldInfosFromStruct(istruct any, skip []string, btype BaseType) (infos []FieldInfo) {
-	items, err := zreflect.IterateStruct(istruct, zreflect.Options{UnnestAnonymous: true})
-	if err != nil {
-		zlog.Fatal("get items", err)
-	}
-	for i, item := range items.Children {
-		// zlog.Info("FieldInfosFromStruct:", i, item)
-		var name string
-		var f FieldInfo
-		parts := zreflect.GetTagAsMap(item.Tag)["db"]
-		name = ConvertFieldName(item)
-		if len(parts) != 0 {
-			first := parts[0]
-			if first == "-" {
-				continue
+	/*
+		zreflect.ForEachField(structure, FlattenIfAnonymousOrZUITag, func(each zreflect.FieldInfo) bool {
+			// zlog.Info("FieldInfosFromStruct:", i, item)
+			// var name string
+			var f FieldInfo
+			parts := zreflect.GetTagAsMap(each.StructField.Tag)["db"]
+			name := ConvertFieldName(each.StructField.Name)
+			if len(parts) != 0 {
+				first := parts[0]
+				if first == "-" {
+					return true
+				}
+				f.SubTagParts = parts[1:]
+				if first != "" {
+					name = first
+				}
 			}
-			f.SubTagParts = parts[1:]
-			if first != "" {
-				name = first
+			if zstr.IndexOf(name, skip) != -1 {
+				return true
 			}
-		}
-		if zstr.IndexOf(name, skip) != -1 {
-			continue
-		}
-		f.IsPrimary = (zstr.IndexOf("primary", parts) != -1)
-		f.Index = i
-		f.SQLName = name
-		f.SQLType = GetSQLTypeForReflectKind(item, btype)
-		f.Kind = item.Kind
-		f.FieldName = item.FieldName
-		f.JSONName = zstr.FirstToLower(item.FieldName)
-		infos = append(infos, f)
-	}
+			f.IsPrimary = (zstr.IndexOf("primary", parts) != -1)
+			f.Index = each.FieldIndex
+			f.SQLName = name
+			f.SQLType = GetSQLTypeForReflectKind(item, btype)
+			f.Kind = item.Kind
+			f.FieldName = item.FieldName
+			f.JSONName = zstr.FirstToLower(item.FieldName)
+			infos = append(infos, f)
+			return true
+		})
+	*/
 	return infos
 }
 

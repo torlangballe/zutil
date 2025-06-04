@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/graphql-go/graphql"
@@ -36,19 +37,21 @@ func Handler(context context.Context, schema graphql.Schema, request events.APIG
 
 }
 
-func getGraphQlTypeFromKind(parentFieldName string, item zreflect.Item) graphql.Output {
+func getGraphQlTypeFromKind(parentFieldName string, s any) graphql.Output {
 	//fmt.Println("getGraphQlTypeFromKind:", item.TypeName, item.Kind, item.FieldName)
-	if item.IsSlice {
-		var n = item
-		n.IsSlice = false
-		o := getGraphQlTypeFromKind(parentFieldName, n)
+	rval := reflect.ValueOf(s)
+	if rval.Kind() == reflect.Slice {
+		nt := reflect.ValueOf(s).Type().Elem()
+		n := reflect.New(nt)
+		o := getGraphQlTypeFromKind(parentFieldName, n.Interface())
 		return graphql.NewList(o)
 	}
-	switch item.Kind {
+	kind := zreflect.KindFromReflectKindAndType(rval.Kind(), rval.Type())
+	switch kind {
 	case zreflect.KindStruct:
-		o, err := newObjectFromReflectItem(parentFieldName, item)
+		o, err := newObjectFromStructure(parentFieldName, s)
 		if err != nil {
-			err = zlog.NewError(err, "getGraphQlTypeFromKind: struct", err, item.TypeName)
+			err = zlog.NewError(err, "getGraphQlTypeFromKind: struct", err, rval.Type())
 			fmt.Println("zreflect.KindStruct err:", err)
 			return nil
 		}
@@ -70,12 +73,12 @@ func getGraphQlTypeFromKind(parentFieldName string, item zreflect.Item) graphql.
 	}
 }
 
-func NewObjectFromStruct(v interface{}) (object graphql.Type, err error) {
-	root, err := zreflect.IterateStruct(v, zreflect.Options{UnnestAnonymous: true})
-	if err != nil {
-		err = zlog.Error(err, "NewObjectFromStruct: urefect.IterateStruct", err)
-	}
-	return newObjectFromReflectItem("", root)
+func NewObjectFromStruct(s any) (object graphql.Type, err error) {
+	// root, err := zreflect.IterateStruct(v, zreflect.Options{UnnestAnonymous: true})
+	// if err != nil {
+	// 	err = zlog.Error(err, "NewObjectFromStruct: urefect.IterateStruct", err)
+	// }
+	return newObjectFromStructure("", s)
 }
 
 func getInfoFromTag(fieldName, stags string) (name, description string, omitEmpty, ignore bool) {
@@ -105,36 +108,38 @@ func getInfoFromTag(fieldName, stags string) (name, description string, omitEmpt
 	return
 }
 
-func getNonNullFromType(c zreflect.Item, t graphql.Output, omitEmpty bool) graphql.Output {
-	if c.IsPointer || omitEmpty {
+func getNonNullFromType(s any, t graphql.Output, omitEmpty bool) graphql.Output {
+	if omitEmpty || reflect.ValueOf(s).Kind() == reflect.Pointer {
 		return t
 	}
 	//	fmt.Println("non-null:", c.TypeName, c.FieldName, c.IsPointer, omitEmpty)
 	return graphql.NewNonNull(t)
 }
 
-func newObjectFromReflectItem(parentFieldName string, item zreflect.Item) (object graphql.Type, err error) {
+func newObjectFromStructure(parentFieldName string, s any) (object graphql.Type, err error) {
 	//	fmt.Println("newObjectFromReflectItem:", item.TypeName, item.Kind, item.FieldName)
 	var fields = graphql.Fields{}
-	for _, c := range item.Children {
 
-		name, desc, omitEmpty, ignore := getInfoFromTag(c.FieldName, c.Tag)
+	zreflect.ForEachField(s, zreflect.FlattenIfAnonymous, func(each zreflect.FieldInfo) bool {
+		name, desc, omitEmpty, ignore := getInfoFromTag(each.StructField.Name, string(each.StructField.Tag))
 		//		lowerName := ustr.MakeFirstLetterLowerCase(name)
 		if ignore {
-			continue
+			return true
 		}
-		t := getGraphQlTypeFromKind(item.TypeName, c)
-		t = getNonNullFromType(c, t, omitEmpty)
+		t := getGraphQlTypeFromKind(each.StructField.Name, s)
+		t = getNonNullFromType(s, t, omitEmpty)
 		field := &graphql.Field{
 			Type:        t,
 			Description: desc,
 		}
 		//		fmt.Println("addfield:", name, c.FieldName, c.Tag)
 		fields[name] = field
-	}
-	name := item.TypeName
+		return true
+	})
+	name := parentFieldName
 	if name == "" {
-		name = parentFieldName + "_" + item.FieldName
+		name = reflect.TypeOf(s).Name()
+		name = parentFieldName + "_" + name
 	}
 	object = graphql.NewObject(graphql.ObjectConfig{
 		Name:   name,
