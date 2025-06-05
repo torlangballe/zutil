@@ -255,7 +255,6 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 		return
 	}
 	if params.ContentType != "" {
-		// zlog.Info("ContentType:", params.ContentType)
 		params.Headers["Content-Type"] = params.ContentType
 	}
 	if params.Headers != nil {
@@ -263,6 +262,7 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 			request.Header.Set(k, v)
 		}
 	}
+	// zlog.Info("ContentType:", params.ContentType, request.Header)
 	return request, client, err
 }
 
