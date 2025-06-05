@@ -1273,6 +1273,11 @@ func (s *Scheduler[I]) CopyOfSetup() Setup[I] {
 	return s.setup
 }
 
+func (s *Scheduler[I]) HasJob(jobID I) bool {
+	r, _ := s.findRun(jobID)
+	return r != nil
+}
+
 func (s *Scheduler[I]) GetRunForID(jobID I) (Run[I], error) {
 	// for _, r := range s.runs {
 	// 	zlog.Warn("GetRunForIDs:", r.Job.ID, r.Count)
