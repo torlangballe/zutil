@@ -540,6 +540,9 @@ func (r Rect) NormalizedNegativeSize() Rect {
 func CellsSpanInBox(box Rect, cellSize, spacing Size, cellCount int) (x, y int, area Rect) {
 	columns := int((box.Size.W + spacing.W) / (cellSize.W + spacing.W))
 	rows := int((box.Size.H + spacing.H) / (cellSize.H + spacing.H))
+	if columns == 0 || rows == 0 {
+		return 0, 0, RectNull
+	}
 	if cellCount > 0 {
 		zint.Minimize(&columns, cellCount)
 		neededRows := (cellCount + columns) / columns
