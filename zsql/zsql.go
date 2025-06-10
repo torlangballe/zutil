@@ -108,9 +108,9 @@ func SanitizeString(str string) string {
 	return strings.Replace(str, "'", "''", -1)
 }
 
-func ConvertFieldName(i zreflect.Item) string {
-	return strings.ToLower(i.FieldName)
-}
+// func ConvertFieldName(i zreflect.Item) string {
+// 	return strings.ToLower(i.FieldName)
+// }
 
 func ColumnNamesStringFromStruct(istruct interface{}, skip []string, prefix string) string {
 	fs := ColumnNamesFromStruct(istruct, skip, prefix)

@@ -1,14 +1,6 @@
 package zreflect
 
-import (
-	"errors"
-	"fmt"
-	"reflect"
-
-	"github.com/torlangballe/zutil/zint"
-	"github.com/torlangballe/zutil/zstr"
-)
-
+/*
 type Item struct {
 	Kind            TypeKind
 	BitSize         int
@@ -216,3 +208,4 @@ func IterateStruct(istruct any, options Options) (item Item, err error) {
 	}
 	return iterate(0, "", "", "", false, rval.Elem(), options)
 }
+*/
