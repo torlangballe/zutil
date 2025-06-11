@@ -170,6 +170,7 @@ func FieldParametersFromStruct(istruct any, skip []string, start int) (parameter
 	return
 }
 
+/*
 func GetSQLTypeForReflectKind(item zreflect.Item, btype BaseType) string {
 	var stype string
 	switch item.Kind {
@@ -199,6 +200,7 @@ func GetSQLTypeForReflectKind(item zreflect.Item, btype BaseType) string {
 	}
 	return stype
 }
+*/
 
 type FieldInfo struct {
 	Index       int
