@@ -37,7 +37,7 @@ func makeTableOwner(users []AllUserInfo) *userTable {
 	ut.users = users
 	ut.grid = zslicegrid.TableViewNew(&ut.users, "users-table", zslicegrid.AddMenu|zslicegrid.AllowAllEditing|zslicegrid.AddHeader|zslicegrid.AddBar)
 	ut.grid.EditParameters.SkipFieldNames = []string{"AdminStar"}
-	ut.grid.FieldParameters.AllStatic = true
+	ut.grid.FieldViewParameters.AllStatic = true
 	ut.grid.SetBGColor(zstyle.DefaultBGColor())
 	ut.grid.Grid.MinRowsForFullSize = 10
 	ut.grid.Grid.MaxRowsForFullSize = 10
