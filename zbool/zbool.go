@@ -18,6 +18,16 @@ const (
 	True    BoolInd = 2
 )
 
+// Is is just a shorthand to add a "labeled" bool to a function parameter
+func Is(name string) bool {
+	return true
+}
+
+// Not is like Is, but false
+func Not(name string) bool {
+	return false
+}
+
 func ToBoolInd(b bool) BoolInd {
 	if b {
 		return True
