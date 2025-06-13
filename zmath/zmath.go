@@ -484,6 +484,13 @@ func Abs[T numeric](x T) T {
 	return T(math.Float64frombits(math.Float64bits(float64(x)) &^ (1 << 63)))
 }
 
+func AbsMin[T numeric](a, b T) T {
+	if Abs(a) < Abs(b) {
+		return a
+	}
+	return b
+}
+
 func NiceNumberString(a any) (string, bool) {
 	if zint.IsInt(a) {
 		i := reflect.ValueOf(a).Int()
