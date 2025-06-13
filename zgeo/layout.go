@@ -4,6 +4,8 @@ import (
 	"math"
 
 	"github.com/torlangballe/zutil/zfloat"
+	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zslice"
 )
 
@@ -31,6 +33,8 @@ type stackCell struct {
 	// added      bool // used during layout
 	inputIndex int // index of input cell
 }
+
+var LayoutDebugPrint bool
 
 // makeOutRectsAndFillFree creates a slice *out* for rects for each scell.
 // It aligns the free cells and stores the rect in out, removing that cell from scells.
@@ -87,7 +91,9 @@ func getStackCells(debugName string, vertical bool, cells []LayoutCell) (scells 
 					sc.size.Maximize(sc.MinSize)
 					sc.size.MinimizeNonZero(sc.MaxSize)
 				}
+				// if debugName == "77950197" {
 				// 	zlog.Info(debugName, i, sc.MinSize, sc.MaxSize, sc.size, "getStackCells add:", c.Alignment, c.Margin, c.Name, sc.OriginalSize)
+				// }
 				scells = append(scells, sc)
 			}
 		}
@@ -199,9 +205,6 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells *[]stackCell, ver
 				(*scells)[i].ShowIfExtraSpace = 0
 				changed = true
 			} else {
-				// if debugName == "57178178" {
-				// 	zlog.Info(width, diff, sc.ShowIfExtraSpace, "addLeftoverSpaceToWidths:", r, sc.Name, sc.size.W, sc.Margin, sc.MaxSize, sc.Alignment)
-				// }
 				zslice.RemoveAt(scells, i)
 				i--
 			}
@@ -211,22 +214,19 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells *[]stackCell, ver
 		width, _, _ = calcPreAddedTotalWidth(debugName, *scells, spacing) // space, marg
 		diff = r.Size.W - width
 	}
-	adjustableCount := 0.0
-	adj := getPossibleAdjustments(diff, *scells) // this gives us how much each cell might be able to be added to. Note this is more than diff, so after adjusting one, ALL adj must be subtracted by amount added.
-	// if debugName == "Shaka Util Error.FV" {
-	// 	zlog.Info("addLeftoverSpaceToWidths:", r.Size.W, width, diff, adj)
-	// }
-	for _, a := range adj {
-		if a != 0 {
-			adjustableCount++
-		}
-	}
 
-	// if debugName == "streamgrid" {
-	// 	zlog.Info("addLeftoverSpaceToWidths2:", debugName, r.Size.W, width, diff, adj)
+	adj := getPossibleAdjustments(diff, *scells) // this gives us how much each cell might be able to be added to. Note this is more than diff, so after adjusting one, ALL adj must be subtracted by amount added.
+	// if debugName == "57178178" {
+	// 	zlog.Info("addLeftoverSpaceToWidths:", r.Size.W, width, diff, adj)
 	// }
 	ndiff := diff
 	for {
+		adjustableCount := 0.0
+		for _, a := range adj {
+			if a != 0 {
+				adjustableCount++
+			}
+		}
 		adjusted := false
 		for i, sc := range *scells {
 			subtract := adj[i]
@@ -235,18 +235,21 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells *[]stackCell, ver
 			}
 			w := math.Max(1, sc.size.W)
 			shouldAdjust := ndiff / adjustableCount
-			amount := math.Min(subtract, shouldAdjust)
-			// if debugName == "Shaka Util Error.FV" {
-			// 	zlog.Info("adj:", sc.size, shouldAdjust, ndiff, sc.Name, subtract, amount)
-			// }
-			if amount > 0 {
-				// zlog.Info("  addLeftoverSpaceToWidths adjust:", amount, sc.Name, subtract, ndiff)
-				adjusted = true
-				(*scells)[i].size.W = w + subtract
-				for j := range adj {
-					adj[j] = max(adj[j]-subtract, 0)
+			amount := zmath.AbsMin(subtract, shouldAdjust)
+			if amount != 0 {
+				if LayoutDebugPrint {
+					zlog.Info("  addLeftoverSpaceToWidths adjust:", adjustableCount, amount, sc.Name, subtract, ndiff, adj)
 				}
-				ndiff -= subtract
+				adjustableCount--
+				adjusted = true
+				(*scells)[i].size.W = w + amount
+				for j := i; j < len(adj); j++ {
+					if adj[j] != 0 {
+						adj[j] = adj[j] - amount
+					}
+				}
+				ndiff -= amount
+				continue
 				//				adj[i] = 0
 			}
 		}
@@ -277,7 +280,6 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells *[]stackCell, ver
 			if sc.MaxSize.W != 0 {
 				zfloat.Minimize(&newWidth, sc.MaxSize.W)
 			}
-			// zlog.Info(vertical, biggiesTotalWidth, diff, "addLeftoverSpaceToWidths biggies:", sc.Name, w, newWidth, sc.MaxSize)
 			(*scells)[i].size.W = newWidth
 		}
 	}
@@ -350,18 +352,19 @@ func layoutRectsInBoxes(debugName string, r Rect, scells []stackCell, vertical b
 		if a&VertExpand == 0 {
 			a |= VertShrink
 		}
-		vr := box.AlignPro(sc.OriginalSize, a, sc.Margin, sc.MaxSize, sc.MinSize)
-		// if debugName == "bar" {
-		// 	zlog.Info(spacing, sc.size.W, sc.Margin.Size.W, "layoutRectsInBoxes1:", r, sc.Name, box, sc.OriginalSize, a, sc.Margin, sc.MaxSize, sc.MinSize, "vr:", vr)
+		// max := sc.MaxSize
+		// if !a.Has(HorExpand) {
+		// 	zfloat.Maximize(&max.W, sc.size.W)
 		// }
-		// // if sc.Name == "Profiles" {
-		// 	zlog.Info(sc.size.W, sc.Margin, "layoutRectsInBoxes1:", r, sc.Name, box, sc.OriginalSize, sc.MaxSize, sc.MinSize, "vr:", vr)
+		vr := box.AlignPro(sc.size, a, sc.Margin, sc.MaxSize, sc.MinSize)
+		// if debugName == "57178178" {
+		// 	zlog.Info("layout:", debugName, "rect:", r, sc.Name, "sc.size:", sc.size, sc.MinSize, "  align:", sc.Alignment, "box:", box, "orig:", sc.OriginalSize, "=", vr)
 		// }
-		// zlog.Info("layout:", debugName, "rect:", r, sc.Name, "sc.size:", sc.size, sc.MinSize, "  align:", sc.Alignment, "box:", box, sc.OriginalSize, "=", vr)
 		x = box.Max().X + spacing // was vr.Max!!!
 		if vertical {
 			vr = vr.Swapped()
 		}
+
 		outRects[sc.inputIndex] = vr
 	}
 }
