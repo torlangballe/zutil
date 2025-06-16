@@ -13,6 +13,13 @@ import (
 	"golang.org/x/text/transform"
 )
 
+const (
+	KiloByte  = 1024
+	MegaByte  = 1024 * KiloByte
+	GigaByte  = 1024 * MegaByte
+	TerraByte = 1024 * GigaByte
+)
+
 func CompressObject(o interface{}) (out []byte, err error) {
 	var buf bytes.Buffer
 

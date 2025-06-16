@@ -9,13 +9,6 @@ import (
 	"github.com/torlangballe/zutil/zstr"
 )
 
-const (
-	KiloByte  = 1024
-	MegaByte  = 1024 * 1024
-	GigaByte  = 1024 * 1024 * 1024
-	TerraByte = 1024 * 1024 * 1024 * 1024
-)
-
 // DefaultLanguage can be set with language gotten os/browser, if you use functions with langCode == "", this is used
 var DefaultLanguage = "en"
 
