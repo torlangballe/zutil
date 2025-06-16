@@ -159,11 +159,14 @@ func calcMaxWidth(debugName string, scells []stackCell, spacing float64) float64
 
 // getPossibleAdjustments returns how much each cell can shrink/expand, based on diff being + or -.
 // MinSize, MaxSize and HorExpand alignment are used.
-func getPossibleAdjustments(diff float64, scells []stackCell) []float64 {
+func getPossibleAdjustments(debugName string, diff float64, scells []stackCell) []float64 {
 	adj := make([]float64, len(scells), len(scells))
 	for i, sc := range scells {
 		w := sc.size.W
 		// zlog.Info(i, "getPossibleAdjustments:", diff, sc.Name, sc.Alignment, w, sc.MaxSize.W)
+		// if debugName == "streams-TableRow" {
+		// 	zlog.Info(i, "getPossibleAdjustments:", diff, sc.Name, sc.Alignment, w, sc.MinSize.W)
+		// }
 		if diff < 0 {
 			if sc.MinSize.W != 0 {
 				adj[i] = math.Min(0, sc.MinSize.W-w)
@@ -215,9 +218,9 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells *[]stackCell, ver
 		diff = r.Size.W - width
 	}
 
-	adj := getPossibleAdjustments(diff, *scells) // this gives us how much each cell might be able to be added to. Note this is more than diff, so after adjusting one, ALL adj must be subtracted by amount added.
-	// if debugName == "57178178" {
-	// 	zlog.Info("addLeftoverSpaceToWidths:", r.Size.W, width, diff, adj)
+	adj := getPossibleAdjustments(debugName, diff, *scells) // this gives us how much each cell might be able to be added to. Note this is more than diff, so after adjusting one, ALL adj must be subtracted by amount added.
+	// if debugName == "streams-TableRow" {
+	// 	zlog.Info("addLeftoverSpaceToWidths:", len(*scells), debugName, r.Size.W, width, diff, adj)
 	// }
 	ndiff := diff
 	for {
