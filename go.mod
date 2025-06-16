@@ -38,7 +38,7 @@ require (
 	github.com/torlangballe/blackfridayV2 v0.0.0-20230907135525-adceae2f31a8
 	github.com/torlangballe/term v0.0.0-20230912115721-cc6377881b6d
 	github.com/torlangballe/vnc2video v0.0.0-20220210123339-8aba5a28f286
-	github.com/torlangballe/zui v0.0.0-20250205141754-b43080eb7172
+	github.com/torlangballe/zui v0.0.0-20250616085705-50e2c848cf30
 	golang.org/x/crypto v0.39.0
 	golang.org/x/exp v0.0.0-20250207012021-f9890c6ad9f3
 	golang.org/x/net v0.41.0
