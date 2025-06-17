@@ -64,6 +64,8 @@ void imageOfWindow(NSString *winTitle, NSString *appBundleID, CGRect insetRect, 
             }
             got(cgImage, nil);
         }];
+        [ filter release];
+        [ configuration release];
     }];
 }
 
