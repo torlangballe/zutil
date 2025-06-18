@@ -18,9 +18,6 @@ package zscreen
 // int isGUISessionActive();
 import "C"
 
-#include <assert.h>
-#include <SystemConfiguration/SystemConfiguration.h>
-
 import (
 	"strconv"
 	"unsafe"

@@ -1,6 +1,7 @@
 //go:build !js
 
 #import <AppKit/AppKit.h>
+#include <SystemConfiguration/SystemConfiguration.h>
 
 // https://github.com/jakehilborn/displayplacer/blob/master/displayplacer.c
 
@@ -81,7 +82,6 @@ void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh) {
 int isGUISessionActive() {
     uid_t uid;
     SCDynamicStoreRef store = SCDynamicStoreCreate(NULL, CFSTR("GetConsoleUser"), NULL, NULL);
-    assert(store != NULL);
     CFStringRef name = SCDynamicStoreCopyConsoleUser(store, &uid, NULL);
     CFRelease(store);
     int is = (int)(name != NULL);
