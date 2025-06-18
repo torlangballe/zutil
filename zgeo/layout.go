@@ -17,7 +17,7 @@ type LayoutCell struct {
 	Collapsed        bool      // Collapsed is a cell that currently is not shown or takes up space.
 	Free             bool      // Free Cells are placed using simple aligning to parent rect, not stacked etc
 	OriginalSize     Size      // Original size of object before layout
-	Divider          float64   // This cell is a divider, wants its value subtracted from item before it, added to item after
+	DividerRatio     float64   // This cell is a divider, between two other cells, where value is redio of top cell to whole
 	RelativeToName   string    // If Free, and set, it is aligned to other cell with name
 	ShowIfExtraSpace float64   // If set, show only if enough extra space left over
 	Name             string    // A name for debugging/aligning
@@ -287,16 +287,13 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells *[]stackCell, ver
 		}
 	}
 	for i, sc := range *scells {
-		if sc.Divider != 0 {
-			div := sc.Divider
-			div2 := div
-			nsize := (*scells)[i-1].size.W + div
-			if nsize < 20 {
-				div -= (nsize - 20)
-				div2 = 0
-			}
-			(*scells)[i-1].size.W += div
-			(*scells)[i+1].size.W -= div2
+		if sc.DividerRatio != 0 {
+			div := sc.DividerRatio
+			div2 := sc.size.W / 2
+			div = zmath.MakeRange(0.1, 0.9).Clamped(div)
+			(*scells)[i-1].size.W = r.Size.W*div - div2
+			(*scells)[i+1].size.W = r.Size.W*(1-div) - div2
+			// zlog.Info("DIV:", div, (*scells)[i-1].size.W, (*scells)[i+1].size.W, r.Size.W)
 			break
 		}
 	}
