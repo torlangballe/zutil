@@ -367,3 +367,25 @@ func OnLinux() bool {
 func OnDarwin() bool {
 	return runtime.GOOS == "darwin"
 }
+
+func GetNeededSoftwareUpdates() ([]zstr.KeyValue, error) {
+	str, err := RunCommand("softwareupdate", 10, " -l")
+	if err != nil {
+		return nil, err
+	}
+	var kv zstr.KeyValue
+	var updates []zstr.KeyValue
+	zstr.RangeStringLines(str, true, func(s string) bool {
+		var rest string
+		str = strings.TrimSpace(str)
+		if zstr.HasPrefix(str, "* Label: ", &rest) {
+			kv.Key = rest
+		} else if zstr.HasPrefix(str, "Title: ", &rest) {
+			kv.Value = rest
+			updates = append(updates, kv)
+		}
+		return true
+	})
+	return []zstr.KeyValue{zstr.KeyValue{"macOS Tiger 1.02", "macOS Tiger 1.02"}}, nil
+	return updates, nil
+}
