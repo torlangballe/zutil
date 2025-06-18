@@ -456,6 +456,19 @@ func (r *Range[N]) ContractExcludingInt(n int64) {
 	*r = r.ContractedExcludingInt(n)
 }
 
+func (r Range[N]) Clamped(n N) N {
+	if !r.Valid {
+		return n
+	}
+	if n < r.Min {
+		return r.Min
+	}
+	if n > r.Max {
+		return r.Max
+	}
+	return n
+}
+
 func GetRangeMins[N int | int64 | float64](rs []Range[N]) []N {
 	var all []N
 	for _, r := range rs {
