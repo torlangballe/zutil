@@ -5,6 +5,7 @@ package zscreen
 // #cgo LDFLAGS: -framework CoreVideo
 // #cgo LDFLAGS: -framework Foundation
 // #cgo LDFLAGS: -framework AppKit
+// #cgo LDFLAGS: -framework SystemConfiguration
 // #include <CoreGraphics/CoreGraphics.h>
 // typedef struct Info {
 //     CGRect frame, visibleFrame;
@@ -14,7 +15,11 @@ package zscreen
 // } ScreenInfo;
 // int GetAll(struct Info *sis, int max);
 // void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh);
+// int isGUISessionActive();
 import "C"
+
+#include <assert.h>
+#include <SystemConfiguration/SystemConfiguration.h>
 
 import (
 	"strconv"
@@ -67,3 +72,7 @@ func SetMainResolutionWithinWidths(min, max zgeo.Size) {
 	C.SetMainResolutionWithinWidths(C.long(min.W), C.long(min.H), C.long(max.W), C.long(max.H))
 }
 
+func IsGUISessionActive() bool {
+	n := C.isGUISessionActive()
+	return n == 1
+}

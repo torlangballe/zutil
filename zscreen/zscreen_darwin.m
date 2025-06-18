@@ -11,11 +11,11 @@ struct Info {
     long sid;
 };
 
-int GetAll(struct Info *sis, int max) {    
+int GetAll(struct Info *sis, int max) {
     NSArray *screens = [NSScreen screens];
     int i = 0;
     for (NSScreen *s in screens) {
-        sis[i].sid = [[ s.deviceDescription objectForKey: @"NSScreenNumber"] longValue]; 
+        sis[i].sid = [[ s.deviceDescription objectForKey: @"NSScreenNumber"] longValue];
         // NSLog(@"screen id: %ld %f %f", sis[i].sid, s.frame.origin.x, s.frame.origin.y);
 		sis[i].frame = s.frame;
 		sis[i].visibleFrame = s.visibleFrame;
@@ -36,8 +36,8 @@ void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh) {
     const int MAX = 100;
     CGDirectDisplayID displays[MAX];
     uint32_t numDisplays;
- 
-    CGGetOnlineDisplayList(MAX, displays, &numDisplays); 
+
+    CGGetOnlineDisplayList(MAX, displays, &numDisplays);
     CGDirectDisplayID mainID = CGMainDisplayID();
 
     for (int i = 0; i < numDisplays; i++) // 2
@@ -51,15 +51,15 @@ void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh) {
         CFIndex          count;
         CFArrayRef       modeList;
 
-        modeList = CGDisplayCopyAllDisplayModes (displays[i], NULL); 
+        modeList = CGDisplayCopyAllDisplayModes (displays[i], NULL);
         count = CFArrayGetCount (modeList);
-    
-        for (int mi = 0; mi < count; mi++) 
+
+        for (int mi = 0; mi < count; mi++)
         {
             CGDisplayModeRef mode = (CGDisplayModeRef)CFArrayGetValueAtIndex(modeList, mi);
             long width = CGDisplayModeGetWidth(mode);
             long height = CGDisplayModeGetHeight(mode);
- 
+
             if (width >= minw && width <= maxw && height >= minh && height <= maxh && (bestWidth == 0.0 || bestWidth > width)) {
                 bestWidth = width;
                 bestHeight = height;
@@ -71,9 +71,21 @@ void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh) {
             CGError err = CGBeginDisplayConfiguration(&config);
             CGConfigureDisplayWithDisplayMode(config, mainID, bestMode, NULL);
             err = CGCompleteDisplayConfiguration(config, kCGConfigurePermanently);
-            // CGDisplaySetDisplayMode(mainID, bestMode, NULL); 
+            // CGDisplaySetDisplayMode(mainID, bestMode, NULL);
         }
         CFRelease(modeList);
         break;
     }
+}
+
+int isGUISessionActive() {
+    uid_t uid;
+    SCDynamicStoreRef store = SCDynamicStoreCreate(NULL, CFSTR("GetConsoleUser"), NULL, NULL);
+    assert(store != NULL);
+    CFStringRef name = SCDynamicStoreCopyConsoleUser(store, &uid, NULL);
+    CFRelease(store);
+    int is = (int)(name != NULL);
+    CFRelease(name);
+    return 0;
+    return is;
 }
