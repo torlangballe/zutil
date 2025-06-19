@@ -86,6 +86,5 @@ int isGUISessionActive() {
     CFRelease(store);
     int is = (int)(name != NULL);
     CFRelease(name);
-    return 0;
     return is;
 }
