@@ -386,6 +386,6 @@ func GetNeededSoftwareUpdates() ([]zstr.KeyValue, error) {
 		}
 		return true
 	})
-	return []zstr.KeyValue{zstr.KeyValue{"macOS Tiger 1.02", "macOS Tiger 1.02"}}, nil
+	// return []zstr.KeyValue{zstr.KeyValue{"macOS Tiger 1.02", "macOS Tiger 1.02"}}, nil
 	return updates, nil
 }
