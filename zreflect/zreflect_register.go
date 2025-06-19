@@ -11,9 +11,9 @@ import (
 	"github.com/torlangballe/zutil/zmap"
 )
 
-var DefaultStructRegistrar StructRegistrar[*struct{}]
+var DefaultTypeRegistrar TypeRegistrar[*struct{}]
 
-func MakeTypeNameWithStruct(s any) string {
+func MakeTypeNameWithType(s any) string {
 	rtype := reflect.TypeOf(s)
 	return MakeTypeNameWithPackage(rtype)
 }
@@ -27,11 +27,11 @@ type regRow[S any] struct {
 	rtype reflect.Type
 	info  S
 }
-type StructRegistrar[I any] struct {
+type TypeRegistrar[I any] struct {
 	m zmap.LockMap[string, regRow[I]]
 }
 
-func (r *StructRegistrar[I]) Register(structure any, info I) string {
+func (r *TypeRegistrar[I]) Register(structure any, info I) string {
 	rtype := reflect.TypeOf(structure)
 	typeName := MakeTypeNameWithPackage(rtype)
 	// fmt.Println("RegisterCreatorForType:", typeName, rtype)
@@ -40,7 +40,7 @@ func (r *StructRegistrar[I]) Register(structure any, info I) string {
 	return typeName
 }
 
-func (r *StructRegistrar[I]) Lookup(typeName string) (rtype reflect.Type, info I, got bool) {
+func (r *TypeRegistrar[I]) Lookup(typeName string) (rtype reflect.Type, info I, got bool) {
 	row, got := r.m.Get(typeName)
 	if !got {
 		return rtype, info, false
@@ -48,7 +48,7 @@ func (r *StructRegistrar[I]) Lookup(typeName string) (rtype reflect.Type, info I
 	return row.rtype, row.info, true
 }
 
-func (r *StructRegistrar[I]) NewForType(typeName string) (aPtr any, info I, got bool) {
+func (r *TypeRegistrar[I]) NewForType(typeName string) (aPtr any, info I, got bool) {
 	rtype, info, got := r.Lookup(typeName)
 	if !got {
 		return nil, info, false
@@ -68,9 +68,9 @@ func splitN(str, sep string, a, b *string) bool { // we can't use zstr.SplitN as
 	return true
 }
 
-func NewStructFromRegisteredTypeName(typeName string, initWithVal any) (a any, tag string, err error) {
+func NewTypeFromRegisteredTypeName(typeName string, initWithVal any) (a any, tag string, err error) {
 	splitN(typeName, "|", &typeName, &tag)
-	n, _, got := DefaultStructRegistrar.NewForType(typeName)
+	n, _, got := DefaultTypeRegistrar.NewForType(typeName)
 	if got {
 		if initWithVal != nil {
 			data, err := json.Marshal(initWithVal)
