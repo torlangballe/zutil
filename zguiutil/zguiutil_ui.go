@@ -31,10 +31,11 @@ const FrameHeaderName = "header"
 func NewBar(title string) (*zcontainer.StackView, *zlabel.Label) {
 	var label *zlabel.Label
 	bar := zcontainer.StackViewHor("bar")
-	bar.SetMargin(zgeo.RectFromXY2(6, 0, -6, -3))
+	bar.SetMargin(zgeo.RectFromXY2(6, 0, -6, 0))
 
 	if title != "" {
 		label = zlabel.New(title)
+		label.SetTextAlignment(zgeo.Center)
 		label.SetObjectName("title")
 		label.SetFont(zgeo.FontNew("Arial", 18, zgeo.FontStyleNormal))
 		label.SetColor(zstyle.DefaultFGColor())
@@ -44,7 +45,7 @@ func NewBar(title string) (*zcontainer.StackView, *zlabel.Label) {
 			zdebug.PrintAllGoroutines()
 			ztimer.DumpRepeaters()
 		})
-		bar.Add(label, zgeo.Left|zgeo.VertCenter|zgeo.HorExpand)
+		bar.Add(label, zgeo.Center|zgeo.HorExpand)
 	}
 	bar.SetDrawHandler(func(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View) {
 		colors := []zgeo.Color{
