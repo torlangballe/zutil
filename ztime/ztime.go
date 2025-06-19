@@ -611,6 +611,17 @@ func ChangedPartsOfTime(t time.Time, h, m, s, ns int) time.Time {
 	return time.Date(y, month, d, ch, cm, cs, cns, t.Location())
 }
 
+func IncreasePartsOfTime(t time.Time, h, m, s, ns int) time.Time {
+	ch, cm, cs := t.Clock()
+	y, month, d := t.Date()
+	ch += h
+	cm += m
+	cs += s
+	cns := t.Nanosecond()
+	cns += ns
+	return time.Date(y, month, d, ch, cm, cs, cns, t.Location())
+}
+
 // IncreasePartsOfDate in
 func IncreasePartsOfDate(t time.Time, y, m, d int) time.Time {
 	cy, cm, cd := t.Date()
@@ -653,7 +664,7 @@ func OnThisHour(t time.Time, incHour int) time.Time {
 	if incHour == 0 {
 		return on
 	}
-	return ChangedPartsOfTime(on, incHour, 0, 0, 0)
+	return IncreasePartsOfTime(on, incHour, 0, 0, 0)
 }
 
 func OnThisDay(t time.Time, incDay int) time.Time {
