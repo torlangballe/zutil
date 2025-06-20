@@ -158,7 +158,6 @@ func (v *GraphView) requestParts() {
 		return
 	}
 	v.forEachPart(func(name string, r zgeo.Rect, first bool) {
-		// zlog.Info("requestParts:", name, first, v.drawn[name] != nil)
 		if !first && v.drawn[name] != nil {
 			return
 		}
