@@ -42,12 +42,13 @@ func init() {
 func PoolWorkOnItems[T any](all []T, poolSize int, do func(t *T)) {
 	length := len(all)
 	jobs := make(chan *T, length)
-	results := make(chan struct{}, length)
+	var wg sync.WaitGroup
+	wg.Add(len(all))
 	for i := 0; i < poolSize; i++ {
 		go func() {
 			for j := range jobs {
 				do(j)
-				results <- struct{}{}
+				wg.Done()
 			}
 		}()
 	}
@@ -55,9 +56,7 @@ func PoolWorkOnItems[T any](all []T, poolSize int, do func(t *T)) {
 		jobs <- &all[i]
 	}
 	close(jobs)
-	for range all {
-		<-results
-	}
+	wg.Wait()
 }
 
 // RunFuncUntilTimeoutSecs uses RunFuncUntilContextDone to wait secs for a function to finish,
