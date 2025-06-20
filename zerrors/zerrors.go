@@ -20,11 +20,14 @@ type ContextError struct {
 }
 
 func (e ContextError) Error() string {
-	var add string
+	var add, sub string
 	if e.WrappedError != nil {
 		add = e.WrappedError.Error()
 	}
-	return zstr.Concat(": ", e.Title, add)
+	if e.SubContextError != nil {
+		sub = e.SubContextError.Error()
+	}
+	return zstr.Concat(": ", e.Title, add, sub)
 }
 
 func (e ContextError) GetTitle() string {
