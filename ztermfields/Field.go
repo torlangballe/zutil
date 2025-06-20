@@ -40,7 +40,7 @@ func getValueString(val reflect.Value, f *zfields.Field, sf reflect.StructField,
 	zuis, _ := val.Interface().(zfields.UIStringer)
 	// zlog.Info("getValueString", f.Name, zuis != nil)
 	if zuis != nil {
-		return zuis.ZUIString(), false
+		return zuis.ZUIString(f.HasFlag(zfields.FlagAllowEmptyAsZero)), false
 	}
 	var sss struct{}
 	if kind == zreflect.KindStruct {

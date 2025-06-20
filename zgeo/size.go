@@ -284,7 +284,10 @@ func SizeFromString(str string) (Size, error) {
 	return SizeD(w, h), nil
 }
 
-func (s Size) ZUIString() string {
+func (s Size) ZUIString(allowEmpty bool) string {
+	if allowEmpty && s.IsNull() {
+		return ""
+	}
 	return s.String()
 }
 

@@ -50,7 +50,7 @@ func SetFromLine(line, sep, eq string) {
 	}
 }
 
-func (info Info) ZUIString() string {
+func (info Info) ZUIString(allowEmpty bool) string {
 	str := zstr.Concat(" • ", info.Version, info.At.Format("15:04 02-Jan-07"), info.CommitHash, info.Branch, info.User, info.Host)
 	return str
 }

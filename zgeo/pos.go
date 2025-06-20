@@ -56,7 +56,10 @@ func PosFromString(str string) (Pos, error) {
 	return PosD(w, h), nil
 }
 
-func (p Pos) ZUIString() string {
+func (p Pos) ZUIString(allowEmpty bool) string {
+	if allowEmpty && p.IsNull() {
+		return ""
+	}
 	return p.String()
 }
 
