@@ -55,6 +55,7 @@ type Parameters struct {
 	Body                  []byte
 	Reader                io.Reader
 	GetErrorFromBody      bool
+	NoClientCache         bool
 	Context               context.Context
 }
 
@@ -234,11 +235,15 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 	if params.Args != nil {
 		surl, _ = MakeURLWithArgs(surl, params.Args)
 	}
-	ci := clientInfo{timeoutSecs: params.TimeoutSecs, skipVerifyCert: params.SkipVerifyCertificate}
-	client, _ = clientCache.Get(ci)
-	if client == nil {
+	if params.NoClientCache {
 		client = makeClient(params)
-		clientCache.Set(ci, client)
+	} else {
+		ci := clientInfo{timeoutSecs: params.TimeoutSecs, skipVerifyCert: params.SkipVerifyCertificate}
+		client, _ = clientCache.Get(ci)
+		if client == nil {
+			client = makeClient(params)
+			clientCache.Set(ci, client)
+		}
 	}
 	// zlog.Info("MakeRequest:", client.Timeout, surl)
 	reader := params.Reader
@@ -452,6 +457,7 @@ func GetRedirectedURL(surl string, skipVerifyCertificate bool) (string, error) {
 	params := MakeParameters()
 	params.TimeoutSecs = 5
 	params.SkipVerifyCertificate = skipVerifyCertificate
+	params.NoClientCache = true
 	// params.Method = http.MethodHead
 	req, client, err := MakeRequest(surl, params)
 	if err != nil {
