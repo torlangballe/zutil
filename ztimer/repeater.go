@@ -130,7 +130,7 @@ func DumpRepeaters() {
 	repeatersMutex.Lock()
 	zlog.Info("Repeaters:", "going:", GoingCount, "stopped:", stopped, "unique:", len(repeaters))
 	for s, n := range repeaters {
-		if n > 5 {
+		if n > 15 {
 			fmt.Println("RepeaterCount (>5):", n, ":", s)
 		}
 	}
