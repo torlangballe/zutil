@@ -229,3 +229,8 @@ func OSVersionNumber() float64 {
 	zlog.OnError(err, str, snum)
 	return n
 }
+
+func IsRunningOnDebugMachine() bool {
+	htype, _ := HardwareTypeAndVersion()
+	return (htype == "MacBookPro")
+}
