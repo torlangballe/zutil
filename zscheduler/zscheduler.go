@@ -440,7 +440,7 @@ func (s *Scheduler[I]) hasUnrunJobs() bool {
 }
 
 func jobMatchesExecutorAttributes(jobA, exeA []string) bool {
-	if len(exeA) == 0 {
+	if len(jobA) == 0 {
 		return true
 	}
 	for _, ja := range jobA {
@@ -453,7 +453,7 @@ func jobMatchesExecutorAttributes(jobA, exeA []string) bool {
 		for _, ea := range exeA {
 			var epre, eval string
 			if !zstr.SplitN(ea, ".", &epre, &eval) {
-				zlog.Error("Executor attribute not it two parts:", ea)
+				zlog.Error("Executor attribute not in two parts:", ea)
 				return false
 			}
 			if epre == jpre {
