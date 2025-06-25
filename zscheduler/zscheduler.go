@@ -152,7 +152,7 @@ func NewScheduler[I comparable]() *Scheduler[I] {
 	s.AddExecutorCh = make(chan Executor[I])
 	s.RemoveExecutorCh = make(chan I)
 	s.AddExecutorCh = make(chan Executor[I])
-	s.refreshCh = make(chan struct{}) // 10
+	s.refreshCh = make(chan struct{}, 100)
 	s.endRunCh = make(chan I)
 	return s
 }
@@ -439,7 +439,7 @@ func (s *Scheduler[I]) hasUnrunJobs() bool {
 	return false
 }
 
-func jobMatchesExecutorAttributes(jobA, exeA []string) bool {
+func jobMatchesExecutorAttributes(debugName string, jobA, exeA []string) bool {
 	if len(jobA) == 0 {
 		return true
 	}
@@ -456,8 +456,9 @@ func jobMatchesExecutorAttributes(jobA, exeA []string) bool {
 				zlog.Error("Executor attribute not in two parts:", ea)
 				return false
 			}
+			// zlog.Info("jobMatchesExecutorAttributes:", debugName, ":", epre, jpre, "->", jval, eval)
 			if epre == jpre {
-				if eval == jval {
+				if jval == "" || eval == jval {
 					found = true
 					break
 				}
@@ -497,7 +498,7 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 	if !alive {
 		return true, "Not alive"
 	}
-	if !jobMatchesExecutorAttributes(run.Job.Attributes, e.AcceptAttributes) {
+	if !jobMatchesExecutorAttributes(run.Job.DebugName, run.Job.Attributes, e.AcceptAttributes) {
 		return true, zstr.Spaced("No attribute:", e.AcceptAttributes, run.Job.Attributes)
 	}
 
@@ -593,7 +594,7 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 
 // isBetterRunCandidate prioritizes being run longest ago, if not having an error and other does, or having error longer ago.
 func isBetterRunCandidate[I comparable](is, other *Run[I]) bool {
-	// zlog.Warn("isBetterRunCandidate:", is.Job.ID, is.ErrorAt, other.Job.ID, other.ErrorAt)
+	// zlog.Warn("isBetterRunCandidate:", is.Job.DebugName, other.Job.DebugName, is.Job.ID, is.ErrorAt, other.Job.ID, other.ErrorAt, "stopped:", is.StoppedAt, other.StoppedAt, "i:", is.triedToRunIndex, other.triedToRunIndex)
 	if !is.ErrorAt.IsZero() && other.ErrorAt.IsZero() {
 		return false
 	}
@@ -606,7 +607,7 @@ func isBetterRunCandidate[I comparable](is, other *Run[I]) bool {
 	if is.StoppedAt.Before(other.StoppedAt) {
 		return true
 	}
-	return other.triedToRunIndex == 0 || is.triedToRunIndex < other.triedToRunIndex
+	return is.triedToRunIndex == 0 || is.triedToRunIndex < other.triedToRunIndex
 }
 
 var ssLock sync.Mutex
@@ -661,7 +662,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			// zlog.Warn(i, "loop:", r.Job.ID, r.ErrorAt, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
 			if r.ExecutorID == s.zeroID && !r.Stopping && r.StartedAt.IsZero() {
 				if oldestRun == nil || isBetterRunCandidate[I](&r, oldestRun) {
-					// zlog.Warn(i, "set oldestRun:", len(s.runs), oldestRun != nil, s.runs[i].Job.DebugName, s.runs[i].Job.ID, ssCount, r.ErrorAt)
+					// zlog.Warn(i, "set oldestRun:", oldestRun != nil, len(s.runs), oldestRun != nil, s.runs[i].Job.DebugName, s.runs[i].Job.ID, ssCount, r.ErrorAt, s.runs[i].triedToRunIndex)
 					oldestRun = &s.runs[i]
 				}
 			}
@@ -672,7 +673,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			runLeft += r.Job.Cost / capacities[r.ExecutorID].capacity
 			rDiff := s.setup.LoadBalanceIfCostDifference / capacities[r.ExecutorID].capacity
 			for exID, cap := range capacities {
-				if !jobMatchesExecutorAttributes(r.Job.Attributes, cap.attributes) {
+				if !jobMatchesExecutorAttributes(r.Job.DebugName, r.Job.Attributes, cap.attributes) {
 					continue
 				}
 				if exID == r.ExecutorID {
@@ -712,7 +713,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 				if s.setup.TotalMaxJobCount != -1 && active >= s.setup.TotalMaxJobCount {
 					s.setup.HandleSituationFastFunc(*oldestRun, MaximumJobsReached, zstr.Spaced(active, ">", s.setup.TotalMaxJobCount))
 				} else {
-					// zlog.Warn("StartJob!")
+					// zlog.Warn("StartJob!", oldestRun.Job.DebugName)
 					if !s.startJob(oldestRun, capacities) {
 						// zlog.Warn("StartJob didn't start, refresh")
 						s.startStopViaChannelNonBlocking() //						pushNonBlockingToChannel(s.refreshCh, struct{}{})
@@ -880,7 +881,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 	now := time.Now()
 	s.triedToRunIndex++
 	run.triedToRunIndex = s.triedToRunIndex
-	// zlog.Warn("startJob1:", run.Job.ID, "att:", run.Job.Attributes, run.ExecutorID, "exes:", len(s.executors), "load:", load, run.Job.Duration, run.Stopping, run.StoppedAt)
+	// zlog.Warn("startJob1:", run.Job.DebugName, run.Job.ID, "att:", run.Job.Attributes, run.ExecutorID, "exes:", len(s.executors), "load:", load, run.Job.Duration, run.Stopping, run.StoppedAt)
 	var str string
 	for exID, cap := range load {
 		// zlog.Warn("startJob On exe?", exID, cap.load)
@@ -889,7 +890,8 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 			str += " NoExecutor "
 			continue
 		}
-		if !jobMatchesExecutorAttributes(run.Job.Attributes, e.AcceptAttributes) {
+		if !jobMatchesExecutorAttributes(run.Job.DebugName, run.Job.Attributes, e.AcceptAttributes) {
+			//!!! run.ErrorAt = time.Now()
 			continue
 		}
 		exCap := e.CostCapacity - cap.load
