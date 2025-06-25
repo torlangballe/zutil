@@ -122,17 +122,22 @@ func (v *GraphView) CalculatedSize(total zgeo.Size) (s, max zgeo.Size) {
 	return s, zgeo.Size{}
 }
 
+func localNow() time.Time {
+	return ztime.GetTimeWithServerLocation(time.Now())
+}
+
 func (v *GraphView) forEachPart(got func(name string, r zgeo.Rect, first bool)) float64 {
 	size := v.Job.PixelSize(&v.GrapherBase)
 	rsize := v.LocalRect().Size
 	r := zgeo.Rect{Size: size}
 	r.Pos.X = v.LocalRect().Max().X - size.W
-	sMax := calculateWindowStart(time.Now(), v.Job.WindowMinutes)
+	now := localNow()
+	sMax := calculateWindowStart(now, v.Job.WindowMinutes)
 	v.Job.CanvasStartTime = sMax
 	first := true
 	count := 0
 	// var diff float64
-	x := float64(v.Job.XForTime(&v.GrapherBase, time.Now()))
+	x := float64(v.Job.XForTime(&v.GrapherBase, now))
 	offset := x
 	r.Pos.X = rsize.W - size.W + (size.W - x)
 	// zlog.Info("Offset:", x)
@@ -247,7 +252,7 @@ func (v *GraphView) xForTime(t time.Time) float64 {
 func (v *GraphView) TimeForX(x int) time.Time {
 	w := int(v.LocalRect().Size.W)
 	d := time.Duration((w-x)*v.SecondsPerPixel) * time.Second
-	return time.Now().Add(-d).UTC()
+	return localNow().Add(-d).UTC() // why utc???
 }
 
 func getTimeInt(t time.Time, span time.Duration) (n, n2 int, important bool) {
@@ -269,7 +274,7 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 		return
 	}
 	canvas.SetColor(v.TickColor)
-	end := time.Now().Local()
+	end := localNow()
 	w := int(v.LocalRect().Size.W)
 	pixWidth := v.Job.PixelWidth(&v.GrapherBase)
 	span := time.Duration(w*v.SecondsPerPixel) * time.Second
