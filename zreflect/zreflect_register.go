@@ -20,7 +20,10 @@ func MakeTypeNameWithType(s any) string {
 
 func MakeTypeNameWithPackage(rtype reflect.Type) string {
 	_, pkg := path.Split(rtype.PkgPath())
-	return pkg + "." + rtype.Name()
+	if pkg != "" {
+		return pkg + "." + rtype.Name()
+	}
+	return strings.TrimLeft(rtype.String(), "[]*")
 }
 
 type regRow[S any] struct {
