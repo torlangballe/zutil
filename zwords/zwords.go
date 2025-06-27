@@ -468,3 +468,39 @@ func IsNonTitleableWord(word, langCode string) bool {
 	}
 	return false
 }
+
+func OrdinalNumber(n int) string {
+	switch n {
+	case 0:
+		return "zeroth"
+	case 1:
+		return "first"
+	case 2:
+		return "second"
+	case 3:
+		return "third"
+	case 4:
+		return "fourth"
+	case 5:
+		return "fifth"
+	case 6:
+		return "sixth"
+	case 7:
+		return "seventh"
+	case 8:
+		return "eightth"
+	case 9:
+		return "ninth"
+	}
+	str := strconv.Itoa(n)
+	switch n % 10 {
+	case 1:
+		return str + "st"
+	case 2:
+		return str + "nd"
+	case 3:
+		return str + "rd"
+	default:
+		return str + "th"
+	}
+}
