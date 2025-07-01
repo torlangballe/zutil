@@ -293,6 +293,14 @@ func TruncatedFromStart(str string, length int, endString string) string {
 	return endString + str[slen-length:]
 }
 
+func AddNonEmpty(strs *[]string, add ...string) {
+	for _, a := range add {
+		if a != "" {
+			*strs = append(*strs, a)
+		}
+	}
+}
+
 // Concatinates parts, adding divider if prev or current added is not empty
 // Doesn't add divider if prev ends in divider og next part begins with it
 func Concat(divider string, parts ...any) string {
@@ -730,6 +738,7 @@ func SplitN(str, sep string, partsPtr ...any) bool {
 		if partsPtr[i] != nil {
 			err := SetStringToAny(partsPtr[i], s)
 			if err != nil {
+				fmt.Println(err, s, reflect.TypeOf(partsPtr[i]))
 				return false
 			}
 		}
