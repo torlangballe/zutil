@@ -102,7 +102,7 @@ NSScreen *getBestScreenForBounds(CGRect bounds) {
 void CloseWindowForWindowRef(AXUIElementRef winRef) {
     AXUIElementRef buttonRef = nil;
     AXError err = AXUIElementCopyAttributeValue(winRef, kAXCloseButtonAttribute, (CFTypeRef*)&buttonRef);
-    if (buttonRef == nil) { // it might be sheet in chrome window 
+    if (buttonRef == nil) { // it might be sheet in chrome window
         return;
     }
     AXError err2 = AXUIElementPerformAction(buttonRef, kAXPressAction);
@@ -253,12 +253,12 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
     if (winCount > 20) {
         NSLog(@"getWindowIDs: %ld\n", winCount);
     }
-    if (gotWin != NULL)  {
+    if (gotWin != NULL || debug)  {
         for (NSDictionary* entry in (__bridge NSArray*)windowList) {
             struct WinInfo w;
             w.title = [entry objectForKey:(id)kCGWindowName];
-            if (w.title == nil) { 
-                NSLog(@"getWindowID loop: title is nil. This can happen if you exposé the windows away.\n"); 
+            if (w.title == nil) {
+                NSLog(@"getWindowID loop: title is nil. This can happen if you exposé the windows away.\n");
                 continue;
             }
             CFRetain(w.title);
@@ -274,7 +274,7 @@ const char *getWindowIDs(struct WinInfo *find, BOOL debug, BOOL(*gotWin)(struct 
             w.rect.size.width = (CGFloat)[(NSNumber *)dict[@"Width"] floatValue];
             w.rect.size.height = (CGFloat)[(NSNumber *)dict[@"Height"] floatValue];
             // NSLog(@"Size: %@ %g %g %g %g", w.title, (float)w.rect.origin.x, (float)w.rect.origin.y, (float)w.rect.size.width, (float)w.rect.size.height);
-            if (gotWin(find, w)) {
+            if (gotWin != NULL && gotWin(find, w)) {
                 CFRelease(w.title);
                 CFRelease(windowList);
                 return "";
