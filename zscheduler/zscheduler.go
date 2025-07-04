@@ -894,6 +894,9 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 			//!!! run.ErrorAt = time.Now()
 			continue
 		}
+		if e.Paused {
+			continue
+		}
 		exCap := e.CostCapacity - cap.load
 		exFull := cap.load / e.CostCapacity
 		if exCap < run.Job.Cost {
