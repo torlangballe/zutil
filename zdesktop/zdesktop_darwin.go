@@ -329,7 +329,7 @@ func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect) (img image.
 	var cgImage C.CGImageRef = C.CGImageRef(C.NULL)
 	captureLock.Lock()
 	// zlog.Warn("GetImageForWindowTitle:", title)
-	// start := time.Now()
+	// start := time.Now()//
 	cerr := C.ImageOfWindow(ctitle, cappid, cgrect, &cgImage)
 	serr := C.GoString(cerr)
 	// zlog.Warn("GetImageForWindowTitle Done:", title, time.Since(start), serr)
@@ -338,6 +338,9 @@ func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect) (img image.
 	if serr != "" || cgImage == C.CGImageRef(C.NULL) {
 		if serr == "timed out" {
 			zlog.Info("GetImageForWindowTitle timed out:", title)
+		}
+		if serr == "" {
+			return nil, nil
 		}
 		return nil, zlog.Error(serr, title, appID)
 	}

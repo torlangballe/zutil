@@ -62,6 +62,9 @@ void imageOfWindow(NSString *winTitle, NSString *appBundleID, CGRect insetRect, 
                 got(nil, [error localizedDescription]);
                 return;
             }
+            if (cgImage == NULL) {
+                NSLog(@"Image capture failed");
+            }
             got(cgImage, nil);
         }];
         [ filter release];
@@ -87,9 +90,11 @@ const char *ImageOfWindow(char *winTitle, char *appBundleID, CGRect insetRect, C
         if (err != nil) {
             snapErr = err;
         } else {
-            CFRetain(image);
+            if (image != nil) {
+                CFRetain(image);
+                *cgImagePtr = image;
+            }
         }
-        *cgImagePtr = image;
         dispatch_semaphore_signal(sem);
     });
    int64_t timeoutAt = dispatch_time(DISPATCH_TIME_NOW, (int64_t)timeoutSecs * NSEC_PER_SEC);
