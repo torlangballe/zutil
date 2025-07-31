@@ -2,6 +2,7 @@ package zslice
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"slices"
@@ -241,6 +242,18 @@ func RandomIndex[S any](slice []S) int {
 	zlog.Assert(len(slice) != 0)
 	i := rand.Int31n(int32(len(slice)))
 	return int(i)
+}
+
+func JoinToString[S any](slice []S, sep string) string {
+	var out string
+	for i, s := range slice {
+		str := fmt.Sprint(s)
+		if i != 0 {
+			out += sep
+		}
+		out += str
+	}
+	return out
 }
 
 func SplitWithFunc[S any](slice []S, match func(s S) bool) (is []S, not []S) {
