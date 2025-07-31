@@ -2,7 +2,7 @@ package zreflect
 
 import (
 	"bytes"
-	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -257,11 +257,11 @@ func DeepCopy(destPtr, source any) error {
 		}
 	}
 	buf := bytes.Buffer{}
-	err := gob.NewEncoder(&buf).Encode(source)
+	err := json.NewEncoder(&buf).Encode(source)
 	if err != nil {
 		return err
 	}
-	err = gob.NewDecoder(&buf).Decode(destPtr)
+	err = json.NewDecoder(&buf).Decode(destPtr)
 	return err
 }
 
@@ -339,10 +339,13 @@ func MapToStruct(m map[string]any, structPtr any) error {
 		if val == nil {
 			return true
 		}
-		// fmt.Println("MapToStruct", each.ReflectValue.Kind(), name, each.ReflectValue.Kind(), val)
-		switch each.ReflectValue.Kind() {
-		case reflect.Map:
-			dest := each.ReflectValue.Addr().Interface()
+		rVal := each.ReflectValue
+		if rVal.Kind() == reflect.Pointer {
+			rVal = rVal.Elem()
+		}
+		switch rVal.Kind() {
+		case reflect.Struct, reflect.Map:
+			dest := rVal.Addr().Interface()
 			err := DeepCopy(dest, val)
 			// fmt.Println("MapToStruct Map:", each.StructField.Name, err, reflect.TypeOf(dest))
 			if err != nil {
@@ -355,21 +358,21 @@ func MapToStruct(m map[string]any, structPtr any) error {
 				outErr = fmt.Errorf("Not string convertable %s %s", each.StructField.Name, name)
 				return false
 			}
-			each.ReflectValue.Addr().Elem().SetString(str)
+			rVal.Addr().Elem().SetString(str)
 		case reflect.Float32, reflect.Float64:
 			f, err := zfloat.GetAny(val)
 			if err != nil {
 				outErr = fmt.Errorf("%w %s %s", err, each.StructField.Name, name)
 				return false
 			}
-			each.ReflectValue.Addr().Elem().SetFloat(f)
+			rVal.Addr().Elem().SetFloat(f)
 		case reflect.Int:
 			n, err := zint.GetAny(val)
 			if err != nil {
 				outErr = fmt.Errorf("%w %s %s", err, each.StructField.Name, name)
 				return false
 			}
-			each.ReflectValue.Addr().Elem().SetInt(n)
+			rVal.Addr().Elem().SetInt(n)
 		case reflect.Bool:
 			b, isBool := val.(bool)
 			if !isBool {
@@ -378,7 +381,7 @@ func MapToStruct(m map[string]any, structPtr any) error {
 					b = zbool.FromString(str, false)
 				}
 			}
-			each.ReflectValue.Addr().Elem().SetBool(b)
+			rVal.Addr().Elem().SetBool(b)
 		}
 		return true
 	})
