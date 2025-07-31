@@ -194,8 +194,15 @@ func FromString(str, assigner, separator string) Dict {
 	return d
 }
 
+// ToStruct: Use zreflect.MapToStruct
+
 func FromStruct(structure any, lowerFirst bool) Dict {
 	d := Dict{}
+	d.FillFromStruct(structure, lowerFirst)
+	return d
+}
+
+func (d *Dict) FillFromStruct(structure any, lowerFirst bool) {
 	zreflect.ForEachField(structure, zreflect.FlattenIfAnonymous, func(each zreflect.FieldInfo) bool {
 		dtags := zreflect.GetTagAsMap(string(each.StructField.Tag))["zdict"]
 		name := each.StructField.Name
@@ -207,10 +214,9 @@ func FromStruct(structure any, lowerFirst bool) Dict {
 				name = dtags[0]
 			}
 		}
-		d[name] = each.ReflectValue.Interface()
+		(*d)[name] = each.ReflectValue.Interface()
 		return true
 	})
-	return d
 }
 
 func FromURLValues(values url.Values) Dict {
