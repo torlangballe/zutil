@@ -21,7 +21,6 @@ import (
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zslice"
 	"github.com/torlangballe/zutil/zstr"
-	"github.com/torlangballe/zutil/ztimer"
 )
 
 type Setup[I comparable] struct {
@@ -159,7 +158,7 @@ func NewScheduler[I comparable]() *Scheduler[I] {
 
 func (s *Scheduler[I]) Init(setup Setup[I]) {
 	s.setup = setup
-	s.timer = time.NewTimer(0)
+	s.timer = time.NewTimer(time.Second)
 	go s.selectLoop()
 }
 
@@ -167,13 +166,7 @@ var reason string
 
 func (s *Scheduler[I]) selectLoop() {
 	for {
-		var timer *ztimer.Timer
 		reason = ""
-		timer = ztimer.StartIn(2, func() {
-			if reason != "" {
-				zlog.Info("************** loop hung!!!", reason)
-			}
-		})
 		select {
 		case j := <-s.AddJobCh:
 			reason = "AddJobCh"
@@ -265,11 +258,10 @@ func (s *Scheduler[I]) selectLoop() {
 			s.startAndStopRuns()
 
 		case <-s.timer.C:
-			// zlog.Warn("zscheduler: tick")
+			zlog.Warn("zscheduler: tick")
 			s.timerOn = false
 			s.startAndStopRuns()
 		}
-		timer.Stop()
 	}
 }
 
@@ -792,7 +784,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 		limit := zlog.Limit("zscheduler.NextTime.", timerJob)
 		zlog.Warn(limit, "NextTime set to past:", d, "for:", timerJob, nextReason)
 	}
-	// zlog.Warn("SetTimer:", time.Now().Add(d))
+	// zlog.Warn("SetTimer:", d)
 	s.timerOn = true
 	s.timer.Reset(d)
 }
