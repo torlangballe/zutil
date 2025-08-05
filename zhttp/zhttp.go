@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -55,7 +54,7 @@ type Parameters struct {
 	Body                  []byte
 	Reader                io.Reader
 	GetErrorFromBody      bool
-	NoClientCache         bool
+	NoClientCache         bool // this creates a new client in MakeRequest(). You might need to call client.CloseIdleConnections() to avoid Keep-Alive requests qccumulating
 	Context               context.Context
 }
 
@@ -296,6 +295,7 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 	// zlog.Info("GetResponseFromReqClient:", err)
 	if err != nil {
 		if resp != nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
 		}
 		return
@@ -332,15 +332,15 @@ func processResponse(surl string, resp *http.Response, params Parameters, receiv
 	if resp == nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}()
 	if params.PrintBody {
 		fmt.Println("dump:", resp.StatusCode, surl, ":\n"+GetCopyOfResponseBodyAsString(resp)+"\n")
 	}
 	if receive != nil && reflect.ValueOf(receive).Kind() != reflect.Ptr {
 		zlog.Fatal("not pointer", surl)
-	}
-	if resp.Body != nil {
-		defer resp.Body.Close()
 	}
 	if err != nil {
 		var m zdict.Dict
@@ -457,7 +457,7 @@ func GetRedirectedURL(surl string, skipVerifyCertificate bool) (string, error) {
 	params := MakeParameters()
 	params.TimeoutSecs = 5
 	params.SkipVerifyCertificate = skipVerifyCertificate
-	params.NoClientCache = true
+	params.NoClientCache = true // this was maybe needed since multiuple same clients got messed up doing GetRedirectedURL cuoncurrenly? Note needed client.CloseIdleConnections below
 	// params.Method = http.MethodHead
 	req, client, err := MakeRequest(surl, params)
 	if err != nil {
@@ -479,8 +479,10 @@ func GetRedirectedURL(surl string, skipVerifyCertificate bool) (string, error) {
 	}
 	resp, err := client.Do(req)
 	if resp != nil && resp.Body != nil {
+		_, _ = io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 	}
+	client.CloseIdleConnections()
 	if err != nil {
 		text := err.Error()
 		if zstr.HasPrefix(text, `Head "`+surl+`": `, &text) {
@@ -525,21 +527,6 @@ func GetIPAddressAndPortFromRequest(req *http.Request) (ip, port string, err err
 	return
 }
 
-func GetAndReturnUrlEncodedBodyValues(surl string) (values url.Values, err error) {
-	resp, err := http.Get(surl)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-	defer io.Copy(ioutil.Discard, resp.Body)
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
-	return url.ParseQuery(string(body))
-}
-
 type myReader struct {
 	*bytes.Buffer
 }
@@ -560,10 +547,11 @@ func GetCopyOfRequestBodyAsString(req *http.Request) string {
 
 func GetCopyOfResponseBodyAsString(resp *http.Response) string {
 	buf, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
 	reader1 := myReader{bytes.NewBuffer(buf)}
 	reader2 := myReader{bytes.NewBuffer(buf)}
 	resp.Body = reader2
-	body, _ := io.ReadAll(reader1)
+	body, _ := io.ReadAll(reader1) // could this be buf.Bytes()?
 
 	return string(body)
 }
@@ -705,7 +693,10 @@ func TimedGet(surl string, downloadBytes int64) (info GetInfo, err error) {
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}()
 	err = CheckErrorFromBody(resp)
 	if err != nil {
 		return
