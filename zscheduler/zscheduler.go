@@ -716,8 +716,8 @@ func (s *Scheduler[I]) startAndStopRuns() {
 					// zlog.Warn("StartJob!", oldestRun.Job.DebugName)
 					if !s.startJob(oldestRun, capacities) {
 						// zlog.Warn("StartJob didn't start, refresh")
-						s.startStopViaChannelNonBlocking() //						pushNonBlockingToChannel(s.refreshCh, struct{}{})
 					}
+					// s.timer.Reset(time.Millisecond * 10)
 					return // we don't need to set a timer if we call startJob
 				}
 			}
