@@ -101,6 +101,14 @@ func (p Pos) Swapped() Pos {
 	return Pos{p.Y, p.X}
 }
 
+func (p Pos) MaxVert() float64 {
+	return max(p.X, p.Y)
+}
+
+func (p Pos) MinVert() float64 {
+	return min(p.X, p.Y)
+}
+
 func (p Pos) Max(a Pos) Pos {
 	return Pos{math.Max(p.X, a.X), math.Max(p.Y, a.Y)}
 }
