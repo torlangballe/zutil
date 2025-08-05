@@ -334,7 +334,9 @@ func MemoryBytesUsedByProcess(processID int64) int64 {
 		return -1
 	}
 	info, err := proc.MemoryInfo()
-	// zlog.Info("MemoryBytesUsedBySelf:", zlog.Full(info), err)
+	if zlog.OnError(err, processID) {
+		return -1
+	}
 	return int64(info.RSS)
 }
 
