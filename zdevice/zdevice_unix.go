@@ -5,14 +5,11 @@ package zdevice
 import (
 	"errors"
 	"runtime"
-	"strconv"
-	"strings"
 
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/net"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zprocess"
-	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztimer"
 )
 
@@ -116,19 +113,13 @@ func statToNetIO(info net.IOCountersStat) NetIO {
 }
 
 func HardwareTypeAndVersion() (string, float32) {
-	str, err := zprocess.RunCommand("sysctl", 0, "-n", "hw.model")
-	if err != nil {
-		zlog.Error("run", err)
-		return "", 0
+	switch runtime.GOOS {
+	case "linux":
+		return "Linux Server", 1
+	case "darwin":
+		return "Apple Computer", 1
 	}
-	i := strings.IndexAny(str, zstr.Digits)
-	if i == -1 {
-		return str, 1
-	}
-	name := zstr.Head(str, i)
-	num, _ := strconv.ParseFloat(zstr.Body(str, i, -1), 32)
-
-	return name, float32(num)
+	return "<unknown>", -1
 }
 
 func Model() string {

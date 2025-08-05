@@ -126,6 +126,9 @@ func CPUUsage(maxCores int) (out []float64) {
 	coresVirtual, _ := cpu.Counts(true)
 	coresPhysical, _ := cpu.Counts(false)
 
+	if coresPhysical == 0 {
+		return []float64{0}
+	}
 	threads := coresVirtual / coresPhysical
 	percpu := true
 	var vals []float64
