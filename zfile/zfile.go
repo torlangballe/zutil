@@ -263,12 +263,12 @@ func ReadFromURLToFilepath(surl, filepath string, maxBytes int64) (path string, 
 		}
 		filepath = CreateTempFilePath(name)
 	}
-	response, err := http.Get(surl)
+	resp, err := http.Get(surl)
 	if err != nil {
 		fmt.Println("ReadFromUrlToFilepath error getting:", err, surl)
 		return
 	}
-	defer response.Body.Close()
+	defer resp.Body.Close()
 
 	//open a file for writing
 	file, err := os.Create(filepath)
@@ -281,7 +281,7 @@ func ReadFromURLToFilepath(surl, filepath string, maxBytes int64) (path string, 
 		buf := make([]byte, maxBytes)
 		for size < maxBytes {
 			var n int
-			n, err = response.Body.Read(buf)
+			n, err = resp.Body.Read(buf)
 			if err != nil && err != io.EOF {
 				fmt.Println("Error reading from body:", err)
 				return
@@ -298,7 +298,7 @@ func ReadFromURLToFilepath(surl, filepath string, maxBytes int64) (path string, 
 		}
 	} else {
 		// Use io.Copy to just dump the response body to the file. This supports huge files
-		_, err = io.Copy(file, response.Body)
+		_, err = io.Copy(file, resp.Body)
 		if err != nil {
 			fmt.Println("ReadFromUrlToFilepath error copying to file:", err, filepath)
 			return
