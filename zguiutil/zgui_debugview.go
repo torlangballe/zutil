@@ -34,7 +34,8 @@ type DebugView struct {
 
 func doProfiling(ptype string) []byte {
 	out := bytes.NewBuffer([]byte{})
-	pprof.Lookup(ptype).WriteTo(out, 0)
+	prof := pprof.Lookup(ptype)
+	prof.WriteTo(out, 0)
 	o := out.Bytes()
 	if ptype == "profile" {
 		pprof.StopCPUProfile()
