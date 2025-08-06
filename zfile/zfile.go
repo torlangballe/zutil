@@ -415,7 +415,7 @@ func RemoveAllQuicklyWithRename(dir string) error {
 	return nil
 }
 
-func RemoveFolderWithContents(dir string) error {
+func RemoveFolderWithContents(dir string) error { // isn't this the same as os.RemoveAll() ?
 	err := RemoveContents(dir)
 	if err != nil {
 		return err
