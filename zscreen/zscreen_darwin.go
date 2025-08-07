@@ -12,6 +12,7 @@ package zscreen
 //     int scale;
 //     int ismain;
 //     long sid;
+//     const char *name;
 // } ScreenInfo;
 // int GetAll(struct Info *sis, int max);
 // void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh);
@@ -23,6 +24,7 @@ import (
 	"unsafe"
 
 	"github.com/torlangballe/zutil/zgeo"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 func GetAll() (screens []Screen) {
@@ -44,7 +46,9 @@ func GetAll() (screens []Screen) {
 		s.Scale = float64(si.scale)
 		s.IsMain = (si.ismain == 1)
 		s.SoftScale = 1
+		s.Name = C.GoString(si.name)
 		screens = append(screens, s)
+		zlog.Info("SCREEN:", s.ID, s.Name, s.IsMain, s.Rect, s.Scale)
 		if s.IsMain {
 			adjust = s.Rect.Pos.Negative()
 		}

@@ -28,6 +28,7 @@ type Screen struct {
 	UsableRect zgeo.Rect
 	Scale      float64 //= float64(UIScreen.main.scale)
 	SoftScale  float64 // = 1.0
+	Name       string
 	//	KeyboardRect *zgeo.Rect
 }
 

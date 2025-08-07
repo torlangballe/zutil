@@ -10,6 +10,7 @@ struct Info {
     int scale;
     int ismain;
     long sid;
+    const char *name;
 };
 
 int GetAll(struct Info *sis, int max) {
@@ -22,6 +23,7 @@ int GetAll(struct Info *sis, int max) {
 		sis[i].visibleFrame = s.visibleFrame;
 		sis[i].scale = (int)s.backingScaleFactor;
         sis[i].ismain = (i == 0) ? 1 : 0;
+        sis[i].name = [s localizedName].UTF8String;
         i++;
         if (i >= max) {
             break;
