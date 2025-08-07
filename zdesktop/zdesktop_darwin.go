@@ -32,11 +32,10 @@ package zdesktop
 //   int height;
 //   char *data;
 // } Image;
-// CGImageRef GetWindowImage(long winID);
 // void ShowAlert(char *str);
 // int CloseOldWindowWithSamePIDAndRectOnceNew(long pid, int x, int y, int w, int h);
 // void CloseOldWindowWithSamePIDAndRect(long pid, int x, int y, int w, int h);
-// const char *ImageOfWindow(const char *winTitle, const char *appBundleID, CGRect cropRect, CGImageRef *cgImage);
+// const char *ImageOfWindow(const char *winTitle, const char *appBundleID, int displayID, CGRect cropRect, CGImageRef *cgImage);
 import "C"
 
 import (
@@ -246,30 +245,6 @@ func AddExecutableToLoginItems(exePath, name string, hidden bool) error {
 	return nil
 }
 
-/*
-func GetWindowImage(winID string, insetRect zgeo.Rect) (image.Image, error) {
-	wid, _ := strconv.ParseInt(winID, 10, 64)
-	if wid == 0 {
-		return nil, zlog.Error("no valid image id")
-	}
-	zlog.Assert(wid != 0)
-	start := time.Now()
-	cgimage := C.GetWindowImage(C.long(wid))
-	if cgimage == C.CGImageRef(0) {
-		err := zlog.Error("get window image returned nil", time.Since(start), "wid:", wid)
-		PrintWindowTitles()
-		return nil, err
-
-	}
-	// iw := int(C.CGImageGetWidth(cgimage))
-	// ih := int(C.CGImageGetHeight(cgimage))
-	img, err := zimage.CGImageToGoImage(unsafe.Pointer(cgimage), insetRect, 1)
-	// zlog.Info("GetWindowImage Make Go Image:", time.Since(start))
-	C.CGImageRelease(cgimage)
-	return img, err
-}
-*/
-
 func CanControlComputer(prompt bool) bool {
 	p := 0
 	if prompt {
@@ -319,6 +294,14 @@ func ShowAlert(str string) {
 var captureLock sync.Mutex
 
 func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect) (img image.Image, err error) {
+	return getImageForWindowOrDisplay(title, appID, 0, cropRect)
+}
+
+func GetImageForDisplay(displayID int, cropRect zgeo.Rect) (img image.Image, err error) {
+	return getImageForWindowOrDisplay("", "", displayID, cropRect)
+}
+
+func getImageForWindowOrDisplay(title, appID string, displayID int, cropRect zgeo.Rect) (img image.Image, err error) {
 	var cgrect C.CGRect
 	ctitle := C.CString(title)
 	cappid := C.CString(appID)
@@ -330,7 +313,7 @@ func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect) (img image.
 	captureLock.Lock()
 	// zlog.Warn("GetImageForWindowTitle:", title)
 	// start := time.Now()//
-	cerr := C.ImageOfWindow(ctitle, cappid, cgrect, &cgImage)
+	cerr := C.ImageOfWindow(ctitle, cappid, C.int(displayID), cgrect, &cgImage)
 	serr := C.GoString(cerr)
 	// zlog.Warn("GetImageForWindowTitle Done:", title, time.Since(start), serr)
 	captureLock.Unlock()

@@ -11,7 +11,7 @@ CGRect croppedRect(CGRect rect, CGRect with)  {
     return out;
 }
 
-void imageOfWindow(NSString *winTitle, NSString *appBundleID, CGRect insetRect, void(^got)(CGImageRef image, NSString *err)) {
+void imageOfWindow(NSString *winTitle, NSString *appBundleID, int displayID, CGRect insetRect, void(^got)(CGImageRef image, NSString *err)) {
     [SCShareableContent getShareableContentExcludingDesktopWindows: true
                                                onScreenWindowsOnly: true
                                                  completionHandler: ^(SCShareableContent * _Nullable shareableContent, NSError * _Nullable error) {
@@ -30,17 +30,28 @@ void imageOfWindow(NSString *winTitle, NSString *appBundleID, CGRect insetRect, 
             got(nil, @"App not Found");
             return;
         }
-        for (SCWindow *win in shareableContent.windows) {
-            if ([ win.title isEqualToString: winTitle]) {
-                foundWin = win;
-                break;
+        bool forWindow = ([winTitle length] != 0);
+        SCContentFilter *filter;
+        if (forWindow) {
+            for (SCWindow *win in shareableContent.windows) {
+                if ([ win.title isEqualToString: winTitle]) {
+                    foundWin = win;
+                    break;
+                }
             }
+            if (foundWin == nil) {
+                got(nil, @"Window not Found for Capture");
+                return;
+            }
+            filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:foundWin];
+        } else {
+            SCDisplay *display;
+            for (SCDisplay *d in shareableContent.displays) {
+            NSLog(@"Display: %d\n", d.displayID);
+                display = d;
+            }
+            filter = [[SCContentFilter alloc] initWithDisplay:display excludingWindows: @[]];
         }
-        if (foundWin == nil) {
-            got(nil, @"Window not Found for Capture");
-            return;
-        }
-        SCContentFilter *filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:foundWin];
         SCStreamConfiguration *configuration = [[SCStreamConfiguration alloc] init];
         configuration.capturesAudio = NO;
         configuration.excludesCurrentProcessAudio = YES;
@@ -74,14 +85,14 @@ void imageOfWindow(NSString *winTitle, NSString *appBundleID, CGRect insetRect, 
 
 
 char cerr[1024];
-const char *ImageOfWindow(char *winTitle, char *appBundleID, CGRect insetRect, CGImageRef *cgImagePtr) {
+const char *ImageOfWindow(char *winTitle, char *appBundleID, int displayID, CGRect insetRect, CGImageRef *cgImagePtr) {
     const int timeoutSecs = 2; // it should only take 10ms ish for smaller sizes, so lets keep it small to avoid congestion
     NSString *nstitle = [NSString stringWithUTF8String:winTitle];
     NSString *nsapp = [NSString stringWithUTF8String:appBundleID];
     __block NSString *snapErr = nil;
     __block dispatch_semaphore_t sem = dispatch_semaphore_create(0);
     __block bool timedOut = false;
-    imageOfWindow(nstitle, nsapp, insetRect, ^(CGImageRef image, NSString *err) {
+    imageOfWindow(nstitle, nsapp, displayID, insetRect, ^(CGImageRef image, NSString *err) {
         if (timedOut) {
             NSLog(@"ImageOfWindow That Timed out finally finished: %s\n", winTitle);
         }
