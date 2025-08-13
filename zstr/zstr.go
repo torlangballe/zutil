@@ -1343,7 +1343,7 @@ func GetIDFromAnySliceItemWithIndex(a any, index int) string {
 
 var count int
 
-func SplitStringWithDoubleAsEscape(str, split string) []string {
+func SplitStringWithDoubleAsEscape(str, split string, n int) []string {
 	count++
 	const unlikely = "•°©°•"
 	replacer := strings.NewReplacer(split+split, unlikely)
@@ -1352,7 +1352,7 @@ func SplitStringWithDoubleAsEscape(str, split string) []string {
 		fmt.Println("SplitStringWithDoubleAsEscape:", str, split)
 	}
 	str = replacer.Replace(str)
-	parts := strings.Split(str, split)
+	parts := strings.SplitN(str, split, n)
 	for i, part := range parts {
 		parts[i] = deplacer.Replace(part)
 	}
