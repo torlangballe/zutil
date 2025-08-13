@@ -181,7 +181,7 @@ func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFra
 	s := DefaultFrameStyling.MergeWith(styling)
 	fs := s
 	fs.Font = zgeo.Font{}
-	stack.SetStyling(fs)
+	zstyle.SetStyling(stack, fs)
 	if title != "" {
 		header = zcontainer.StackViewHor(FrameHeaderName)
 		header.SetSpacing(2)
@@ -199,7 +199,7 @@ func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFra
 		label.SetWrap(ztextinfo.WrapTailTruncate)
 		label.SetPressWithModifierToClipboard(zkeyboard.ModifierAlt)
 		ts := DefaultFrameTitleStyling.MergeWith(titleStyling)
-		label.SetStyling(ts)
+		zstyle.SetStyling(label, ts)
 		header.Add(label, zgeo.CenterLeft|zgeo.HorExpand, zgeo.SizeNull)
 	}
 	return header
