@@ -189,7 +189,7 @@ func GetTagAsMap(stag string) map[string][]string {
 				label := groups[1]
 				g := groups[2]
 				g = strings.Replace(g, "\\n", "\n", -1)
-				vars := zstr.SplitStringWithDoubleAsEscape(g, ",")
+				vars := zstr.SplitStringWithDoubleAsEscape(g, ",", -1)
 				m[label] = vars
 			}
 			return m
@@ -208,7 +208,7 @@ func TagValuesForKey(stag reflect.StructTag, key string) (vals []string, ignore 
 }
 
 func TagPartAsCommaValues(stag string) (vals []string, ignore bool) {
-	vals = zstr.SplitStringWithDoubleAsEscape(stag, ",")
+	vals = zstr.SplitStringWithDoubleAsEscape(stag, ",", -1)
 	if len(vals) == 1 && vals[0] == "-" {
 		return nil, true
 	}
@@ -219,7 +219,7 @@ func TagCommaValuesAsKeyValues(values []string) []zstr.KeyValue {
 	var keyVals []zstr.KeyValue
 	for _, value := range values {
 		var key, val string
-		parts := zstr.SplitStringWithDoubleAsEscape(value, ":")
+		parts := zstr.SplitStringWithDoubleAsEscape(value, ":", 2)
 		if len(parts) == 2 {
 			key = parts[0]
 			val = parts[1]
