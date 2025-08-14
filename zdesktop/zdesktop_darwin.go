@@ -20,7 +20,7 @@ package zdesktop
 // int TerminateAppForPID(long *pid);
 // int CloseWindowForTitle(const char *title, long pid);
 // int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h);
-// int ActivateWindowForTitle(const char *title, long pid);
+// int ActivateWindowForTitle(const char *title, const char *bundleID);
 // void ConvertARGBToRGBAOpaque(int w, int h, int stride, unsigned char *img);
 // int canControlComputer(int prompt);
 // int GetWindowCountForPID(long pid);
@@ -47,6 +47,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/torlangballe/zui/zimage"
@@ -225,14 +226,21 @@ func SendQuitCommandToApp(app string) error {
 	return err
 }
 
-func ActivateWindow(title, app string) {
+func ActivateWindow(title, appID string) error {
 	//	title = getTitleWithApp(title, app)
-	pid, _ := GetCachedPIDForAppName(app)
-	if pid != 0 {
-		ctitle := C.CString(title)
-		C.ActivateWindowForTitle(ctitle, C.long(pid))
-		C.free(unsafe.Pointer(ctitle))
+	// pid, _ := GetCachedPIDForAppName(app)
+	// if pid == 0 {
+	// 	return errors.New("No app found")
+	// }
+	ctitle := C.CString(title)
+	cappID := C.CString(appID)
+	r := C.ActivateWindowForTitle(ctitle, cappID)
+	if r == 0 {
+		return errors.New("Window not found")
 	}
+	C.free(unsafe.Pointer(ctitle))
+	C.free(unsafe.Pointer(cappID))
+	return nil
 }
 
 func AddExecutableToLoginItems(exePath, name string, hidden bool) error {
@@ -293,30 +301,46 @@ func ShowAlert(str string) {
 
 var captureLock sync.Mutex
 
-func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect) (img image.Image, err error) {
-	return getImageForWindowOrDisplay(title, appID, 0, cropRect)
+func activateWindowAndGetImageFromDisplay(title, appID string, contentCropRectInDisplay zgeo.Rect, croppingFromDisplayID string) (image.Image, error) {
+	err := ActivateWindow(title, appID)
+	zlog.Info("activateWindowAndGetImageFromDisplay:", title, appID, err)
+	time.Sleep(time.Millisecond * 100)
+	if err != nil {
+		return nil, err
+	}
+	return GetImageForDisplay(croppingFromDisplayID, contentCropRectInDisplay)
 }
 
-func GetImageForDisplay(displayID int, cropRect zgeo.Rect) (img image.Image, err error) {
-	return getImageForWindowOrDisplay("", "", displayID, cropRect)
+func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect, croppingFromDisplayID string) (image.Image, error) {
+	captureLock.Lock()
+	defer captureLock.Unlock()
+	if croppingFromDisplayID != "" {
+		return activateWindowAndGetImageFromDisplay(title, appID, cropRect, croppingFromDisplayID)
+	}
+	return getImageForWindowOrDisplay(title, appID, "", cropRect)
 }
 
-func getImageForWindowOrDisplay(title, appID string, displayID int, cropRect zgeo.Rect) (img image.Image, err error) {
+func GetImageForDisplay(displayID string, cropInsetRect zgeo.Rect) (image.Image, error) {
+	zlog.Info("GetImageForDisplay:", displayID, cropInsetRect)
+	return getImageForWindowOrDisplay("", "", displayID, cropInsetRect)
+}
+
+func getImageForWindowOrDisplay(title, appID, displayID string, cropInsetRect zgeo.Rect) (image.Image, error) {
 	var cgrect C.CGRect
 	ctitle := C.CString(title)
 	cappid := C.CString(appID)
-	cgrect.origin.x = C.CGFloat(cropRect.Pos.X)
-	cgrect.origin.y = C.CGFloat(cropRect.Pos.Y)
-	cgrect.size.width = C.CGFloat(cropRect.Size.W)
-	cgrect.size.height = C.CGFloat(cropRect.Size.H)
+	cgrect.origin.x = C.CGFloat(cropInsetRect.Pos.X)
+	cgrect.origin.y = C.CGFloat(cropInsetRect.Pos.Y)
+	cgrect.size.width = C.CGFloat(cropInsetRect.Size.W)
+	cgrect.size.height = C.CGFloat(cropInsetRect.Size.H)
 	var cgImage C.CGImageRef = C.CGImageRef(C.NULL)
-	captureLock.Lock()
+
+	displayInt, _ := strconv.Atoi(displayID)
 	// zlog.Warn("GetImageForWindowTitle:", title)
 	// start := time.Now()//
-	cerr := C.ImageOfWindow(ctitle, cappid, C.int(displayID), cgrect, &cgImage)
+	cerr := C.ImageOfWindow(ctitle, cappid, C.int(displayInt), cgrect, &cgImage)
 	serr := C.GoString(cerr)
 	// zlog.Warn("GetImageForWindowTitle Done:", title, time.Since(start), serr)
-	captureLock.Unlock()
 
 	if serr != "" || cgImage == C.CGImageRef(C.NULL) {
 		if serr == "timed out" {
