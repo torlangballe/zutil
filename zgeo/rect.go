@@ -468,6 +468,10 @@ func (r *Rect) UnionWithPos(pos Pos) {
 	}
 }
 
+func (r Rect) InsetOfRect(rect Rect) Rect {
+	return rect.Minus(r)
+}
+
 func (r Rect) Plus(a Rect) Rect     { return RectFromMinMax(r.Pos.Plus(a.Pos), r.Max().Plus(a.Max())) }
 func (r Rect) PlusPos(pos Pos) Rect { n := r; n.Pos.Add(pos); return n }
 func (r Rect) Minus(a Rect) Rect    { return RectFromMinMax(r.Pos.Minus(a.Pos), r.Max().Minus(a.Max())) }
