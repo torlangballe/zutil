@@ -340,7 +340,6 @@ func getImageForWindowOrDisplay(title, appID, displayID string, cropInsetRect zg
 	// start := time.Now()//
 	cerr := C.ImageOfWindow(ctitle, cappid, C.int(displayInt), cgrect, &cgImage)
 	serr := C.GoString(cerr)
-	// zlog.Warn("GetImageForWindowTitle Done:", title, time.Since(start), serr)
 
 	if serr != "" || cgImage == C.CGImageRef(C.NULL) {
 		if serr == "timed out" {
@@ -352,6 +351,7 @@ func getImageForWindowOrDisplay(title, appID, displayID string, cropInsetRect zg
 		return nil, zlog.Error(serr, title, appID)
 	}
 	image, err := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), zgeo.Rect{}, 1)
+	// zlog.Warn("GetImageForWindowTitle Done:", image != nil, err)
 	C.CGImageRelease(cgImage)
 	return image, err
 }
