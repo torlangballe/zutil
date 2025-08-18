@@ -358,7 +358,7 @@ func MapToStruct(m map[string]any, structPtr any) error {
 				outErr = fmt.Errorf("Not string convertable %s %s", each.StructField.Name, name)
 				return false
 			}
-			rVal.Addr().Elem().SetString(str)
+			rVal.SetString(str)
 		case reflect.Float32, reflect.Float64:
 			f, err := zfloat.GetAny(val)
 			if err != nil {
