@@ -114,8 +114,9 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 		_, cstack := zcheckbox.Labelize(checkBox, slabel)
 		view = cstack
 		alignment = alignment.FlippedHorizontal()
-		label.SetPressedDownHandler("for", 0, func() {
+		label.SetPressedDownHandler("for", 0, func() bool {
 			checkBox.Toggle()
+			return true
 		})
 	}
 	label = makeLabelizeLabel(title, slabel, zgeo.Right)
@@ -136,8 +137,9 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 	index := -1
 	radio, _ := view.(*zradio.RadioButton)
 	if radio != nil {
-		label.SetPressedDownHandler("for", 0, func() {
+		label.SetPressedDownHandler("for", 0, func() bool {
 			radio.Toggle()
+			return true
 		})
 		index = 0
 	}
