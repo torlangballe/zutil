@@ -3,6 +3,7 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import <CoreVideo/CoreVideo.h>
 #import <AppKit/AppKit.h>
+#import <AVFoundation/AVFoundation.h>
 
 #include <string.h>
 
@@ -41,6 +42,32 @@ int canControlComputer(int prompt) {
     }
     if (AXIsProcessTrustedWithOptions((CFDictionaryRef)options)) {
         return 1;
+    }
+    return 0;
+}
+
+int CanUseCamera() {
+    switch ([AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo]) {
+        case AVAuthorizationStatusAuthorized:
+            return 1;
+
+        case AVAuthorizationStatusNotDetermined:
+            NSLog(@"CameraIndet\n");
+            [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
+            NSLog(@"Camera Req: %d\n", granted);
+                if (granted) {
+                    NSLog(@"CameraGranted\n");
+                }
+            }];
+            return 0;
+
+        case AVAuthorizationStatusRestricted:
+            NSLog(@"CameraRestricted\n");
+            return 0;
+
+        case AVAuthorizationStatusDenied:
+            NSLog(@"CameraDenied\n");
+            return 0;
     }
     return 0;
 }

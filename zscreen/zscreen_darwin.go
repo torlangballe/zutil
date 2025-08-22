@@ -24,7 +24,6 @@ import (
 	"unsafe"
 
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zlog"
 )
 
 func GetAll() (screens []Screen) {
@@ -48,7 +47,7 @@ func GetAll() (screens []Screen) {
 		s.SoftScale = 1
 		s.Name = C.GoString(si.name)
 		screens = append(screens, s)
-		zlog.Info("SCREEN:", s.ID, s.Name, s.IsMain, s.Rect, s.Scale)
+		// zlog.Info("SCREEN:", s.ID, s.Name, s.IsMain, s.Rect, s.Scale)
 		if s.IsMain {
 			adjust = s.Rect.Pos.Negative()
 		}
