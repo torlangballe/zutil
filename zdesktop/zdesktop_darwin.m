@@ -453,14 +453,16 @@ int CloseWindowForTitle(const char *title, long pid) {
     return 1;
 }
 
-int ActivateWindowForTitle(const char *title, const char *bundleID) {
+int ActivateWindowForTitle(const char *title, const char *bundleID, int activateApp) {
     NSString *nsBundle = [NSString stringWithUTF8String: bundleID];
     NSArray<NSRunningApplication *>*apps = [NSRunningApplication runningApplicationsWithBundleIdentifier: nsBundle];
     if ([apps count] == 0){
         return 0;
     }
     NSRunningApplication *app = apps[0];
-    [app activateWithOptions: NSApplicationActivateAllWindows];
+    if (activateApp == 1) {
+        [app activateWithOptions: NSApplicationActivateAllWindows];
+    }
     int pid = app.processIdentifier;
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, false);
     if (winRef == nil) {

@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreServices/CoreServices.h>
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
+#import <Cocoa/Cocoa.h>
 
 CGRect croppedRect(CGRect rect, CGRect with)  {
     CGRect out;

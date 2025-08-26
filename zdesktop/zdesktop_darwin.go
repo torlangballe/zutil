@@ -4,6 +4,8 @@ package zdesktop
 // #cgo LDFLAGS: -framework Foundation
 // #cgo LDFLAGS: -framework AppKit
 // #cgo LDFLAGS: -framework CoreGraphics
+// #cgo LDFLAGS: -framework AVFoundation
+// #cgo LDFLAGS: -framework CoreMedia
 // #cgo LDFLAGS: -framework ScreenCaptureKit
 // #include <CoreFoundation/CoreFoundation.h>
 // #include <CoreGraphics/CoreGraphics.h>
@@ -20,7 +22,7 @@ package zdesktop
 // int TerminateAppForPID(long *pid);
 // int CloseWindowForTitle(const char *title, long pid);
 // int SetWindowRectForTitle(const char *title, long pid, int x, int y, int w, int h);
-// int ActivateWindowForTitle(const char *title, const char *bundleID);
+// int ActivateWindowForTitle(const char *title, const char *bundleID, int activateApp);
 // void ConvertARGBToRGBAOpaque(int w, int h, int stride, unsigned char *img);
 // int canControlComputer(int prompt);
 // int GetWindowCountForPID(long pid);
@@ -37,6 +39,11 @@ package zdesktop
 // int CloseOldWindowWithSamePIDAndRectOnceNew(long pid, int x, int y, int w, int h);
 // void CloseOldWindowWithSamePIDAndRect(long pid, int x, int y, int w, int h);
 // const char *ImageOfWindow(const char *winTitle, const char *appBundleID, int displayID, CGRect cropRect, CGImageRef *cgImage);
+// void *startCameraCaptureStream(void *stream);
+// void stopCameraCaptureStream(void *stream);
+// void stopCameraCaptureStream(void *stream);
+// int isCameraCaptureStreamRunning(void *stream);
+// int snapImageFromCaptureStream(void *stream, CGImageRef *image);
 import "C"
 
 import (
@@ -227,7 +234,7 @@ func SendQuitCommandToApp(app string) error {
 	return err
 }
 
-func ActivateWindow(title, appID string) error {
+func MakeWindowFrontmost(title, appID string, activateApp bool) error {
 	//	title = getTitleWithApp(title, app)
 	// pid, _ := GetCachedPIDForAppName(app)
 	// if pid == 0 {
@@ -235,7 +242,11 @@ func ActivateWindow(title, appID string) error {
 	// }
 	ctitle := C.CString(title)
 	cappID := C.CString(appID)
-	r := C.ActivateWindowForTitle(ctitle, cappID)
+	activate := C.int(0)
+	if activateApp {
+		activate = 1
+	}
+	r := C.ActivateWindowForTitle(ctitle, cappID, activate)
 	if r == 0 {
 		return errors.New("Window not found")
 	}
@@ -306,9 +317,8 @@ func ShowAlert(str string) {
 
 var captureLock sync.Mutex
 
-func activateWindowAndGetImageFromDisplay(title, appID string, contentCropRectInDisplay zgeo.Rect, croppingFromDisplayID string) (image.Image, error) {
-	err := ActivateWindow(title, appID)
-	zlog.Info("activateWindowAndGetImageFromDisplay:", title, appID, err)
+func frontWindowAndGetImageFromDisplay(title, appID string, contentCropRectInDisplay zgeo.Rect, croppingFromDisplayID string) (image.Image, error) {
+	err := MakeWindowFrontmost(title, appID, true)
 	time.Sleep(time.Millisecond * 100)
 	if err != nil {
 		return nil, err
@@ -320,7 +330,7 @@ func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect, croppingFro
 	captureLock.Lock()
 	defer captureLock.Unlock()
 	if croppingFromDisplayID != "" {
-		return activateWindowAndGetImageFromDisplay(title, appID, cropRect, croppingFromDisplayID)
+		return frontWindowAndGetImageFromDisplay(title, appID, cropRect, croppingFromDisplayID)
 	}
 	return getImageForWindowOrDisplay(title, appID, "", cropRect)
 }
@@ -359,4 +369,40 @@ func getImageForWindowOrDisplay(title, appID, displayID string, cropInsetRect zg
 	// zlog.Warn("GetImageForWindowTitle Done:", image != nil, err)
 	C.CGImageRelease(cgImage)
 	return image, err
+}
+
+type CameraStreamType unsafe.Pointer
+
+func StartCameraCaptureStream(cs CameraStreamType) CameraStreamType {
+	return CameraStreamType(C.startCameraCaptureStream(unsafe.Pointer(cs)))
+}
+
+func StopCameraCaptureStream(cs CameraStreamType) {
+	C.stopCameraCaptureStream(unsafe.Pointer(cs))
+}
+
+func IsCameraCaptureStreamRunning(cs CameraStreamType) bool {
+	return C.isCameraCaptureStreamRunning(unsafe.Pointer(cs)) == 1
+}
+
+func CaptureCameraStreamImage(cs CameraStreamType, cropRect zgeo.Rect) (image.Image, error) {
+	var cgImage C.CGImageRef
+	now := time.Now()
+	sleepMS := time.Duration(8)
+	for {
+		r := C.snapImageFromCaptureStream(unsafe.Pointer(cs), &cgImage)
+		if r != 0 {
+			img, err := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), cropRect, 1)
+			C.CGImageRelease(cgImage)
+			zlog.Info("CaptureCameraStreamImage:", time.Since(now), img.Bounds(), cropRect)
+			return img, err
+		}
+		if time.Since(now) > time.Second {
+			return nil, errors.New("No imaged captured in time interval")
+		}
+		time.Sleep(time.Millisecond * sleepMS)
+		if sleepMS > 1 {
+			sleepMS /= 2
+		}
+	}
 }
