@@ -43,7 +43,7 @@ package zdesktop
 // void stopCameraCaptureStream(void *stream);
 // void stopCameraCaptureStream(void *stream);
 // int isCameraCaptureStreamRunning(void *stream);
-// int snapImageFromCaptureStream(void *stream, CGImageRef *image, int clearWantIfFail);
+// int snapImageFromCaptureStream(void *stream, CGImageRef *image);
 import "C"
 
 import (
@@ -396,7 +396,7 @@ func CaptureCameraStreamImage(cs CameraStreamType, cropRect zgeo.Rect) (image.Im
 		// if timedOut {
 		// 	clearWantIfFail = 1
 		// }
-		r := C.snapImageFromCaptureStream(unsafe.Pointer(cs), &cgImage, C.int(count)) // clearWantIfFail
+		r := C.snapImageFromCaptureStream(unsafe.Pointer(cs), &cgImage) // clearWantIfFail
 		count++
 		if r != 0 {
 			img, err := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), cropRect, 1)

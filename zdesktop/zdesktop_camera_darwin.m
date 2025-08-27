@@ -127,17 +127,10 @@ void stopCameraCaptureStream(void *stream) {
     [ cc stop ];
 }
 
- int snapImageFromCaptureStream(void *stream, CGImageRef *image, int clearWantIfFail)  {
+ int snapImageFromCaptureStream(void *stream, CGImageRef *image)  {
     CameraCapture *cc = (CameraCapture *)stream;
-    if (clearWantIfFail == 0) {
-        NSLog(@"IfFail: %d %d count:%d", cc.wantImage, cc.gotImage != nil, count);
-    }
-    count = 0;
+    // NSLog(@"snapImageFromCaptureStream: %p %d %d", cc, cc.wantImage, cc.gotImage != nil);
     if (cc.gotImage == nil) {
-        // if (clearWantIfFail == 1) {
-        //     cc.wantImage = false;
-        //     NSLog(@"IfFail: %d", count);
-        // }
         cc.wantImage = true;
         return 0;
     }
