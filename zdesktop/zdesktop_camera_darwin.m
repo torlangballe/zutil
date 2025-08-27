@@ -1,10 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreServices/CoreServices.h>
-// #import <ScreenCaptureKit/ScreenCaptureKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <Cocoa/Cocoa.h>
-
-// extern void callbackWithCameraImage(CGImageRef *cgImage);
 
 @interface CameraCapture : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
 - (void)start;
@@ -13,8 +10,6 @@
 
 
 @interface CameraCapture ()
-// @property BOOL wantImage;
-// @property CGImageRef gotImage;
 @property BOOL wantImage;
 @property CGImageRef gotImage;
 @property (nonatomic, strong) AVCaptureSession *captureSession;
@@ -41,16 +36,6 @@
         NSLog(@"No video device found");
         return;
     }
-//
-    // AVCaptureDeviceDiscoverySession *captureDeviceDiscoverySession;
-    // captureDeviceDiscoverySession = [AVCaptureDeviceDiscoverySession
-    //                                 discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeExternal]
-    //                                 mediaType:AVMediaTypeVideo
-    //                                 position:AVCaptureDevicePositionUnspecified];
-    // NSArray *captureDevices = [captureDeviceDiscoverySession devices];
-    // for (AVCaptureDevice *dev in captureDevices) {
-    //     NSLog(@"Video device found:%@", dev);
-    // }
     NSError *error = nil;
     AVCaptureDeviceInput *videoInput = [AVCaptureDeviceInput deviceInputWithDevice:videoDevice error:&error];
     if (error) {
@@ -98,19 +83,19 @@
     });
 }
 
+int count = 0;
+
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
     if (!self.wantImage) {
         return;
     }
-    self.wantImage = false;
     CVImageBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:pixelBuffer];
     CIContext *context = [CIContext contextWithOptions:nil];
 
     self.gotImage = [context createCGImage:ciImage fromRect:[ciImage extent]];
-        // dispatch_async(dispatch_get_main_queue(), ^{
-            // callbackWithCameraImage(cgImage)
-        // });
+    count++;
+    self.wantImage = false;
 }
 @end
 
@@ -142,10 +127,18 @@ void stopCameraCaptureStream(void *stream) {
     [ cc stop ];
 }
 
- int snapImageFromCaptureStream(void *stream, CGImageRef *image)  {
+ int snapImageFromCaptureStream(void *stream, CGImageRef *image, int clearWantIfFail)  {
     CameraCapture *cc = (CameraCapture *)stream;
-    cc.wantImage = true;
+    if (clearWantIfFail == 0) {
+        NSLog(@"IfFail: %d %d count:%d", cc.wantImage, cc.gotImage != nil, count);
+    }
+    count = 0;
     if (cc.gotImage == nil) {
+        // if (clearWantIfFail == 1) {
+        //     cc.wantImage = false;
+        //     NSLog(@"IfFail: %d", count);
+        // }
+        cc.wantImage = true;
         return 0;
     }
     *image = cc.gotImage;

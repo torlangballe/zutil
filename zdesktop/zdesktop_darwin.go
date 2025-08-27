@@ -43,7 +43,7 @@ package zdesktop
 // void stopCameraCaptureStream(void *stream);
 // void stopCameraCaptureStream(void *stream);
 // int isCameraCaptureStreamRunning(void *stream);
-// int snapImageFromCaptureStream(void *stream, CGImageRef *image);
+// int snapImageFromCaptureStream(void *stream, CGImageRef *image, int clearWantIfFail);
 import "C"
 
 import (
@@ -389,16 +389,23 @@ func CaptureCameraStreamImage(cs CameraStreamType, cropRect zgeo.Rect) (image.Im
 	var cgImage C.CGImageRef
 	now := time.Now()
 	sleepMS := time.Duration(8)
+	count := 0
 	for {
-		r := C.snapImageFromCaptureStream(unsafe.Pointer(cs), &cgImage)
+		timedOut := (time.Since(now) > time.Second)
+		// clearWantIfFail := C.int(0)
+		// if timedOut {
+		// 	clearWantIfFail = 1
+		// }
+		r := C.snapImageFromCaptureStream(unsafe.Pointer(cs), &cgImage, C.int(count)) // clearWantIfFail
+		count++
 		if r != 0 {
 			img, err := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), cropRect, 1)
 			C.CGImageRelease(cgImage)
-			zlog.Info("CaptureCameraStreamImage:", time.Since(now), img.Bounds(), cropRect)
+			zlog.Info("CaptureCameraStreamImage:", time.Since(now), img.Bounds(), cropRect, count)
 			return img, err
 		}
-		if time.Since(now) > time.Second {
-			return nil, errors.New("No imaged captured in time interval")
+		if timedOut {
+			return nil, zlog.NewError("No imaged captured in time interval", count)
 		}
 		time.Sleep(time.Millisecond * sleepMS)
 		if sleepMS > 1 {
