@@ -1434,3 +1434,18 @@ func SetStringToAny(toPtr any, from string) error {
 	}
 	return nil
 }
+
+func AlphaNumericASCIIOnly(str string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' {
+			return r
+		}
+		if r >= 'a' && r <= 'z' {
+			return r
+		}
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, str)
+}
