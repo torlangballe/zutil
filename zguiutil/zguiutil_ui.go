@@ -61,9 +61,6 @@ func NewBar(title string) (*zcontainer.StackView, *zlabel.Label) {
 func makeLabelizeLabel(text string, postfix string, talign zgeo.Alignment) *zlabel.Label {
 	label := zlabel.New(text)
 	label.SetTextAlignment(talign)
-	if postfix == "" {
-		postfix = "desc"
-	}
 	label.SetObjectName("$labelize.label." + postfix)
 	return label
 }
@@ -90,7 +87,7 @@ func AddDialogLabeledTextRow(grid *zcontainer.StackView, title, text, desc strin
 }
 
 func AddDialogLabeledRow(grid *zcontainer.StackView, title string, field zview.View, desc string, isDebug bool) *zcontainer.Cell {
-	_, stack, cell, _ := Labelize(field, title, 0, zgeo.Left, desc)
+	_, stack, cell, _ := Labelize(field, title, "", 0, zgeo.Left, desc)
 	if isDebug {
 		stack.SetBGColor(zstyle.DebugBackgroundColor)
 	}
@@ -98,7 +95,10 @@ func AddDialogLabeledRow(grid *zcontainer.StackView, title string, field zview.V
 	return cell
 }
 
-func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment zgeo.Alignment, desc string) (label *zlabel.Label, stack *zcontainer.StackView, viewCell *zcontainer.Cell, descLabel *zlabel.Label) {
+func Labelize(view zview.View, slabel, id string, minLabelWidth float64, alignment zgeo.Alignment, desc string) (label *zlabel.Label, stack *zcontainer.StackView, viewCell *zcontainer.Cell, descLabel *zlabel.Label) {
+	if id == "" {
+		id = slabel
+	}
 	font := zgeo.FontNice(zgeo.FontDefaultSize, zgeo.FontStyleBold)
 	to, _ := view.(ztextinfo.Owner)
 	if to != nil {
@@ -119,9 +119,11 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 			return true
 		})
 	}
-	label = makeLabelizeLabel(title, slabel, zgeo.Right)
+	label = makeLabelizeLabel(title, id, zgeo.Right)
 	label.SetFont(font)
 	label.SetColor(zstyle.DefaultFGColor().WithOpacity(0.8))
+	label.SetPressWithModifierToClipboard(zkeyboard.ModifierAlt)
+
 	stack = zcontainer.StackViewHor("$labelize.stack." + slabel) // give it special name so not easy to mis-search for in recursive search
 	stack.SetChildrenAboveParent(true)
 	stack.SetSpacing(30)
@@ -154,7 +156,7 @@ func Labelize(view zview.View, slabel string, minLabelWidth float64, alignment z
 	// })
 
 	if desc != "" {
-		descLabel = makeLabelizeLabel(desc, slabel+".desc", zgeo.Left)
+		descLabel = makeLabelizeLabel(desc, ".desc", zgeo.Left)
 		font.Style = zgeo.FontStyleNormal
 		lines := strings.Count(desc, "\n") + 1
 		descLabel.SetMaxLines(lines)
@@ -180,6 +182,7 @@ var DefaultFrameTitleStyling = zstyle.Styling{
 }
 
 func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFrame bool, styling, titleStyling zstyle.Styling) (header *zcontainer.StackView) {
+	// zlog.Info("MakeStackATitledFrame", stack.Hierarchy(), title)
 	s := DefaultFrameStyling.MergeWith(styling)
 	fs := s
 	fs.Font = zgeo.Font{}
