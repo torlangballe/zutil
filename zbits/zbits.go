@@ -10,7 +10,7 @@ func CopyBit(to *int64, from int64, mask int64) {
 	ChangeBit(to, mask, from&mask != 0)
 }
 
-func ChangeBit(all *int64, mask int64, on bool) {
+func ChangeBit[N zint.Integer](all *N, mask N, on bool) {
 	if on {
 		*all |= mask
 	} else {
