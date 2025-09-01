@@ -107,10 +107,10 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	usernameField.SetValueHandler("", validate)
 	passwordField.SetValueHandler("", validate)
 
-	_, s1, _, _ := zguiutil.Labelize(usernameField, UserNameType(), columnWith, zgeo.CenterLeft, "")
+	_, s1, _, _ := zguiutil.Labelize(usernameField, UserNameType(), "", columnWith, zgeo.CenterLeft, "")
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
 
-	_, s2, _, _ := zguiutil.Labelize(passwordField, "Password", columnWith, zgeo.CenterLeft, "")
+	_, s2, _, _ := zguiutil.Labelize(passwordField, "Password", "", columnWith, zgeo.CenterLeft, "")
 	v1.Add(s2, zgeo.TopLeft|zgeo.HorExpand)
 
 	if UserNameIsEmail && doLogin {
@@ -286,7 +286,7 @@ func showDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title strin
 		style.KeyboardType = zkeyboard.TypeEmailAddress
 	}
 	textField := ztext.NewView(oldValue, style, 60, 1)
-	_, s1, _, _ := zguiutil.Labelize(textField, name, columnWith, zgeo.CenterLeft, "")
+	_, s1, _, _ := zguiutil.Labelize(textField, name, "", columnWith, zgeo.CenterLeft, "")
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
 
 	att := zpresent.AttributesNew()

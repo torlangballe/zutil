@@ -70,6 +70,7 @@ func NewUploadView(storeName string, allow []string, storeKey string) *UploadVie
 func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string, storeKey string) {
 	v.StackView.Init(v, false, storeName)
 	v.SetMinSize(zgeo.SizeD(0, 22))
+	v.SetSearchable(false)
 	v.SetChildrenAboveParent(true)
 	var items zdict.Items
 	for _, a := range allTypes {
