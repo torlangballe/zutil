@@ -1399,10 +1399,13 @@ func KeyValuesValueForKey(keyVals []KeyValue, key string) (string, bool) {
 	return kv.Value, true
 }
 
-func JoinFunc[S any](s []S, sep string, get func(s any) string) string {
+func JoinFunc[S any](s []S, sep string, get func(s S) string) string {
 	var parts []string
 	for _, ss := range s {
-		parts = append(parts, fmt.Sprint(get(ss)))
+		str := fmt.Sprint(get(ss))
+		if str != "" {
+			parts = append(parts, str)
+		}
 	}
 	return strings.Join(parts, sep)
 }
