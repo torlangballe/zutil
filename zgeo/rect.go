@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"math"
+	"strings"
 
 	"github.com/torlangballe/zutil/zint"
 )
@@ -81,6 +82,16 @@ func (r Rect) IsUndef() bool {
 
 func (r Rect) String() string {
 	return r.Pos.String() + " " + r.Size.String()
+}
+
+func RectFromString(str string) Rect {
+	parts := strings.Split(str, " ")
+	if len(parts) != 2 {
+		return Rect{}
+	}
+	pos, _ := PosFromString(parts[0])
+	size, _ := SizeFromString(parts[1])
+	return Rect{Pos: pos, Size: size}
 }
 
 func (r Rect) GoRect() image.Rectangle {
@@ -560,6 +571,17 @@ func (r Rect) MinMax() (Pos, Pos) {
 
 func (r Rect) MM() string {
 	return fmt.Sprint(r.Min(), "_", r.Max())
+}
+
+func (r Rect) ZUIString(allowEmpty bool) string {
+	if allowEmpty && r.IsNull() {
+		return ""
+	}
+	return r.String()
+}
+
+func (r *Rect) ZUISetFromString(str string) {
+	*r = RectFromString(str)
 }
 
 func (r *Rect) IRect() IRect {
