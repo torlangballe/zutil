@@ -375,6 +375,10 @@ type ISize struct {
 	H int `json:"h"`
 }
 
+func (s *ISize) Size() Size {
+	return Size{W: float64(s.W), H: float64(s.H)}
+}
+
 type FSize struct {
 	W float32 `json:"w"`
 	H float32 `json:"h"`

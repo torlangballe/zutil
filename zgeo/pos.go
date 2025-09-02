@@ -339,6 +339,10 @@ func GetHemisphereDirectionsFromGeoAlignment(alignment Alignment, separator, lan
 	return str
 }
 
+func (p *Pos) IPos() IPos {
+	return IPos{X: int(p.X), Y: int(p.Y)}
+}
+
 type IPos struct {
 	X int
 	Y int

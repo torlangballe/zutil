@@ -561,3 +561,16 @@ func (r Rect) MinMax() (Pos, Pos) {
 func (r Rect) MM() string {
 	return fmt.Sprint(r.Min(), "_", r.Max())
 }
+
+func (r *Rect) IRect() IRect {
+	return IRect{Pos: r.Pos.IPos(), Size: r.Size.ISize()}
+}
+
+type IRect struct {
+	Pos  IPos
+	Size ISize
+}
+
+func (r *IRect) Rect() Rect {
+	return Rect{Pos: r.Pos.Pos(), Size: r.Size.Size()}
+}
