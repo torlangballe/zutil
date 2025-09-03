@@ -371,7 +371,7 @@ func OnDarwin() bool {
 }
 
 func GetNeededSoftwareUpdates() ([]zstr.KeyValue, error) {
-	str, err := RunCommand("softwareupdate", 10, " -l")
+	str, err := RunCommand("softwareupdate", 40, "-l")
 	if err != nil {
 		return nil, err
 	}
@@ -379,10 +379,10 @@ func GetNeededSoftwareUpdates() ([]zstr.KeyValue, error) {
 	var updates []zstr.KeyValue
 	zstr.RangeStringLines(str, true, func(s string) bool {
 		var rest string
-		str = strings.TrimSpace(str)
-		if zstr.HasPrefix(str, "* Label: ", &rest) {
+		line := strings.TrimSpace(s)
+		if zstr.HasPrefix(line, "* Label: ", &rest) {
 			kv.Key = rest
-		} else if zstr.HasPrefix(str, "Title: ", &rest) {
+		} else if zstr.HasPrefix(line, "Title: ", &rest) {
 			kv.Value = rest
 			updates = append(updates, kv)
 		}
