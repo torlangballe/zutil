@@ -135,7 +135,15 @@ func (s Store) GetDouble(key string, def float64) (val float64, got bool) {
 }
 
 func (s Store) GetTime(key string) (time.Time, bool) {
-	return time.Time{}, false
+	str, got := s.GetString(key)
+	if !got {
+		return time.Time{}, false
+	}
+	t, err := time.Parse(time.RFC3339Nano, str)
+	if zlog.OnError(err, str) {
+		return time.Time{}, false
+	}
+	return t, true
 }
 
 func (s Store) GetBool(key string, def bool) (val bool, got bool) {
@@ -221,10 +229,8 @@ func (s Store) SetBool(value bool, key string, sync bool) {
 
 func (s Store) SetTime(value time.Time, key string, sync bool) {
 	s.postfixKey(&key)
-	s.Raw.RawSetItem(key, value)
-	if sync && s.Saver != nil {
-		s.Saver.Save()
-	}
+	str := value.Format(time.RFC3339Nano)
+	s.SetString(str, key, true)
 }
 
 func (s Store) SetBoolInd(value zbool.BoolInd, key string, sync bool) {
