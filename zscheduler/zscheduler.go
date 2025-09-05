@@ -780,10 +780,12 @@ func (s *Scheduler[I]) startAndStopRuns() {
 	d := -time.Since(nextTimerTime)
 	// zlog.Warn("SetNextTimer:", d)
 	// if d < -time.Second {
-	if d <= -20*time.Millisecond {
+	if d <= 0 { //-20*time.Millisecond {
 		limit := zlog.Limit("zscheduler.NextTime.", timerJob)
-		zlog.Warn(limit, "NextTime set to past:", d, "for:", timerJob, nextReason)
+		zlog.Warn(limit, "zscheduler.NextTime set to past/0:", d, "for:", timerJob, nextReason)
+		return
 	}
+
 	// zlog.Warn("SetTimer:", d)
 	s.timerOn = true
 	s.timer.Reset(d)
