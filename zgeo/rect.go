@@ -584,7 +584,7 @@ func (r *Rect) ZUISetFromString(str string) {
 	*r = RectFromString(str)
 }
 
-func (r *Rect) IRect() IRect {
+func (r Rect) IRect() IRect {
 	return IRect{Pos: r.Pos.IPos(), Size: r.Size.ISize()}
 }
 
