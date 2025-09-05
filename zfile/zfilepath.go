@@ -123,3 +123,9 @@ func MimeToExtension(smime string) string {
 func JoinPathParts(parts ...any) string {
 	return zstr.Concat("/", parts...)
 }
+
+func ExchangeFiles(absPath1, absPath2 string) error {
+	return nil
+	//return unix.Renameat2(0, absPath1, 0, absPath2, unix.RENAME_EXCHANGE)
+	// on mac use exchangedata
+}
