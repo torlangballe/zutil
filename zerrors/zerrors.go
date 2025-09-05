@@ -149,14 +149,11 @@ func (e *ContextError) SetKeyValue(key string, value any) {
 	e.KeyValues[key] = value
 }
 
-func (ce *ContextError) ValueForKeyWithFormattingSuffix(key string) (any, bool) {
-	if len(ce.KeyValues) == 0 {
-		return nil, false
-	}
+func (ce *ContextError) ValueForKeyWithFormattingSuffix(key string) (a any, fullKey string, got bool) {
 	for k, v := range ce.KeyValues {
 		if strings.HasPrefix(k, key+":") {
-			return v, true
+			return v, k, true
 		}
 	}
-	return nil, false
+	return nil, "", false
 }

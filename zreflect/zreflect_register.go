@@ -72,33 +72,26 @@ func splitN(str, sep string, a, b *string) bool { // we can't use zstr.SplitN as
 	return true
 }
 
-func NewTypeFromRegisteredTypeName(typeName string, initWithVal any) (a any, tname, tag string, err error) {
-	splitN(typeName, "|", &tname, &tag)
-	n, _, got := DefaultTypeRegistrar.NewForType(tname)
-	if got {
-		if initWithVal != nil {
-			data, err := json.Marshal(initWithVal)
-			if err != nil {
-				fmt.Println(err, tname)
-				return nil, "", "", err
-			}
-			err = json.Unmarshal(data, n)
-			if err != nil {
-				fmt.Println(err, tname)
-				return nil, "", "", err
-			}
-		}
-		return n, tag, tname, nil
+func ValueFromTypeFormatSuffixedName(fullName string, in any) (a any, fname, ftype, tags string, err error) {
+	fullName = zstr.HeadUntilWithRest(fullName, "|", &tags)
+	if !zstr.SplitN(fullName, ":", &fname, &ftype) {
+		return nil, "", "", "", errors.New("Not found")
 	}
-	return nil, "", "", errors.New("Not found: " + typeName)
-}
-
-func ValueFromTypeFormatPrefixedName(fullName string, in any) (a any, fname, ftype, tags string, err error) {
-	var rest string
-	fname = zstr.HeadUntilWithRest(fullName, ":", &rest)
-	if rest == "" {
+	n, _, got := DefaultTypeRegistrar.NewForType(ftype)
+	if !got {
 		return nil, "", "", "", nil
 	}
-	a, ftype, tags, err = NewTypeFromRegisteredTypeName(rest, in)
-	return a, fname, ftype, tags, err
+	if in != nil {
+		data, err := json.Marshal(in)
+		if err != nil {
+			fmt.Println(err, ftype)
+			return nil, "", "", "", err
+		}
+		err = json.Unmarshal(data, n)
+		if err != nil {
+			fmt.Println(err, ftype)
+			return nil, "", "", "", err
+		}
+	}
+	return n, fname, ftype, tags, nil
 }
