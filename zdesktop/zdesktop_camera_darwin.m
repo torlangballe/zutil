@@ -115,6 +115,10 @@ void *startCameraCaptureStream(void *stream) {
     CameraCapture *cc;
     if (stream == nil) {
         cc = [[CameraCapture alloc] init];
+        if (cc.videoOutput.videoSettings == nil) {
+            [cc release];
+            return nil;
+        }
     } else {
         cc = (CameraCapture *)stream;
     }
