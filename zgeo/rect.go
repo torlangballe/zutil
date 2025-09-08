@@ -596,3 +596,7 @@ type IRect struct {
 func (r *IRect) Rect() Rect {
 	return Rect{Pos: r.Pos.Pos(), Size: r.Size.Size()}
 }
+
+func IRectForXYWH(x, y, w, h int) IRect {
+	return IRect{Pos: IPos{X: x, Y: y}, Size: ISize{W: w, H: h}}
+}

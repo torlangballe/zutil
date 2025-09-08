@@ -131,6 +131,14 @@ func (s Size) Area() float64 {
 	return s.W * s.H
 }
 
+func (s Size) Sum() float64 {
+	return s.W + s.H
+}
+
+func (s Size) Average() float64 {
+	return (s.W + s.H) / 2
+}
+
 func (s *Size) Maximize(a Size) {
 	if s.W == zfloat.Undefined {
 		s.W = a.W
