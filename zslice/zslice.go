@@ -9,6 +9,7 @@ import (
 
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmap"
 )
 
 // https://github.com/golang/go/wiki/SliceTricks#delete
@@ -306,4 +307,15 @@ func Top[S any](s []S) S {
 	slen := len(s)
 	zlog.Assert(slen > 0)
 	return (s)[slen-1]
+}
+
+func SortByFrequency[S comparable](slice []S) ([]S, []int) {
+	m := map[S]int{}
+	for _, s := range slice {
+		m[s]++
+	}
+	vals, counts := zmap.SortedKeyValues(m, func(a, b int) bool {
+		return a > b
+	})
+	return vals, counts
 }
