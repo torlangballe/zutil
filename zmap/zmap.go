@@ -35,7 +35,7 @@ func (l *LockMap[K, V]) Has(k K) bool {
 	return ok
 }
 
-// If k exists in l, GetSet returns it and true, otherwise k is set with 
+// If k exists in l, GetSet returns it and true, otherwise k is set with
 // f and def, false is returned
 func (l *LockMap[K, V]) GetSet(k K, def V) (V, bool) {
 	a, loaded := l.Map.LoadOrStore(k, def)
@@ -175,6 +175,16 @@ func AllValues[K comparable, V any](m map[K]V) []V {
 		out[i] = m[key]
 	}
 	return out
+}
+
+func KeyForValue[K comparable, V comparable](m map[K]V, value V) K {
+	for k, v := range m {
+		if v == value {
+			return k
+		}
+	}
+	var empty K
+	return empty
 }
 
 // For each /-separated name in m, GetValueInRecursiveMap, if not at end or a map, will recursively gets next part in that map.
