@@ -156,7 +156,7 @@ func Labelize(view zview.View, slabel, id string, minLabelWidth float64, alignme
 	// })
 
 	if desc != "" {
-		descLabel = makeLabelizeLabel(desc, ".desc", zgeo.Left)
+		descLabel = makeLabelizeLabel(desc, ".$desc", zgeo.Left)
 		font.Style = zgeo.FontStyleNormal
 		lines := strings.Count(desc, "\n") + 1
 		descLabel.SetMaxLines(lines)
