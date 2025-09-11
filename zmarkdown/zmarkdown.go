@@ -282,14 +282,21 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 	if zlog.OnError(err, spath) {
 		return
 	}
-	debugMode := (req.URL.Query().Get("zdev") == "1")
+	query := req.URL.Query()
+	debugMode := (query.Get("zdev") == "1")
+	isRaw := (query.Get("raw") == "1")
 	osType := zdevice.OSTypeFromUserAgentString(req.Header.Get("User-Agent"))
 	zlog.Info("MarkdownConverter.ServeAsHTML:", req.URL, debugMode)
 	m.SetBrowserSpecificDocKeyValues(osType, debugMode)
 
 	_, _, stub, _ := zfile.Split(spath)
 	zrest.AddCORSHeaders(w, req)
-	err = m.ConvertToHTMLFromString(w, input, stub)
+	if isRaw {
+		_, err = w.Write([]byte(input))
+		return
+	} else {
+		err = m.ConvertToHTMLFromString(w, input, stub)
+	}
 	if err != nil {
 		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "convert", err)
 		return
