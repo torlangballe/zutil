@@ -46,6 +46,7 @@ const (
 	TimeFieldDays
 	TimeFieldMonths
 	TimeFieldYears
+	TimeFieldWeeks
 	TimeFieldAMPM
 	TimeFieldDateOnly
 	TimeFieldTimeOnly
