@@ -82,6 +82,18 @@ func (i *Items) Empty() {
 	*i = Items{}
 }
 
+func MakeItems(nameValPairs ...any) Items {
+	var items Items
+
+	for i := 0; i < len(nameValPairs); i += 2 {
+		var di Item
+		di.Name = fmt.Sprint(nameValPairs[i])
+		di.Value = nameValPairs[i+1]
+		items = append(items, di)
+	}
+	return items
+}
+
 func (d Dict) GetItems() Items {
 	var items Items
 	for k, v := range d {
