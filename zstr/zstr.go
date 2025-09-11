@@ -45,6 +45,10 @@ type NameGetter interface {
 	GetName() string
 }
 
+type NameSetter interface {
+	SetName(name string)
+}
+
 type CodeLink string // Codelink is special string that might be turned into a link
 
 type URLGetter interface {
