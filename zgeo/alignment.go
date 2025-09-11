@@ -4,7 +4,7 @@ import (
 	"github.com/torlangballe/zutil/zbits"
 )
 
-type Alignment zbits.NamedBit
+type Alignment int64
 
 const (
 	Left Alignment = 1 << iota
@@ -47,34 +47,34 @@ const (
 	Horizontal = HorPos | HorScale | HorOut
 )
 
-var nameMap = zbits.NamedBitMap{
-	"none":            uint64(AlignmentNone),
-	"left":            uint64(Left),
-	"horcenter":       uint64(HorCenter),
-	"right":           uint64(Right),
-	"top":             uint64(Top),
-	"vertcenter":      uint64(VertCenter),
-	"bottom":          uint64(Bottom),
-	"horexpand":       uint64(HorExpand),
-	"vertexpand":      uint64(VertExpand),
-	"horshrink":       uint64(HorShrink),
-	"vertshrink":      uint64(VertShrink),
-	"horout":          uint64(HorOut),
-	"vertout":         uint64(VertOut),
-	"proportional":    uint64(Proportional),
-	"marginissoffset": uint64(MarginIsOffset),
-	"center":          uint64(Center),
-	"expand":          uint64(Expand),
-	"shrink":          uint64(Shrink),
-	"scale":           uint64(Scale),
+var nameMap = map[Alignment]string{
+	AlignmentNone:  "none",
+	Left:           "left",
+	HorCenter:      "horcenter",
+	Right:          "right",
+	Top:            "top",
+	VertCenter:     "vertcenter",
+	Bottom:         "bottom",
+	HorExpand:      "horexpand",
+	VertExpand:     "vertexpand",
+	HorShrink:      "horshrink",
+	VertShrink:     "vertshrink",
+	HorOut:         "horout",
+	VertOut:        "vertout",
+	Proportional:   "proportional",
+	MarginIsOffset: "marginissoffset",
+	Center:         "center",
+	Expand:         "expand",
+	Shrink:         "shrink",
+	Scale:          "scale",
 }
 
 func (a Alignment) String() string {
-	return zbits.NamedBit(a).ToString(nameMap)
+	return zbits.BitsToStrings(a, nameMap)
 }
 
 func AlignmentFromString(str string) Alignment {
-	return Alignment(zbits.NamedFromString(str, nameMap))
+	return zbits.StringsToBits(str, nameMap)
 }
 
 func (a Alignment) Vector() Pos {
