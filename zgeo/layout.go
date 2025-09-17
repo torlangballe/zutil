@@ -401,9 +401,6 @@ func LayoutGetCellsStackedSize(debugName string, vertical bool, spacing float64,
 		s = s.Swapped()
 		max = max.Swapped()
 	}
-	// if debugName == "License.sub" {
-	// 	zlog.Info("LayoutGetCellsStackedSize done:", debugName, s, max)
-	// }
 	return s, max
 }
 
