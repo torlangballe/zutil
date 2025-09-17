@@ -135,17 +135,30 @@ func CopyTo(toPtr, slice any) {
 	toVal.Elem().Set(destVal)
 }
 
-func NewCopy(slice any) any {
-	sliceVal := reflect.ValueOf(slice)
-	if sliceVal.Type().Elem().Kind() == reflect.Interface {
-		zlog.Info("NewCopy:", sliceVal.Type().Elem().Kind(), sliceVal.Type().Elem().Elem().Kind())
-		// sliceVal = sliceVal.Type().Elem()
-	}
-	destVal := reflect.MakeSlice(sliceVal.Type(), sliceVal.Len(), sliceVal.Len())
-	destNew := reflect.New(destVal.Type())
-	destNew.Elem().Set(destVal)
-	reflect.Copy(destNew.Elem(), sliceVal)
-	return destNew.Interface()
+// func NewCopy(slice any) any {
+// 	sliceVal := reflect.ValueOf(slice)
+// 	if sliceVal.Type().Elem().Kind() == reflect.Interface {
+// 		zlog.Info("NewCopy:", sliceVal.Type().Elem().Kind(), sliceVal.Type().Elem().Elem().Kind())
+// 		// sliceVal = sliceVal.Type().Elem()
+// 	}
+// 	destVal := reflect.MakeSlice(sliceVal.Type(), sliceVal.Len(), sliceVal.Len())
+// 	destNew := reflect.New(destVal.Type())
+// 	destNew.Elem().Set(destVal)
+// 	reflect.Copy(destNew.Elem(), sliceVal)
+// 	return destNew.Interface()
+// }
+
+func Copy[S any](s []S) []S {
+	n := make([]S, len(s))
+	copy(n, s)
+	return n
+}
+
+func AddToCopy[S any](s []S, add S) []S {
+	n := make([]S, len(s)+1)
+	copy(n, s)
+	n[len(s)] = add
+	return n
 }
 
 func IndexOf(length int, is func(i int) bool) int {
@@ -268,7 +281,7 @@ func SplitWithFunc[S any](slice []S, match func(s S) bool) (is []S, not []S) {
 	return is, not
 }
 
-func Map[S any](slice []S, mapFunc func(s S) S) []S {
+func MapXX[S any](slice []S, mapFunc func(s S) S) []S {
 	out := make([]S, len(slice))
 	for i, s := range slice {
 		out[i] = mapFunc(s)
