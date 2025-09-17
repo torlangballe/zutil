@@ -14,6 +14,7 @@ import (
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlocale"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zwords"
 )
@@ -54,6 +55,7 @@ const (
 	TimeFieldShortYear
 	TimeFieldStatic
 	TimeFieldNotFutureIfAmbiguous // day, month, year are not present, subtract 1 to make it in past if current makes it future
+	TimeFieldZeroValueIfAllEmpty
 )
 
 type JSONTime time.Time
@@ -63,6 +65,11 @@ type SQLTime struct {
 type Differ time.Time
 
 type EpochTime time.Time // (un)marshals to epoch time in json
+
+type TimeRange struct {
+	Min time.Time
+	Max time.Time
+}
 
 // Distant is a very far-future time when you want to do things forever etc
 var (
@@ -285,8 +292,33 @@ func GetStartOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
+func OnThisPeriod(t time.Time, field TimeFieldFlags, inc int) time.Time {
+	switch field {
+	case TimeFieldHours:
+		return OnThisHour(t, inc)
+	case TimeFieldMins:
+		return OnThisMinute(t, inc)
+	case TimeFieldSecs:
+		return OnThisSecond(t, inc)
+	case TimeFieldDays:
+		return OnThisDay(t, inc)
+	case TimeFieldWeeks:
+		return OnThisWeek(t, inc)
+	case TimeFieldMonths:
+		return OnThisMonth(t, inc)
+	case TimeFieldYears:
+		return time.Date(t.Year(), 0, 0, 0, 0, 0, 0, t.Location())
+	}
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
+
 func GetStartOfToday() time.Time {
 	return GetStartOfDay(time.Now().Local())
+}
+
+func OnThisWeek(t time.Time, incWeeks int) time.Time {
+	diff := (int(time.Monday) - int(t.Weekday()) - 7) % 7
+	return OnThisDay(t, diff+incWeeks*7)
 }
 
 func IsSameDay(a, b time.Time) bool {
@@ -660,6 +692,14 @@ func OnThisMinute(t time.Time, incMinute int) time.Time {
 	return ChangedPartsOfTime(on, 0, incMinute, 0, 0)
 }
 
+func OnThisSecond(t time.Time, incSecond int) time.Time {
+	on := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, t.Location())
+	if incSecond == 0 {
+		return on
+	}
+	return ChangedPartsOfTime(on, 0, 0, incSecond, 0)
+}
+
 func OnThisHour(t time.Time, incHour int) time.Time {
 	on := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location())
 	if incHour == 0 {
@@ -674,6 +714,14 @@ func OnThisDay(t time.Time, incDay int) time.Time {
 		return on
 	}
 	return IncreasePartsOfDate(on, 0, 0, incDay)
+}
+
+func OnThisMonth(t time.Time, incMonth int) time.Time {
+	on := time.Date(t.Year(), t.Month(), 0, 0, 0, 0, 0, t.Location())
+	if incMonth == 0 {
+		return on
+	}
+	return IncreasePartsOfDate(on, incMonth, 0, 0)
 }
 
 func DaysSince2000FromTime(t time.Time) int {
@@ -790,6 +838,9 @@ func ParseDate(date string, location *time.Location, flags TimeFieldFlags) (t ti
 	var hour, min, sec int
 	var stime, sdate string
 
+	if flags&TimeFieldZeroValueIfAllEmpty != 0 && date == "" {
+		return time.Time{}, nil, nil
+	}
 	date = strings.ToLower(date)
 	now := time.Now().In(location)
 	month := int(now.Month())
@@ -896,6 +947,12 @@ func (f TimeFieldFlags) Duration() time.Duration {
 		return time.Hour
 	case TimeFieldDays:
 		return Day
+	case TimeFieldWeeks:
+		return Day * 7
+	case TimeFieldMonths:
+		return Day * 30
+	case TimeFieldYears:
+		return Day * 365
 	}
 	return 0
 }
@@ -913,37 +970,28 @@ func (f TimeFieldFlags) FieldValue(t time.Time) int {
 }
 
 func (f TimeFieldFlags) String() string {
-	switch f {
-	case TimeFieldNone:
-		return "none"
-	case TimeFieldSecs:
-		return "secs"
-	case TimeFieldMins:
-		return "mins"
-	case TimeFieldHours:
-		return "hours"
-	case TimeFieldDays:
-		return "days"
-	case TimeFieldMonths:
-		return "months"
-	case TimeFieldYears:
-		return "years"
-	case TimeFieldAMPM:
-		return "ampm"
-	case TimeFieldDateOnly:
-		return "dateonly"
-	case TimeFieldTimeOnly:
-		return "timeonly"
-	case TimeFieldNoCalendar:
-		return "nocalendar"
-	case TimeFieldShortYear:
-		return "shortyear"
-	case TimeFieldStatic:
-		return "static"
-	case TimeFieldNotFutureIfAmbiguous:
-		return "nfia"
-	}
-	return ""
+	return fieldMap[f]
+}
+
+func FieldFromString(str string) TimeFieldFlags {
+	return zmap.KeyForValue(fieldMap, str)
+}
+
+var fieldMap = map[TimeFieldFlags]string{
+	TimeFieldNone:                 "none",
+	TimeFieldSecs:                 "secs",
+	TimeFieldMins:                 "mins",
+	TimeFieldHours:                "hours",
+	TimeFieldDays:                 "days",
+	TimeFieldMonths:               "months",
+	TimeFieldYears:                "years",
+	TimeFieldAMPM:                 "ampm",
+	TimeFieldDateOnly:             "dateonly",
+	TimeFieldTimeOnly:             "timeonly",
+	TimeFieldNoCalendar:           "nocalendar",
+	TimeFieldShortYear:            "shortyear",
+	TimeFieldStatic:               "static",
+	TimeFieldNotFutureIfAmbiguous: "nfia",
 }
 
 func (e *EpochTime) UnmarshalJSON(b []byte) error {
