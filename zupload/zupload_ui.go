@@ -79,7 +79,7 @@ func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string
 		}
 	}
 	v.actionMenu = zmenu.NewView("allow", items, storeKey)
-	v.actionMenu.SetStoreKey(storeKey)
+	v.actionMenu.SetStoreKey(storeKey, Drop)
 	v.actionMenu.SetSelectedHandler(func() {
 		v.updateWidgets()
 	})
