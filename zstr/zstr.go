@@ -86,6 +86,15 @@ func StrInt64(s string, i int64) StrInt {
 	return StrInt{Str: s, Int: i}
 }
 
+func FindIntInStrInts(n int64, sis []StrInt) (*StrInt, int) {
+	for i, si := range sis {
+		if si.Int == n {
+			return &sis[i], i
+		}
+	}
+	return nil, -1
+}
+
 func (u URLWrapper) GetURL() string {
 	return string(u)
 }
