@@ -281,10 +281,31 @@ func SplitWithFunc[S any](slice []S, match func(s S) bool) (is []S, not []S) {
 	return is, not
 }
 
-func MapXX[S any](slice []S, mapFunc func(s S) S) []S {
-	out := make([]S, len(slice))
+func Map[S any, O any](slice []S, mapFunc func(s S) O) []O {
+	out := make([]O, len(slice))
 	for i, s := range slice {
 		out[i] = mapFunc(s)
+	}
+	return out
+}
+
+func FilterMap[S any, O any](slice []S, mapFunc func(s S) (O, bool)) []O {
+	out := make([]O, len(slice))
+	for _, s := range slice {
+		r, keep := mapFunc(s)
+		if keep {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func Filter[S any](slice []S, keep func(s S) bool) []S {
+	out := make([]S, 0, len(slice))
+	for _, s := range slice {
+		if keep(s) {
+			out = append(out, s)
+		}
 	}
 	return out
 }
@@ -331,4 +352,23 @@ func SortByFrequency[S comparable](slice []S) ([]S, []int) {
 		return a > b
 	})
 	return vals, counts
+}
+
+func MoveElement[S any](slice []S, fromIndex, toIndex int) {
+	if fromIndex == toIndex {
+		return
+	}
+	last := len(slice) - 1
+	e := slice[fromIndex]
+	if toIndex > fromIndex {
+		toIndex = min(last, toIndex)
+		for i := fromIndex; i < toIndex; i++ {
+			slice[i] = slice[i+1]
+		}
+	} else {
+		for i := min(last, fromIndex); i > toIndex; i-- {
+			slice[i] = slice[i-1]
+		}
+	}
+	slice[toIndex] = e
 }
