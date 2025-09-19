@@ -994,6 +994,18 @@ var fieldMap = map[TimeFieldFlags]string{
 	TimeFieldNotFutureIfAmbiguous: "nfia",
 }
 
+func (f *TimeFieldFlags) UnmarshalJSON(b []byte) error {
+	str := strings.Trim(string(b), `"`)
+	*f = FieldFromString(str)
+	return nil
+}
+
+func (f TimeFieldFlags) MarshalJSON() ([]byte, error) {
+	str := f.String()
+	str = `"` + str + `"`
+	return []byte(str), nil
+}
+
 func (e *EpochTime) UnmarshalJSON(b []byte) error {
 	str := strings.Trim(string(b), `"`)
 	n, err := strconv.ParseInt(str, 10, 64)
