@@ -177,6 +177,13 @@ func AllValues[K comparable, V any](m map[K]V) []V {
 	return out
 }
 
+// Empty deletes all keys from map. Usefull if you want to keep the variable referencing the map but clear it.
+func Empty[K comparable, V any](m map[K]V) {
+	for k := range m {
+		delete(m, k)
+	}
+}
+
 func KeyForValue[K comparable, V comparable](m map[K]V, value V) K {
 	for k, v := range m {
 		if v == value {
@@ -238,4 +245,22 @@ func Copy[K comparable, V any](m map[K]V) map[K]V {
 		n[k] = v
 	}
 	return n
+}
+
+func Filter[K comparable, V any](m map[K]V, keep func(k K, v V) bool) map[K]V {
+	n := map[K]V{}
+	for k, v := range m {
+		if keep(k, v) {
+			n[k] = v
+		}
+	}
+	return n
+}
+
+func MapToSlice[K comparable, V any, O any](m map[K]V, tranform func(k K, v V) O) []O {
+	o := make([]O, len(m))
+	for k, v := range m {
+		o = append(o, tranform(k, v))
+	}
+	return o
 }
