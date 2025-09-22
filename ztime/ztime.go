@@ -663,7 +663,8 @@ func IncreasePartsOfDate(t time.Time, y, m, d int) time.Time {
 	cd += d
 	h, min, s := t.Clock()
 	ns := t.Nanosecond()
-	return time.Date(cy, cm, cd, h, min, s, ns, t.Location())
+	n := time.Date(cy, cm, cd, h, min, s, ns, t.Location())
+	return n
 }
 
 // ChangedPartsOfDate changes the year, month or day part of a time
@@ -717,11 +718,12 @@ func OnThisDay(t time.Time, incDay int) time.Time {
 }
 
 func OnThisMonth(t time.Time, incMonth int) time.Time {
-	on := time.Date(t.Year(), t.Month(), 0, 0, 0, 0, 0, t.Location())
+	on := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location()) // note we start day of month at 1, or it becomes last day of previous month
 	if incMonth == 0 {
 		return on
 	}
-	return IncreasePartsOfDate(on, incMonth, 0, 0)
+	n := IncreasePartsOfDate(on, 0, incMonth, 0)
+	return n
 }
 
 func DaysSince2000FromTime(t time.Time) int {
