@@ -1,6 +1,7 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -8,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zstr"
 )
 
 type Organization struct {
@@ -25,6 +25,8 @@ type SSLCertificateInfo struct {
 	YearsUntilExpiry int
 }
 
+var NotFound = errors.New("not found")
+
 func HostAndPortToAddress(host string, port int) string {
 	str := host
 	if port != 0 {
@@ -34,16 +36,14 @@ func HostAndPortToAddress(host string, port int) string {
 }
 
 func HostAndPortFromAddress(address string) (string, int) {
-	var host string
-	var sport string
-	if !zstr.SplitN(address, ":", &host, &sport) {
+	if !strings.ContainsAny(address, ":") {
 		return address, 0
 	}
+	shost, sport, err := net.SplitHostPort(address)
+	zlog.OnError(err)
 	port, err := strconv.Atoi(sport)
-	if err != nil {
-		return address, 0
-	}
-	return host, port
+	zlog.OnError(err)
+	return shost, port
 }
 
 func StripQueryAndFragment(surl string) string {

@@ -106,34 +106,6 @@ func forOSX() (name string, err error) {
 	return
 }
 
-// func GetCurrentLocalIPAddress2() (ip16, ip4 string, err error) {
-// 	addrs, err := net.InterfaceAddrs()
-// 	// zlog.Info("CurrentLocalIP Stuff:", addrs, err)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	for _, a := range addrs {
-// 		ipnet, ok := a.(*net.IPNet)
-// 		if ok {
-// 			if ipnet.IP.IsLoopback() {
-// 				continue
-// 			}
-// 			i16 := ipnet.IP.To16()
-// 			if i16 != nil {
-// 				ip16 = i16.String()
-// 			}
-// 			i4 := ipnet.IP.To4()
-// 			if i4 != nil {
-// 				ip4 = i4.String()
-// 				zlog.Info("IP:", a.String(), ip4)
-// 				break
-// 			}
-// 		}
-// 	}
-// 	return
-// }
-
 // TODO: Consolidate with with znet.go variants
 func GetCurrentLocalIPAddress() (ip16, ip4 string, err error) {
 	ifaces, err := net.Interfaces()
@@ -509,4 +481,65 @@ func GetCurrentLocalIP4Addresses(skipLocal bool) (map[string]string, error) {
 		}
 	}
 	return m, nil
+}
+
+func GetInterfaces(ip4, ip6 bool, mask, local bool) (map[string]string, error) {
+	m := map[string]string{}
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return nil, err
+		}
+		for _, addr := range addrs {
+			switch v := addr.(type) {
+			case *net.IPNet:
+				if !local && v.IP.IsLoopback() {
+					continue
+				}
+				if ip6 {
+					i16 := v.IP.To16()
+					if i16 != nil {
+						m[iface.Name] = i16.String()
+					}
+				}
+				if ip4 {
+					i4 := v.IP.To4()
+					if i4 != nil {
+						m[iface.Name] = i4.String()
+						// zlog.Info("IP:", a.String(), ip4, iface.Name, str)
+					}
+				}
+			case *net.IPAddr:
+				m[iface.Name] = v.String()
+			}
+		}
+	}
+	if !mask {
+		for k, v := range m {
+			k = zstr.HeadUntil(k, "/")
+			m[k] = v
+		}
+	}
+	return m, nil
+}
+
+func InterfaceOfIP4Address(address string) (string, error) {
+	host, _ := HostAndPortFromAddress(address)
+	if host == "" {
+		return "", nil
+	}
+	ifaces, err := GetInterfaces(true, false, false, true)
+	if err != nil {
+		return "", err
+	}
+	for iface, addr := range ifaces {
+		if addr == host {
+			return iface, nil
+		}
+	}
+	return "", NotFound
 }
