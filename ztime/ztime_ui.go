@@ -15,8 +15,8 @@ func GetTimeWithServerLocation(t time.Time) time.Time {
 		t = t.Local()
 		return t
 	}
-	// zlog.Info("GetTimeWithServerLocation", t, ServerTimezoneOffsetSecs)
 	name := fmt.Sprintf("UTC%+f", float64(ServerTimezoneOffsetSecs)/3600)
 	loc := time.FixedZone(name, ServerTimezoneOffsetSecs)
-	return t.In(loc)
+	t = t.In(loc)
+	return t
 }
