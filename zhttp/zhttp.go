@@ -318,6 +318,28 @@ func GetResponse(surl string, params Parameters) (resp *http.Response, err error
 	return GetResponseFromReqClient(params, req, client)
 }
 
+func GetResponseAndIPAddress(surl string, params Parameters) (resp *http.Response, fromIp, toIP string, err error) {
+	zlog.Assert(params.Method != "", params.Method, surl)
+	req, client, err := MakeRequest(surl, params)
+	fip := new(string)
+	tip := new(string)
+	trace := &httptrace.ClientTrace{
+		GotConn: func(connInfo httptrace.GotConnInfo) {
+			*tip = connInfo.Conn.RemoteAddr().String()
+			*fip = connInfo.Conn.LocalAddr().String()
+		},
+	}
+
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	// zlog.Info("GetResponse:", err, req != nil, client != nil)
+	if err != nil {
+		return
+	}
+	resp, err = GetResponseFromReqClient(params, req, client)
+	zlog.Warn("GetResponseAndIPAddress:", err, *fip, *tip)
+	return resp, *fip, *tip, err
+}
+
 func Get(surl string, params Parameters, receive any) (resp *http.Response, err error) {
 	params.Method = http.MethodGet
 	resp, err = GetResponse(surl, params)
