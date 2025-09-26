@@ -43,7 +43,15 @@ func StringsToBits[N zint.Integer](str string, m map[N]string) N {
 func BitsToStrings[N zint.Integer](n N, m map[N]string) string {
 	var out string
 	for bit, str := range m {
-		if n&bit != 0 {
+		if bit == 0 {
+			continue
+		}
+		for b := range m {
+			if b != bit && b > bit && b&bit == bit {
+				continue // we don't output masks that have bigger composite masks
+			}
+		}
+		if n&bit == bit {
 			if out != "" {
 				out += "|"
 			}
