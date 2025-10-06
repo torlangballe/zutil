@@ -372,3 +372,7 @@ func MoveElement[S any](slice []S, fromIndex, toIndex int) {
 	}
 	slice[toIndex] = e
 }
+
+func IsInItems[C comparable](c C, slice ...C) bool {
+	return slices.Contains(slice, c)
+}
