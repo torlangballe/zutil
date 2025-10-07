@@ -33,7 +33,7 @@
     // AVCaptureDevice *videoDevice = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
     AVCaptureDevice *videoDevice = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeExternal mediaType:AVMediaTypeVideo position: AVCaptureDevicePositionUnspecified];
     if (!videoDevice) {
-        NSLog(@"No video device found");
+        NSLog(@"No video-camera device found");
         return;
     }
     NSError *error = nil;
