@@ -173,7 +173,7 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string,
 
 func PresentDebugView(urlStub string, otherIPs map[string]string, serverName string, prometheusPortOpt *zkeyvalue.Option[int]) {
 	v := NewDebugView(urlStub, otherIPs, serverName, prometheusPortOpt)
-	att := zpresent.AttributesNew()
+	att := zpresent.AttributesDefault()
 	att.Modal = true
 	att.ModalCloseOnOutsidePress = true
 	zpresent.PresentTitledView(v, "Debug", att, nil, nil)

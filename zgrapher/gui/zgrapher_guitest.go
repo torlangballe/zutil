@@ -15,7 +15,7 @@ func main() {
 	zapp.New()
 	zapp.SetUIDefaults(true)
 	stack := zcontainer.StackViewVert("stack")
-	att := zpresent.AttributesNew()
+	att := zpresent.AttributesDefault()
 	att.MakeFull = true
 	label := zlabel.New("Graph Test")
 	stack.Add(label, zgeo.TopLeft)

@@ -155,7 +155,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 			zpresent.Close(v1, true, nil)
 		})
 	}
-	att := zpresent.AttributesNew()
+	att := zpresent.AttributesDefault()
 	att.Modal = true
 	zpresent.PresentView(v1, att)
 }
@@ -289,7 +289,7 @@ func showDialogForTextEdit(isPassword, isEmail bool, name, oldValue, title strin
 	_, s1, _, _ := zguiutil.Labelize(textField, name, "", columnWith, zgeo.CenterLeft, "")
 	v1.Add(s1, zgeo.TopLeft|zgeo.HorExpand)
 
-	att := zpresent.AttributesNew()
+	att := zpresent.AttributesDefault()
 	att.Modal = true
 
 	zalert.PresentOKCanceledView(v1, title, att, nil, func(ok bool) bool {
@@ -308,7 +308,7 @@ func HandleResetPassword(args map[string]string) {
 	}
 	// zlog.Info("HandleResetPassword", reset.ResetToken)
 	stack := zcontainer.StackViewHor("stack")
-	att := zpresent.AttributesNew()
+	att := zpresent.AttributesDefault()
 	att.MakeFull = true
 	att.PresentedFunc = func(win *zwindow.Window) {
 		if win == nil {
@@ -322,7 +322,7 @@ func HandleResetPassword(args map[string]string) {
 		title := fmt.Sprint("Set new password for user ", email)
 		params := zfields.DefaultFieldViewParameters
 		params.Field.Flags |= zfields.FlagIsLabelize
-		zfields.EditStruct(&resetDialog, params, title, zpresent.AttributesNew(), func(ok bool) bool {
+		zfields.EditStruct(&resetDialog, params, title, zpresent.AttributesDefault(), func(ok bool) bool {
 			if !ok {
 				return true
 			}
