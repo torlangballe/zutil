@@ -712,10 +712,11 @@ func OnThisHour(t time.Time, incHour int) time.Time {
 
 func OnThisDay(t time.Time, incDay int) time.Time {
 	on := GetStartOfDay(t)
-	if incDay == 0 || on == t {
+	if incDay == 0 {
 		return on
 	}
-	return IncreasePartsOfDate(on, 0, 0, incDay)
+	added := IncreasePartsOfDate(on, 0, 0, incDay)
+	return added
 }
 
 func OnThisMonth(t time.Time, incMonth int) time.Time {
@@ -1059,4 +1060,8 @@ func DurationToVerbal(d time.Duration, useSecs bool) string {
 		parts = append(parts[:lp-1], "and", parts[lp-1])
 	}
 	return strings.Join(parts, " ")
+}
+
+func MakeTimeRange(min, max time.Time) TimeRange {
+	return TimeRange{Min: min, Max: max}
 }
