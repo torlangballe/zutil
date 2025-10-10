@@ -149,9 +149,9 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 		switch v := p.(type) {
 		case time.Time:
 			if v.IsZero() {
-				parts[i] = "zero"
+				parts[i] = "time:zero"
 			} else {
-				parts[i] = v.Local().Format("02-Jan-2006 15:04:05.999-07")
+				parts[i] = v.Format("02-Jan-2006 15:04:05.999-07")
 			}
 		case LimitID:
 			parts = append(parts[:i], parts[i+1:]...) // can't use zslice.RemoveAt() as it would create cyclical import
