@@ -11,7 +11,6 @@ import (
 
 func GetTimeWithServerLocation(t time.Time) time.Time {
 	if !zlocale.IsDisplayServerTime.Get() {
-		//		zlog.Info("GetTimeWithServerLocation", t, ServerTimezoneOffsetSecs, t.Location())
 		t = t.Local()
 		return t
 	}
