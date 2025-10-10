@@ -18,11 +18,13 @@ type Class struct {
 
 type Histogram struct {
 	Step  float64        `json:",omitempty"` // Step is interval of each bar
-	Range zmath.RangeF64 `json:",omitempty"` // Range Max is 10 if you want values from uo to 10.999999...
+	Range zmath.RangeF64 `json:",omitempty"` // Range Max is 10 if you want values from up to 10.999999...
 
-	Classes      []Class `json:",omitempty"`
-	OutlierBelow int     `json:",omitempty"`
-	OutlierAbove int     `json:",omitempty"`
+	Classes         []Class `json:",omitempty"`
+	OutlierBelow    int     `json:",omitempty"`
+	OutlierAbove    int     `json:",omitempty"`
+	OutlierBelowSum float64 `json:",omitempty"`
+	OutlierAboveSum float64 `json:",omitempty"`
 
 	IsNames bool `json:",omitempty"`
 }
@@ -83,10 +85,12 @@ func (h *Histogram) Add(value float64) {
 	zlog.Assert(!h.IsNames)
 	if value < h.Range.Min {
 		h.OutlierBelow++
+		h.OutlierBelowSum += value
 		return
 	}
 	if value >= h.Range.Max {
 		h.OutlierAbove++
+		h.OutlierAboveSum += value
 		return
 	}
 	i := int((value - h.Range.Min) / h.Step)
@@ -100,6 +104,16 @@ func (h *Histogram) TotalCount() int {
 		count += c.Count
 	}
 	return count
+}
+
+func (h *Histogram) Sum() float64 {
+	sum := h.OutlierAboveSum + h.OutlierBelowSum
+	class := h.Range.Min
+	for _, c := range h.Classes {
+		sum += class * float64(c.Count)
+		class += h.Step
+	}
+	return sum
 }
 
 func (h *Histogram) CountAsRatio(c int) float64 {
@@ -189,4 +203,11 @@ func (h *Histogram) NamedClassesSortedByLabel() []Class {
 		return strings.Compare(a.Label, b.Label)
 	})
 	return classes
+}
+
+func (h *Histogram) AddClassLabels(labels ...string) {
+	for _, label := range labels {
+		c := Class{Label: label}
+		h.Classes = append(h.Classes, c)
+	}
 }
