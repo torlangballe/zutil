@@ -378,6 +378,12 @@ func Swap[N any](a, b *N) {
 	*b = t
 }
 
+func (r *Range[N]) Set(min, max N) {
+	r.Min = min
+	r.Max = max
+	r.Valid = true
+}
+
 func MakeRange[N int | int64 | float64](min, max N) Range[N] {
 	return Range[N]{Valid: true, Min: min, Max: max}
 }
@@ -400,6 +406,10 @@ func (r Range[N]) Added(n N) Range[N] {
 
 func (r *Range[N]) Add(n N) {
 	*r = r.Added(n)
+}
+
+func (r *Range[N]) T(t float64) N {
+	return r.Min + N(float64(r.Length())*t)
 }
 
 func (r *Range[N]) NiceString(digits int) string {
