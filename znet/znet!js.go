@@ -74,9 +74,7 @@ func forLinux() (name string, err error) {
 }
 
 func forOSX() (name string, err error) {
-
 	cmd := exec.Command(osxCmd, osxArgs)
-
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return
