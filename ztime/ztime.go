@@ -40,14 +40,14 @@ const (
 type TimeFieldFlags int
 
 const (
-	TimeFieldNone TimeFieldFlags = 1 << iota
-	TimeFieldSecs
+	TimeFieldNone TimeFieldFlags = 0
+	TimeFieldSecs TimeFieldFlags = 1 << iota
 	TimeFieldMins
 	TimeFieldHours
 	TimeFieldDays
+	TimeFieldWeeks
 	TimeFieldMonths
 	TimeFieldYears
-	TimeFieldWeeks
 	TimeFieldAMPM
 	TimeFieldDateOnly
 	TimeFieldTimeOnly
@@ -69,6 +69,11 @@ type EpochTime time.Time // (un)marshals to epoch time in json
 type TimeRange struct {
 	Min time.Time
 	Max time.Time
+}
+
+type FieldInc struct {
+	Field TimeFieldFlags
+	Step  int
 }
 
 // Distant is a very far-future time when you want to do things forever etc
@@ -293,6 +298,22 @@ func GetStartOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
+func (f TimeFieldFlags) IsTimeZeroOfField(t time.Time) bool {
+	switch f {
+	case TimeFieldMonths:
+		return t.Day() == 1 && t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0
+	case TimeFieldDays:
+		return t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0
+	case TimeFieldHours:
+		return t.Minute() == 0 && t.Second() == 0
+	case TimeFieldMins:
+		return t.Second() == 0
+	case TimeFieldSecs:
+		return t.Nanosecond() == 0
+	}
+	return false
+}
+
 func OnThisPeriod(t time.Time, field TimeFieldFlags, inc int) time.Time {
 	switch field {
 	case TimeFieldHours:
@@ -308,18 +329,13 @@ func OnThisPeriod(t time.Time, field TimeFieldFlags, inc int) time.Time {
 	case TimeFieldMonths:
 		return OnThisMonth(t, inc)
 	case TimeFieldYears:
-		return time.Date(t.Year(), 0, 0, 0, 0, 0, 0, t.Location())
+		return OnThisYear(t, inc)
 	}
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
 func GetStartOfToday() time.Time {
 	return GetStartOfDay(time.Now().Local())
-}
-
-func OnThisWeek(t time.Time, incWeeks int) time.Time {
-	diff := (int(time.Monday) - int(t.Weekday()) - 7) % 7
-	return OnThisDay(t, diff+incWeeks*7)
 }
 
 func IsSameDay(a, b time.Time) bool {
@@ -394,17 +410,18 @@ func GetDurationString(d time.Duration, secs, mins, hours bool, subDigits int) (
 	return
 }
 
-type FieldInc struct {
-	Field TimeFieldFlags
-	Step  int
-}
-
-func (s FieldInc) Product() time.Duration {
+func (s FieldInc) Duration() time.Duration {
 	return s.Field.Duration() * time.Duration(s.Step)
 }
 
 func (f FieldInc) IsModOfTimeZero(t time.Time) bool {
 	switch f.Field {
+	case TimeFieldYears:
+		return t.Month() == 1 && t.Day() == 1
+	case TimeFieldMonths:
+		return t.Day() == 1
+	case TimeFieldDays:
+		return (t.Day()-1)%f.Step == 0 && t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0
 	case TimeFieldHours:
 		return t.Hour()%f.Step == 0 && t.Minute() == 0 && t.Second() == 0
 	case TimeFieldMins:
@@ -415,50 +432,90 @@ func (f FieldInc) IsModOfTimeZero(t time.Time) bool {
 	return false
 }
 
+var FieldIncrements = []FieldInc{
+	FieldInc{TimeFieldYears, 1},
+	FieldInc{TimeFieldMonths, 6},
+	FieldInc{TimeFieldMonths, 4},
+	FieldInc{TimeFieldMonths, 3},
+	FieldInc{TimeFieldMonths, 1},
+	FieldInc{TimeFieldDays, 14},
+	FieldInc{TimeFieldDays, 7},
+	FieldInc{TimeFieldDays, 2},
+	FieldInc{TimeFieldDays, 1},
+	FieldInc{TimeFieldHours, 24},
+	FieldInc{TimeFieldHours, 12},
+	FieldInc{TimeFieldHours, 6},
+	FieldInc{TimeFieldHours, 4},
+	FieldInc{TimeFieldHours, 3},
+	FieldInc{TimeFieldHours, 2},
+	FieldInc{TimeFieldHours, 1},
+	FieldInc{TimeFieldMins, 30},
+	FieldInc{TimeFieldMins, 20},
+	FieldInc{TimeFieldMins, 15},
+	FieldInc{TimeFieldMins, 10},
+	FieldInc{TimeFieldMins, 5},
+	FieldInc{TimeFieldMins, 2},
+	FieldInc{TimeFieldMins, 1},
+	FieldInc{TimeFieldSecs, 30},
+	FieldInc{TimeFieldSecs, 20},
+	FieldInc{TimeFieldSecs, 15},
+	FieldInc{TimeFieldSecs, 10},
+	FieldInc{TimeFieldSecs, 5},
+	FieldInc{TimeFieldSecs, 2},
+	FieldInc{TimeFieldSecs, 1},
+}
+
 // NiceAxisIncrements returns a FieldInc for the smallest duration to increment ticks or markings.
 // The increment is returned as a Field in seconds, minutes or hours and a step rather than just a single duration, to alow further choices to be made.
-func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc time.Duration, labelInc FieldInc, first time.Time) {
+func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc, labelInc FieldInc, first time.Time) {
 	// zlog.Info("Nice:", stop.Sub(start), incCount)
 	type fieldSteps struct {
 		field TimeFieldFlags
 		steps []int
 	}
-	bestPixelInc := math.MaxInt
+	//	bestPixelInc := math.MaxInt
+	var prevPixelInc = -1
 	timeDiff := stop.Sub(start)
-	for _, ss := range []fieldSteps{
-		fieldSteps{TimeFieldHours, []int{24, 12, 6, 3, 2, 1}},
-		fieldSteps{TimeFieldMins, []int{30, 20, 15, 10, 5, 2, 1}},
-		fieldSteps{TimeFieldSecs, []int{30, 20, 15, 10, 5, 2, 1}},
-	} {
-		for _, step := range ss.steps {
-			sdur := ss.field.Duration() * time.Duration(step)
-			// zlog.Info("DUR:", sdur, timeDiff, ss.field.Duration(), step, ss.field)
-			parts := int(timeDiff / (sdur))
-			if parts == 0 {
-				continue
-			}
-			pixelInc := pixelLength / parts
-			if pixelInc < 10 && bestPixelInc != math.MaxInt {
-				continue
-			}
-			if pixelInc < bestPixelInc {
-				// zlog.Info("BEST:", ss.field, step, pixelInc, bestPixelInc)
-				bestPixelInc = pixelInc
-				inc = sdur
-				FieldInc := FieldInc{Field: ss.field, Step: step}
-				if pixelInc > 80 {
-					labelInc = FieldInc
+	var diff, old TimeFieldFlags
+	var labelIndex int
+	for i, fi := range FieldIncrements {
+		sdur := fi.Duration()
+		parts := int(timeDiff / (sdur))
+		if parts == 0 {
+			continue
+		}
+		pixelInc := pixelLength / parts
+		if pixelInc != prevPixelInc {
+			if pixelInc > 60 {
+				labelInc = fi
+				labelIndex = i
+				if fi.Field != old {
+					diff = old
 				}
+				old = fi.Field
 			}
+			prevPixelInc = pixelInc
 		}
 	}
-	s := ChangedPartsOfTime(start, 0, 0, 0, 0)
-	first = s
-	for !s.After(start) {
-		first = s
-		s = s.Add(inc)
+	got := false
+	for {
+		labelIndex++
+		if labelIndex >= len(FieldIncrements) {
+			break
+		}
+		next := FieldIncrements[labelIndex]
+		if got && next.Field != labelInc.Field {
+			break
+		}
+		got = true
+		inc = next
 	}
-	return inc, labelInc, first
+	if diff == TimeFieldNone {
+		diff = labelInc.Field
+	}
+	s := OnThisPeriod(start, diff, 0)
+	// zlog.Warn("Period:", start, diff, s, inc, labelInc)
+	return inc, labelInc, s
 }
 
 type DurationStruct struct {
@@ -691,15 +748,16 @@ func OnThisMinute(t time.Time, incMinute int) time.Time {
 	if incMinute == 0 {
 		return on
 	}
-	return ChangedPartsOfTime(on, 0, incMinute, 0, 0)
+	return IncreasePartsOfTime(on, 0, incMinute, 0, 0)
 }
 
 func OnThisSecond(t time.Time, incSecond int) time.Time {
 	on := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, t.Location())
+	// zlog.Warn("OnThisSecond:", t, incSecond, on)
 	if incSecond == 0 {
 		return on
 	}
-	return ChangedPartsOfTime(on, 0, 0, incSecond, 0)
+	return IncreasePartsOfTime(on, 0, 0, incSecond, 0)
 }
 
 func OnThisHour(t time.Time, incHour int) time.Time {
@@ -719,12 +777,26 @@ func OnThisDay(t time.Time, incDay int) time.Time {
 	return added
 }
 
+func OnThisWeek(t time.Time, incWeeks int) time.Time {
+	diff := (int(time.Monday) - int(t.Weekday()) - 7) % 7
+	return OnThisDay(t, diff+incWeeks*7)
+}
+
 func OnThisMonth(t time.Time, incMonth int) time.Time {
 	on := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location()) // note we start day of month at 1, or it becomes last day of previous month
 	if incMonth == 0 {
 		return on
 	}
 	n := IncreasePartsOfDate(on, 0, incMonth, 0)
+	return n
+}
+
+func OnThisYear(t time.Time, incYear int) time.Time {
+	on := time.Date(t.Year(), 1, 1, 0, 0, 0, 0, t.Location())
+	if incYear == 0 {
+		return on
+	}
+	n := IncreasePartsOfDate(on, incYear, 0, 0)
 	return n
 }
 
