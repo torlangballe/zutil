@@ -53,7 +53,7 @@ func TestDrawHistogram(t *testing.T) {
 	h.Add(0.6)
 	h.Add(0.6)
 	// h.OutlierAbove = 5
-	file, err := os.Create("test.svg")
+	file, err := os.Create("unittest.svg")
 	if err != nil {
 		t.Error(err)
 		return
