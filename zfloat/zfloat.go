@@ -263,13 +263,13 @@ func MaxKeyOfMap(m map[string]float64) (key string, value float64) {
 	return
 }
 
-func Join64(ids []int64, sep string) string {
+func Join64(fs []float64, sep string) string {
 	var str string
-	for i, id := range ids {
+	for i, f := range fs {
 		if i != 0 {
 			str += sep
 		}
-		str += strconv.FormatInt(id, 10)
+		str += strconv.FormatFloat(f, 'f', -1, 64)
 	}
 	return str
 }
