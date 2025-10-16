@@ -376,3 +376,13 @@ func MoveElement[S any](slice []S, fromIndex, toIndex int) {
 func IsInItems[C comparable](c C, slice ...C) bool {
 	return slices.Contains(slice, c)
 }
+
+func Clamped[S any](s []S, i int) S {
+	if i >= len(s) {
+		i = len(s) - 1
+	}
+	if i < 0 {
+		i = 0
+	}
+	return s[i]
+}
