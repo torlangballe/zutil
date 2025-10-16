@@ -31,25 +31,23 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 	builder.Default.Gap = 16
 	blue := zgeo.ColorNew(0.2, 0.2, 1, 1)
 	builder.AddLabelsRowToVertStack(grid, blue, zgeo.FontStyleBold, zstyle.Start, name, "% of Total", "Count")
-	barVal := h.Range.Min
 	classes := h.NamedClassesSortedByLabel()
+	barVal := h.MinValue
 	for i, c := range classes {
+		class := classes[i]
 		var sclass string
 		var col zgeo.Color
-		if h.IsNames {
-			sclass = classes[i].Label
-			before := sclass
+		sclass = class.Label
+		if sclass != "" {
 			if transformName != nil {
 				sclass, col = transformName(sclass)
 			}
-			if sclass == "" {
-				sclass = fmt.Sprint("none:", before)
-			}
 		} else {
 			sa := zwords.NiceFloat(barVal, 0)
-			sb := zwords.NiceFloat(barVal+h.Step, 0)
+			sb := zwords.NiceFloat(class.MaxRange, 0)
 			sclass = sa + "-" + sb
 		}
+
 		spercent := fmt.Sprint(h.CountAsPercent(c.Count), "%")
 		scount := fmt.Sprint(c.Count)
 		if c.Count == 0 {
@@ -69,8 +67,7 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 			h1.SetCorner(2)
 			h1.SetMarginS(zgeo.SizeD(2, 0))
 		}
-		barVal += h.Step
-		barVal = zfloat.KeepFractionDigits(barVal, 7)
+		barVal = zfloat.KeepFractionDigits(class.MaxRange, 7)
 	}
 	if h.OutlierBelow != 0 {
 		builder.AddLabelsRowToVertStack(grid, "Outliers Below", fmt.Sprint(h.CountAsPercent(h.OutlierBelow), "%"), fmt.Sprint(h.OutlierBelow))

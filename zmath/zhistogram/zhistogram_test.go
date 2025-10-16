@@ -1,7 +1,6 @@
 package zhistogram
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/torlangballe/zutil/zlog"
@@ -10,53 +9,53 @@ import (
 
 func testSimple(t *testing.T) {
 	zlog.Warn("testSimple")
-	h1 := New(10, 0, 70)
+	h1 := New()
+	h1.Setup(10, 0, 70)
 	h1.Add(5)
 	h1.Add(10)
 	h1.Add(12)
 	h1.Add(55)
-	ztesting.Equal(t, fmt.Sprint(h1.Classes), "[{1 } {2 } {0 } {0 } {0 } {1 } {0 }]", "classes not equal")
+	ztesting.Equal(t, h1.ClassString(), "10:2 20:1 30:0 40:0 50:0 60:1 70:0", "classes not equal")
 
-	h2 := New(10, 0, 70)
+	h2 := New()
+	h2.Setup(10, 0, 70)
 	h2.Add(7)
 	h2.Add(14)
 	h2.Add(42)
-	ztesting.Equal(t, fmt.Sprint(h2.Classes), "[{1 } {1 } {0 } {0 } {1 } {0 } {0 }]", "classes2 not equal")
+	ztesting.Equal(t, h2.ClassString(), "10:1 20:1 30:0 40:0 50:1 60:0 70:0", "classes2 not equal")
 
 	h1.MergeIn(*h2)
 
-	ztesting.Equal(t, fmt.Sprint(h1.Classes), "[{2 } {3 } {0 } {0 } {1 } {1 } {0 }]", "merged not equal")
+	ztesting.Equal(t, h1.ClassString(), "10:3 20:2 30:0 40:0 50:1 60:1 70:0", "merged not equal")
 }
 
 func testNames(t *testing.T) {
 	zlog.Warn("testNames")
-	h1 := New(-1, 0, 0)
-	h1.AddName("512")
-	h1.AddName("512")
-	h1.AddName("512")
-	h1.AddName("256")
-	h1.AddName("256")
-	h1.AddName("64")
-	ztesting.Equal(t, fmt.Sprint(h1.Classes), "[{3 512} {2 256} {1 64}]", "set-count not equal")
-	// ztesting.Equal(t, fmt.Sprint(h1.ValueSet), "[512 256 64]", "sets not equal")
+	h1 := New()
+	h1.AddNameValue("Banana")
+	h1.AddNameValue("Banana")
+	h1.AddNameValue("Banana")
+	h1.AddNameValue("Pear")
+	h1.AddNameValue("Pear")
+	h1.AddNameValue("Apple")
+	ztesting.Equal(t, h1.ClassString(), "Banana:3 Pear:2 Apple:1", "fruit-count not equal")
 
-	h2 := New(-1, 0, 0)
-	h2.AddName("16")
-	h2.AddName("512")
-	h2.AddName("512")
-	h2.AddName("256")
-	h2.AddName("256")
-	h2.AddName("256")
-	h2.AddName("64")
-	h2.AddName("64")
-	h2.AddName("64")
-	h2.AddName("64")
-	h2.AddName("64")
-	ztesting.Equal(t, fmt.Sprint(h2.Classes), "[{1 16} {2 512} {3 256} {5 64}]", "set-count not equal")
+	h2 := New()
+	h2.SetupNamedRanges(0, 60, "minute", 3600, "hour", 3600*24, "day")
+	h2.Add(20)
+	h2.Add(50)
+	h2.Add(200)
+	h2.Add(2220)
+	h2.Add(7000)
+	ztesting.Equal(t, h2.ClassString(), "minute/60:2 hour/3600:2 day/86400:1", "time-count not equal")
 
-	h1.MergeIn(*h2)
+	h3 := New()
+	h3.SetupNamedRanges(0, 60, "minute", 3600, "hour", 3600*24, "day")
+	h3.Add(200)
 
-	ztesting.Equal(t, fmt.Sprint(h1.Classes), "[{5 512} {5 256} {6 64} {1 16}]", "set-merged-count not equal")
+	h2.MergeIn(*h3)
+
+	ztesting.Equal(t, h2.ClassString(), "minute/60:2 hour/3600:3 day/86400:1", "set-merged-count not equal")
 }
 
 func TestAll(t *testing.T) {
