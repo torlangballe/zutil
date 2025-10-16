@@ -199,7 +199,7 @@ func (v *GraphView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View
 	r := rect
 	r.Size.W -= float64(v.Job.PixelWidth(&v.GrapherBase))
 	canvas.SetColor(zgeo.ColorNewGray(0, 0.05))
-	canvas.FillRect(r)
+	canvas.FillRect(r, 0)
 
 	// zlog.Info("draw", v.SecondsPerPixel, v.Job.ID, rect)
 	i := 0
@@ -288,7 +288,7 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 	inc, _, begin := ztime.NiceAxisIncrements(start, end, int(v.Rect().Size.W/3))
 	// zlog.Warn("drawHours1:", v.Job.ID, start, end, span, inc, ticks, v.SecondsPerPixel)
 	// zlog.Warn("drawHours1:", v.Job.ID, ticks, v.Ticks, w, v.Job.PixelWidth(&v.GrapherBase), begin, end)
-	for t := begin; t.Before(end); t = t.Add(inc) {
+	for t := begin; t.Before(end); t = t.Add(inc.Duration()) {
 		// zlog.Warn("drawHours:", t)
 		x := float64(v.xForTime(t))
 		n, n2, doText := getTimeInt(t, shortSpan)
@@ -297,7 +297,7 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 		var text2 string
 		if v.ShowTicksText {
 			if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 {
-				if inc < ztime.Day {
+				if inc.Duration() < ztime.Day {
 					y2 = v.LocalRect().Size.H
 					text2 = t.Weekday().String()[:3]
 				} else if t.Day() == 1 {
