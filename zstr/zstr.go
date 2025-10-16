@@ -23,6 +23,7 @@ import (
 
 	uuidv4 "github.com/bitactro/UUIDv4"
 	"github.com/google/uuid"
+	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
 	"golang.org/x/text/cases"
@@ -1424,6 +1425,37 @@ func JoinFunc[S any](s []S, sep string, get func(s S) string) string {
 }
 
 func SetStringToAny(toPtr any, from string) error {
+	rval := reflect.ValueOf(toPtr).Elem()
+	switch rval.Kind() {
+	case reflect.Float32, reflect.Float64:
+		n, err := strconv.ParseFloat(from, 64)
+		if err != nil {
+			return err
+		}
+		rval.SetFloat(n)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		n, err := strconv.ParseInt(from, 10, 64)
+		if err != nil {
+			return err
+		}
+		rval.SetInt(n)
+
+	case reflect.Bool:
+		on, err := zbool.FromStringWithError(from)
+		if err != nil {
+			return err
+		}
+		rval.SetBool(on)
+
+	case reflect.String:
+		rval.SetString(from)
+	default:
+		return fmt.Errorf("SetStringToAny: bad type: %v %v", from, reflect.TypeOf(toPtr))
+	}
+	return nil
+}
+
+func SetStringToAny2(toPtr any, from string) error {
 	switch t := toPtr.(type) {
 	case *bool:
 		if from == "true" || from == "TRUE" || from == "1" {
