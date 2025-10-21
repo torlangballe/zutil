@@ -386,3 +386,11 @@ func Clamped[S any](s []S, i int) S {
 	}
 	return s[i]
 }
+
+func Any[S any](slice []S) []any {
+	out := make([]any, len(slice))
+	for i, s := range slice {
+		out[i] = s
+	}
+	return out
+}
