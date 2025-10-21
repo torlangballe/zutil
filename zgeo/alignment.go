@@ -69,6 +69,11 @@ var nameMap = map[Alignment]string{
 	Scale:          "scale",
 }
 
+type VerticeFlag struct {
+	Vertical   bool
+	Horizontal bool
+}
+
 func (a Alignment) String() string {
 	return zbits.BitsToStrings(a, nameMap)
 }
