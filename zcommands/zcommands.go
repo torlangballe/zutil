@@ -536,9 +536,7 @@ func (s *Session) changeDirectory(path string) error {
 		hist := []namedNode{s.nodeHistory[0]}
 		nodes, err = s.findNodeInPath(hist, path[1:])
 	} else {
-		var hist []namedNode
 		nodes, err = s.findNodeInPath(s.nodeHistory, path)
-		zlog.Info("find:", hist, nodes, err, path)
 	}
 	if err != nil {
 		s.TermSession.Writeln(err)
