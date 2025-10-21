@@ -11,11 +11,11 @@ import (
 
 func NewSVGView(h *Histogram, size zgeo.Size, name string, opts DrawOpts) *zsvg.SVGView {
 	buf := bytes.NewBuffer([]byte{})
-	fontInc := 0.0
+	var font *zgeo.Font
 	if opts.Styling.Font.Size != 0 {
-		fontInc = opts.Styling.Font.Size - zgeo.FontDefaultSize
+		font = &opts.Styling.Font
 	}
-	svgGen := zsvg.NewGenerator(buf, size, name, fontInc)
+	svgGen := zsvg.NewGenerator(buf, size, name, font)
 	r := zgeo.Rect{Size: size}
 	h.Draw(svgGen, r, opts)
 	svg := string(buf.Bytes())

@@ -17,12 +17,14 @@ type Class struct {
 }
 
 type Histogram struct {
-	MinValue        float64
-	Classes         []Class `json:",omitempty"`
-	OutlierBelow    int     `json:",omitempty"`
-	OutlierAbove    int     `json:",omitempty"`
-	OutlierBelowSum float64 `json:",omitempty"`
-	OutlierAboveSum float64 `json:",omitempty"`
+	MinValue          float64
+	Classes           []Class `json:",omitempty"`
+	OutlierBelow      int     `json:",omitempty"`
+	OutlierAbove      int     `json:",omitempty"`
+	OutlierBelowSum   float64 `json:",omitempty"`
+	OutlierAboveSum   float64 `json:",omitempty"`
+	Unit              string  `json:",omitempty"`
+	AccumilateClasses bool
 }
 
 func New() *Histogram {
@@ -52,6 +54,14 @@ func (h *Histogram) SetupRanges(min float64, maxes ...float64) {
 	h.MinValue = min
 	for _, m := range maxes {
 		class := Class{MaxRange: m}
+		h.Classes = append(h.Classes, class)
+	}
+}
+
+func (h *Histogram) SetupNamedStrDouble(min float64, mNames ...zstr.StrDouble) {
+	h.MinValue = min
+	for _, si := range mNames {
+		class := Class{MaxRange: si.Float, Label: si.Str}
 		h.Classes = append(h.Classes, class)
 	}
 }
@@ -117,6 +127,17 @@ func (h *Histogram) Add(value float64) {
 	if value < h.MinValue {
 		h.OutlierBelow++
 		h.OutlierBelowSum += value
+		return
+	}
+	if h.AccumilateClasses {
+		for i, c := range h.Classes {
+			if c.MaxRange == value {
+				h.Classes[i].Count++
+				return
+			}
+		}
+		c := Class{Count: 1, MaxRange: value}
+		h.Classes = append(h.Classes, c)
 		return
 	}
 	for i, c := range h.Classes {

@@ -28,7 +28,7 @@ func MakeDefaultStyling(size zgeo.Size) zstyle.Styling {
 	min := size.Min()
 	s := min / 12
 	return zstyle.Styling{
-		Font:    *zgeo.FontNew("Righteous-Regular", s, zgeo.FontStyleNormal),
+		Font:    *zgeo.FontNew("Arial", s, zgeo.FontStyleNormal),
 		FGColor: zstyle.DefaultFGColor(),
 		BGColor: zgeo.ColorGreen,
 		Corner:  min / 50,
@@ -39,6 +39,15 @@ func MakeDefaultStyling(size zgeo.Size) zstyle.Styling {
 
 func (h *Histogram) Draw(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawOpts) {
 	rect.Add(opts.Styling.Margin)
+
+	if h.Unit != "" {
+		font := opts.Styling.Font.NewWithSize(opts.Styling.Font.Size)
+		canvas.SetFont(font, nil)
+		canvas.SetColor(opts.Styling.FGColor)
+		pos := zgeo.PosD(rect.Max().X, rect.Min().Y+opts.Styling.Font.Size)
+		canvas.DrawTextAlignedInPos(pos, h.Unit, 0, zgeo.TopRight, 0)
+	}
+
 	totalCount := h.TotalCount()
 	if totalCount == 0 {
 		return
@@ -69,11 +78,13 @@ func (h *Histogram) Draw(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawO
 		col := opts.Styling.BGColor
 		class := h.Classes[i]
 		str = class.Label
-		if str != "" && opts.BarNameFunc != nil {
-			var bcol zgeo.Color
-			str, bcol = opts.BarNameFunc(str)
-			if bcol.Valid {
-				col = bcol
+		if str != "" {
+			if opts.BarNameFunc != nil {
+				var bcol zgeo.Color
+				str, bcol = opts.BarNameFunc(str)
+				if bcol.Valid {
+					col = bcol
+				}
 			}
 		} else {
 			barVal := class.MaxRange
@@ -94,19 +105,20 @@ func (h *Histogram) Draw(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawO
 		r.Pos.X += barAdd
 	}
 	if drawAbove && h.OutlierAbove != 0 {
-		// zlog.Info("DrawOutlierAbove:", h.OutlierAbove)
 		drawBar(h, canvas, r, opts, opts.Styling.BGColor, ">", h.OutlierAbove, true, false)
 	}
 }
 
 func drawBar(h *Histogram, canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawOpts, col zgeo.Color, label string, count int, isOutlier, isCritical bool) {
-	labelBoxHeight := opts.Styling.Font.Size * 1
+	labelBoxHeight := opts.Styling.Font.Size * 3
 	canvas.SetFont(&opts.Styling.Font, nil)
-	bottom := rect.Size.H - labelBoxHeight + opts.Styling.Font.Size/3 + 2
-	pos := zgeo.PosD(rect.Center().X, rect.Max().Y+labelBoxHeight/3)
+	bottom := rect.Size.H - labelBoxHeight    // + opts.Styling.Font.Size/3 + 2
+	pos := zgeo.PosD(rect.Center().X, bottom) // rect.Max().Y+labelBoxHeight/3)
 
+	s := opts.Styling.Font.Size
+	pos.Add(zgeo.PosD(-s/2, s*0.7))
 	canvas.SetColor(opts.Styling.FGColor)
-	canvas.DrawTextAlignedInPos(pos, label, 0, zgeo.TopCenter)
+	canvas.DrawTextAlignedInPos(pos, label, 0, zgeo.TopLeft, 55)
 
 	rect.Size.H = bottom - 2
 	ratio := h.CountAsRatio(count)
@@ -115,7 +127,7 @@ func drawBar(h *Histogram, canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts Dra
 		max = float64(opts.PercentCutoff) / 100
 	}
 	y := ratio * rect.Size.H / max
-	rect.SetMinY(rect.Size.H - y)
+	rect.SetMinY(bottom - y)
 	// path := zgeo.PathNewRect(rect, zgeo.SizeBoth(opts.Styling.Corner))
 	// zlog.Warn("drawBar:", label, pos, col, isCritical, isOutlier, count, rect, max, opts.PercentCutoff)
 	if isOutlier {
