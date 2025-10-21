@@ -77,6 +77,11 @@ type StrInt struct {
 	Int int64
 }
 
+type StrDouble struct {
+	Str   string
+	Float float64
+}
+
 const (
 	Digits = "0123456789"
 )
