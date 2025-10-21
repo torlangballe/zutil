@@ -440,34 +440,30 @@ var FieldIncrements = []FieldInc{
 	FieldInc{TimeFieldMonths, 1},
 	FieldInc{TimeFieldDays, 14},
 	FieldInc{TimeFieldDays, 7},
-	FieldInc{TimeFieldDays, 2},
 	FieldInc{TimeFieldDays, 1},
 	FieldInc{TimeFieldHours, 24},
 	FieldInc{TimeFieldHours, 12},
 	FieldInc{TimeFieldHours, 6},
 	FieldInc{TimeFieldHours, 4},
 	FieldInc{TimeFieldHours, 3},
-	FieldInc{TimeFieldHours, 2},
 	FieldInc{TimeFieldHours, 1},
 	FieldInc{TimeFieldMins, 30},
 	FieldInc{TimeFieldMins, 20},
 	FieldInc{TimeFieldMins, 15},
 	FieldInc{TimeFieldMins, 10},
 	FieldInc{TimeFieldMins, 5},
-	FieldInc{TimeFieldMins, 2},
 	FieldInc{TimeFieldMins, 1},
 	FieldInc{TimeFieldSecs, 30},
 	FieldInc{TimeFieldSecs, 20},
 	FieldInc{TimeFieldSecs, 15},
 	FieldInc{TimeFieldSecs, 10},
 	FieldInc{TimeFieldSecs, 5},
-	FieldInc{TimeFieldSecs, 2},
 	FieldInc{TimeFieldSecs, 1},
 }
 
 // NiceAxisIncrements returns a FieldInc for the smallest duration to increment ticks or markings.
 // The increment is returned as a Field in seconds, minutes or hours and a step rather than just a single duration, to alow further choices to be made.
-func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc, labelInc FieldInc, first time.Time) {
+func NiceAxisIncrements(start, stop time.Time, pixelLength, minLabelDist int) (inc, labelInc FieldInc, first time.Time) {
 	// zlog.Info("Nice:", stop.Sub(start), incCount)
 	type fieldSteps struct {
 		field TimeFieldFlags
@@ -486,7 +482,7 @@ func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc, labelInc F
 		}
 		pixelInc := pixelLength / parts
 		if pixelInc != prevPixelInc {
-			if pixelInc > 60 {
+			if pixelInc > minLabelDist {
 				labelInc = fi
 				labelIndex = i
 				if fi.Field != old {
@@ -498,7 +494,7 @@ func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc, labelInc F
 		}
 	}
 	got := false
-	for {
+	for down := 0; down < 2; down++ {
 		labelIndex++
 		if labelIndex >= len(FieldIncrements) {
 			break
@@ -509,6 +505,10 @@ func NiceAxisIncrements(start, stop time.Time, pixelLength int) (inc, labelInc F
 		}
 		got = true
 		inc = next
+	}
+	if inc.Field == TimeFieldNone {
+		inc.Field = TimeFieldSecs
+		inc.Step = 1
 	}
 	if diff == TimeFieldNone {
 		diff = labelInc.Field
@@ -1059,6 +1059,7 @@ var fieldMap = map[TimeFieldFlags]string{
 	TimeFieldMins:                 "mins",
 	TimeFieldHours:                "hours",
 	TimeFieldDays:                 "days",
+	TimeFieldWeeks:                "weeks",
 	TimeFieldMonths:               "months",
 	TimeFieldYears:                "years",
 	TimeFieldAMPM:                 "ampm",
