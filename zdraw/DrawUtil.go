@@ -93,7 +93,7 @@ func TimeToX(rect zgeo.Rect, t, start, end time.Time) float64 {
 
 // DrawHorTimeAxis draws time labels with vertical ticks and an optional horizonal axis line.
 func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end time.Time, beyond, isBottom, drawAxis bool, col, roundCol zgeo.Color, font *zgeo.Font) ztime.FieldInc {
-	minLabelDist := font.Size * 2
+	minLabelDist := font.Size * 2 * 4
 	inc, labelInc, axisStart := ztime.NiceAxisIncrements(start, end, int(rect.Size.W), int(minLabelDist))
 	var roundField ztime.TimeFieldFlags
 	switch labelInc.Field {
