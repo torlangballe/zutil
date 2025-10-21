@@ -8,7 +8,6 @@ import (
 	"github.com/torlangballe/zui/zcanvas"
 	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zui/zstyle"
-	"github.com/torlangballe/zui/ztextinfo"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
@@ -16,6 +15,25 @@ import (
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/zwords"
 )
+
+type GraphType string
+
+const (
+	GraphTypeBar  GraphType = "bar"
+	GraphTypeLine GraphType = "line"
+)
+
+type AxisInfo struct {
+	ValueRange        zmath.Range[float64]
+	LineColor         zgeo.Color
+	TextColor         zgeo.Color
+	StrokeWidth       float64
+	Font              *zgeo.Font
+	LabelAlign        zgeo.Alignment
+	SignificantDigits int
+	DrawAxisLine      zgeo.VerticeFlag
+	Postfix           string
+}
 
 func DrawAmountPie(rect zgeo.Rect, canvas *zcanvas.Canvas, value, strokeWidth float64, color, strokeColor zgeo.Color) {
 	path := zgeo.PathNew()
@@ -73,8 +91,10 @@ func TimeToX(rect zgeo.Rect, t, start, end time.Time) float64 {
 	return rect.Min().X + ztime.DurSeconds(t.Sub(start))*rect.Size.W/diff
 }
 
-func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Time, beyond, isBottom bool, col, roundCol zgeo.Color, font *zgeo.Font) {
-	inc, labelInc, axisStart := ztime.NiceAxisIncrements(start, end, int(rect.Size.W))
+// DrawHorTimeAxis draws time labels with vertical ticks and an optional horizonal axis line.
+func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end time.Time, beyond, isBottom, drawAxis bool, col, roundCol zgeo.Color, font *zgeo.Font) ztime.FieldInc {
+	minLabelDist := font.Size * 2
+	inc, labelInc, axisStart := ztime.NiceAxisIncrements(start, end, int(rect.Size.W), int(minLabelDist))
 	var roundField ztime.TimeFieldFlags
 	switch labelInc.Field {
 	case ztime.TimeFieldYears:
@@ -95,8 +115,11 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 	}
 	lineH := rect.Size.H - font.Size
 	y := rect.Max().Y - lineH
+	axisY := y // + 1
 	if isBottom {
 		y = rect.Min().Y
+		lineH -= 2
+		axisY = y // - 1
 	}
 	endTextX := -1000.0
 	count := 0
@@ -104,6 +127,7 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 	canvas.SetFont(font, nil)
 	prevDay := -1
 	// zlog.Warn("Round:", axisStart, roundField, labelInc, inc)
+	first := true
 	for ot := axisStart; !ot.After(end.Add(inc.Duration() * time.Duration(10))); {
 		nextRoundTime := ztime.OnThisPeriod(ot, roundField, 1)
 		round := roundField == ztime.TimeFieldMonths
@@ -111,13 +135,17 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 			count++
 			if count > 10000 { // sanity test
 				zlog.Warn("Break")
-				return
+				return ztime.FieldInc{}
 			}
 			x := TimeToX(rect, t, start, end)
 			if x >= rect.Max().X+200 {
 				break
 			}
 			nextTime := ztime.OnThisPeriod(t, inc.Field, inc.Step)
+			if x < rect.Min().X {
+				t = nextTime
+				continue
+			}
 			isLabel := round || labelInc.IsModOfTimeZero(t)
 			if roundField.IsTimeZeroOfField(t) {
 				round = true
@@ -126,7 +154,8 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 			textOverlap := (x < endTextX)
 			w := 1.0
 			// strokeCol = strokeCol.WithOpacity(0.9)
-			first := (round && beyond && x >= rect.Max().X-2) // firstLabel ||
+			firstLabel := first && round && x >= rect.Min().X+30
+			first = false
 			if isLabel {
 				w = 2.0
 			}
@@ -150,14 +179,14 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 				str = t.Format("2006")
 			} else {
 				if inc.Field >= ztime.TimeFieldDays {
-					if first {
+					if firstLabel {
 						str = t.Format("2006-Jan-02 ")
 					} else {
 						str = t.Format("Jan-02")
 					}
 				} else {
 					skip := false
-					if first || day != prevDay {
+					if firstLabel || day != prevDay {
 						str = t.Format("Jan-02 ")
 						// zlog.Warn("SKIP?", str, t)
 						if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 {
@@ -180,36 +209,23 @@ func DrawHorTimeAxis(canvas *zcanvas.Canvas, rect zgeo.Rect, start, end time.Tim
 			if round {
 				canvas.SetColor(roundCol)
 			}
-			ty := rect.Max().Y
+			ty := rect.Max().Y - font.Size/3
 			if !isBottom {
-				ty -= lineH * 1.2
+				ty = rect.Max().Y - lineH*1.2 - 2
 			}
 			pos := zgeo.PosD(x, ty)
-			r := canvas.DrawTextAlignedInPos(pos, str, 0, zgeo.Center)
+			r := canvas.DrawTextAlignedInPos(pos, str, 0, zgeo.Center, 0)
 			endTextX = r.Max
 			t = nextTime
 			round = false
 		}
 		ot = nextRoundTime
 	}
-}
-
-type GraphType string
-
-const (
-	GraphTypeBar  GraphType = "bar"
-	GraphTypeLine GraphType = "line"
-)
-
-type AxisInfo struct {
-	ValueRange        zmath.Range[float64]
-	LineColor         zgeo.Color
-	TextColor         zgeo.Color
-	StrokeWidth       float64
-	Font              *zgeo.Font
-	LabelAlign        zgeo.Alignment
-	SignificantDigits int
-	Postfix           string
+	if drawAxis {
+		canvas.SetColor(col)
+		canvas.StrokeHorizontal(rect.Min().X, rect.Max().X, axisY, 1, zgeo.PathLineButt)
+	}
+	return inc
 }
 
 func MakeAxisInfo() AxisInfo {
@@ -230,48 +246,41 @@ func ValToY(val float64, cellHeight float64, valRange zmath.RangeF64) float64 {
 	return cellHeight - y
 }
 
-func DrawBackgroundHorGraphLines(a *AxisInfo, rect zgeo.Rect, lines int, canvas *zcanvas.Canvas) {
-	// zlog.Info("DrawBackgroundHorGraphLines:", rect, a)
+func DrawBackgroundHorGraphLines(canvas zcanvas.BaseCanvaser, a *AxisInfo, rect zgeo.Rect, gutter float64, lines int) {
 	y0, inc := zmath.NiceDividesOf(a.ValueRange.Min, a.ValueRange.Max, lines, nil)
-	// zlog.Info("NICEDIVS:", y0, inc, "for", a.ValueRange.Min, a.ValueRange.Max, lines)
-	// y1 := zmath.RoundUpToModF64(a.ValueRange.Max, inc)
 	y1 := a.ValueRange.Max
 	a.Font.Size = min(10, math.Floor((rect.Size.H+2)*2/float64(lines)))
-	// yScale := (y1 - a.ValueRange.Min) / rect.Size.H
-	// zlog.Info("DrawGraphRow1", y0, y1, yScale, rect.Size.H)
-	ti := ztextinfo.New()
-	ti.Rect = rect.Expanded(zgeo.SizeD(-3, 0))
-	ti.Font = a.Font
-	ti.Color = a.TextColor
+	canvas.SetFont(a.Font, nil)
+
+	if a.DrawAxisLine.Vertical {
+		canvas.SetColor(a.LineColor)
+		canvas.StrokeVertical(rect.Min().X+gutter, rect.Min().Y, rect.Max().Y, 1, zgeo.PathLineButt)
+	}
 	for y := y0 + inc; y < y1; y += inc {
 		var lastX = math.MaxFloat64
 		pixy := ValToY(y, rect.Size.H, a.ValueRange)
-		// rect.Max().Y - (y-a.ValueRange.Min)/yScale
-		// pixy = math.Floor(pixy)
 		tx := 0.0
 		if a.TextColor.Valid {
-			ti.Rect.Pos.Y = pixy - a.Font.Size/2
-			ti.Rect.Size.H = a.Font.Size
-			// zlog.Info("DrawGraphRow Y", y, y-y0, (y-y0)/vdiff, (y-y0)/vdiff*rect.Size.H, pixy)
-			for _, align := range []zgeo.Alignment{zgeo.Left | zgeo.HorCenter, zgeo.Right} {
+			pos := zgeo.PosD(tx, pixy+a.Font.Size/3)
+			for _, align := range []zgeo.Alignment{zgeo.Left, zgeo.Right} {
+				canvas.SetColor(a.TextColor)
 				if a.LabelAlign&align == 0 {
 					continue
 				}
-				ti.Alignment = zgeo.VertCenter | align
-				// ti.Text = zwords.NiceFloat(y, a.SignificantDigits) + a.Postfix
-				ti.Text = zwords.NiceFloat(y, 0) + a.Postfix
-				box := ti.Draw(canvas)
+				align := zgeo.VertCenter | align
+				text := zwords.NiceFloat(y, 0) + a.Postfix
+				// zlog.Info("DrawLeft:", pos, text, align, rect)
+				textRange := canvas.DrawTextAlignedInPos(pos, text, 0, align, 0)
 				if a.LineColor.Valid && lastX != math.MaxFloat64 {
-					// zlog.Info("DrawGraphRow", a.LineColor)
 					canvas.SetColor(a.LineColor) // We have to set this each time, as ti.Draw() above with set it too
-					canvas.StrokeHorizontal(lastX, box.Min().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
+					canvas.StrokeHorizontal(lastX, textRange.Min, pixy, a.StrokeWidth, zgeo.PathLineButt)
 				}
-				lastX = box.Max().X
+				lastX = textRange.Max + 3
 			}
 			tx = lastX
 		}
+		// zlog.Info("DrawGraphLine", y, inc, y1, rect)
 		if a.LineColor.Valid && (!a.TextColor.Valid || !a.LabelAlign.Has(zgeo.Right)) {
-			// zlog.Info("DrawGraphRow2", a.LineColor)
 			canvas.SetColor(a.LineColor)
 			canvas.StrokeHorizontal(tx, rect.Max().X, pixy, a.StrokeWidth, zgeo.PathLineButt)
 		}
