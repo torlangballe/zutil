@@ -834,7 +834,7 @@ func pushNonBlockingToChannel[T any](ch chan T, val T) {
 func (s *Scheduler[I]) calculateLoadOfUsableExecutors() map[I]capacity {
 	m := map[I]capacity{}
 	runnableEx := s.runnableExecutorIDs()
-	// zlog.Warn("calculateLoadOfUsableExecutors", runnableEx)
+	//	zlog.Info("calculateLoadOfUsableExecutors", runnableEx, s.executors)
 	for _, e := range s.executors {
 		if !runnableEx[e.ID] {
 			continue
