@@ -65,7 +65,7 @@ func makeGraph(dur time.Duration) {
 		canvas.SetSize(s)
 		renderCanvas = canvas
 	} else {
-		svg = zsvg.NewGenerator(file, s, "histo", 0)
+		svg = zsvg.NewGenerator(file, s, "histo", nil)
 		renderCanvas = svg
 	}
 	rect := zgeo.Rect{Size: s}
