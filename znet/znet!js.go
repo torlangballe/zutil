@@ -177,30 +177,6 @@ func GetOutboundIP() (ip net.IP, err error) {
 	return
 }
 
-func GetCurrentIPAddress() (address string, err error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return
-	}
-
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
-		if err != nil {
-			return "", err
-		}
-		for _, addr := range addrs {
-			switch v := addr.(type) {
-			case *net.IPNet:
-				return v.String(), nil
-			case *net.IPAddr:
-				return v.String(), nil
-			}
-			// process IP address
-		}
-	}
-	return "", nil
-}
-
 func ForwardPortToRemote(port int, remoteAddress string) error {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
