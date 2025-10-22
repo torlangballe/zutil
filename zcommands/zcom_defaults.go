@@ -259,8 +259,8 @@ func (d *UtilCommands) Net(c *CommandInfo) string {
 			continue
 		}
 		fmt.Fprint(tabs, zstr.EscCyan, name, "\t")
-		fmt.Fprint(tabs, zwords.GetBandwidthString(info.In.Bytes, "", 2)+"/s", "\t")
-		fmt.Fprint(tabs, zwords.GetBandwidthString(info.Out.Bytes, "", 2)+"/s", "\t")
+		fmt.Fprint(tabs, zwords.GetBandwidthString(info.In.Bytes*8, "", 2)+"/s", "\t")
+		fmt.Fprint(tabs, zwords.GetBandwidthString(info.Out.Bytes*8, "", 2)+"/s", "\t")
 		fmt.Fprint(tabs, info.In.Drops+info.Out.Drops, "\t")
 		fmt.Fprint(tabs, info.In.Errors+info.Out.Errors, zstr.EscNoColor, "\n")
 	}
