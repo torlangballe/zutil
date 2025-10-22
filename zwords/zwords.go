@@ -26,9 +26,6 @@ var TSL = func(str, langCode string) string {
 func getSizeString(b int64, multiples int64, suffix, langCode string, maxSignificant int) string {
 	prefs := []string{"", "K", "M", "G", "T", "P"}
 	var n int64 = 1
-	if maxSignificant == 0 {
-		maxSignificant = 1
-	}
 	for _, pref := range prefs {
 		if b < n*multiples {
 			return NiceFloat(float64(b)/float64(n), maxSignificant) + " " + pref + suffix
@@ -53,7 +50,7 @@ func GetMemoryString(b int64, langCode string, maxSignificant int) string {
 // NiceFloat converts a float to string, with only significant amount of post-comma digits
 func NiceFloat(f float64, significant int) string {
 	var s string
-	if significant == 0 {
+	if significant == -1 {
 		s = fmt.Sprintf("%f", f)
 	} else {
 		format := fmt.Sprintf("%%.%df", significant)

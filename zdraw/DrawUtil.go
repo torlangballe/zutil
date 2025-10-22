@@ -268,7 +268,7 @@ func DrawBackgroundHorGraphLines(canvas zcanvas.BaseCanvaser, a *AxisInfo, rect 
 					continue
 				}
 				align := zgeo.VertCenter | align
-				text := zwords.NiceFloat(y, 0) + a.Postfix
+				text := zwords.NiceFloat(y, -1) + a.Postfix
 				// zlog.Info("DrawLeft:", pos, text, align, rect)
 				textRange := canvas.DrawTextAlignedInPos(pos, text, 0, align, 0)
 				if a.LineColor.Valid && lastX != math.MaxFloat64 {

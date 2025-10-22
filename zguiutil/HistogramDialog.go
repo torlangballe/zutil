@@ -43,8 +43,8 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 				sclass, col = transformName(sclass)
 			}
 		} else {
-			sa := zwords.NiceFloat(barVal, 0)
-			sb := zwords.NiceFloat(class.MaxRange, 0)
+			sa := zwords.NiceFloat(barVal, -1)
+			sb := zwords.NiceFloat(class.MaxRange, -1)
 			sclass = sa + "-" + sb
 		}
 
