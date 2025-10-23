@@ -24,11 +24,11 @@ func BreakRunesIntoLines(runes []rune, breakChars string, columns int) (lines []
 		added := false
 		for i, r := range runes {
 			if strings.IndexRune(breakChars, r) != -1 {
-				lastBreak = i
+				lastBreak = i + 1
 			}
 			if i >= columns {
-				if lastBreak == -1 || i-lastBreak > columns/3 {
-					lastBreak = i
+				if lastBreak == -1 { //|| i-lastBreak > columns/3 {
+					lastBreak = i + 1
 				}
 				line := runes[:lastBreak]
 				runes = runes[lastBreak:]
