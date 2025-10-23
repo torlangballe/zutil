@@ -27,7 +27,7 @@ func startDuration() time.Duration {
 	return time.Millisecond * time.Duration(startMS)
 }
 
-func newScheduler(jobs, workers int, jobCost, workerCap float64, setupFunc func(*Setup[int64])) *Scheduler[int64] {
+func newScheduler(jobs, workers int, jobCost, workerCap, jobSecs float64, setupFunc func(*Setup[int64])) *Scheduler[int64] {
 	s := NewScheduler[int64]()
 	setup := DefaultSetup[int64]()
 	setup.SimultaneousStarts = 1
@@ -60,30 +60,62 @@ func newScheduler(jobs, workers int, jobCost, workerCap float64, setupFunc func(
 	s.Init(setup)
 	go s.Start()
 	for i := 0; i < jobs; i++ {
-		job := makeJob(s, int64(i+1), time.Second*30, jobCost)
+		job := makeJob(s, int64(i+1), time.Duration(float64(time.Second)*jobSecs), jobCost)
 		s.AddJobCh <- job
 	}
 	for i := 0; i < workers; i++ {
-		s.AddExecutorCh <- makeExecutor(s, int64(i+1), workerCap)
+		s.ChangeExecutorCh <- makeExecutor(s, int64(i+1), workerCap)
 	}
 	return s
 }
 
 func testChangeExecutor(t *testing.T) {
 	fmt.Println("testChangeExecutor")
-	s := newScheduler(20, 2, 1, 10, nil)
+	s := newScheduler(22, 2, 1, 11, 1, nil)
 	time.Sleep(time.Millisecond * 200)
-	e := makeExecutor(s, 2, 11)
+	c2 := s.CountJobs(2)
+	if c2 != 11 {
+		t.Error("Jobs not spread on executors", c2)
+	}
+	e := makeExecutor(s, 2, 10)
 	s.ChangeExecutorCh <- e
 	time.Sleep(time.Millisecond * 4)
-	c2 := s.CountJobs(2)
-	if c2 == 10 {
-		t.Error("No reduced jobs shortly after changing executor")
+	c1 := s.CountRunningJobs(1)
+	c2 = s.CountRunningJobs(2)
+	if c2 != 11 {
+		t.Error("jobs reduced too soon after changing executor", c1, c2)
 	}
-	time.Sleep(time.Millisecond * 300)
-	c2 = s.CountJobs(2)
+	time.Sleep(time.Millisecond * 1100) // job has ended, but not slack
+	c1 = s.CountRunningJobs(1)
+	c2 = s.CountRunningJobs(2)
+	if c2 != 11 {
+		t.Error("Jobs should still be at 11 due to slack", c1, c2)
+	}
+	time.Sleep(s.setup.KeepJobsBeyondAtEndUntilEnoughSlack) // job has ended, but not slack
+	c1 = s.CountRunningJobs(1)
+	c2 = s.CountRunningJobs(2)
 	if c2 != 10 {
-		t.Error("Jobs not back to 10 a while after changing executor", c2)
+		t.Error("Jobs should now be at 10 after slack", c1, c2)
+	}
+	// zlog.Warn("ReadyToStop")
+	stopAndCheckScheduler(s, t)
+}
+
+func testExecutorAble(t *testing.T) {
+	fmt.Println("testExecutorAble")
+	s := newScheduler(10, 1, 1, 10, 1, nil)
+	time.Sleep(time.Millisecond * 200)
+	c1 := s.CountJobs(1)
+	if c1 != 10 {
+		t.Error("Jobs not reached full", c1)
+	}
+	e := makeExecutor(s, 1, 10)
+	e.IsAble = false
+	s.ChangeExecutorCh <- e
+	time.Sleep(time.Millisecond * 4)
+	c1 = s.CountRunningJobs(1)
+	if c1 != 0 {
+		t.Error("Jobs should now be at 0 IsAble=false", c1)
 	}
 	// zlog.Warn("ReadyToStop")
 	stopAndCheckScheduler(s, t)
@@ -91,12 +123,12 @@ func testChangeExecutor(t *testing.T) {
 
 func testLoadBalance1(t *testing.T) {
 	fmt.Println("testLoadBalance1")
-	s := newScheduler(20, 1, 1, 10, nil)
+	s := newScheduler(20, 1, 1, 10, 30, nil)
 	// s.setup.LoadBalanceIfCostDifference = 2
 	time.Sleep(time.Second)
 	c1 := s.CountJobs(1)
 	compare(t, "Jobs not 10 on w1", c1, 10)
-	s.AddExecutorCh <- makeExecutor(s, int64(2), 10)
+	s.ChangeExecutorCh <- makeExecutor(s, int64(2), 10)
 	time.Sleep(time.Millisecond * 200)
 	c1 = s.CountJobs(1)
 	c2 := s.CountJobs(2)
@@ -106,13 +138,13 @@ func testLoadBalance1(t *testing.T) {
 
 func testLoadBalance2(t *testing.T) {
 	fmt.Println("testLoadBalance2")
-	s := newScheduler(20, 1, 1, 20, nil)
+	s := newScheduler(20, 1, 1, 20, 30, nil)
 	// s.setup.LoadBalanceIfCostDifference = 2
 
 	time.Sleep(time.Millisecond * 100)
 	c1 := s.CountJobs(1)
 	compare(t, "Jobs not 20 on executor1", c1, 20)
-	s.AddExecutorCh <- makeExecutor(s, int64(2), 10)
+	s.ChangeExecutorCh <- makeExecutor(s, int64(2), 10)
 	// fmt.Println("** TestLoadBalance AddExecutor2")
 	time.Sleep(time.Millisecond * 200)
 	c1 = s.CountJobs(1)
@@ -123,7 +155,7 @@ func testLoadBalance2(t *testing.T) {
 
 func testStartingTime(t *testing.T) {
 	fmt.Println("testStartingTime")
-	s := newScheduler(10, 1, 1, 20, nil)
+	s := newScheduler(10, 1, 1, 20, 30, nil)
 	s.setup.LoadBalanceIfCostDifference = 0
 	c1 := s.CountRunningJobs(1)
 	compare(t, "Jobs not starting at 0:", c1, 0)
@@ -140,7 +172,7 @@ func testStartingTime(t *testing.T) {
 
 func testPauseWithCapacity(t *testing.T) {
 	fmt.Println("testPauseWithCapacity")
-	s := newScheduler(20, 2, 1, 10, nil)
+	s := newScheduler(20, 2, 1, 10, 30, nil)
 	time.Sleep(time.Millisecond * 200)
 	c1 := s.CountJobs(1)
 	c2 := s.CountJobs(2)
@@ -167,7 +199,7 @@ func testPauseWithCapacity(t *testing.T) {
 
 func testPauseWithTwoExecutors(t *testing.T) {
 	fmt.Println("testPauseWithTwoExecutors")
-	s := newScheduler(20, 2, 1, 20, nil)
+	s := newScheduler(20, 2, 1, 20, 30, nil)
 	time.Sleep(time.Millisecond * 200)
 	c1 := s.CountRunningJobs(1)
 	c2 := s.CountRunningJobs(2)
@@ -200,7 +232,7 @@ func testPauseWithTwoExecutors(t *testing.T) {
 func testStartStop(t *testing.T) {
 	var timers []*ztimer.Timer
 	fmt.Println("testStartStop")
-	s := newScheduler(0, 0, 0, 0, nil)
+	s := newScheduler(0, 0, 0, 0, 30, nil)
 	for i := 0; i < 30; i++ {
 		t := addAndRemoveJobRandomly(s, makeJob(s, int64(i+1), time.Second, 1))
 		timers = append(timers, t)
@@ -220,7 +252,7 @@ func testStartStop(t *testing.T) {
 
 func testKeepAlive(t *testing.T) {
 	fmt.Println("testKeepAlive")
-	s := newScheduler(10, 1, 1, 10, nil)
+	s := newScheduler(10, 1, 1, 10, 30, nil)
 	s.setup.ExecutorAliveDuration = time.Millisecond * 100
 	s.SetExecutorIsAliveCh <- 1
 	time.Sleep(time.Millisecond * 90)
@@ -238,7 +270,7 @@ func testKeepAlive(t *testing.T) {
 
 func testStopAndCheck(t *testing.T) {
 	fmt.Println("testStopAndCheck")
-	s := newScheduler(10, 1, 1, 10, nil)
+	s := newScheduler(10, 1, 1, 10, 30, nil)
 	time.Sleep(time.Millisecond * 100)
 	count := s.CountJobs(1)
 	compare(t, "Jobs at 10 after sleep:", count, 10)
@@ -247,7 +279,7 @@ func testStopAndCheck(t *testing.T) {
 
 func testOverMax(t *testing.T) {
 	fmt.Println("testOverMax")
-	s := newScheduler(10, 1, 1, 10, nil)
+	s := newScheduler(10, 1, 1, 10, 30, nil)
 	s.setup.TotalMaxJobCount = 5
 	time.Sleep(time.Millisecond * 90)
 	count := s.CountJobs(1)
@@ -262,7 +294,7 @@ func testOverMax(t *testing.T) {
 func testSetJobsOnExecutor(t *testing.T) {
 	const jobCount = 8
 	fmt.Println("testSetJobsOnExecutor")
-	s := newScheduler(0, 1, 1, 10, nil)
+	s := newScheduler(0, 1, 1, 10, 30, nil)
 	time.Sleep(time.Millisecond * 100)
 	for i := 0; i < 7; i++ {
 		time.Sleep(time.Millisecond * 100)
@@ -279,7 +311,7 @@ func testSetJobsOnExecutor(t *testing.T) {
 func testEnoughRunning(t *testing.T) {
 	fmt.Println("testEnoughRunning")
 	const jobCount = 6
-	s := newScheduler(0, 2, 1, 10, nil) // 2: We need at least to executors to ensure only one job ever not running
+	s := newScheduler(0, 2, 1, 10, 30, nil) // 2: We need at least to executors to ensure only one job ever not running
 	s.setup.KeepJobsBeyondAtEndUntilEnoughSlack = time.Millisecond * 5000
 	s.setup.SimultaneousStarts = 1
 	s.setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
@@ -322,7 +354,7 @@ func testEnoughRunning(t *testing.T) {
 
 func testPurgeFromRunningList(t *testing.T) {
 	fmt.Println("testPurgeFromRunningList")
-	s := newScheduler(4, 1, 1, 10, nil)
+	s := newScheduler(4, 1, 1, 10, 30, nil)
 	time.Sleep(time.Millisecond * 100)
 	// count := s.CountJobs(0)
 	// compare(t, "Jobs not at 4:", count, 4)
@@ -341,7 +373,7 @@ func testPurgeFromRunningList(t *testing.T) {
 func testPurgeFromSlowStarting(t *testing.T) {
 	fmt.Println("testPurgeFromSlowStarting")
 	startMS = 10
-	s := newScheduler(4, 1, 1, 10, func(setup *Setup[int64]) {
+	s := newScheduler(4, 1, 1, 10, 30, func(setup *Setup[int64]) {
 		setup.SimultaneousStarts = 0
 	})
 	time.Sleep(startDuration() / 3) // enough time to have jobs registered, but not be running
@@ -406,7 +438,7 @@ func testPurgeFromSlowStarting(t *testing.T) {
 }
 
 func setupTestPlayWithSlackAfterDurationEnd() *Scheduler[int64] {
-	s := newScheduler(0, 1, 1, 10, func(setup *Setup[int64]) {
+	s := newScheduler(0, 1, 1, 10, 30, func(setup *Setup[int64]) {
 		setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
 			if run.Job.ID == 2 {
 				time.Sleep(time.Millisecond * 60)
@@ -455,7 +487,7 @@ func testPlayWithSlackShortWait(t *testing.T) {
 }
 
 func setupTestPlayForMilestone() *Scheduler[int64] {
-	s := newScheduler(0, 1, 1, 10, func(setup *Setup[int64]) {
+	s := newScheduler(0, 1, 1, 10, 30, func(setup *Setup[int64]) {
 		setup.KeepJobsBeyondAtEndUntilEnoughSlack = time.Millisecond * 200
 		setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
 			time.Sleep(time.Millisecond * 1)
@@ -515,7 +547,7 @@ func testPlayWithSlackLongWaitAndMilestone(t *testing.T) {
 
 func testErrorAt(t *testing.T) {
 	fmt.Println("testErrorAt")
-	s := newScheduler(0, 1, 1, 10, func(setup *Setup[int64]) {
+	s := newScheduler(0, 1, 1, 10, 30, func(setup *Setup[int64]) {
 		setup.SimultaneousStarts = 0
 		setup.StopJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
 			return nil
@@ -594,6 +626,7 @@ func makeExecutor(s *Scheduler[int64], id int64, cap float64) Executor[int64] {
 		CostCapacity: cap,
 		KeptAliveAt:  time.Now(),
 		DebugName:    fmt.Sprint("Wrk", id),
+		IsAble:       true,
 	}
 	return e
 }
@@ -631,7 +664,7 @@ func addAndRemoveExecutorRandomly(s *Scheduler[int64], e Executor[int64]) *ztime
 			return
 		}
 		go func() {
-			s.AddExecutorCh <- e
+			s.ChangeExecutorCh <- e
 		}()
 		ztimer.StartIn(randDurSecs(8, 12), func() {
 			if s.stopped {
@@ -662,7 +695,7 @@ func testMixedAttributes(t *testing.T) {
 	var AMask = []string{"cdn.1"}
 	var BMask = []string{"cdn.2"}
 	fmt.Println("testMixedAttributes")
-	s := newScheduler(0, 0, 1, 20, nil)
+	s := newScheduler(0, 0, 1, 20, 30, nil)
 	e := makeExecutor(s, 1, 20)
 	e.AcceptAttributes = AMask
 	s.ChangeExecutorCh <- e
@@ -715,7 +748,8 @@ func TestAll(t *testing.T) {
 	// testEnoughRunning(t)
 	// testPauseWithTwoExecutors(t)
 	// testSetJobsOnExecutor(t)
-	// testChangeExecutor(t)
+	//	testChangeExecutor(t)
+	testExecutorAble(t)
 	// testStartStop(t)
 	// testPauseWithCapacity(t)
 	// testStartingTime(t)
@@ -730,5 +764,5 @@ func TestAll(t *testing.T) {
 	// testPlayWithSlackShortWait(t)
 	// testPlayWithSlackLongWaitAndMilestone(t)
 	// testErrorAt(t)
-	testMixedAttributes(t)
+	// testMixedAttributes(t)
 }

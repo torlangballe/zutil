@@ -50,7 +50,6 @@ type Scheduler[I comparable] struct {
 	AddJobCh                chan Job[I]            // Write a Job to AddJobCh to add a job. It will be started when and how possible.
 	ChangeJobCh             chan Job[I]            // Write  a Job with existing ID to ChangeJobCh to change it. It will be restarted if ChangingJobRestartsIt is true.
 	JobIsRunningCh          chan I                 // Write a JobID to JobIsRunningCh to flag it as now running. Not needed if JobIsRunningOnSuccessfullStart true.
-	AddExecutorCh           chan Executor[I]       // Write an Executor to AddExecutorCh to add an executor. Jobs will start/balance onto it as needed.
 	RemoveExecutorCh        chan I                 //  Write an executor ID to RemoveExecutorCh to remove it. Jobs on it will immediately be stopped and restarted.
 	ChangeExecutorCh        chan Executor[I]       // Write an executor with existing ID to ChangeExecutorCh to change it. Jobs on it will be restarted if anything but DebugName is changed.
 	FlushExecutorJobsCh     chan I                 // Write an executor ID to FlushExecutorJobsCh to restart all jobs on it.
@@ -88,6 +87,7 @@ type Job[I comparable] struct {
 type Executor[I comparable] struct {
 	ID               I
 	Paused           bool
+	IsAble           bool // If IsAble is false, it can't do jobs now. So now update only, replacing add/update of executors.
 	CostCapacity     float64
 	KeptAliveAt      time.Time
 	AcceptAttributes []string `zui:"sep"` // if not empty, only if at least ONE of job's Attributes are in AcceptAttributes will it run
@@ -140,7 +140,6 @@ func NewScheduler[I comparable]() *Scheduler[I] {
 	s.StopJobCh = make(chan I)
 	s.ChangeJobCh = make(chan Job[I])
 	s.JobIsRunningCh = make(chan I)
-	s.AddJobCh = make(chan Job[I])
 	s.SetExecutorIsAliveCh = make(chan I)
 	s.SetJobsOnExecutorCh = make(chan JobsOnExecutor[I])
 	s.SetTotalMaxJobCountCh = make(chan int)
@@ -148,9 +147,7 @@ func NewScheduler[I comparable]() *Scheduler[I] {
 	s.SetJobHasErrorCh = make(chan I)
 	s.ChangeExecutorCh = make(chan Executor[I])
 	s.FlushExecutorJobsCh = make(chan I)
-	s.AddExecutorCh = make(chan Executor[I])
 	s.RemoveExecutorCh = make(chan I)
-	s.AddExecutorCh = make(chan Executor[I])
 	s.refreshCh = make(chan struct{}, 100)
 	s.endRunCh = make(chan I)
 	return s
@@ -189,10 +186,6 @@ func (s *Scheduler[I]) selectLoop() {
 		case job := <-s.ChangeJobCh:
 			reason = "ChangeJobCh"
 			s.changeJob(job)
-
-		case e := <-s.AddExecutorCh:
-			reason = "AddExCh"
-			s.addExecutor(e)
 
 		case exID := <-s.RemoveExecutorCh:
 			// zlog.Warn("RemoveExecutorCh", zlog.CallingStackString())
@@ -258,7 +251,7 @@ func (s *Scheduler[I]) selectLoop() {
 			s.startAndStopRuns()
 
 		case <-s.timer.C:
-			zlog.Warn("zscheduler: tick")
+			zlog.Info("zscheduler: tick")
 			s.timerOn = false
 			s.startAndStopRuns()
 		}
@@ -415,7 +408,7 @@ func (s *Scheduler[I]) runnableExecutorIDs() map[I]bool {
 	m := map[I]bool{}
 	for _, e := range s.executors {
 		// zlog.Warn("runnableExecutorIDs?:", e.Paused, s.isExecutorAlive(&e))
-		if !e.Paused && s.isExecutorAlive(&e) {
+		if e.IsAble && !e.Paused && s.isExecutorAlive(&e) {
 			m[e.ID] = true
 		}
 	}
@@ -489,6 +482,9 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 	}
 	if !alive {
 		return true, "Not alive"
+	}
+	if !e.IsAble {
+		return true, "Not Able"
 	}
 	if !jobMatchesExecutorAttributes(run.Job.DebugName, run.Job.Attributes, e.AcceptAttributes) {
 		return true, zstr.Spaced("No attribute:", e.AcceptAttributes, run.Job.Attributes)
@@ -638,7 +634,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			// }
 			stop, stopReason := s.shouldStopJob(r, e, capacities)
 			// if stop {
-			// zlog.Warn("ShouldStop?:", stop, r.Job.ID, r.Stopping, r.ExecutorID, e != nil, capacities, stopReason)
+			// zlog.Warn("ShouldStop:", stop, r.Job.ID, r.Stopping, r.ExecutorID, e != nil, capacities, stopReason)
 			// }
 			if stop {
 				jobStopped = true
@@ -997,7 +993,8 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 func (s *Scheduler[I]) changeExecutor(e Executor[I]) {
 	fe, _ := s.findExecutor(e.ID)
 	if fe == nil {
-		s.addExecutor(e)
+		s.executors = append(s.executors, e)
+		s.startAndStopRuns()
 		return
 	}
 	changed := (fe.CostCapacity != e.CostCapacity || fe.SettingsHash != e.SettingsHash || !zstr.SlicesAreEqual(fe.AcceptAttributes, e.AcceptAttributes))
@@ -1005,6 +1002,7 @@ func (s *Scheduler[I]) changeExecutor(e Executor[I]) {
 	// 	zlog.Warn("changeExecutor", fe.CostCapacity, e.CostCapacity, fe.SettingsHash, e.SettingsHash, (fe.CostCapacity != e.CostCapacity || fe.SettingsHash != e.SettingsHash))
 	// }
 	fe.AcceptAttributes = e.AcceptAttributes
+	fe.IsAble = e.IsAble
 	fe.CostCapacity = e.CostCapacity
 	fe.DebugName = e.DebugName
 	fe.Paused = e.Paused
@@ -1013,17 +1011,6 @@ func (s *Scheduler[I]) changeExecutor(e Executor[I]) {
 		// fe.changedCount++ // Seems unnecessary to flush all jobs cause Capacity changed?
 	}
 	s.startAndStopRuns() // this will handle Paused changed as well as flushing jobs if changedCount increased
-}
-
-func (s *Scheduler[I]) addExecutor(e Executor[I]) {
-	// zlog.Warn("addExecutor")
-	_, i := s.findExecutor(e.ID)
-	if i != -1 {
-		zlog.Error("already exists:", e.ID)
-		return
-	}
-	s.executors = append(s.executors, e)
-	s.startAndStopRuns()
 }
 
 func (s *Scheduler[I]) changeJob(job Job[I]) {
