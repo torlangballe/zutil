@@ -36,7 +36,7 @@ func getSizeString(b int64, multiples int64, suffix, langCode string, maxSignifi
 }
 
 func GetBandwidthString(bits int64, langCode string, maxSignificant int) string {
-	return getSizeString(bits, 1000, "b", langCode, maxSignificant)
+	return getSizeString(bits, 1024, "b", langCode, maxSignificant)
 }
 
 func GetStorageSizeString(b int64, langCode string, maxSignificant int) string {
