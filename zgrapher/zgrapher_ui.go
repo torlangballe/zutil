@@ -235,11 +235,15 @@ func (v *GraphView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View
 }
 
 func drawMarker(x float64, rect zgeo.Rect, canvas *zcanvas.Canvas, color zgeo.Color) {
+	const (
+		but = 4
+		tip = 9
+	)
 	canvas.SetColor(zgeo.ColorBlack)
 	y := rect.Max().Y
-	canvas.StrokeVertical(x, y-3, y, 3, zgeo.PathLineButt)
+	canvas.StrokeVertical(x, y-but, y, but, zgeo.PathLineButt)
 	canvas.SetColor(color)
-	canvas.StrokeVertical(x, y-6, y-2, 1, zgeo.PathLineButt)
+	canvas.StrokeVertical(x, y-tip, y-but+1, 1, zgeo.PathLineButt)
 }
 
 func (v *GraphView) xForTime(t time.Time) float64 {
@@ -285,9 +289,8 @@ func (v *GraphView) drawHours(canvas *zcanvas.Canvas, xOffset float64) {
 		return
 	}
 	// zlog.Info("BeforeNice:", start, end, int(v.Rect().Size.W/3))
-	inc, _, begin := ztime.NiceAxisIncrements(start, end, int(v.Rect().Size.W/3), 80)
-	// zlog.Warn("drawHours1:", v.Job.ID, start, end, span, inc, ticks, v.SecondsPerPixel)
-	// zlog.Warn("drawHours1:", v.Job.ID, ticks, v.Ticks, w, v.Job.PixelWidth(&v.GrapherBase), begin, end)
+	inc, _, begin := ztime.NiceAxisIncrements(start, end, int(v.Rect().Size.W), 40)
+	// zlog.Warn("drawHours1:", int(v.Rect().Size.W), start, end, span, inc, begin, ticks, v.SecondsPerPixel)
 	for t := begin; t.Before(end); t = t.Add(inc.Duration()) {
 		// zlog.Warn("drawHours:", t)
 		x := float64(v.xForTime(t))
