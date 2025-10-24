@@ -9,7 +9,7 @@ import (
 	"github.com/torlangballe/zutil/ztesting"
 )
 
-func TestDaysSince2000FromTime(t *testing.T) {
+func testDaysSince2000FromTime(t *testing.T) {
 	for day := 0; day < 12000; day++ {
 		td := TimeOfDaysSince2000(day, nil)
 		day2 := DaysSince2000FromTime(td)
@@ -36,14 +36,12 @@ func date(hour, min, sec, day, month, year int) string {
 	return t.Format(time.RFC1123Z)
 }
 
-func TestParseDate(t *testing.T) {
-	zlog.Warn("TestParseDate")
-
+func testParseDate(t *testing.T) {
+	zlog.Warn("testParseDate")
 	now := time.Now().UTC()
 	year := now.Year()
 	month := int(now.Month())
 	day := now.Day()
-
 	ztesting.Equal(t, parseDate("9:0 8-20", TimeFieldNone), "big", "time/date causing problems")
 	ztesting.Equal(t, parseDate("banana", TimeFieldNone), `strconv.Atoi: parsing "banana": invalid syntax`, "bad1")
 	ztesting.Equal(t, parseDate("9:45", TimeFieldAMPM), "no am/pm 9:45", "missing am/pm")
@@ -69,4 +67,17 @@ func TestParseDate(t *testing.T) {
 		str := fmt.Sprintf("16:35 %d-%d", day, month+1)
 		ztesting.Equal(t, parseDate(str, TimeFieldNotFutureIfAmbiguous), date(16, 35, 0, day, month+1, year-1), "ambiguous future2")
 	}
+}
+
+func testHorAxis(t *testing.T) {
+	zlog.Warn("testHorAxis")
+	now := time.Now()
+	inc, _, begin := NiceAxisIncrements(now.Add(-Day), now, 120, 80)
+	zlog.Warn("inc:", inc, begin)
+}
+
+func TestAll(t *testing.T) {
+	testParseDate(t)
+	testDaysSince2000FromTime(t)
+	testHorAxis(t)
 }

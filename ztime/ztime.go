@@ -464,7 +464,7 @@ var FieldIncrements = []FieldInc{
 // NiceAxisIncrements returns a FieldInc for the smallest duration to increment ticks or markings.
 // The increment is returned as a Field in seconds, minutes or hours and a step rather than just a single duration, to alow further choices to be made.
 func NiceAxisIncrements(start, stop time.Time, pixelLength, minLabelDist int) (inc, labelInc FieldInc, first time.Time) {
-	// zlog.Info("Nice:", stop.Sub(start), incCount)
+	// zlog.Warn("Nice:", stop.Sub(start), pixelLength, minLabelDist)
 	type fieldSteps struct {
 		field TimeFieldFlags
 		steps []int
