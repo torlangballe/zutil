@@ -125,7 +125,7 @@ func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end tim
 	count := 0
 	// firstLabel := true
 	canvas.SetFont(font, nil)
-	prevDay := -1
+	// prevDay := -1
 	// zlog.Warn("Round:", axisStart, roundField, labelInc, inc)
 	first := true
 	for ot := axisStart; !ot.After(end.Add(inc.Duration() * time.Duration(10))); {
@@ -154,7 +154,8 @@ func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end tim
 			textOverlap := (x < endTextX)
 			w := 1.0
 			// strokeCol = strokeCol.WithOpacity(0.9)
-			firstLabel := first && round && x >= rect.Min().X+30
+			firstLabel := round && (first && x >= 0 || x >= rect.Max().X-30) // rect.Min().X+30
+			// firstLabel := first && round && x >= rect.Min().X+30
 			first = false
 			if isLabel {
 				w = 2.0
@@ -174,7 +175,7 @@ func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end tim
 				t = nextTime
 				continue
 			}
-			day := t.Day()
+			// day := t.Day()
 			if labelInc.Field == ztime.TimeFieldYears {
 				str = t.Format("2006")
 			} else {
@@ -186,7 +187,7 @@ func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end tim
 					}
 				} else {
 					skip := false
-					if firstLabel || day != prevDay {
+					if firstLabel { //|| day != prevDay {
 						str = t.Format("Jan-02 ")
 						// zlog.Warn("SKIP?", str, t)
 						if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 {
@@ -203,9 +204,9 @@ func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end tim
 					}
 				}
 			}
-			prevDay = day
+			// prevDay = day
 			canvas.SetColor(col)
-			// zlog.Warn("LABCOL:", round, str)
+			// zlog.Warn("LABEL:", first, str, x, firstLabel, round)
 			if round {
 				canvas.SetColor(roundCol)
 			}
@@ -246,7 +247,7 @@ func ValToY(val float64, cellHeight float64, valRange zmath.RangeF64) float64 {
 	return cellHeight - y
 }
 
-func DrawBackgroundHorGraphLines(canvas zcanvas.BaseCanvaser, a *AxisInfo, rect zgeo.Rect, gutter float64, lines int) {
+func DrawBackgroundHorGraphLines(canvas zcanvas.BaseCanvaser, a *AxisInfo, rect zgeo.Rect, gutter float64, lines int, val2string func(v float64) string) {
 	y0, inc := zmath.NiceDividesOf(a.ValueRange.Min, a.ValueRange.Max, lines, nil)
 	y1 := a.ValueRange.Max
 	a.Font.Size = min(10, math.Floor((rect.Size.H+2)*2/float64(lines)))
@@ -269,7 +270,9 @@ func DrawBackgroundHorGraphLines(canvas zcanvas.BaseCanvaser, a *AxisInfo, rect 
 				}
 				align := zgeo.VertCenter | align
 				text := zwords.NiceFloat(y, -1) + a.Postfix
-				// zlog.Info("DrawLeft:", pos, text, align, rect)
+				if val2string != nil {
+					text = val2string(y)
+				}
 				textRange := canvas.DrawTextAlignedInPos(pos, text, 0, align, 0)
 				if a.LineColor.Valid && lastX != math.MaxFloat64 {
 					canvas.SetColor(a.LineColor) // We have to set this each time, as ti.Draw() above with set it too

@@ -11,14 +11,15 @@ import (
 )
 
 type Graph struct {
-	Axis           AxisInfo
-	Type           GraphType
-	Start          time.Time
-	End            time.Time
-	StrokeWidth    float64
-	GraphColor     zgeo.Color
-	PullValuesFunc func(i *int) (val float64, x time.Time)
-	AxisSizes      zgeo.Size // x is actually for y axis and visa versa
+	Axis              AxisInfo
+	Type              GraphType
+	Start             time.Time
+	End               time.Time
+	StrokeWidth       float64
+	GraphColor        zgeo.Color
+	PullValuesFunc    func(i *int) (val float64, x time.Time)
+	AxisSizes         zgeo.Size // x is actually for y axis and visa versa
+	ValueToStringFunc func(v float64) string
 }
 
 func DrawGraph(canvas zcanvas.BaseCanvaser, gr *Graph, fullRect zgeo.Rect) {
@@ -77,7 +78,7 @@ func DrawGraph(canvas zcanvas.BaseCanvaser, gr *Graph, fullRect zgeo.Rect) {
 	DrawHorTimeAxis(canvas, xAxisRect, gr.Start, gr.End, beyond, isBottom, drawAxis, gr.Axis.LineColor, gr.GraphColor, gr.Axis.Font)
 	horRect := fullRect
 	horRect.SetMaxY(xAxisRect.Min().Y)
-	DrawBackgroundHorGraphLines(canvas, &gr.Axis, horRect, yAxisRect.Size.W, 5)
+	DrawBackgroundHorGraphLines(canvas, &gr.Axis, horRect, yAxisRect.Size.W, 5, gr.ValueToStringFunc)
 }
 
 func MakeGraphInfo() Graph {
