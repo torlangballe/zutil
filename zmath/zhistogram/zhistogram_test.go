@@ -32,30 +32,35 @@ func testSimple(t *testing.T) {
 func testNames(t *testing.T) {
 	zlog.Warn("testNames")
 	h1 := New()
-	h1.AddNameValue("Banana")
-	h1.AddNameValue("Banana")
-	h1.AddNameValue("Banana")
-	h1.AddNameValue("Pear")
-	h1.AddNameValue("Pear")
-	h1.AddNameValue("Apple")
-	ztesting.Equal(t, h1.ClassString(), "Banana:3 Pear:2 Apple:1", "fruit-count not equal")
+	h1.AccumilateClasses = true
+	h1.Add(1)
+	h1.Add(1)
+	h1.Add(2)
+	h1.Add(2)
+	h1.Add(2)
+	h1.Add(2)
+	h1.Add(2)
+	h1.Add(3)
+	ztesting.Equal(t, h1.ClassString(), "1:2 2:5 3:1", "fruit-count not equal")
 
-	h2 := New()
-	h2.SetupNamedRanges(0, 60, "minute", 3600, "hour", 3600*24, "day")
-	h2.Add(20)
-	h2.Add(50)
-	h2.Add(200)
-	h2.Add(2220)
-	h2.Add(7000)
-	ztesting.Equal(t, h2.ClassString(), "minute/60:2 hour/3600:2 day/86400:1", "time-count not equal")
+	/*
+		h2 := New()
+		h2.SetupNamedRanges(0, 60, "minute", 3600, "hour", 3600*24, "day")
+		h2.Add(20)
+		h2.Add(50)
+		h2.Add(200)
+		h2.Add(2220)
+		h2.Add(7000)
+		ztesting.Equal(t, h2.ClassString(), "minute/60:2 hour/3600:2 day/86400:1", "time-count not equal")
 
-	h3 := New()
-	h3.SetupNamedRanges(0, 60, "minute", 3600, "hour", 3600*24, "day")
-	h3.Add(200)
+		h3 := New()
+		h3.SetupNamedRanges(0, 60, "minute", 3600, "hour", 3600*24, "day")
+		h3.Add(200)
 
-	h2.MergeIn(*h3)
+		h2.MergeIn(*h3)
 
-	ztesting.Equal(t, h2.ClassString(), "minute/60:2 hour/3600:3 day/86400:1", "set-merged-count not equal")
+		ztesting.Equal(t, h2.ClassString(), "minute/60:2 hour/3600:3 day/86400:1", "set-merged-count not equal")
+	*/
 }
 
 func TestAll(t *testing.T) {

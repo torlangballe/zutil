@@ -54,7 +54,7 @@ func TestDrawHistogram(t *testing.T) {
 	// h.Add(0.6)
 	// // h.OutlierAbove = 5
 
-	h.SetupNamedRanges(0, 30, "30s", 60, "1m", 300, "5m", 3600, "1h")
+	h.SetupRanges(0, 30, 60, 300, 3600)
 	h.Add(10)
 	h.Add(22)
 	h.Add(5)
