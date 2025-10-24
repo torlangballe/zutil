@@ -101,6 +101,10 @@ func FindIntInStrInts(n int64, sis []StrInt) (*StrInt, int) {
 	return nil, -1
 }
 
+func StrDoubleF64(s string, n float64) StrDouble {
+	return StrDouble{Str: s, Float: n}
+}
+
 func (u URLWrapper) GetURL() string {
 	return string(u)
 }
