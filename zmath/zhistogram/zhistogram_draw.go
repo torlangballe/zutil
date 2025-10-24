@@ -9,6 +9,7 @@ import (
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zwords"
 )
@@ -18,10 +19,12 @@ type DrawOpts struct {
 	OutlierBelow       zbool.BoolInd
 	OutlierAbove       zbool.BoolInd
 	Styling            zstyle.Styling
-	CriticalClassValue float64                             // if a class bar has value >= this, show in red
-	PercentCutoff      int                                 // If we know the highest percent any of the classes will have, we can set a cutoff to scale them all up
-	SignificantDigits  int                                 // For bar-bottom labels
-	BarNameFunc        func(n string) (string, zgeo.Color) // this is for transforming named classes' names and getting a color for it, if Valid
+	CriticalClassValue float64                // if a class bar has value >= this, show in red
+	PercentCutoff      int                    // If we know the highest percent any of the classes will have, we can set a cutoff to scale them all up
+	SignificantDigits  int                    // For bar-bottom labels
+	ValueToStringFunc  func(v float64) string `json:"-"`
+
+	// BarNameFunc        func(n string) (string, zgeo.Color) // this is for transforming named classes' names and getting a color for it, if Valid
 }
 
 func MakeDefaultStyling(size zgeo.Size) zstyle.Styling {
@@ -40,6 +43,7 @@ func MakeDefaultStyling(size zgeo.Size) zstyle.Styling {
 func (h *Histogram) Draw(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawOpts) {
 	rect.Add(opts.Styling.Margin)
 
+	zlog.Info("DRAW:", zlog.Full(h))
 	if h.Unit != "" {
 		font := opts.Styling.Font.NewWithSize(opts.Styling.Font.Size)
 		canvas.SetFont(font, nil)
@@ -76,18 +80,11 @@ func (h *Histogram) Draw(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawO
 		var str string
 		var critical bool
 		col := opts.Styling.BGColor
-		class := h.Classes[i]
-		str = class.Label
-		if str != "" {
-			if opts.BarNameFunc != nil {
-				var bcol zgeo.Color
-				str, bcol = opts.BarNameFunc(str)
-				if bcol.Valid {
-					col = bcol
-				}
-			}
+		c := h.Classes[i]
+		if opts.ValueToStringFunc != nil {
+			str = opts.ValueToStringFunc(c.MaxRange)
 		} else {
-			barVal := class.MaxRange
+			barVal := c.MaxRange
 			sig := 7 // we do this so it doesn't do weird things like be 0.1, 0.2, 0.300000000001, 0.4 etc
 			if opts.SignificantDigits != 0 {
 				sig = opts.SignificantDigits + 1 // need to add 1 or we round down any changes
@@ -101,7 +98,7 @@ func (h *Histogram) Draw(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawO
 			critical = opts.CriticalClassValue != 0 && barVal > opts.CriticalClassValue
 		}
 		// zlog.Warn("drawBar:", r, str, class.Count, rect)
-		drawBar(h, canvas, r, opts, col, str, class.Count, false, critical)
+		drawBar(h, canvas, r, opts, col, str, c.Count, false, critical)
 		r.Pos.X += barAdd
 	}
 	if drawAbove && h.OutlierAbove != 0 {
@@ -110,13 +107,13 @@ func (h *Histogram) Draw(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawO
 }
 
 func drawBar(h *Histogram, canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawOpts, col zgeo.Color, label string, count int, isOutlier, isCritical bool) {
-	labelBoxHeight := opts.Styling.Font.Size * 3
+	labelBoxHeight := opts.Styling.Font.Size * 2
 	canvas.SetFont(&opts.Styling.Font, nil)
 	bottom := rect.Size.H - labelBoxHeight    // + opts.Styling.Font.Size/3 + 2
 	pos := zgeo.PosD(rect.Center().X, bottom) // rect.Max().Y+labelBoxHeight/3)
 
 	s := opts.Styling.Font.Size
-	pos.Add(zgeo.PosD(-s/2, s*0.7))
+	pos.Add(zgeo.PosD(-s/2, s*0.5))
 	canvas.SetColor(opts.Styling.FGColor)
 	canvas.DrawTextAlignedInPos(pos, label, 0, zgeo.TopLeft, 55)
 

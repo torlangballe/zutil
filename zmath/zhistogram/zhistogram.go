@@ -3,16 +3,13 @@ package zhistogram
 import (
 	"fmt"
 	"slices"
-	"strconv"
-	"strings"
 
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zstr"
 )
 
 type Class struct {
-	Count    int    `json:",omitempty"`
-	Label    string `json:",omitempty"`
+	Count    int `json:",omitempty"`
 	MaxRange float64
 }
 
@@ -58,39 +55,10 @@ func (h *Histogram) SetupRanges(min float64, maxes ...float64) {
 	}
 }
 
-func (h *Histogram) SetupNamedStrDouble(min float64, mNames ...zstr.StrDouble) {
-	h.MinValue = min
-	for _, si := range mNames {
-		class := Class{MaxRange: si.Float, Label: si.Str}
-		h.Classes = append(h.Classes, class)
-	}
-}
-
-func (h *Histogram) SetupNamedRanges(min float64, mNames ...any) {
-	h.MinValue = min
-	for i := 0; i < len(mNames); i += 2 {
-		f, is := mNames[i].(float64)
-		if !is {
-			n := mNames[i].(int)
-			f = float64(n)
-		}
-		name := mNames[i+1].(string)
-		class := Class{MaxRange: f, Label: name}
-		h.Classes = append(h.Classes, class)
-	}
-}
-
-func (h *Histogram) SetupNameClasses(names ...string) {
-	for _, n := range names {
-		class := Class{Label: n}
-		h.Classes = append(h.Classes, class)
-	}
-}
-
 func (h *Histogram) ClassString() string {
 	var out string
 	for _, c := range h.Classes {
-		str := c.Label
+		var str string
 		if c.MaxRange != 0 {
 			str = zstr.Concat("/", str, c.MaxRange)
 		}
@@ -100,27 +68,6 @@ func (h *Histogram) ClassString() string {
 		out += fmt.Sprintf("%s:%d", str, c.Count)
 	}
 	return out
-}
-
-func (h *Histogram) FindName(name string) int {
-	for i, c := range h.Classes {
-		if c.Label == name {
-			return i
-		}
-	}
-	return -1
-}
-
-func (h *Histogram) AddNameValue(name string) {
-	i := h.FindName(name)
-	if i == -1 {
-		c := Class{Count: 1, Label: name}
-		h.Classes = append(h.Classes, c)
-		return
-	}
-	h.Classes[i].Count++
-	// zlog.Info("AddSet:", name, h.Classes)
-	return
 }
 
 func (h *Histogram) Add(value float64) {
@@ -182,7 +129,7 @@ func (h *Histogram) MergeIn(in Histogram) {
 	found := map[int]bool{}
 	for i, c := range h.Classes {
 		for j, ic := range in.Classes {
-			if ic.MaxRange == c.MaxRange && ic.Label == c.Label {
+			if ic.MaxRange == c.MaxRange {
 				h.Classes[i].Count += ic.Count
 				found[j] = true
 				break
@@ -213,48 +160,8 @@ func (h *Histogram) DebugStr() string {
 		if i != 0 {
 			str += " "
 		}
-		str += fmt.Sprintf("%s:%d,%g", c.Label, c.Count, c.MaxRange)
+		str += fmt.Sprintf("%d,%g", c.Count, c.MaxRange)
 	}
 	str += "]"
 	return str
-}
-
-func (h *Histogram) NamedClassesSortedByLabel() []Class {
-	classes := slices.Clone(h.Classes)
-	intSortable := true
-	for _, c := range classes {
-		_, err := strconv.Atoi(c.Label)
-		if err != nil {
-			intSortable = false
-			break
-		}
-	}
-	if intSortable {
-		slices.SortFunc(classes, func(a, b Class) int {
-			ia, _ := strconv.Atoi(a.Label)
-			ib, _ := strconv.Atoi(b.Label)
-			return ia - ib
-		})
-		return classes
-	}
-	slices.SortFunc(classes, func(a, b Class) int {
-		return strings.Compare(a.Label, b.Label)
-	})
-	return classes
-}
-
-func (h *Histogram) AddClassLabels(labels ...string) {
-	for _, label := range labels {
-		c := Class{Label: label}
-		h.Classes = append(h.Classes, c)
-	}
-}
-
-func (h *Histogram) HasNames() bool {
-	for _, c := range h.Classes {
-		if len(c.Label) != 0 {
-			return true
-		}
-	}
-	return false
 }

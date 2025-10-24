@@ -15,7 +15,7 @@ import (
 	"github.com/torlangballe/zutil/zwords"
 )
 
-func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalVal float64, att *zpresent.Attributes, transformName func(n string) (string, zgeo.Color)) {
+func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalVal float64, att *zpresent.Attributes, val2Name func(v float64) string) {
 	v := zcontainer.StackViewVert("histogram")
 	v.SetMarginS(zgeo.SizeD(12, 12))
 	grid := zcontainer.StackViewVert("grid")
@@ -31,23 +31,17 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 	builder.Default.Gap = 16
 	blue := zgeo.ColorNew(0.2, 0.2, 1, 1)
 	builder.AddLabelsRowToVertStack(grid, blue, zgeo.FontStyleBold, zstyle.Start, name, "% of Total", "Count")
-	classes := h.NamedClassesSortedByLabel()
 	barVal := h.MinValue
-	for i, c := range classes {
-		class := classes[i]
+	for _, c := range h.Classes {
 		var sclass string
 		var col zgeo.Color
-		sclass = class.Label
-		if sclass != "" {
-			if transformName != nil {
-				sclass, col = transformName(sclass)
-			}
+		if val2Name != nil {
+			sclass = val2Name(c.MaxRange)
 		} else {
 			sa := zwords.NiceFloat(barVal, -1)
-			sb := zwords.NiceFloat(class.MaxRange, -1)
+			sb := zwords.NiceFloat(c.MaxRange, -1)
 			sclass = sa + "-" + sb
 		}
-
 		spercent := fmt.Sprint(h.CountAsPercent(c.Count), "%")
 		scount := fmt.Sprint(c.Count)
 		if c.Count == 0 {
@@ -62,12 +56,12 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 			textCol = zgeo.ColorRed
 		}
 		h1 := builder.AddLabelsRowToVertStack(grid, textCol, zstyle.Start, zgeo.FontStyleBold, sclass, spercent, scount)
-		if col.Valid && len(classes) > 1 {
+		if col.Valid && len(h.Classes) > 1 {
 			h1.SetBGColor(col)
 			h1.SetCorner(2)
 			h1.SetMarginS(zgeo.SizeD(2, 0))
 		}
-		barVal = zfloat.KeepFractionDigits(class.MaxRange, 7)
+		barVal = zfloat.KeepFractionDigits(c.MaxRange, 7)
 	}
 	if h.OutlierBelow != 0 {
 		builder.AddLabelsRowToVertStack(grid, "Outliers Below", fmt.Sprint(h.CountAsPercent(h.OutlierBelow), "%"), fmt.Sprint(h.OutlierBelow))
