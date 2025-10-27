@@ -72,14 +72,15 @@ func Minimize(a *int, b int) bool {
 	*a = b
 	return true
 }
-func Clamp(a, min, max int) int {
-	if a < min {
-		a = min
-	} else if a > max {
-		a = max
-	}
-	return a
-}
+
+// func Clamp(a, min, max int) int {
+// 	if a < min {
+// 		a = min
+// 	} else if a > max {
+// 		a = max
+// 	}
+// 	return a
+// }
 
 func Max64(a int64, b int64) int64 {
 	if a > b {
