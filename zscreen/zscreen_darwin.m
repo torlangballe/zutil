@@ -36,7 +36,7 @@ int GetAll(struct Info *sis, int max) {
 void SetMainResolutionWithinWidths(long minw, long minh, long maxw, long maxh) {
     // https://developer.apple.com/library/archive/documentation/GraphicsImaging/Conceptual/QuartzDisplayServicesConceptual/Articles/DisplayModes.html#//apple_ref/doc/uid/TP40004234-SW1
     // https://developer.apple.com/documentation/coregraphics/1456259-cgdisplaycapture?language=objc
-    const int MAX = 100;
+    enum { MAX = 100 }; // can't be const due to stupid clang error
     CGDirectDisplayID displays[MAX];
     uint32_t numDisplays;
 
