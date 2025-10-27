@@ -1138,3 +1138,14 @@ func DurationToVerbal(d time.Duration, useSecs bool) string {
 func MakeTimeRange(min, max time.Time) TimeRange {
 	return TimeRange{Min: min, Max: max}
 }
+
+func LocalizedWeekDayName(w time.Weekday) string {
+	return WeekDayName(w, zlocale.IsMondayFirstInWeek.Get())
+}
+
+func WeekDayName(w time.Weekday, mondayFirst bool) string {
+	if mondayFirst {
+		w = (w + 1) % (time.Saturday + 1)
+	}
+	return w.String()
+}
