@@ -9,7 +9,6 @@ import (
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zint"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zwords"
 )
@@ -19,9 +18,10 @@ type DrawOpts struct {
 	OutlierBelow       zbool.BoolInd
 	OutlierAbove       zbool.BoolInd
 	Styling            zstyle.Styling
-	CriticalClassValue float64                // if a class bar has value >= this, show in red
-	PercentCutoff      int                    // If we know the highest percent any of the classes will have, we can set a cutoff to scale them all up
-	SignificantDigits  int                    // For bar-bottom labels
+	CriticalClassValue float64 // if a class bar has value >= this, show in red
+	PercentCutoff      int     // If we know the highest percent any of the classes will have, we can set a cutoff to scale them all up
+	SignificantDigits  int     // For bar-bottom labels
+	TextHeightScale    float64
 	ValueToStringFunc  func(v float64) string `json:"-"`
 
 	// BarNameFunc        func(n string) (string, zgeo.Color) // this is for transforming named classes' names and getting a color for it, if Valid
@@ -41,9 +41,10 @@ func MakeDefaultStyling(size zgeo.Size) zstyle.Styling {
 }
 
 func (h *Histogram) Draw(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawOpts) {
+	if opts.TextHeightScale == 0 {
+		opts.TextHeightScale = 2
+	}
 	rect.Add(opts.Styling.Margin)
-
-	zlog.Info("DRAW:", zlog.Full(h))
 	if h.Unit != "" {
 		font := opts.Styling.Font.NewWithSize(opts.Styling.Font.Size)
 		canvas.SetFont(font, nil)
@@ -107,7 +108,7 @@ func (h *Histogram) Draw(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawO
 }
 
 func drawBar(h *Histogram, canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts DrawOpts, col zgeo.Color, label string, count int, isOutlier, isCritical bool) {
-	labelBoxHeight := opts.Styling.Font.Size * 2
+	labelBoxHeight := opts.Styling.Font.Size * opts.TextHeightScale
 	canvas.SetFont(&opts.Styling.Font, nil)
 	bottom := rect.Size.H - labelBoxHeight    // + opts.Styling.Font.Size/3 + 2
 	pos := zgeo.PosD(rect.Center().X, bottom) // rect.Max().Y+labelBoxHeight/3)
