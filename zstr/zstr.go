@@ -223,8 +223,11 @@ func HeadUntilWithRest(str, sep string, rest *string) string {
 }
 
 func Tail(str string, length int) string {
-	l := zint.Clamp(length, 0, len(str)) // hack without unicode support
-	return str[len(str)-l:]
+	slen := len(str)
+	if length >= slen {
+		return str
+	}
+	return str[slen-length:]
 }
 
 func TailUntil(str, sep string) string {
