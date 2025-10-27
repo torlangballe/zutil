@@ -3,6 +3,7 @@ package zhistogram
 import (
 	"fmt"
 	"slices"
+	"sort"
 
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zstr"
@@ -68,6 +69,19 @@ func (h *Histogram) ClassString() string {
 		out += fmt.Sprintf("%s:%d", str, c.Count)
 	}
 	return out
+}
+
+func (h *Histogram) AddClass(max float64) {
+	for _, c := range h.Classes {
+		if c.MaxRange == max {
+			return
+		}
+	}
+	c := Class{MaxRange: max}
+	h.Classes = append(h.Classes, c)
+	sort.Slice(h.Classes, func(i, j int) bool {
+		return h.Classes[i].MaxRange < h.Classes[j].MaxRange
+	})
 }
 
 func (h *Histogram) Add(value float64) {
