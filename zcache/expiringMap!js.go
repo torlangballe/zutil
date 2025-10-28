@@ -32,7 +32,7 @@ func (m *ExpiringMap[K, V]) SetStorage(fpath string) {
 }
 
 func (m *ExpiringMap[K, V]) FlushToStorage() {
-	if m.changed {
+	if m.Changed {
 		d := map[K]V{}
 		m.ForAll(func(key K, value V) {
 			d[key] = value
@@ -41,6 +41,6 @@ func (m *ExpiringMap[K, V]) FlushToStorage() {
 		if zlog.OnError(err) {
 			return
 		}
-		m.changed = false
+		m.Changed = false
 	}
 }

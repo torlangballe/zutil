@@ -12,48 +12,45 @@ import (
 	"github.com/torlangballe/zutil/ztimer"
 )
 
+type element[V any] struct {
+	value   V
+	touched time.Time
+}
+
 type ExpiringMap[K comparable, V any] struct {
-	lockedMap zmap.LockMap[K, struct {
-		value   V
-		touched time.Time
-	}]
+	lockedMap   zmap.LockMap[K, element[V]]
 	secsToLive  float64
 	storagePath string
-	changed     bool
+	Changed     bool
 }
 
 func NewExpiringMap[K comparable, V any](secsToLive float64) *ExpiringMap[K, V] {
 	m := &ExpiringMap[K, V]{}
 	m.secsToLive = secsToLive
 	ztimer.RepeatForever(secsToLive/3, func() {
-		m.lockedMap.ForEach(func(k K, v struct {
-			value   V
-			touched time.Time
-		}) bool {
-			if ztime.Since(v.touched) > secsToLive {
+		if !m.Changed {
+			return
+		}
+		m.lockedMap.ForEach(func(k K, e element[V]) bool {
+			if ztime.Since(e.touched) > secsToLive {
 				// zlog.Info("Expiring: Purge!", k)
 				m.lockedMap.Remove(k)
 			}
 			return true
 		})
+		m.Changed = false
 	})
 	return m
 }
 
 func (m *ExpiringMap[K, V]) Set(k K, v V) {
-	m.changed = true
-	m.lockedMap.Set(k, struct {
-		value   V
-		touched time.Time
-	}{v, time.Now()})
+	m.Changed = true
+	m.lockedMap.Set(k, element[V]{v, time.Now()})
 }
 
 func (m *ExpiringMap[K, V]) SetForever(k K, v V) {
-	m.changed = true
-	m.lockedMap.Set(k, struct {
-		value   V
-		touched time.Time
-	}{v, ztime.BigTime})
+	m.Changed = true
+	m.lockedMap.Set(k, element[V]{v, ztime.BigTime})
 }
 
 func (m *ExpiringMap[K, V]) get(k K, touch bool) (V, bool) {
@@ -87,21 +84,18 @@ func (m *ExpiringMap[K, V]) Peek(k K) (V, bool) {
 }
 
 func (m *ExpiringMap[K, V]) Remove(k K) {
-	m.changed = true
+	m.Changed = true
 	m.lockedMap.Remove(k)
 }
 
 func (m *ExpiringMap[K, V]) RemoveAll() {
-	m.changed = true
+	m.Changed = true
 	m.lockedMap.RemoveAll()
 }
 
 func (m *ExpiringMap[K, V]) ForEach(f func(key K, value V) bool) {
-	m.lockedMap.ForEach(func(key K, val struct {
-		value   V
-		touched time.Time
-	}) bool {
-		return f(key, val.value)
+	m.lockedMap.ForEach(func(key K, e element[V]) bool {
+		return f(key, e.value)
 	})
 }
 
