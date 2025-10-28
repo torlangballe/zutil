@@ -196,12 +196,30 @@ func Add[T any](s *[]T, a T) {
 	*s = append(*s, a)
 }
 
-func AddToSet[T comparable](s *[]T, adds ...T) {
+func AddToSet[T comparable](s *[]T, adds ...T) int {
+	var count int
 	for _, a := range adds {
 		if !slices.Contains(*s, a) {
 			Add(s, a)
+			count++
 		}
 	}
+	return count
+}
+
+func AddToSetFunc[T comparable](slice *[]T, adds []T, equal func(a, b T) bool) int {
+	var count int
+outer:
+	for _, a := range adds {
+		for _, s := range *slice {
+			if equal(a, s) {
+				continue outer
+			}
+		}
+		count++
+		Add(slice, a)
+	}
+	return count
 }
 
 func Union[T comparable](a, b []T) []T {
@@ -289,7 +307,7 @@ func Map[S any, O any](slice []S, mapFunc func(s S) O) []O {
 	return out
 }
 
-func FilterMap[S any, O any](slice []S, mapFunc func(s S) (O, bool)) []O {
+func FilterMapped[S any, O any](slice []S, mapFunc func(s S) (O, bool)) []O {
 	out := make([]O, len(slice))
 	for _, s := range slice {
 		r, keep := mapFunc(s)
@@ -300,7 +318,7 @@ func FilterMap[S any, O any](slice []S, mapFunc func(s S) (O, bool)) []O {
 	return out
 }
 
-func Filter[S any](slice []S, keep func(s S) bool) []S {
+func Filtered[S any](slice []S, keep func(s S) bool) []S {
 	out := make([]S, 0, len(slice))
 	for _, s := range slice {
 		if keep(s) {
