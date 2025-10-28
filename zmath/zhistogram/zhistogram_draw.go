@@ -29,7 +29,7 @@ type DrawOpts struct {
 
 func MakeDefaultStyling(size zgeo.Size) zstyle.Styling {
 	min := size.Min()
-	s := min / 12
+	s := min / 10
 	return zstyle.Styling{
 		Font:    *zgeo.FontNew("Arial", s, zgeo.FontStyleNormal),
 		FGColor: zstyle.DefaultFGColor(),
