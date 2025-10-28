@@ -378,7 +378,6 @@ func PostQueryToURL(resultPointer any, surl string, query string) error {
 		return err
 	}
 	err = json.Unmarshal(data, resultPointer)
-	zlog.Info("POST", err)
 	if err == nil {
 		err2 := json.Unmarshal(data, &errorResult)
 		if err2 == nil && len(errorResult.Errors) > 0 {
