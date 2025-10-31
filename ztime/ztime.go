@@ -137,14 +137,29 @@ func ParseISO8601(str string) (t time.Time, e error) {
 	return
 }
 
-func GetHourAndAM(t time.Time) (hour int, am bool) {
-	hour = t.Hour()
-	am = hour < 12
+func HourAMForTime(t time.Time) (hour int, am bool) {
+	return HourAmForHour(t.Hour())
+}
+
+func HourAmForHour(hour int) (int, bool) {
+	am := hour < 12
 	hour %= 12
 	if hour == 0 {
 		hour = 12
 	}
-	return
+	return hour, am
+}
+
+func FormatHour(hour int, ampm bool) string {
+	if ampm {
+		return strconv.Itoa(hour)
+	}
+	hour, am := HourAmForHour(hour)
+	end := "pm"
+	if am {
+		end = "am"
+	}
+	return fmt.Sprintf("%d %s", hour, end)
 }
 
 func IsBigTime(t time.Time) bool {
@@ -298,6 +313,24 @@ func GetStartOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
+func (f TimeFieldFlags) FormatTime(t time.Time) string {
+	switch f {
+	case TimeFieldYears:
+		return t.Format("2006")
+	case TimeFieldMonths:
+		return t.Format("1")
+	case TimeFieldDays:
+		return t.Format("2")
+	case TimeFieldHours:
+		return t.Format("15")
+	case TimeFieldMins:
+		return t.Format("4")
+	case TimeFieldSecs:
+		return t.Format("5")
+	}
+	return t.String()
+}
+
 func (f TimeFieldFlags) IsTimeZeroOfField(t time.Time) bool {
 	switch f {
 	case TimeFieldMonths:
@@ -419,7 +452,7 @@ func (f FieldInc) IsModOfTimeZero(t time.Time) bool {
 	case TimeFieldYears:
 		return t.Month() == 1 && t.Day() == 1
 	case TimeFieldMonths:
-		return t.Day() == 1
+		return int(t.Month()-1)%f.Step == 0 && t.Day() == 1 && t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0
 	case TimeFieldDays:
 		return (t.Day()-1)%f.Step == 0 && t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0
 	case TimeFieldHours:
@@ -440,8 +473,10 @@ var FieldIncrements = []FieldInc{
 	FieldInc{TimeFieldMonths, 1},
 	FieldInc{TimeFieldDays, 14},
 	FieldInc{TimeFieldDays, 7},
+	FieldInc{TimeFieldDays, 4},
+	FieldInc{TimeFieldDays, 3},
+	FieldInc{TimeFieldDays, 2},
 	FieldInc{TimeFieldDays, 1},
-	FieldInc{TimeFieldHours, 24},
 	FieldInc{TimeFieldHours, 12},
 	FieldInc{TimeFieldHours, 6},
 	FieldInc{TimeFieldHours, 4},
