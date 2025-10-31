@@ -9,6 +9,7 @@ import (
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zwords"
 )
@@ -112,20 +113,23 @@ func drawBar(h *Histogram, canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts Dra
 	canvas.SetFont(&opts.Styling.Font, nil)
 	bottom := rect.Size.H - labelBoxHeight    // + opts.Styling.Font.Size/3 + 2
 	pos := zgeo.PosD(rect.Center().X, bottom) // rect.Max().Y+labelBoxHeight/3)
-
 	s := opts.Styling.Font.Size
 	pos.Add(zgeo.PosD(-s/2, s*0.5))
 	canvas.SetColor(opts.Styling.FGColor)
 	canvas.DrawTextAlignedInPos(pos, label, 0, zgeo.TopLeft, 55)
 
-	rect.Size.H = bottom - 2
+	r := rect
+	r.Size.H = bottom
 	ratio := h.CountAsRatio(count)
 	max := 1.0
 	if opts.PercentCutoff != 0 {
 		max = float64(opts.PercentCutoff) / 100
 	}
-	y := ratio * rect.Size.H / max
-	rect.SetMinY(bottom - y)
+	y := ratio * r.Size.H / max
+	r.SetMinY(bottom - y)
+	if rect.Size.H < 0 {
+		zlog.Info("zhist.NegRect2:", ratio, max, rect, zlog.Full(h))
+	}
 	// path := zgeo.PathNewRect(rect, zgeo.SizeBoth(opts.Styling.Corner))
 	// zlog.Warn("drawBar:", label, pos, col, isCritical, isOutlier, count, rect, max, opts.PercentCutoff)
 	if isOutlier {
@@ -135,7 +139,7 @@ func drawBar(h *Histogram, canvas zcanvas.BaseCanvaser, rect zgeo.Rect, opts Dra
 		col = zgeo.ColorRed
 	}
 	canvas.SetColor(col)
-	canvas.FillRect(rect, 0)
+	canvas.FillRect(r, 0)
 }
 
 func shouldDrawOutlier(bars *int, want zbool.BoolInd, outCount int) bool {
