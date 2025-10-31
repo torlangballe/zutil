@@ -92,10 +92,10 @@ func (s *SVGGenerator) DrawTextAlignedInPos(pos zgeo.Pos, text string, strokeWid
 	} else {
 		geo = fmt.Sprintf(`x="%d" y="%d"`, int(npos.X), int(npos.Y))
 	}
-	f := `<text %s text-anchor="%s" style="fill:%s">%s</text>` //;stroke-width:3;stroke:red" />
+	f := `<text %s textAnchor="%s" style="fill:%s">%s</text>` //;stroke-width:3;stroke:red" />
 	str := fmt.Sprintf(f, geo, anchor, s.color.Hex(), htext)
 	s.writer.Write([]byte(str + "\n"))
-	r := zmath.MakeRange(npos.X, npos.Y)
+	r := zmath.MakeRange(npos.X, npos.X+size.W)
 	return r
 }
 
