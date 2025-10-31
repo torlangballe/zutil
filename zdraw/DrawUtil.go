@@ -93,8 +93,11 @@ func TimeToX(rect zgeo.Rect, t, start, end time.Time) float64 {
 
 // DrawHorTimeAxis draws time labels with vertical ticks and an optional horizonal axis line.
 func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end time.Time, beyond, isBottom, drawAxis bool, col, roundCol zgeo.Color, font *zgeo.Font) ztime.FieldInc {
-	minLabelDist := font.Size * 2 * 4
+	minLabelDist := font.Size * 2 * 3
 	inc, labelInc, axisStart := ztime.NiceAxisIncrements(start, end, int(rect.Size.W), int(minLabelDist))
+	zlog.Info("Inc:", inc, labelInc, "dist:", minLabelDist)
+	minMarg := font.Size * 3.6
+	numMarg := minMarg / 3
 	var roundField ztime.TimeFieldFlags
 	switch labelInc.Field {
 	case ztime.TimeFieldYears:
@@ -123,11 +126,11 @@ func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end tim
 	}
 	endTextX := -1000.0
 	count := 0
-	// firstLabel := true
 	canvas.SetFont(font, nil)
 	// prevDay := -1
 	// zlog.Warn("Round:", axisStart, roundField, labelInc, inc)
-	first := true
+	nums := map[zgeo.Pos]string{}
+	hasHadFull := false
 	for ot := axisStart; !ot.After(end.Add(inc.Duration() * time.Duration(10))); {
 		nextRoundTime := ztime.OnThisPeriod(ot, roundField, 1)
 		round := roundField == ztime.TimeFieldMonths
@@ -153,10 +156,20 @@ func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end tim
 			strokeCol := col
 			textOverlap := (x < endTextX)
 			w := 1.0
-			// strokeCol = strokeCol.WithOpacity(0.9)
-			firstLabel := round && (first && x >= 0 || x >= rect.Max().X-30) // rect.Min().X+30
-			// firstLabel := first && round && x >= rect.Min().X+30
-			first = false
+			ty := rect.Max().Y - font.Size/3
+			if !isBottom {
+				ty = rect.Max().Y - lineH*1.2 - 2
+			}
+			pos := zgeo.PosD(x, ty)
+			if !isLabel {
+				nums[pos] = inc.Field.FormatTime(t)
+			}
+			fullLabel := round && (!hasHadFull && x >= rect.Min().X || x >= rect.Max().X-minMarg)
+			// zlog.Info("First?", textOverlap, isLabel, fullLabel, hasHadFull, roundField, round, x, t)
+			skipLabel := (textOverlap || !beyond && (x < rect.Min().X+minMarg || x > rect.Max().X-minMarg))
+			if skipLabel {
+				isLabel = false
+			}
 			if isLabel {
 				w = 2.0
 			}
@@ -167,60 +180,66 @@ func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end tim
 			canvas.SetColor(strokeCol)
 			canvas.StrokeVertical(x, y, y+lineH, w, zgeo.PathLineSquare)
 			secs := (inc.Duration() < time.Second*10)
-			nearRound := false //nextRoundTime.Sub(t) < inc.Duration()*3
 			// zlog.Warn("IsLabel:", isLabel, t, labelInc, inc, round)
 			var str string
-			if textOverlap || !isLabel || nearRound || !beyond && (x < 30 || x > rect.Max().X-30) {
-				round = false
+			if skipLabel {
 				t = nextTime
 				continue
 			}
-			// day := t.Day()
-			if labelInc.Field == ztime.TimeFieldYears {
-				str = t.Format("2006")
-			} else {
-				if inc.Field >= ztime.TimeFieldDays {
-					if firstLabel {
-						str = t.Format("2006-Jan-02 ")
-					} else {
-						str = t.Format("Jan-02")
-					}
+			if isLabel {
+				// day := t.Day()
+				if labelInc.Field == ztime.TimeFieldYears {
+					str = t.Format("2006")
 				} else {
-					skip := false
-					if firstLabel { //|| day != prevDay {
-						str = t.Format("Jan-02 ")
-						// zlog.Warn("SKIP?", str, t)
-						if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 {
-							skip = true
+					if labelInc.Field >= ztime.TimeFieldDays || labelInc.Field >= ztime.TimeFieldHours && labelInc.Step >= 12 {
+						if fullLabel {
+							hasHadFull = true
+							str = t.Format("2006-Jan-02 ")
+						} else {
+							str = t.Format("Jan-02")
 						}
-					}
-					if !skip {
-						secs = (inc.Field == ztime.TimeFieldSecs)
-						format := "15:04"
-						if secs {
-							format += ":05"
+					} else {
+						skip := false
+						if fullLabel { //|| day != prevDay {
+							str = t.Format("Jan-02 ")
+							hasHadFull = true
+							// zlog.Warn("SKIP?", str, t)
+							if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 {
+								skip = true
+							}
 						}
-						str += t.Format(format)
+						if !skip {
+							secs = (inc.Field == ztime.TimeFieldSecs)
+							format := "15:04"
+							if secs {
+								format += ":05"
+							}
+							str += t.Format(format)
+						}
 					}
 				}
 			}
-			// prevDay = day
 			canvas.SetColor(col)
-			// zlog.Warn("LABEL:", first, str, x, firstLabel, round)
 			if round {
 				canvas.SetColor(roundCol)
 			}
-			ty := rect.Max().Y - font.Size/3
-			if !isBottom {
-				ty = rect.Max().Y - lineH*1.2 - 2
-			}
-			pos := zgeo.PosD(x, ty)
 			r := canvas.DrawTextAlignedInPos(pos, str, 0, zgeo.Center, 0)
+			for p := range nums {
+				prange := zmath.MakeRange(p.X-numMarg, p.X+numMarg)
+				if prange.Overlaps(r) {
+					delete(nums, p)
+				}
+			}
 			endTextX = r.Max
+			// zlog.Info("Max:", endTextX)
 			t = nextTime
 			round = false
 		}
 		ot = nextRoundTime
+	}
+	canvas.SetColor(col)
+	for pos, text := range nums {
+		canvas.DrawTextAlignedInPos(pos, text, 0, zgeo.Center, 0)
 	}
 	if drawAxis {
 		canvas.SetColor(col)
