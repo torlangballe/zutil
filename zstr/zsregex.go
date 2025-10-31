@@ -96,9 +96,10 @@ func IsValidEmail(email string) bool {
 
 // WildcardAsteriskToRegExCapture turns *'s in a string to wildcard capture symbols
 func WildcardAsteriskToRegExCapture(str string) (*regexp.Regexp, error) {
-	str = regexp.QuoteMeta(str)
-	str = strings.Replace(str, `\*`, "(.*)", -1)
-	return regexp.Compile(str)
+	regStr := regexp.QuoteMeta(str)
+	regStr = strings.Replace(regStr, `\*`, "(.*)", -1)
+	// fmt.Println("WildcardAsteriskToRegExCapture:", str, "->", regStr)
+	return regexp.Compile(regStr)
 }
 
 // A WildCardTransformer takes has a from: Big* and a to: Medium* which need the same amount of '*'s.
@@ -130,8 +131,10 @@ func NewWildCardTransformer(wildFrom, wildTo string) (*WildCardTransformer, erro
 
 func (w *WildCardTransformer) Transform(str string) (string, error) {
 	matches := GetAllCaptures(w.regEx, str)
+	// fmt.Printf("WildCardTransformer: %s %v %+v\n", str, w.regEx.Expand, matches)
+
 	if len(matches) != w.asteriskCount {
-		return "", fmt.Errorf("input string has different number of matches than from wildcard wants: %d != %d", len(matches), w.asteriskCount)
+		return "", fmt.Errorf("input string has different number of matches than from wildcard wants: %d != %d (%s)", len(matches), w.asteriskCount, str)
 	}
 	replaced := w.wildTo
 	for _, m := range matches {
