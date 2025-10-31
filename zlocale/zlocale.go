@@ -43,17 +43,17 @@ func GetLangCodeAndCountryFromLocaleId(bcp string, forceNo bool) (string, string
 	return lang, ccode
 }
 
-func UsesMetric() bool {
-	return true
-}
+// func UsesMetric() bool {
+// 	return true
+// }
 
-func UsesCelsius() bool {
-	return true
-}
+// func UsesCelsius() bool {
+// 	return true
+// }
 
-func Uses24Hour() bool {
-	return true
-}
+// func Uses24Hour() bool {
+// 	return true
+// }
 
 func FirstToTitleCaseExcept(str string, langCode string) (out string) {
 	parts := strings.Split(str, " ")
