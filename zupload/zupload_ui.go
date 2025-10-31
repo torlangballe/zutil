@@ -148,18 +148,25 @@ func (v *UploadView) callFileReadyToSendHandler(up UploadPayload, data []byte) {
 	v.activity.Stop()
 }
 
+func (v *UploadView) actionCurrentValue() string {
+	utype, got := v.actionMenu.CurrentValue().(string)
+	if !got {
+		return Drop
+	}
+	return utype
+}
 func (v *UploadView) handleGivenFile(data []byte, name string) {
 	var up UploadPayload
 	up.HandleID = v.HandleID
 	up.Name = name
-	up.Type = v.actionMenu.CurrentValue().(string)
+	up.Type = v.actionCurrentValue()
 	go v.callFileReadyToSendHandler(up, data)
 }
 
 func (v *UploadView) buttonPressed() {
 	var up UploadPayload
 	up.HandleID = v.HandleID
-	up.Type = v.actionMenu.CurrentValue().(string)
+	up.Type = v.actionCurrentValue()
 	up.Text = v.mainText.Text()
 	switch up.Type {
 	case URL:
@@ -174,7 +181,7 @@ func (v *UploadView) updateWidgets() {
 	var tbutton string
 	var ptext string
 	busable := true
-	action := v.actionMenu.CurrentValue().(string)
+	action := v.actionCurrentValue()
 	switch action {
 	case Drop:
 		ctext, cpass, cbutton, cdrop, cactivity = true, true, true, false, false
