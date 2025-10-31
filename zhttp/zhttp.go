@@ -340,6 +340,16 @@ func GetResponseAndIPAddress(surl string, params Parameters) (resp *http.Respons
 	return resp, *fip, *tip, err
 }
 
+func Delete(surl string, params Parameters) (resp *http.Response, err error) {
+	params.Method = http.MethodDelete
+	resp, err = GetResponse(surl, params)
+	err = processResponse(surl, resp, params, nil, err)
+	if err != nil {
+		err = makeContextErrorFromError(err, "Get", surl, "GET")
+	}
+	return resp, err
+}
+
 func Get(surl string, params Parameters, receive any) (resp *http.Response, err error) {
 	params.Method = http.MethodGet
 	resp, err = GetResponse(surl, params)
