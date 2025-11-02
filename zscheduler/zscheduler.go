@@ -60,7 +60,7 @@ type Scheduler[I comparable] struct {
 	SetJobHasErrorCh        chan I                 // Sets the run's ErrorAt to now
 
 	setup       Setup[I]
-	refreshCh   chan struct{} // Writing an empty struct to refreshCh calls stopAndStartJobs(), but without recursion (and possible locking).
+	refreshCh   chan struct{} // Writing an empty struct to refreshCh calls startAndStopRuns(), but without recursion (and possible locking).
 	endRunCh    chan I        // endRunCh sets a run to after stopped status
 	removeRunCh chan I        // removeRunCh does local remove of a run
 
@@ -650,7 +650,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			// zlog.Warn(i, "loop:", r.Job.ID, r.ErrorAt, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
 			if r.ExecutorID == s.zeroID && !r.Stopping && r.StartedAt.IsZero() {
 				if oldestRun == nil || isBetterRunCandidate[I](&r, oldestRun) {
-					// zlog.Warn(i, "set oldestRun:", oldestRun != nil, len(s.runs), oldestRun != nil, s.runs[i].Job.DebugName, s.runs[i].Job.ID, ssCount, r.ErrorAt, s.runs[i].triedToRunIndex)
+					// zlog.Info(i, "set oldestRun:", oldestRun != nil, len(s.runs), oldestRun != nil, s.runs[i].Job.DebugName, s.runs[i].Job.ID, ssCount, r.ErrorAt, s.runs[i].triedToRunIndex)
 					oldestRun = &s.runs[i]
 				}
 			}
@@ -697,7 +697,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 		}
 		if !s.stopped {
 			if oldestRun != nil {
-				// zlog.Warn("oldestRun?:", oldestRun != nil, ssCount, s.setup.TotalMaxJobCount, active)
+				// zlog.Warn("oldestRun?:", oldestRun != nil, ssCount, s.setup.TotalMaxJobCount, active, zlog.Full(capacities))
 				if s.setup.TotalMaxJobCount != -1 && active >= s.setup.TotalMaxJobCount {
 					s.setup.HandleSituationFastFunc(*oldestRun, MaximumJobsReached, zstr.Spaced(active, ">", s.setup.TotalMaxJobCount))
 				} else {

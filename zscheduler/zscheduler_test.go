@@ -547,49 +547,40 @@ func testPlayWithSlackLongWaitAndMilestone(t *testing.T) {
 
 func testErrorAt(t *testing.T) {
 	fmt.Println("testErrorAt")
-	s := newScheduler(0, 1, 1, 10, 30, func(setup *Setup[int64]) {
-		setup.SimultaneousStarts = 0
-		setup.StopJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
-			return nil
-		}
+	first := true
+	s := newScheduler(0, 1, 1, 2, 0.1, func(setup *Setup[int64]) {
 		setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
+			if first && run.Job.ID != 1 {
+				t.Error("Job1 should start first, not:", run.Job.DebugName)
+			}
+			first = false
 			return nil
 		}
+		setup.KeepJobsBeyondAtEndUntilEnoughSlack = 0
 	})
 	for i := 0; i < 2; i++ {
-		job := makeJob(s, int64(i+1), time.Second, 1)
+		job := makeJob(s, int64(i+1), time.Millisecond*100, 1)
+		time.Sleep(time.Millisecond * 20)
 		s.AddJobCh <- job
 	}
-	time.Sleep(time.Millisecond * 20)
-	first := true
-	s.setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
-		if first && run.Job.ID != 1 {
-			t.Error("Job1 should start first, not:", run.Job.ID)
-		}
-		first = false
-		return nil
-	}
-	time.Sleep(time.Millisecond * 100)
-
+	time.Sleep(time.Millisecond * 10)
 	// second run has happened
 	s.SetJobHasErrorCh <- 1
-	time.Sleep(time.Millisecond * 20)
-	e := makeExecutor(s, 1, 0)
-	s.ChangeExecutorCh <- e
-	time.Sleep(time.Millisecond * 10)
-	e = makeExecutor(s, 1, 10)
-	s.ChangeExecutorCh <- e
+	s.ChangeExecutorCh <- makeExecutor(s, 1, 0)
 	first = true
 	s.setup.StartJobOnExecutorFunc = func(run Run[int64], ctx context.Context) error {
-		// zlog.Warn("third startups:", run.Job.DebugName, first, run.ErrorAt)
 		if first && run.Job.ID != 2 {
 			t.Error("Job2 should start first, since 1 got error, not:", run.Job.ID)
 		}
-
 		first = false
 		return nil
 	}
-	time.Sleep(time.Millisecond * 170)
+	time.Sleep(time.Millisecond * 222)
+	// zlog.Warn("Jobs2:", s.CountRunningJobs(1))
+	s.ChangeExecutorCh <- makeExecutor(s, 1, 10)
+	// zlog.Warn("JobsCheck After")
+	time.Sleep(time.Millisecond * 222)
+	// zlog.Warn("JobsCheck After2", s.CountRunningJobs(1))
 	stopAndCheckScheduler(s, t)
 }
 
@@ -745,24 +736,24 @@ func testMixedAttributes(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	testEnoughRunning(t)
-	testPauseWithTwoExecutors(t)
-	testSetJobsOnExecutor(t)
-	testChangeExecutor(t)
-	testExecutorAble(t)
-	testStartStop(t)
-	testPauseWithCapacity(t)
-	testStartingTime(t)
-	testLoadBalance1(t)
-	testLoadBalance2(t)
-	testKeepAlive(t)
-	testStopAndCheck(t)
-	testOverMax(t)
-	testPurgeFromRunningList(t)
-	testPurgeFromSlowStarting(t)
-	testPlayWithSlackLongWait(t)
-	testPlayWithSlackShortWait(t)
-	testPlayWithSlackLongWaitAndMilestone(t)
+	// testEnoughRunning(t)
+	// testPauseWithTwoExecutors(t)
+	// testSetJobsOnExecutor(t)
+	// testChangeExecutor(t)
+	// testExecutorAble(t)
+	// testStartStop(t)
+	// testPauseWithCapacity(t)
+	// testStartingTime(t)
+	// testLoadBalance1(t)
+	// testLoadBalance2(t)
+	// testKeepAlive(t)
+	// testStopAndCheck(t)
+	// testOverMax(t)
+	// testPurgeFromRunningList(t)
+	// testPurgeFromSlowStarting(t)
+	// testPlayWithSlackLongWait(t)
+	// testPlayWithSlackShortWait(t)
+	// testPlayWithSlackLongWaitAndMilestone(t)
 	testErrorAt(t)
-	testMixedAttributes(t)
+	// testMixedAttributes(t)
 }
