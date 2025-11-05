@@ -6,8 +6,8 @@ import (
 	"github.com/torlangballe/zui/zalert"
 	"github.com/torlangballe/zui/zimageview"
 	"github.com/torlangballe/zui/zmenu"
+	"github.com/torlangballe/zui/zwidgets"
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc"
 )
 
@@ -41,15 +41,13 @@ func NewActionsIcon() *zimageview.ImageView {
 				zmenu.MenuedOItemSeparator,
 				zmenu.MenuedFuncAction("Show User List", showUserList),
 			)
-			if !AllowRegistration {
-				items = append(items,
-					zmenu.MenuedFuncAction("Add User", addUser),
-				)
-			}
 		}
 		items = append(items,
 			zmenu.MenuedOItemSeparator,
 			zmenu.MenuedFuncAction("Logout", logoutUser),
+			zmenu.MenuedFuncAction("Help…", func() {
+				zwidgets.DocumentationViewPresent("users.md", zwidgets.DocumentationViewDefaultModal)
+			}),
 		)
 		return items
 	}
@@ -99,12 +97,6 @@ func changeUserName() {
 
 func showUserList() {
 	go getAndShowUserList()
-}
-
-func addUser() {
-	OpenDialog(true, false, true, func() {
-		zlog.Info("Regged new user")
-	})
 }
 
 func showProfile() {

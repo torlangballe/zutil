@@ -19,6 +19,7 @@ type User struct {
 	Permissions       []string  `zui:"minwidth:140,enum:Permissions,sep"`
 	Created           time.Time `zui:"static"`
 	Login             time.Time `zui:"static"`
+	Sessions          int       `zui:"usein:$row,minwidth:60"`
 }
 
 type Authentication struct {
@@ -44,11 +45,11 @@ type ResetPassword struct {
 	Password   string
 }
 
-type AllUserInfo struct {
-	AdminStar string `zui:"notitle,width:16,justify:center,tip:star for admin user"`
-	User
-	Sessions int `zui:"static,width:70"`
-}
+// type AllUserInfo struct {
+// 	AdminStar string `zui:"notitle,width:16,justify:center,tip:star for admin user"`
+// 	User
+// 	Sessions int `zui:"static,width:70"`
+// }
 
 const (
 	AdminPermission = "admin" // This is someone who can add/delete users, set permissions
@@ -67,10 +68,6 @@ var (
 )
 
 func (u User) GetStrID() string {
-	return strconv.FormatInt(u.ID, 10)
-}
-
-func (u AllUserInfo) GetStrID() string {
 	return strconv.FormatInt(u.ID, 10)
 }
 

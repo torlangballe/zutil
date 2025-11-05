@@ -220,7 +220,7 @@ func (s *SQLServer) ChangePasswordForUser(ci *zrpc.ClientInfo, id int64, passwor
 	return
 }
 
-func (s *SQLServer) GetAllUsers() (us []AllUserInfo, err error) {
+func (s *SQLServer) GetAllUsers() (us []User, err error) {
 	squery := "SELECT id, username, permissions, created, login, (SELECT COUNT(*) FROM zuser_sessions us WHERE us.userid=u.id) FROM zusers u ORDER BY username ASC"
 	squery = s.customizeQuery(squery)
 	rows, err := s.DB.Query(squery)
@@ -228,7 +228,7 @@ func (s *SQLServer) GetAllUsers() (us []AllUserInfo, err error) {
 		return
 	}
 	for rows.Next() {
-		var u AllUserInfo
+		var u User
 		err = rows.Scan(&u.ID, &u.UserName, pq.Array(&u.Permissions), &u.Created, &u.Login, &u.Sessions)
 		if err != nil {
 			return

@@ -13,7 +13,6 @@ import (
 	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zpresent"
-	"github.com/torlangballe/zui/zshape"
 	"github.com/torlangballe/zui/ztext"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zui/zwindow"
@@ -130,7 +129,6 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 		h1.Add(register, zgeo.CenterRight)
 		register.SetPressedHandler("", zkeyboard.ModifierNone, func() {
 			var a Authentication
-
 			a.IsRegister = true
 			a.UserName = usernameField.Text()
 			a.Password = passwordField.Text()
@@ -149,8 +147,9 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 		go callAuthenticate(v1, a, got)
 	})
 	if canCancel {
-		cancel := zshape.ImageButtonViewSimpleInsets("Cancel", "")
+		cancel := zbutton.New("Cancel")
 		h1.Add(cancel, zgeo.CenterLeft)
+		cancel.MakeEscapeCanceler()
 		cancel.SetPressedHandler("", zkeyboard.ModifierNone, func() {
 			zpresent.Close(v1, true, nil)
 		})

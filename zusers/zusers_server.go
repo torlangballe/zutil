@@ -187,7 +187,7 @@ func (UsersCalls) ChangeUserNameForSelf(ci *zrpc.ClientInfo, change ChangeInfo) 
 	return MainServer.ChangeUserNameForUser(change.UserID, change.NewString)
 }
 
-func (UsersCalls) GetAllUsers(in *zrpc.Unused, us *[]AllUserInfo) error {
+func (UsersCalls) GetAllUsers(in *zrpc.Unused, us *[]User) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -251,10 +251,16 @@ func (UsersCalls) UnauthenticateUser(ci *zrpc.ClientInfo, userID int64) error {
 }
 
 func RegisterDefaultAdminUserIfNone() {
-	var us []AllUserInfo
+	var us []User
+	var hasAdmin bool
 	err := UsersCalls{}.GetAllUsers(nil, &us)
-	zlog.Info("RegisterDefaultAdminUserIfNone", err)
-	if err == nil && len(us) == 0 && DefaultUserName != "" {
+	for _, u := range us {
+		if u.IsAdmin() {
+			hasAdmin = true
+		}
+	}
+	if err == nil && !hasAdmin && DefaultUserName != "" {
+		zlog.Info("RegisterDefaultAdminUserIfNone", err)
 		userID, _, _ := MainServer.RegisterUser(nil, DefaultUserName, DefaultPassword, false)
 		MainServer.SetAdminForUser(userID, true)
 	}

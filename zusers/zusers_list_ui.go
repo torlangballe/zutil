@@ -18,11 +18,11 @@ import (
 )
 
 type userTable struct {
-	users []AllUserInfo
-	grid  *zslicegrid.TableView[AllUserInfo]
+	users []User
+	grid  *zslicegrid.TableView[User]
 }
 
-func (t *userTable) findUser(id string) (*AllUserInfo, int) {
+func (t *userTable) findUser(id string) (*User, int) {
 	n, _ := strconv.ParseInt(id, 10, 64)
 	for i, u := range t.users {
 		if u.ID == n {
@@ -32,10 +32,10 @@ func (t *userTable) findUser(id string) (*AllUserInfo, int) {
 	return nil, -1
 }
 
-func makeTableOwner(users []AllUserInfo) *userTable {
+func makeTableOwner(users []User) *userTable {
 	ut := &userTable{}
 	ut.users = users
-	ut.grid = zslicegrid.TableViewNew(&ut.users, "users-table", zslicegrid.AddMenu|zslicegrid.AllowAllEditing|zslicegrid.AddHeader|zslicegrid.AddBar)
+	ut.grid = zslicegrid.TableViewNew(&ut.users, "users", zslicegrid.AddDocumentationIcon|zslicegrid.AddMenu|zslicegrid.AllowEdit|zslicegrid.AllowDelete|zslicegrid.AllowDuplicate|zslicegrid.AddHeader|zslicegrid.AddBar)
 	ut.grid.EditParameters.SkipFieldNames = []string{"AdminStar"}
 	ut.grid.FieldViewParameters.AllStatic = true
 	ut.grid.SetBGColor(zstyle.DefaultBGColor())
@@ -61,10 +61,12 @@ func makeTableOwner(users []AllUserInfo) *userTable {
 	ut.grid.ActionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {
 		selected := ut.grid.Grid.SelectedIDsOrHoverIDOrAll()
 		def := ut.grid.CreateDefaultMenuItems(selected, false)
+		nitems := ut.grid.NameOfXItemsFunc(selected, true)
 		return append(def,
-			zmenu.MenuedSCFuncAction("Unauthorize selected users", 'U', 0, func() {
+			zmenu.MenuedFuncAction("Unauthorize sessions for "+nitems, func() {
 				ut.unauthorizeUsers(ut.grid.Grid.SelectedIDs())
 			}),
+			zmenu.MenuedFuncAction("Add User…", ut.addUser),
 		)
 	}
 	ut.grid.StoreChangedItemFunc = storeUser
@@ -73,6 +75,7 @@ func makeTableOwner(users []AllUserInfo) *userTable {
 }
 
 func (t *userTable) checkBeforeDeleteItems(ids []string) bool {
+	var deletingAdmin bool
 	for _, id := range ids {
 		u, _ := t.findUser(id)
 		zlog.Info("checkBeforeStoreChangedItems:", u.ID, CurrentUser.UserID)
@@ -80,11 +83,23 @@ func (t *userTable) checkBeforeDeleteItems(ids []string) bool {
 			zalert.Show("You can't delete your own user")
 			return false
 		}
+		if u.IsAdmin() {
+			deletingAdmin = true
+		}
+	}
+	if deletingAdmin {
+		for _, u := range t.users {
+			if u.IsAdmin() {
+				return true
+			}
+		}
+		zalert.Show("You can't delete the final admin user")
+		return false
 	}
 	return true
 }
 
-func storeUser(item AllUserInfo, last bool) error {
+func storeUser(item User, last bool) error {
 	var changed ClientUserInfo
 	changed.Permissions = item.Permissions
 	changed.UserID = item.ID
@@ -121,7 +136,7 @@ func (t *userTable) unauthorizeUsers(sids []string) {
 	t.grid.UpdateViewFunc(true, false)
 }
 
-func (u *AllUserInfo) HandleAction(ap zfields.ActionPack) bool {
+func (u *User) HandleAction(ap zfields.ActionPack) bool {
 	// zlog.Info("Action:", action, zfields.ID(f))
 	if ap.Field == nil {
 		return false
@@ -142,21 +157,17 @@ func (u *AllUserInfo) HandleAction(ap zfields.ActionPack) bool {
 					font = font.NewWithStyle(zgeo.FontStyleBold)
 					label.SetFont(font)
 				}
+				if u.IsAdmin() {
+					label.SetText(u.UserName + "★")
+				}
 			}
-		}
-		if ap.Field.FieldName == "AdminStar" {
-			str := ""
-			if IsAdmin(u.Permissions) {
-				str = AdminStar
-			}
-			u.AdminStar = str
 		}
 	}
 	return false
 }
 
 func getAndShowUserList() {
-	var us []AllUserInfo
+	var us []User
 	err := zrpc.MainClient.Call("UsersCalls.GetAllUsers", nil, &us)
 	if err != nil {
 		zalert.ShowError(err)
@@ -167,4 +178,18 @@ func getAndShowUserList() {
 	att := zpresent.ModalPopupAttributes
 	att.ModalDimBackground = true
 	zpresent.PresentTitledView(table.grid, "Users", att, nil, nil)
+}
+
+func (t *userTable) addUser() {
+	OpenDialog(true, false, true, func() {
+		go func() {
+			err := zrpc.MainClient.Call("UsersCalls.GetAllUsers", nil, &t.users)
+			if err != nil {
+				zalert.ShowError(err)
+				return
+			}
+			t.grid.UpdateViewFunc(true, true)
+			zlog.Info("Regged new user")
+		}()
+	})
 }
