@@ -35,7 +35,7 @@ const (
 	// OutputMD   OutputType = "md"
 	// OutputHTML OutputType = "html"
 
-	SharedPageSuffix = ".shared.md"
+	SharedPageSuffix = "_shared.md"
 )
 
 type MarkdownConverter struct {
