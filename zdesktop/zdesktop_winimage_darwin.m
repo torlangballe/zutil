@@ -12,7 +12,7 @@ CGRect croppedRect(CGRect rect, CGRect with)  {
     return out;
 }
 
-void imageOfWindow(NSString *winTitle, NSString *appBundleID, int displayID, CGRect insetRect, void(^got)(CGImageRef image, NSString *err)) {
+void imageOfWindow(NSString *winTitle, NSString *appBundleID, int displayID, int preflightOnly, CGRect insetRect,  void(^got)(CGImageRef image, NSString *err)) {
     [SCShareableContent getShareableContentExcludingDesktopWindows: true
                                                onScreenWindowsOnly: true
                                                  completionHandler: ^(SCShareableContent * _Nullable shareableContent, NSError * _Nullable error) {
@@ -53,6 +53,10 @@ void imageOfWindow(NSString *winTitle, NSString *appBundleID, int displayID, CGR
             }
             filter = [[SCContentFilter alloc] initWithDisplay:display excludingWindows: @[]];
         }
+        if (preflightOnly == 1) {
+            got(nil, nil);
+            return;
+        }
         SCStreamConfiguration *configuration = [[SCStreamConfiguration alloc] init];
         configuration.capturesAudio = NO;
         configuration.excludesCurrentProcessAudio = YES;
@@ -86,14 +90,14 @@ void imageOfWindow(NSString *winTitle, NSString *appBundleID, int displayID, CGR
 
 
 char cerr[1024];
-const char *ImageOfWindow(char *winTitle, char *appBundleID, int displayID, CGRect insetRect, CGImageRef *cgImagePtr) {
+const char *ImageOfWindow(char *winTitle, char *appBundleID, int displayID, int preflightOnly, CGRect insetRect, CGImageRef *cgImagePtr) {
     const int timeoutSecs = 2; // it should only take 10ms ish for smaller sizes, so lets keep it small to avoid congestion
     NSString *nstitle = [NSString stringWithUTF8String:winTitle];
     NSString *nsapp = [NSString stringWithUTF8String:appBundleID];
     __block NSString *snapErr = nil;
     __block dispatch_semaphore_t sem = dispatch_semaphore_create(0);
     __block bool timedOut = false;
-    imageOfWindow(nstitle, nsapp, displayID, insetRect, ^(CGImageRef image, NSString *err) {
+    imageOfWindow(nstitle, nsapp, displayID, preflightOnly, insetRect, ^(CGImageRef image, NSString *err) {
         if (timedOut) {
             NSLog(@"ImageOfWindow That Timed out finally finished: %s\n", winTitle);
         }

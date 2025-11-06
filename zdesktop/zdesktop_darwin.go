@@ -38,7 +38,7 @@ package zdesktop
 // void ShowAlert(char *str);
 // int CloseOldWindowWithSamePIDAndRectOnceNew(long pid, int x, int y, int w, int h);
 // void CloseOldWindowWithSamePIDAndRect(long pid, int x, int y, int w, int h);
-// const char *ImageOfWindow(const char *winTitle, const char *appBundleID, int displayID, CGRect cropRect, CGImageRef *cgImage);
+// const char *ImageOfWindow(const char *winTitle, const char *appBundleID, int displayID, int preflightOnly, CGRect cropRect, CGImageRef *cgImage);
 // void *startCameraCaptureStream(void *stream);
 // void stopCameraCaptureStream(void *stream);
 // void stopCameraCaptureStream(void *stream);
@@ -59,6 +59,7 @@ import (
 	"unsafe"
 
 	"github.com/torlangballe/zui/zimage"
+	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
@@ -326,21 +327,21 @@ func frontWindowAndGetImageFromDisplay(title, appID string, contentCropRectInDis
 	return GetImageForDisplay(croppingFromDisplayID, contentCropRectInDisplay)
 }
 
-func GetImageForWindowTitle(title, appID string, cropRect zgeo.Rect, croppingFromDisplayID string) (image.Image, error) {
+func GetImageForWindowTitle(title, appID string, preflightOnly bool, cropRect zgeo.Rect, croppingFromDisplayID string) (image.Image, error) {
 	captureLock.Lock()
 	defer captureLock.Unlock()
 	if croppingFromDisplayID != "" {
 		return frontWindowAndGetImageFromDisplay(title, appID, cropRect, croppingFromDisplayID)
 	}
-	return getImageForWindowOrDisplay(title, appID, "", cropRect)
+	return getImageForWindowOrDisplay(title, appID, "", preflightOnly, cropRect)
 }
 
 func GetImageForDisplay(displayID string, cropInsetRect zgeo.Rect) (image.Image, error) {
 	zlog.Info("GetImageForDisplay:", displayID, cropInsetRect)
-	return getImageForWindowOrDisplay("", "", displayID, cropInsetRect)
+	return getImageForWindowOrDisplay("", "", displayID, false, cropInsetRect)
 }
 
-func getImageForWindowOrDisplay(title, appID, displayID string, cropInsetRect zgeo.Rect) (image.Image, error) {
+func getImageForWindowOrDisplay(title, appID, displayID string, preflightOnly bool, cropInsetRect zgeo.Rect) (image.Image, error) {
 	var cgrect C.CGRect
 	ctitle := C.CString(title)
 	cappid := C.CString(appID)
@@ -353,7 +354,8 @@ func getImageForWindowOrDisplay(title, appID, displayID string, cropInsetRect zg
 	displayInt, _ := strconv.Atoi(displayID)
 	// zlog.Warn("GetImageForWindowTitle:", title)
 	// start := time.Now()//
-	cerr := C.ImageOfWindow(ctitle, cappid, C.int(displayInt), cgrect, &cgImage)
+	preflightInt := zbool.ToInt(preflightOnly)
+	cerr := C.ImageOfWindow(ctitle, cappid, C.int(displayInt), C.int(preflightInt), cgrect, &cgImage)
 	serr := C.GoString(cerr)
 
 	if serr != "" || cgImage == C.CGImageRef(C.NULL) {
