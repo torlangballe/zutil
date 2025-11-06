@@ -123,6 +123,13 @@ func ToString(b bool) string {
 	return "false"
 }
 
+func ToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 func FromAny(a any) bool {
 	switch t := a.(type) {
 	case bool:
