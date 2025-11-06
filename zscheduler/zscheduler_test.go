@@ -61,7 +61,7 @@ func newScheduler(jobs, workers int, jobCost, workerCap, jobSecs float64, setupF
 	go s.Start()
 	for i := 0; i < jobs; i++ {
 		job := makeJob(s, int64(i+1), time.Duration(float64(time.Second)*jobSecs), jobCost)
-		s.AddJobCh <- job
+		s.ChangeJobCh <- job
 	}
 	for i := 0; i < workers; i++ {
 		s.ChangeExecutorCh <- makeExecutor(s, int64(i+1), workerCap)
@@ -329,7 +329,7 @@ func testEnoughRunning(t *testing.T) {
 	}
 	for i := 0; i < jobCount; i++ {
 		job := makeJob(s, int64(i+1), time.Second, 1)
-		s.AddJobCh <- job
+		s.ChangeJobCh <- job
 	}
 	time.Sleep(time.Millisecond * 100 * (jobCount + 1))
 	// zlog.Warn("Count:", s.CountRunningJobs(0))
@@ -409,7 +409,7 @@ func testPurgeFromSlowStarting(t *testing.T) {
 	startMS = 10
 	time.Sleep(time.Millisecond * 10)
 
-	s.AddJobCh <- makeJob(s, 5, time.Second*10, 1)
+	s.ChangeJobCh <- makeJob(s, 5, time.Second*10, 1)
 	time.Sleep(time.Millisecond * 50)
 	count = s.CountStartedJobs(0)
 	compare(t, "Jobs count not 5 after add:", count, 5)
@@ -449,10 +449,10 @@ func setupTestPlayWithSlackAfterDurationEnd() *Scheduler[int64] {
 		}
 	})
 	job := makeJob(s, int64(1), time.Second, 1)
-	s.AddJobCh <- job
+	s.ChangeJobCh <- job
 	time.Sleep(time.Millisecond * 1)
 	jobSlow := makeJob(s, 2, time.Second, 1)
-	s.AddJobCh <- jobSlow
+	s.ChangeJobCh <- jobSlow
 	return s
 }
 
@@ -495,7 +495,7 @@ func setupTestPlayForMilestone() *Scheduler[int64] {
 		}
 	})
 	job := makeJob(s, int64(1), time.Millisecond*100, 1)
-	s.AddJobCh <- job
+	s.ChangeJobCh <- job
 	return s
 }
 
@@ -561,7 +561,7 @@ func testErrorAt(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		job := makeJob(s, int64(i+1), time.Millisecond*100, 1)
 		time.Sleep(time.Millisecond * 20)
-		s.AddJobCh <- job
+		s.ChangeJobCh <- job
 	}
 	time.Sleep(time.Millisecond * 10)
 	// second run has happened
@@ -607,6 +607,7 @@ func makeJob(s *Scheduler[int64], id int64, dur time.Duration, cost float64) Job
 		DebugName: fmt.Sprint("J", id),
 		Duration:  dur,
 		Cost:      cost,
+		IsAble:    true,
 	}
 	return job
 }
@@ -634,7 +635,7 @@ func addAndRemoveJobRandomly(s *Scheduler[int64], job Job[int64]) *ztimer.Timer 
 			return
 		}
 		go func() {
-			s.AddJobCh <- job
+			s.ChangeJobCh <- job
 		}()
 		timer.StartIn(randDurSecs(3, 2), func() {
 			if s.stopped {
@@ -693,7 +694,7 @@ func testMixedAttributes(t *testing.T) {
 
 	job := makeJob(s, 1, time.Second*1, 1)
 	job.Attributes = BMask
-	s.AddJobCh <- job
+	s.ChangeJobCh <- job
 
 	time.Sleep(time.Millisecond * 200)
 	count := s.CountRunningJobs(1)
@@ -704,7 +705,7 @@ func testMixedAttributes(t *testing.T) {
 	job = makeJob(s, 2, time.Second*1, 1)
 	job.Attributes = []string{} //
 	// zlog.Warn("ADD:", job.Attributes)
-	s.AddJobCh <- job
+	s.ChangeJobCh <- job
 	time.Sleep(time.Millisecond * 200)
 	count = s.CountRunningJobs(1)
 	if count != 1 {
@@ -714,7 +715,7 @@ func testMixedAttributes(t *testing.T) {
 	time.Sleep(time.Millisecond * 200)
 	job = makeJob(s, 3, time.Second*1, 1)
 	job.Attributes = AMask
-	s.AddJobCh <- job
+	s.ChangeJobCh <- job
 	time.Sleep(time.Millisecond * 200)
 	count = s.CountRunningJobs(1)
 	if count != 2 {
@@ -736,24 +737,24 @@ func testMixedAttributes(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	// testEnoughRunning(t)
-	// testPauseWithTwoExecutors(t)
-	// testSetJobsOnExecutor(t)
-	// testChangeExecutor(t)
-	// testExecutorAble(t)
-	// testStartStop(t)
-	// testPauseWithCapacity(t)
-	// testStartingTime(t)
-	// testLoadBalance1(t)
-	// testLoadBalance2(t)
-	// testKeepAlive(t)
-	// testStopAndCheck(t)
-	// testOverMax(t)
-	// testPurgeFromRunningList(t)
-	// testPurgeFromSlowStarting(t)
-	// testPlayWithSlackLongWait(t)
-	// testPlayWithSlackShortWait(t)
-	// testPlayWithSlackLongWaitAndMilestone(t)
+	testEnoughRunning(t)
+	testPauseWithTwoExecutors(t)
+	testSetJobsOnExecutor(t)
+	testChangeExecutor(t)
+	testExecutorAble(t)
+	testStartStop(t)
+	testPauseWithCapacity(t)
+	testStartingTime(t)
+	testLoadBalance1(t)
+	testLoadBalance2(t)
+	testKeepAlive(t)
+	testStopAndCheck(t)
+	testOverMax(t)
+	testPurgeFromRunningList(t)
+	testPurgeFromSlowStarting(t)
+	testPlayWithSlackLongWait(t)
+	testPlayWithSlackShortWait(t)
+	testPlayWithSlackLongWaitAndMilestone(t)
 	testErrorAt(t)
-	// testMixedAttributes(t)
+	testMixedAttributes(t)
 }

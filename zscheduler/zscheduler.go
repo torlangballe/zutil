@@ -462,7 +462,7 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		return false, "stopping already"
 	}
 	if !run.Job.IsAble {
-		return true, "no able"
+		return true, "not able"
 	}
 	alive := s.isExecutorAlive(e)
 	if !alive {
@@ -627,9 +627,6 @@ func (s *Scheduler[I]) startAndStopRuns() {
 		capacities := s.calculateLoadOfUsableExecutors()
 		hasUnrun := s.hasUnrunJobs()
 		for i, r := range s.runs {
-			if !r.Job.IsAble {
-				continue
-			}
 			if time.Since(r.ErrorAt) < s.setup.MinimumTimeBeforeRestartingErroredJob { // if r.ErrorAt or MinimumTimeBeforeRestartingErroredJob is zero, won't continue
 				continue
 			}
@@ -647,6 +644,9 @@ func (s *Scheduler[I]) startAndStopRuns() {
 				break
 			}
 			if s.stopped {
+				continue
+			}
+			if !r.Job.IsAble {
 				continue
 			}
 			if !(r.StartedAt.IsZero() && r.RanAt.IsZero()) {
