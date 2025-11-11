@@ -25,6 +25,7 @@ import (
 	"github.com/torlangballe/zui/zcontainer"
 	"github.com/torlangballe/zui/zkeyboard"
 	"github.com/torlangballe/zui/zmenu"
+	"github.com/torlangballe/zui/zstyle"
 	"github.com/torlangballe/zui/ztext"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zui/zwidgets"
@@ -89,6 +90,7 @@ func (v *UploadView) Init(view zview.View, storeName string, allowTypes []string
 	text, _ := zkeyvalue.DefaultStore.GetString(textKey)
 	tstyle := ztext.Style{KeyboardType: zkeyboard.TypeURL}
 	v.mainText = ztext.NewView(text, tstyle, 30, 1)
+	v.mainText.SetColor(zstyle.DefaultFGColor())
 	v.mainText.SetValueHandler("", func(edited bool) {
 		zkeyvalue.DefaultStore.SetString(v.mainText.Text(), textKey, true)
 		v.updateWidgets()

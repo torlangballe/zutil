@@ -175,7 +175,7 @@ func getAndShowUserList() {
 	}
 	// zlog.Info("USERS:", zlog.Full(us))
 	table := makeTableOwner(us)
-	att := zpresent.ModalPopupAttributes
+	att := zpresent.ModalPopupAttributes()
 	att.ModalDimBackground = true
 	zpresent.PresentTitledView(table.grid, "Users", att, nil, nil)
 }

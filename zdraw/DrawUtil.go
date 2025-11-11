@@ -95,7 +95,7 @@ func TimeToX(rect zgeo.Rect, t, start, end time.Time) float64 {
 func DrawHorTimeAxis(canvas zcanvas.BaseCanvaser, rect zgeo.Rect, start, end time.Time, beyond, isBottom, drawAxis bool, col, roundCol zgeo.Color, font *zgeo.Font) ztime.FieldInc {
 	minLabelDist := font.Size * 2 * 3
 	inc, labelInc, axisStart := ztime.NiceAxisIncrements(start, end, int(rect.Size.W), int(minLabelDist))
-	zlog.Info("Inc:", inc, labelInc, "dist:", minLabelDist)
+	// zlog.Info("Inc:", inc, labelInc, "dist:", minLabelDist)
 	minMarg := font.Size * 3.6
 	numMarg := minMarg / 3
 	var roundField ztime.TimeFieldFlags

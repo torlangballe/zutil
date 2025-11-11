@@ -17,6 +17,7 @@ func NewActionsIcon() *zimageview.ImageView {
 		logout = "logout"
 	)
 	actions := zimageview.NewWithCachedPath("images/zcore/head-dark.png", zgeo.SizeD(18, 18))
+	actions.MixColorForDarkMode = zgeo.ColorGray
 	actions.DownsampleImages = true
 	actionMenu := zmenu.NewMenuedOwner()
 	actionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {

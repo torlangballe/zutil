@@ -68,7 +68,7 @@ func makeLabelizeLabel(text string, postfix string, talign zgeo.Alignment) *zlab
 func MakeDialogLabel(text string, minWidth float64, maxLines int, isDebug bool) *zlabel.Label {
 	label := zlabel.New(text)
 	label.SetFont(zgeo.FontNice(zgeo.FontDefaultSize, zgeo.FontStyleNormal))
-	label.SetColor(zgeo.ColorBlack)
+	label.SetColor(zstyle.DefaultFGColor())
 	label.SetSelectable(false)
 	label.SetMinWidth(minWidth)
 	label.SetMaxWidth(minWidth)

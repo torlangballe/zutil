@@ -268,7 +268,7 @@ func NewRemoteFileListerView(urlPrefix, urlStub string, opts DirOptions, rpcClie
 }
 
 func (v *FileListerView) Present(title string, got func(pickedPaths []string)) {
-	att := zpresent.ModalConfirmAttributes
+	att := zpresent.ModalConfirmAttributes()
 	zalert.PresentOKCanceledView(v, title, att, nil, func(ok bool) bool {
 		if ok {
 			got(v.DirOptions.PickedPaths)

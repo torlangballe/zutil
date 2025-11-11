@@ -71,7 +71,7 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 	}
 	if att == nil {
 		att = &zpresent.Attributes{}
-		*att = zpresent.ModalConfirmAttributes
+		*att = zpresent.ModalConfirmAttributes()
 	}
 	att.ModalCloseOnOutsidePress = true
 	att.ModalDismissOnEscapeKey = true

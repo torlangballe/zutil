@@ -9,9 +9,8 @@ type DropShadow struct {
 }
 
 var (
-	DropShadowDefault = DropShadow{Delta: SizeBoth(3), Blur: 3, Color: ColorNewGray(0, 0.7)}
-	DropShadowUndef   = DropShadow{Delta: SizeUndef, Blur: -1}
-	DropShadowClear   = DropShadow{}
+	DropShadowUndef = DropShadow{Delta: SizeUndef, Blur: -1}
+	DropShadowClear = DropShadow{}
 )
 
 func MakeDropShadow(dx, dy, blur float64, col Color) DropShadow {

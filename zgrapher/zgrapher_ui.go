@@ -13,6 +13,7 @@ import (
 	"github.com/torlangballe/zui/zcustom"
 	"github.com/torlangballe/zui/zimage"
 	"github.com/torlangballe/zui/zkeyboard"
+	"github.com/torlangballe/zui/zstyle"
 	"github.com/torlangballe/zui/ztextinfo"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zbool"
@@ -78,7 +79,8 @@ func (v *GraphView) Init(view zview.View, id, grapherName string, height int) {
 	v.Job.PixelHeight = height
 	v.Job.ID = id
 	v.TickColor = zgeo.ColorDarkGray
-	v.SetStroke(1, zgeo.ColorLightGray, true)
+	v.SetBGColor(zgeo.ColorClear)
+	v.SetStroke(1, zstyle.Gray(0.5, 0.5), true)
 	v.SetDrawHandler(v.draw)
 	v.drawn = map[string]*zimage.Image{}
 	v.repeater = ztimer.RepeaterNew()
