@@ -142,3 +142,10 @@ func (w *WildCardTransformer) Transform(str string) (string, error) {
 	}
 	return replaced, nil
 }
+
+func ReplaceInSquigglyBrackets(str string, replace func(string) string) string {
+	out := ReplaceAllCapturesFunc(InSingleSquigglyBracketsRegex, str, RegWithoutMatch, func(s string, index int) string {
+		return replace(s)
+	})
+	return out
+}
