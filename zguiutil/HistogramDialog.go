@@ -29,7 +29,7 @@ func PopupHistogramDialog(h *zhistogram.Histogram, title, name string, criticalV
 
 	builder := zlabel.NewStyledTextBuilder()
 	builder.Default.Gap = 16
-	blue := zgeo.ColorNew(0.2, 0.2, 1, 1)
+	blue := zstyle.Col(zgeo.ColorNew(0.2, 0.2, 1, 1), zgeo.ColorNew(0.6, 0.6, 1, 1))
 	builder.AddLabelsRowToVertStack(grid, blue, zgeo.FontStyleBold, zstyle.Start, name, "% of Total", "Count")
 	barVal := h.MinValue
 	for _, c := range h.Classes {
