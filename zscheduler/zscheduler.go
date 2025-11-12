@@ -33,22 +33,19 @@ type Setup[I comparable] struct {
 	SlowStopJobFuncTimeout                time.Duration                                     // SlowStopJobFuncTimeout is like SlowStartJobFuncTimeout/StopJobOnExecutorFunc but for stopping.
 	TotalMaxJobCount                      int                                               // The scheduler wont start another job if active jobs >= TotalMaxJobCount.
 	JobIsRunningOnSuccessfulStart         bool                                              // Set JobIsRunningOnSuccessfulStart to set a job as running once its start function completes successfully. Otherwise use the JobIsRunningCh channel.
-	ChangingJobRestartsIt                 bool                                              // If ChangingJobRestartsIt is set, jobs are restarted when changed with ChangeExecutorCh.
 	GracePeriodForJobsOnExecutorCh        time.Duration                                     // GracePeriodForJobsOnExecutorCh is amount of slack from start to not stop jobs not reported in executor yet.
 	StartJobOnExecutorFunc                func(run Run[I], ctx context.Context) error       `zui:"-"` // StartJobOnExecutorFunc is called to start a job. It is done on a goroutine and is assumed to take a while or time out.
 	StopJobOnExecutorFunc                 func(run Run[I], ctx context.Context) error       `zui:"-"` // Like StartJobOnExecutorFunc but for stopping.
 	HandleSituationFastFunc               func(run Run[I], s SituationType, details string) `zui:"-"` // This function is for handling start/stop/errors and more. Must very quickly do something or spawn a go routine
 	StopJobIfSinceMilestoneLessThan       time.Duration                                     // Only stop job if StopJobIfSinceMilestoneLessThan != 0, and time since run.MilestoneAt is less than it, up to KeepJobsBeyondAtEndUntilEnoughSlack (which also must be set)
 	MinimumTimeBeforeRestartingErroredJob time.Duration
-	// MinimumTimeBetweenSpecificJobStarts  time.Duration
 }
 
 type Scheduler[I comparable] struct {
 	// The channels are made in NewScheduler()
-	StopJobCh   chan I // Write a Job ID to StopJobCh to stop the job.
-	RemoveJobCh chan I // Write a Job ID to RemoveJobCh to stop and remove the job.
-	// AddJobCh                chan Job[I]            // Write a Job to AddJobCh to add a job. It will be started when and how possible.
-	ChangeJobCh             chan Job[I]            // Write  a Job with existing ID to ChangeJobCh to change it. It will be restarted if ChangingJobRestartsIt is true.
+	StopJobCh               chan I                 // Write a Job ID to StopJobCh to stop the job.
+	RemoveJobCh             chan I                 // Write a Job ID to RemoveJobCh to stop and remove the job.
+	ChangeJobCh             chan Job[I]            // Write  a Job with existing ID to ChangeJobCh to change it.
 	JobIsRunningCh          chan I                 // Write a JobID to JobIsRunningCh to flag it as now running. Not needed if JobIsRunningOnSuccessfullStart true.
 	RemoveExecutorCh        chan I                 //  Write an executor ID to RemoveExecutorCh to remove it. Jobs on it will immediately be stopped and restarted.
 	ChangeExecutorCh        chan Executor[I]       // Write an executor with existing ID to ChangeExecutorCh to change it. Jobs on it will be restarted if anything but DebugName is changed.
@@ -166,11 +163,6 @@ func (s *Scheduler[I]) selectLoop() {
 	for {
 		reason = ""
 		select {
-		// case j := <-s.AddJobCh:
-		// 	reason = "AddJobCh"
-		// 	if !s.stopped {
-		// 		s.addJob(j, true)
-		// 	}
 		case jobID := <-s.RemoveJobCh:
 			reason = zstr.Spaced("RemoveJobCh", jobID)
 			s.stopJob(jobID, true, true, true, reason)
@@ -242,7 +234,6 @@ func (s *Scheduler[I]) selectLoop() {
 
 		case jobID := <-s.endRunCh:
 			reason = "endRunCh"
-			// zlog.Warn("endRunCh pushed:", jobID)
 			s.endRun(jobID)
 
 		case jobID := <-s.removeRunCh:
@@ -1025,14 +1016,12 @@ func (s *Scheduler[I]) changeJob(job Job[I]) {
 			s.runs[i].Job.DebugName = job.DebugName
 			s.runs[i].Job.Duration = job.Duration
 			s.runs[i].Job.Cost = job.Cost
-			if s.setup.ChangingJobRestartsIt {
-				zlog.Warn("ChangeJob Restart", s.runs[i].Job.Attributes)
-				reason := zstr.Spaced("changeJob stop:", job.DebugName)
-				s.stopJob(job.ID, false, false, true, reason)
-			} else {
-				zlog.Warn("ChangeJob:", s.runs[i].Job.Attributes)
-				s.startAndStopRuns() // a new cost could start it for example
-			}
+
+			// 	s.stopJob(job.ID, false, false, true, reason)
+			// } else {
+			zlog.Warn("ChangeJob:", s.runs[i].Job.Attributes)
+			s.startAndStopRuns() // a new cost could start it for example
+			// }
 			return
 		}
 	}
