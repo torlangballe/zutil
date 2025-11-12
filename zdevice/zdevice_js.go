@@ -19,7 +19,7 @@ func init() {
 	switch CurrentWasmBrowser {
 	case Safari:
 		zgeo.SetSafariDefaultFont()
-	case Chrome:
+	default:
 		zgeo.SetChromeDefaultFont()
 	}
 	if OS() != MacOSType {
