@@ -460,8 +460,9 @@ int ActivateWindowForTitle(const char *title, const char *bundleID, int activate
         return 0;
     }
     NSRunningApplication *app = apps[0];
-    if (activateApp == 1) {
-        [app activateWithOptions: NSApplicationActivateAllWindows];
+    if (activateApp == 1 && app.isActive == NO) {
+        [app activateWithOptions: 0]; // NSApplicationActivateAllWindows
+        NSLog(@"Activate App: %@\n", nsBundle);
     }
     int pid = app.processIdentifier;
     AXUIElementRef winRef = getAXElementOfWindowForTitle(title, pid, false);
