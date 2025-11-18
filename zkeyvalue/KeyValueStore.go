@@ -91,6 +91,11 @@ func (s Store) GetObject(key string, objectPtr any) (got bool) {
 	return false
 }
 
+func (s Store) GetStringWithRawKey(rawKey string) (str string, got bool) {
+	got = s.Raw.RawGetItem(rawKey, &str)
+	return str, got
+}
+
 func (s Store) GetString(key string) (str string, got bool) {
 	s.postfixKey(&key)
 	got = s.Raw.RawGetItem(key, &str)

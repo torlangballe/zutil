@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"syscall/js"
 
+	"github.com/torlangballe/zui/zdom"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
@@ -60,6 +61,15 @@ func (s *JSRawStore) RawGetItemAsAny(key string) (any, bool) {
 		return str, true
 	}
 	return nil, false
+}
+
+func PrintLocal() {
+	local := js.Global().Get("localStorage")
+	keys := zdom.ObjectKeys(local)
+	for _, key := range keys {
+		o := local.Get(key)
+		zlog.Info("js.LocalStore:", key, o.String())
+	}
 }
 
 func (s *JSRawStore) RawGetItem(key string, v any) bool {
