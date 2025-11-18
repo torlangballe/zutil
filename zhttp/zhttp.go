@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"hash/crc32"
@@ -52,6 +53,8 @@ type Parameters struct {
 	Method                string
 	ContentType           string
 	Body                  []byte
+	XMLResponse           bool // use xml instead of json for getting to struct
+	XMLRequest            bool // use xml instead of json for sending from struct
 	Reader                io.Reader
 	GetErrorFromBody      bool
 	NoClientCache         bool // this creates a new client in MakeRequest(). You might need to call client.CloseIdleConnections() to avoid Keep-Alive requests qccumulating
@@ -398,7 +401,11 @@ func processResponse(surl string, resp *http.Response, params Parameters, receiv
 			*rstring = string(body)
 			return nil
 		}
-		err = json.Unmarshal(body, receive)
+		if params.XMLResponse {
+			err = xml.Unmarshal(body, receive)
+		} else {
+			err = json.Unmarshal(body, receive)
+		}
 		if err != nil {
 			err = zlog.Error("unmarshal", err)
 			return err
