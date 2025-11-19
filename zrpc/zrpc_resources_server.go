@@ -2,6 +2,7 @@ package zrpc
 
 import (
 	"github.com/torlangballe/zutil/zhttp"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -76,6 +77,10 @@ func (r *ZRPCResourceCalls) SetResourceUpdatedFromClient(ci *ClientInfo, resID s
 // GetURL is a convenience function to get the contents of a url via the server.
 func (*ZRPCResourceCalls) GetURL(surl string, reply *[]byte) error {
 	params := zhttp.MakeParameters()
+	// params.PrintBody = true
+	// params.Headers["User-Agent"] = "Mozilla"
+	// zlog.Info("URL: '" + surl + "'")
 	_, err := zhttp.Get(surl, params, reply)
+	zlog.OnError(err, surl)
 	return err
 }
