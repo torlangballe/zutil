@@ -33,6 +33,7 @@ func BreakRunesIntoLines(runes []rune, breakChars string, columns int) (lines []
 				line := runes[:lastBreak]
 				runes = runes[lastBreak:]
 				lines = append(lines, line)
+				lastBreak = -1
 				added = true
 				break
 			}
