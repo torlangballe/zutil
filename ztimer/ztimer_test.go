@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/ztesting"
 )
 
@@ -24,4 +25,17 @@ func TestResetRepeat(t *testing.T) {
 	})
 	time.Sleep(time.Millisecond * 120)
 	ztesting.Equal(t, str, "second", "second timer kick in")
+}
+
+func TestStop(t *testing.T) {
+	var fired = new(bool)
+	timer := RepeatForever(1, func() {
+		zlog.Warn("Fired")
+		*fired = true
+	})
+	time.Sleep(time.Millisecond * 100)
+	timer.Stop()
+	if *fired {
+		t.Error("Should not have fired")
+	}
 }
