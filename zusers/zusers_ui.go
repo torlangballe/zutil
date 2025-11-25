@@ -77,7 +77,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 		style.KeyboardType = zkeyboard.TypeEmailAddress
 	}
 	style.AutoCapType = zkeyboard.AutoCapNone
-	usernameField := ztext.NewView(username, style, 30, 1)
+	usernameField := ztext.NewView(username, style, 40, 1)
 	str := "username must be an ASCII characters"
 	if UserNameIsEmail {
 		str = "must be a valid email address"
@@ -86,7 +86,7 @@ func OpenDialog(doReg, doLogin, canCancel bool, got func()) {
 	usernameField.UpdateSecs = 0
 
 	style = ztext.Style{KeyboardType: zkeyboard.TypePassword}
-	passwordField := ztext.NewView("", style, 60, 1)
+	passwordField := ztext.NewView("", style, 40, 1)
 	str = fmt.Sprintf("password must be minimum %d ascii characters", MinimumPasswordLength)
 	passwordField.SetToolTip((str))
 	passwordField.UpdateSecs = 0
