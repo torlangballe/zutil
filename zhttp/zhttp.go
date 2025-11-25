@@ -55,6 +55,7 @@ type Parameters struct {
 	Body                  []byte
 	XMLResponse           bool // use xml instead of json for getting to struct
 	XMLRequest            bool // use xml instead of json for sending from struct
+	FollowRedirectFirst   bool
 	Reader                io.Reader
 	GetErrorFromBody      bool
 	NoClientCache         bool // this creates a new client in MakeRequest(). You might need to call client.CloseIdleConnections() to avoid Keep-Alive requests qccumulating
@@ -237,6 +238,16 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 	if params.Args != nil {
 		surl, _ = MakeURLWithArgs(surl, params.Args)
 	}
+	if params.FollowRedirectFirst {
+		snew, err := GetRedirectedURL(surl, params.SkipVerifyCertificate)
+		if err != nil {
+			return nil, nil, err
+		}
+		if snew != surl {
+			zlog.Info("REDIR:", surl, err)
+			surl = snew
+		}
+	}
 	if params.NoClientCache {
 		client = makeClient(params)
 	} else {
@@ -314,6 +325,9 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 func GetResponse(surl string, params Parameters) (resp *http.Response, err error) {
 	zlog.Assert(params.Method != "", params.Method, surl)
 	req, client, err := MakeRequest(surl, params)
+	if params.PrintBody {
+		zlog.Info("OutHeader:", zlog.Full(req.Header))
+	}
 	// zlog.Info("GetResponse:", err, req != nil, client != nil)
 	if err != nil {
 		return
