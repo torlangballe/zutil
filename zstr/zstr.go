@@ -12,17 +12,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/url"
 	"reflect"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
-	uuidv4 "github.com/bitactro/UUIDv4"
-	"github.com/google/uuid"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
@@ -591,14 +591,47 @@ func GenerateRandomHexBytes(byteCount int) string {
 	return hex.EncodeToString(data)
 }
 
-func GenerateUUID() string {
-	return uuidv4.GenerateUUID4()
+func BytesToUUID(randomBits []byte) string {
+	if len(randomBits) != 16 {
+		panic("wrong size")
+	}
+	var uuid4 string
+	part1 := hex.EncodeToString(randomBits[:4])
+	uuid4 = part1
+	uuid4 += "-"
+	part2 := hex.EncodeToString(randomBits[4:6])
+	uuid4 += part2
+	uuid4 += "-"
+	part3 := hex.EncodeToString(randomBits[6:8])
+	uuid4 += part3
+	uuid4 += "-"
+	part4 := hex.EncodeToString(randomBits[8:10])
+	uuid4 += part4
+	uuid4 += "-"
+	part5 := hex.EncodeToString(randomBits[10:])
+	uuid4 += part5
+	return uuid4
 }
 
-func GenerateTimeUUID() string {
-	n := uuid.New()
-	return n.String()
+// generateUUID4 generates RFC 4122 version 4 UUID.
+func GenerateUUID() string {
+	var randomBits [16]byte
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < 16; i++ {
+		r1 := rand.Intn(255)
+		randomBits[i] = byte(r1)
+	}
+	randomBits[6] = (randomBits[6] & 0x0f) | 0x40 // Version 4
+	randomBits[8] = (randomBits[8] & 0x3f) | 0x80 // Variant is 10
+
+	uuid4 := BytesToUUID(randomBits[:])
+	return uuid4
 }
+
+// func GenerateTimeUUID() string {
+// 	n := uuid.New()
+// 	return n.String()
+// }
 
 // IsRuneASCIIPrintable returns true if b is ascii and not control-character (space returns true)
 func IsRuneASCIIPrintable(b rune) bool {
