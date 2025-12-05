@@ -147,7 +147,13 @@ func SendBody(surl string, params Parameters, send, receive any) (*http.Response
 				if got {
 					params.Reader = reader
 				} else {
-					bout, err = json.Marshal(send)
+					if params.XMLRequest {
+						bout, err = xml.MarshalIndent(send, "  ", "  ")
+						// xmlHeader := []byte(xml.Header) // this is <?xml version="1.0" encoding="UTF-8"?> Not needed to be valid XML
+						// bout = append(xmlHeader, bout...)
+					} else {
+						bout, err = json.Marshal(send)
+					}
 					if err != nil {
 						return nil, zlog.Error("marshal", err)
 					}
@@ -297,9 +303,9 @@ func GetResponseFromReqClient(params Parameters, request *http.Request, client *
 	// 	}
 	// }()
 	request.Close = true
-	p := zprocess.PushProcess(30, "GetResponseFromReqClient:"+request.URL.String())
+	// p := zprocess.PushProcess(30, "GetResponseFromReqClient:"+request.URL.String())
 	resp, err = client.Do(request)
-	zprocess.PopProcess(p)
+	// zprocess.PopProcess(p)
 	if err == nil && resp == nil {
 		return nil, errors.New("client.Do gave no response: " + request.URL.String())
 	}
@@ -599,6 +605,9 @@ func GetCopyOfRequestBodyAsString(req *http.Request) string {
 }
 
 func GetCopyOfResponseBodyAsString(resp *http.Response) string {
+	if resp == nil {
+		return ""
+	}
 	buf, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	reader1 := myReader{bytes.NewBuffer(buf)}
