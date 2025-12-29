@@ -9,7 +9,6 @@ replace github.com/torlangballe/zui => ../zui
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
 	github.com/aws/aws-lambda-go v1.47.0
-	github.com/bitactro/UUIDv4 v0.0.0-20220313143507-9a5732793937
 	github.com/bramvdbogaerde/go-scp v1.2.1
 	github.com/chromedp/cdproto v0.0.0-20240417023356-ab6d61991462
 	github.com/chromedp/chromedp v0.9.5
@@ -18,7 +17,6 @@ require (
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/gomodule/redigo v1.8.9
 	github.com/google/gopacket v1.1.19
-	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/gosnmp/gosnmp v1.37.0
@@ -65,6 +63,7 @@ require (
 	github.com/gobwas/ws v1.3.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3 // indirect
