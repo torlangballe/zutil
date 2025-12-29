@@ -44,6 +44,7 @@ type MarkdownConverter struct {
 	Variables       zdict.Dict
 	FileSystem      fs.FS
 	TableOfContents bool
+	DarkMode        bool
 	AbsolutePrefix  string
 	HeaderMD        string
 }
@@ -106,7 +107,11 @@ func (m *MarkdownConverter) ConvertToHTMLFromString(w io.Writer, fullmd, name st
 	params.Title = name
 	params.Flags = blackfriday.CompletePage | blackfriday.HrefTargetBlank
 	//!!		params.Flags |= blackfriday.TOC
-	params.CSS = zrest.AppURLPrefix + "css/zcore/github-markdown.css"
+	cssName := "github-markdown"
+	if m.DarkMode {
+		cssName += "-dark"
+	}
+	params.CSS = zrest.AppURLPrefix + "css/zcore/" + cssName + ".css"
 	zlog.Info("MarkDown CSS:", params.CSS)
 	renderer := blackfriday.NewHTMLRenderer(params)
 	renderer.AbsolutePrefix = m.AbsolutePrefix
@@ -285,6 +290,7 @@ func (m *MarkdownConverter) ServeAsHTML(w http.ResponseWriter, req *http.Request
 	query := req.URL.Query()
 	debugMode := (query.Get("zdev") == "1")
 	isRaw := (query.Get("raw") == "1")
+	m.DarkMode = (query.Get("dark") == "1")
 	osType := zdevice.OSTypeFromUserAgentString(req.Header.Get("User-Agent"))
 	zlog.Info("MarkdownConverter.ServeAsHTML:", req.URL, debugMode)
 	m.SetBrowserSpecificDocKeyValues(osType, debugMode)
