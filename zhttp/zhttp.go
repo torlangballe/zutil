@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
@@ -11,6 +12,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -44,22 +46,25 @@ type HTTPError struct {
 }
 
 type Parameters struct {
-	Headers               map[string]string
-	SkipVerifyCertificate bool
-	PrintBody             bool
-	ShowCURLCall          bool
-	Args                  map[string]string
-	TimeoutSecs           float64
-	Method                string
-	ContentType           string
-	Body                  []byte
-	XMLResponse           bool // use xml instead of json for getting to struct
-	XMLRequest            bool // use xml instead of json for sending from struct
-	FollowRedirectFirst   bool
-	Reader                io.Reader
-	GetErrorFromBody      bool
-	NoClientCache         bool // this creates a new client in MakeRequest(). You might need to call client.CloseIdleConnections() to avoid Keep-Alive requests qccumulating
-	Context               context.Context
+	Headers                      map[string]string
+	SkipVerifyCertificate        bool
+	PrintBody                    bool
+	ShowCURLCall                 bool
+	Args                         map[string]string
+	TimeoutSecs                  float64
+	Method                       string
+	ContentType                  string
+	Body                         []byte
+	XMLResponse                  bool // use xml instead of json for getting to struct
+	XMLRequest                   bool // use xml instead of json for sending from struct
+	FollowRedirectFirst          bool
+	RootCertificateAuthorityPath string
+	SSLCertificatePath           string
+	SSLKeyPath                   string
+	Reader                       io.Reader
+	GetErrorFromBody             bool
+	NoClientCache                bool // this creates a new client in MakeRequest(). You might need to call client.CloseIdleConnections() to avoid Keep-Alive requests qccumulating
+	Context                      context.Context
 }
 
 const DefaultTimeoutSeconds = 15
@@ -196,40 +201,60 @@ func SendBody(surl string, params Parameters, send, receive any) (*http.Response
 // 	// },
 // }
 
-var NoVerifyClient = &http.Client{
-	Timeout: 15 * time.Second,
-	Transport: &http.Transport{
-		//		MaxIdleConnsPerHost: 100,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	},
-}
+// var NoVerifyClient = &http.Client{
+// 	Timeout: 15 * time.Second,
+// 	Transport: &http.Transport{
+// 		//		MaxIdleConnsPerHost: 100,
+// 		TLSClientConfig: &tls.Config{
+// 			InsecureSkipVerify: true,
+// 		},
+// 	},
+// }
 
-func makeClient(params Parameters) *http.Client {
+func makeClient(params Parameters) (*http.Client, error) {
 	if params.TimeoutSecs == -1 {
 		params.TimeoutSecs = 15
+	}
+	tlsConf := tls.Config{
+		InsecureSkipVerify: params.SkipVerifyCertificate,
+	}
+	if params.RootCertificateAuthorityPath != "" {
+		caCert, err := ioutil.ReadFile(params.RootCertificateAuthorityPath)
+		if zlog.OnError(err, params.RootCertificateAuthorityPath) {
+			return nil, err
+		}
+		caCertPool := x509.NewCertPool()
+		// caCertPool, _ := x509.SystemCertPool() //
+		// if caCertPool == nil {
+		// }
+		caCertPool.AppendCertsFromPEM(caCert)
+		tlsConf.RootCAs = caCertPool
+	}
+	if params.SSLKeyPath != "" && params.SSLCertificatePath != "" {
+		cert, err := tls.LoadX509KeyPair(params.SSLCertificatePath, params.SSLKeyPath)
+		if zlog.OnError(err, "makeClient.LoadX509KeyPair") {
+			return nil, err
+		}
+		// x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
+		// if !zlog.OnError(err, "makeClient.ParseCertificate") {
+		tlsConf.Certificates = []tls.Certificate{cert}
+		// }
 	}
 	c := &http.Client{
 		Timeout: ztime.SecondsDur(params.TimeoutSecs),
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 5,
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: params.SkipVerifyCertificate,
-			},
+			TLSClientConfig:     &tlsConf,
 		},
 	}
 	if runtime.GOOS != "js" {
 		c.Transport = &http.Transport{ //
 			MaxIdleConnsPerHost: 20,
 			MaxConnsPerHost:     20,
-			MaxIdleConns:        20,
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: params.SkipVerifyCertificate,
-			},
+			TLSClientConfig:     &tlsConf,
 		}
 	}
-	return c
+	return c, nil
 }
 
 type clientInfo struct {
@@ -255,12 +280,18 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 		}
 	}
 	if params.NoClientCache {
-		client = makeClient(params)
+		client, err = makeClient(params)
+		if err != nil {
+			return nil, nil, err
+		}
 	} else {
 		ci := clientInfo{timeoutSecs: params.TimeoutSecs, skipVerifyCert: params.SkipVerifyCertificate}
 		client, _ = clientCache.Get(ci)
 		if client == nil {
-			client = makeClient(params)
+			client, err = makeClient(params)
+			if err != nil {
+				return nil, nil, err
+			}
 			clientCache.Set(ci, client)
 		}
 	}
