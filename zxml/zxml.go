@@ -6,9 +6,11 @@ import (
 	"encoding/xml"
 	"errors"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/torlangballe/zutil/zbytes"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 func isCharsetISO88591(charset string) bool {
@@ -86,4 +88,10 @@ func UnmarshalWithBOM(b []byte, target interface{}) error {
 		return decoder.Decode(target)
 	}
 	return xml.Unmarshal(b, target)
+}
+
+func MakeSelfClosing(xml []byte) []byte {
+	regex, err := regexp.Compile(`></[A-Za-z0-9_:]+>`)
+	zlog.AssertNotError(err)
+	return regex.ReplaceAll(xml, []byte("/>"))
 }
