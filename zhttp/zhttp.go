@@ -883,9 +883,9 @@ func GetContentLengthFromHeader(header http.Header) (int64, error) {
 	return strconv.ParseInt(header.Get("Content-Length"), 10, 64)
 }
 
-// SendForFile POSTs parameter.Body or parameter.Reader to surl, with crc and Content-Length headers.
+// PostWithLength POSTs parameter.Body or parameter.Reader to surl, with crc and Content-Length headers.
 // If crc or length are 0, they are calculated, reading params.Reader into params.Body if needed.
-func SendForFile(surl string, crc, length int64, params Parameters) error {
+func PostWithLength(surl string, crc, length int64, params Parameters) error {
 	var err error
 	if crc == 0 || length == 0 {
 		if params.Body == nil {
