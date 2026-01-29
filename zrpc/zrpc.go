@@ -76,14 +76,14 @@ type ClientInfo struct {
 }
 
 // TransportError is a specific error type. Any problem with the actual transport of an zrpc call is
-// returned as it, so we can check if it's an error returned from the call, or a problem calling.
+// returned as is, so we can check if it's an error returned from the call, or a problem calling.
 type TransportError string
 
 type CallsBase struct{} // CallsBase is just a dummy type one can derive from when defining a type to add methods to for registation. You don't need to use it.
 // type RPCCalls CallsBase // RPCCalls is the type with zrpc's own build-in methods.
 type Unused struct{} // Any is used in function definition args/result when argument is not used
 
-const tempDataMethod = "zrpc-tempdata"
+const TempDataMethod = "zrpc-tempdata"
 
 var ExecuteTimedOutError = TransportError("Execution timed out")
 
