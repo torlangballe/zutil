@@ -193,6 +193,8 @@ func ForwardPortToRemote(port int, remoteAddress string) error {
 			zlog.Error("dial target", err)
 			continue
 		}
+		zlog.Info("ForwardPortToRemote copy start")
+		// does is keep calling this or they stay? We should log errors!!!
 		go copyIO(conn, proxy)
 		go copyIO(proxy, conn)
 	}
