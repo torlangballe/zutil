@@ -19,6 +19,18 @@ func Equal[N comparable](t *testing.T, a, b N, parts ...any) bool {
 	return true
 }
 
+func MultiEqual[N comparable](t *testing.T, a N, bs ...N) bool {
+	for _, b := range bs {
+		if a == b {
+			return true
+		}
+	}
+	str := fmt.Sprintf(" '%v' != '%v'", a, bs)
+	zlog.Error(zlog.StackAdjust(1), zlog.StackAdjust(1), "Fail:", str)
+	t.Error(str)
+	return false
+}
+
 func Different[N comparable](t *testing.T, a, b N, parts ...any) bool {
 	if a == b {
 		str := zstr.Spaced(parts...) + fmt.Sprintf(" '%v' == '%v'", a, b)
@@ -47,4 +59,20 @@ func LessThan[N cmp.Ordered](t *testing.T, a, b N, parts ...any) bool {
 		return false
 	}
 	return true
+}
+
+func OnError(t *testing.T, err error, parts ...any) {
+	if err != nil {
+		str := zstr.Spaced(parts...) + fmt.Sprintf(" Error: %v", err)
+		zlog.Error(zlog.StackAdjust(1), "OnError:", str)
+		t.Error(str)
+	}
+}
+
+func OnErrorFatal(t *testing.T, err error, parts ...any) {
+	if err != nil {
+		str := zstr.Spaced(parts...) + fmt.Sprintf(" Error: %v", err)
+		zlog.Error(zlog.StackAdjust(1), "OnError:", str)
+		t.Fatal(str)
+	}
 }
