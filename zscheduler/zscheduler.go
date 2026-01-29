@@ -746,6 +746,9 @@ func (s *Scheduler[I]) startAndStopRuns() {
 	}
 	if s.setup.ExecutorAliveDuration != 0 {
 		for _, e := range s.executors {
+			if !e.IsAble {
+				continue
+			}
 			if !e.KeptAliveAt.IsZero() {
 				expires := e.KeptAliveAt.Add(s.setup.ExecutorAliveDuration)
 				if nextTimerTime.IsZero() || expires.Before(nextTimerTime) {
