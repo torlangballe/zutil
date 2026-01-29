@@ -170,7 +170,7 @@ func IndexOf(length int, is func(i int) bool) int {
 	return -1
 }
 
-func Find[S any](slice []S, is func(s S) bool) (*S, int) {
+func FindFunc[S any](slice []S, is func(s S) bool) (*S, int) {
 	i := slices.IndexFunc(slice, is)
 	if i == -1 {
 		return nil, -1
