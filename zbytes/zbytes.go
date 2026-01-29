@@ -93,13 +93,13 @@ func DecodeUTF16IfBOM(b []byte) ([]byte, error) {
 	return b, nil
 }
 
-func Int64ToBytes(n uint64) []byte {
+func UInt64ToBytes(n uint64) []byte {
 	var c [8]byte
 	binary.LittleEndian.PutUint64(c[0:], n)
 	return c[0:]
 }
 
-func BytesToInt64(b []byte) uint64 {
+func BytesToUInt64(b []byte) uint64 {
 	return binary.LittleEndian.Uint64(b)
 }
 
