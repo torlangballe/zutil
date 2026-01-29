@@ -15,7 +15,26 @@ const Undefined = math.MaxFloat32
 
 type Slice []float64
 
+func FromAnyFloat(i any) (float64, error) {
+	switch n := i.(type) {
+	case float32:
+		return float64(n), nil
+	case float64:
+		return n, nil
+	}
+	val := reflect.ValueOf(i)
+	switch val.Kind() { // not sure this does anything type switch above does...
+	case reflect.Float32, reflect.Float64:
+		return float64(val.Float()), nil
+	}
+	return 0, errors.New(fmt.Sprint("zfloat.GetAnyFloat bad type:", reflect.TypeOf(i)))
+}
+
 func GetAny(i any) (float64, error) {
+	n, err := FromAnyFloat(i)
+	if err == nil {
+		return n, nil
+	}
 	switch n := i.(type) {
 	case bool:
 		if n {
@@ -42,10 +61,6 @@ func GetAny(i any) (float64, error) {
 		return float64(n), nil
 	case uint64:
 		return float64(n), nil
-	case float32:
-		return float64(n), nil
-	case float64:
-		return n, nil
 	case string:
 		f, err := strconv.ParseFloat(n, 64)
 		return f, err
@@ -59,8 +74,6 @@ func GetAny(i any) (float64, error) {
 		return 0, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return float64(val.Int()), nil
-	case reflect.Float32, reflect.Float64:
-		return float64(val.Float()), nil
 	case reflect.String:
 		n, err := strconv.ParseFloat(val.String(), 64)
 		return n, err
