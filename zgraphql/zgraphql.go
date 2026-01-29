@@ -1,41 +1,13 @@
 package zgraphql
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"reflect"
 
-	"github.com/aws/aws-lambda-go/events"
 	"github.com/graphql-go/graphql"
-	"github.com/pkg/errors"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
 )
-
-func Handler(context context.Context, schema graphql.Schema, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	if len(request.Body) < 1 {
-		return events.APIGatewayProxyResponse{}, errors.Errorf("No body")
-	}
-
-	result := graphql.Do(graphql.Params{
-		Schema:        schema,
-		RequestString: string(request.Body),
-	})
-
-	code := 200
-	if result.HasErrors() {
-		code = http.StatusInternalServerError
-	}
-	body, _ := json.Marshal(result)
-	//	fmt.Println("body:", string(body))
-	return events.APIGatewayProxyResponse{
-		Body:       string(body),
-		StatusCode: code,
-	}, nil
-
-}
 
 func getGraphQlTypeFromKind(parentFieldName string, s any) graphql.Output {
 	//fmt.Println("getGraphQlTypeFromKind:", item.TypeName, item.Kind, item.FieldName)
