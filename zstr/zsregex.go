@@ -108,18 +108,22 @@ func WildcardAsteriskToRegExCapture(str string) (*regexp.Regexp, error) {
 type WildCardTransformer struct {
 	regEx         *regexp.Regexp
 	wildTo        string
+	NoOp          bool
 	asteriskCount int
 }
 
 func NewWildCardTransformer(wildFrom, wildTo string) (*WildCardTransformer, error) {
+	w := &WildCardTransformer{}
+	if wildFrom == "" || wildTo == "" {
+		w.NoOp = true
+		return w, nil
+	}
 	var err error
-
 	cf := strings.Count(wildFrom, "*")
 	ct := strings.Count(wildTo, "*")
 	if cf != ct {
 		return nil, fmt.Errorf("Mismatch in number of wildcard asterisks: %d != %d", cf, ct)
 	}
-	w := &WildCardTransformer{}
 	w.asteriskCount = cf
 	w.wildTo = wildTo
 	w.regEx, err = WildcardAsteriskToRegExCapture(wildFrom)
@@ -130,6 +134,9 @@ func NewWildCardTransformer(wildFrom, wildTo string) (*WildCardTransformer, erro
 }
 
 func (w *WildCardTransformer) Transform(str string) (string, error) {
+	if w.NoOp {
+		return str, nil
+	}
 	matches := GetAllCaptures(w.regEx, str)
 	// fmt.Printf("WildCardTransformer: %s %v %+v\n", str, w.regEx.Expand, matches)
 
