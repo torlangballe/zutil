@@ -4,8 +4,8 @@ import (
 	"database/sql/driver"
 	"math"
 
-	"github.com/torlangballe/zutil/zjson"
 	"github.com/torlangballe/zutil/zmath"
+	"github.com/torlangballe/zutil/zreflect"
 	"github.com/torlangballe/zutil/zsql"
 )
 
@@ -312,17 +312,17 @@ var pathLineMap = map[string]PathLineType{
 }
 
 func (p *PathPartType) UnmarshalJSON(b []byte) error {
-	return zjson.UnmarshalEnum(p, b, pathPartMap)
+	return zreflect.UnmarshalEnum(p, b, pathPartMap)
 }
 
 func (p *PathPartType) MarshalJSON() ([]byte, error) {
-	return zjson.MarshalEnum(*p, pathPartMap)
+	return zreflect.MarshalEnum(*p, pathPartMap)
 }
 
 func (p *PathLineType) UnmarshalJSON(b []byte) error {
-	return zjson.UnmarshalEnum(p, b, pathLineMap)
+	return zreflect.UnmarshalEnum(p, b, pathLineMap)
 }
 
 func (p *PathLineType) MarshalJSON() ([]byte, error) {
-	return zjson.MarshalEnum(*p, pathLineMap)
+	return zreflect.MarshalEnum(*p, pathLineMap)
 }
