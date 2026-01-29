@@ -25,7 +25,7 @@ func NewServer(router *mux.Router, a TokenAuthenticator) *Executor {
 	e.Authenticator = a
 
 	zrest.AddHandler(router, "zrpc", e.doServeHTTP).Methods("POST", "OPTIONS")
-	zrest.AddHandler(router, tempDataMethod, e.doServeTempDataHTTP).Methods("GET", "OPTIONS")
+	zrest.AddHandler(router, TempDataMethod, e.doServeTempDataHTTP).Methods("GET", "OPTIONS")
 	return e
 }
 
@@ -151,3 +151,5 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 }
+
+

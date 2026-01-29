@@ -141,8 +141,11 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 	// zlog.Info("callMethod:", mtype.Method.Name)
 	start := time.Now()
 	defer func() {
-		if time.Since(start) > time.Second*2 && mtype.Method.Name != "ReversePoll" { // ReversePoll waits for some result, so can take time on purpose
-			zlog.Info("🟪Warning: Slow zrpc excute:", mtype.Method.Name, time.Since(start), err)
+		deadline, ok := ctx.Deadline()
+		if !ok || -time.Since(deadline) < 0 {
+			if time.Since(start) > time.Second*2 && mtype.Method.Name != "ReversePoll" { // ReversePoll waits for some result, so can take time on purpose
+				zlog.Info("🟪Warning: Slow zrpc excute:", mtype.Method.Name, time.Since(start), err, deadline, ok)
+			}
 		}
 	}()
 	var argv, replyv reflect.Value
@@ -155,7 +158,7 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 	}
 	err = json.Unmarshal(rawArg, argv.Interface())
 	if err != nil {
-		zlog.Error("Unmarshal:", err, mtype.Method, argv.Kind(), argv.Type(), zlog.Full(*mtype))
+		zlog.Error("Unmarshal:", argv.Kind(), argv.Type(), string(rawArg))
 		return rp, err
 	}
 

@@ -317,7 +317,7 @@ func requestHTTPDataFields(s any, requestHTTPDataClient *Client, debugInfo strin
 				reader, err := requestHTTPDataClient.RequestTemporaryServe(id)
 				defer wg.Done()
 				if err != nil {
-					*outErr = zlog.Error("RequestTemporaryServe req err:", err, id, each.StructField.Name, debugInfo)
+					*outErr = zlog.Error("RequestTemporaryServe req err:", err, id, each.StructField.Name, requestHTTPDataClient.callURL, debugInfo)
 					return
 				}
 				buf, err := io.ReadAll(reader)
@@ -344,7 +344,7 @@ func (c *Client) RequestTemporaryServe(id int64) (io.ReadCloser, error) {
 		params.Headers["X-Token"] = c.AuthToken
 	}
 	args := map[string]string{"id": strconv.FormatInt(id, 10)}
-	surl := c.MakeCallURL(tempDataMethod)
+	surl := c.MakeCallURL(TempDataMethod)
 	surl, _ = zhttp.MakeURLWithArgs(surl, args)
 	// zlog.Warn("CALL:", surl)
 	resp, err := zhttp.GetResponse(surl, params)
