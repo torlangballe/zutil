@@ -25,6 +25,10 @@ type SSLCertificateInfo struct {
 	YearsUntilExpiry int
 }
 
+type TokenAuthenticator interface {
+	IsTokenValid(token string) (bool, int64) // returns valid, userID if relevant
+}
+
 var NotFound = errors.New("not found")
 
 func HostAndPortToAddress(host string, port int) string {
