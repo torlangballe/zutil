@@ -61,6 +61,8 @@ type Parameters struct {
 	RootCertificateAuthorityPath string
 	SSLCertificatePath           string
 	SSLKeyPath                   string
+	UserName                     string
+	Password                     string
 	Reader                       io.Reader
 	GetErrorFromBody             bool
 	NoClientCache                bool // this creates a new client in MakeRequest(). You might need to call client.CloseIdleConnections() to avoid Keep-Alive requests qccumulating
@@ -309,6 +311,9 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 		err = zlog.Error("new request", params.Context != nil, err)
 		return
 	}
+	if params.UserName != "" && params.Password != "" {
+		request.SetBasicAuth(params.UserName, params.Password)
+	}
 	if params.ContentType != "" {
 		params.Headers["Content-Type"] = params.ContentType
 	}
@@ -385,12 +390,12 @@ func GetResponseAndIPAddress(surl string, params Parameters) (resp *http.Respons
 	}
 
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
-	// zlog.Info("GetResponse:", err, req != nil, client != nil)
+	zlog.Info("GetResponse:", err, req != nil, client != nil)
 	if err != nil {
 		return
 	}
 	resp, err = GetResponseFromReqClient(params, req, client)
-	zlog.Warn("GetResponseAndIPAddress:", err, *fip, *tip)
+	zlog.Warn("GetResponseAndIPAddress:", err, *fip, *tip, surl, params.Method)
 	return resp, *fip, *tip, err
 }
 
