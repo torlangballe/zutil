@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
@@ -352,13 +351,6 @@ func (s *Size) Scan(value interface{}) error {
 	}
 	*s = size
 	return nil
-}
-
-func (s Sizes) GetItems() (items zdict.Items) {
-	for _, size := range s {
-		items = append(items, zdict.Item{Name: size.String(), Value: size})
-	}
-	return
 }
 
 func (s *Sizes) IndexOf(size Size) int {
