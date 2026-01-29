@@ -141,7 +141,7 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string,
 	})
 	var header *zcontainer.StackView
 	frame, header = makeFrame(&v.StackView, "Telemetry")
-	grid := zcontainer.GridViewNew("options", 2)
+	grid := zcontainer.NewGridView("options", 2)
 	grid.Spacing.H = 0
 	frame.Add(grid, zgeo.TopLeft|zgeo.Expand)
 	AddKVOptionToGrid(grid, zgraphana.APIKey)
