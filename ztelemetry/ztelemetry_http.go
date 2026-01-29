@@ -3,8 +3,9 @@
 package ztelemetry
 
 import (
+	"net/url"
+
 	"github.com/torlangballe/zutil/zhttp"
-	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zrest"
 )
 
@@ -23,9 +24,12 @@ func EnableRedirectTelemetry() {
 
 func SetTelemetryForRedirect(surl string, secs float64) {
 	if IsRunning() && redirectSecsTelemetry != nil {
-		base := znet.StripQueryAndFragment(surl)
-		labels := map[string]string{URLBaseLabel: base}
-		// redirectSecsTelemetry.WithLabelValues(base).Observe(ztime.Since(start))
-		redirectSecsTelemetry.Set(secs, labels)
+		u, _ := url.Parse(surl)
+		host := u.Hostname()
+		if host != "" {
+			labels := map[string]string{URLBaseLabel: host}
+			// redirectSecsTelemetry.WithLabelValues(base).Observe(ztime.Since(start))
+			redirectSecsTelemetry.Set(secs, labels)
+		}
 	}
 }
