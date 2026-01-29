@@ -387,3 +387,43 @@ func MapToStruct(m map[string]any, structPtr any) error {
 	})
 	return outErr
 }
+
+func MarshalEnum[S comparable](from S, m map[string]S) ([]byte, error) {
+	for k, v := range m {
+		if v == from {
+			return []byte(k), nil
+		}
+	}
+	return nil, fmt.Errorf("No value: %v", from)
+}
+
+func UnmarshalEnum[S comparable](to *S, data []byte, m map[string]S) error {
+	key := string(data)
+	v, got := m[key]
+	if !got {
+		return fmt.Errorf("No value for key: %s", key)
+	}
+	*to = v
+	return nil
+}
+
+func PasteRegisteredItemsFromClipboardString[P any](str string) (P, error) {
+	var stype string
+	var p P
+	line, body := zstr.SplitInTwo(str, "\n")
+	if !zstr.HasPrefix(line, "zcopyitem: ", &stype) {
+		return p, fmt.Errorf("Paste buffer doesn't contain items to paste: %s", stype)
+	}
+	rtype := reflect.TypeOf(p)
+	stype2 := MakeTypeNameWithPackage(rtype)
+	if stype != stype2 {
+		err := fmt.Errorf("Paste type is not the same as wanted receive type\n%s\n%s", stype, stype2)
+		return p, err
+	}
+	err := json.Unmarshal([]byte(body), &p)
+	if err != nil {
+		err := fmt.Errorf("Couldn't unpack paste data")
+		return p, err
+	}
+	return p, nil
+}
