@@ -16,19 +16,20 @@ import (
 	"github.com/torlangballe/zutil/ztesting"
 )
 
-type Exchanger interface {
-	Exchange(msg []byte, reply *[]byte) error
-	ExchangeFunc(msg []byte, got func([]byte, error))
-}
+// type Exchanger interface {
+// 	Exchange(msg []byte, reply *[]byte) error
+// 	ExchangeFunc(msg []byte, got func([]byte, error))
+// }
 
 const (
-	port = 8781
+	port  = 8781
+	fires = 1000
 )
 
 var clientSends, serverSends, clientReceives, serverReceives int
 
 func openClient(t *testing.T) *Client {
-	client, err := NewClient("ws://localhost:7781/", func(data []byte, err error) []byte {
+	client, err := NewClient("client1", "ws://localhost:7781/", func(data []byte, err error) []byte {
 		str := string(data)
 		// zlog.Warn("Client Got:", string(data))
 		if !strings.HasPrefix(str, "server ") {
@@ -46,7 +47,7 @@ func openClient(t *testing.T) *Client {
 }
 
 func openServer(t *testing.T) *Server {
-	server := NewServer("/", 7781, func(data []byte, err error) []byte {
+	server := NewServer("server1", "/", 7781, func(id string, data []byte, err error) []byte {
 		str := string(data)
 		// zlog.Warn("Server Got:", str)
 		serverReceives++
@@ -60,11 +61,11 @@ func openServer(t *testing.T) *Server {
 }
 
 func doRandomFires(t *testing.T, e Exchanger, pre string, add *int) {
-	for _ = range 20000 {
+	for _ = range fires {
 		var reply []byte
 		(*add)++
 		str := fmt.Sprintf("%s %d", pre, rand.Int63())
-		err := e.Exchange([]byte(str), &reply)
+		reply, err := e.Exchange([]byte(str))
 		if err != nil {
 			t.Error("Exchange error:", err)
 		}
@@ -73,32 +74,32 @@ func doRandomFires(t *testing.T, e Exchanger, pre string, add *int) {
 }
 
 func doRandomFiresWithFunc(t *testing.T, e Exchanger, pre string, add *int) {
-	for _ = range 20000 {
+	for _ = range fires {
 		str := fmt.Sprintf("%s %d", pre, rand.Int63())
-		e.ExchangeFunc([]byte(str), func(reply []byte, err error) {
-			(*add)++
-			if err != nil {
-				t.Error("Exchange error:", err)
-			}
-			ztesting.Equal(t, string(reply), str+" reply")
-		})
+		reply, err := e.Exchange([]byte(str))
+		(*add)++
+		if err != nil {
+			t.Error("Exchange error:", err)
+		}
+		ztesting.Equal(t, string(reply), str+" reply")
 	}
 }
 
 func testReadWrite(t *testing.T, server *Server, client *Client) {
 	zlog.Warn("testReadWrite")
 	go doRandomFiresWithFunc(t, client, "client", &clientSends)
+	go doRandomFiresWithFunc(t, server, "server", &serverSends)
 	time.Sleep(time.Second * 5)
 	m := map[string]int{
-		"clientSends":    clientSends,
 		"serverReceives": serverReceives,
-		"serverSends":    serverSends,
 		"clientReceives": clientReceives,
+		"serverSends":    serverSends,
+		"clientSends":    clientSends,
 	}
 	for s, c := range m {
-		ztesting.GreaterThan(t, c, 19000, "Not enough ", s, "received")
+		ztesting.Equal(t, c, fires, "Not equal", s, "received")
 	}
-	zlog.Warn("Result:", zlog.Full(m))
+	// zlog.Warn("Result:", zlog.Full(m))
 }
 
 func TestAll(t *testing.T) {
@@ -109,7 +110,7 @@ func TestAll(t *testing.T) {
 	znet.ServeHTTPInBackground(addr, "", router)
 	server := openServer(t)
 	server.GotConnectionFunc = func(cs *ClientToServer) {
-		zlog.Warn("Server got connection from", cs.url)
+		// zlog.Warn("Server got connection from", cs.url)
 		// doRandomFiresWithFunc(t, cs, "server", &serverSends)
 	}
 	client := openClient(t)

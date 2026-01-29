@@ -30,7 +30,7 @@ type message struct {
 
 func NewClient(id, url string, handler func(data []byte, err error) []byte) (*Client, error) {
 	c := &Client{}
-	c.id = id
+	c.ID = id
 	c.url = url
 	c.handlerFunc = handler
 	c.Timeout = time.Second * 10

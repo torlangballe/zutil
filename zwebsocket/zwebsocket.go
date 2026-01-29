@@ -6,15 +6,15 @@ type Exchanger interface {
 	Exchange(msg []byte) ([]byte, error)
 }
 
-type IDExchanger interface {
-	Exchange(id string, msg []byte) ([]byte, error)
-}
+// type IDExchanger interface {
+// 	ExchangeWithID(id string, msg []byte) ([]byte, error)
+// }
 
 type Exchangers map[string]Exchanger
 
 var ExchangerNotFound = fmt.Errorf("exchanger not found")
 
-func (e *Exchangers) Exchange(id string, msg []byte) ([]byte, error) {
+func (e *Exchangers) ExchangeWithID(id string, msg []byte) ([]byte, error) {
 	exchanger, got := (*e)[id]
 	if !got {
 		return nil, ExchangerNotFound

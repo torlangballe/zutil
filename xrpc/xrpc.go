@@ -98,7 +98,7 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, cis 
 		}
 		pipeID = zmap.GetAnyKeyAsString(r.exchangers)
 	}
-	rpJson, err := r.exchangers.Exchange(pipeID, cpJson)
+	rpJson, err := r.exchangers.ExchangeWithID(pipeID, cpJson)
 	if err == zwebsocket.ExchangerNotFound {
 		err = nil
 		if r.server != nil {
@@ -115,7 +115,7 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, cis 
 			if r.executor != nil && r.server.ID == pipeID {
 				err = r.executor.ExecuteFromToJSON(cpJson, &rpJson, cp.CallerInfo)
 			} else {
-				rpJson, err = r.server.Exchange(pipeID, cpJson)
+				rpJson, err = r.server.ExchangeWithID(pipeID, cpJson)
 			}
 		}
 	}

@@ -220,7 +220,7 @@ func testIterate(t *testing.T) {
 }
 
 func testCorruption(t *testing.T) {
-	zlog.Warn("testCorruption, this should show .getLineFromChunk() and truncateChunk() errors")
+	zlog.Warn("testCorruption")
 	const count = 5
 	names := []string{"john", "sally", "bill", "fred", "jill", "peter", "tor", "paul"}
 	opts := DefaultLSOpts

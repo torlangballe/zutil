@@ -49,7 +49,14 @@ func (s *Server) addClientToServer(id, path string, conn *websocket.Conn) *Clien
 	return cs
 }
 
-func (s *Server) Exchange(id string, msg []byte) ([]byte, error) {
+func (s *Server) Exchange(msg []byte) ([]byte, error) {
+	if len(s.Connections) != 1 {
+		return nil, fmt.Errorf("not 1 connection only")
+	}
+	return s.Connections[0].Exchange(msg)
+}
+
+func (s *Server) ExchangeWithID(id string, msg []byte) ([]byte, error) {
 	zlog.Warn("ServCallingConn:", id, string(msg))
 	for _, c := range s.Connections {
 		if c.ID == id {

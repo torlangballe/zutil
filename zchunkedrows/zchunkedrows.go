@@ -512,7 +512,7 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 }
 
 func (cr *ChunkedRows) truncateChunk(cType chunkType, chunkIndex int, toPos int64) error {
-	zlog.Error("truncateChunk", cType, chunkIndex, toPos)
+	zlog.Info("truncateChunk", cType, chunkIndex, toPos)
 	if toPos == -1 {
 		return nil
 	}

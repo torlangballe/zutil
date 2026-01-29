@@ -69,15 +69,7 @@ func testParseDate(t *testing.T) {
 	}
 }
 
-func testHorAxis(t *testing.T) {
-	zlog.Warn("testHorAxis")
-	now := time.Now()
-	inc, _, begin := NiceAxisIncrements(now.Add(-Day), now, 120, 80)
-	zlog.Warn("inc:", inc, begin)
-}
-
 func TestAll(t *testing.T) {
 	testParseDate(t)
 	testDaysSince2000FromTime(t)
-	testHorAxis(t)
 }

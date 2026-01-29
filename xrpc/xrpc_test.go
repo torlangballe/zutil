@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/znamedfuncs"
@@ -100,7 +99,6 @@ func (TestRPCCalls) PassTheBuck(index int) error {
 	wg.Add(1)
 	count++
 	if index == circleLength {
-		zlog.Warn("Circular round complete")
 		index = 0
 	}
 	// zlog.Warn("Passing the buck at index:", index, "count:", count)
@@ -123,11 +121,9 @@ func TestCircular(t *testing.T) {
 		clientID := makeClientID(i)
 		circleServer.AddClient("ws://localhost:7744/", clientID) // client to self!
 	}
-	now := time.Now()
 	var index int = 0
 	err := circleServer.Call(makeClientID(0), "TestRPCCalls.PassTheBuck", index, nil)
 	wg.Wait()
 	ztesting.OnErrorFatal(t, err, "makeFirstClient")
 	ztesting.Equal(t, count, 1000, "circular final count")
-	zlog.Warn("Circular result:", count, time.Since(now))
 }
