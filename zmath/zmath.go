@@ -398,6 +398,7 @@ func NiceNumberString(a any) (string, bool) {
 var countMap = map[string]map[string]int{}
 
 // For a given group and key GetDistinctCountForKeyGroup returns a increasing number for each key asked for within each group
+// Not thread safe yet, use only in single thread gui/UI code for now.
 func GetDistinctCountForKeyGroup(group, key any) int {
 	sgroup := fmt.Sprint(group)
 	skey := fmt.Sprint(key)
