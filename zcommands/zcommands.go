@@ -378,6 +378,7 @@ func (s *Session) specialMethodNames(structure any) []string {
 		if mtype.NumIn() == 1 || mtype.In(1) != commandInfoType { // this is 0, so 1 is command-info
 			continue
 		}
+		zlog.Info("specialMethodNames:", method.Name, mtype.NumIn(), commandInfoType)
 		command := strings.ToLower(method.Name)
 		names = append(names, command)
 	}
@@ -389,9 +390,10 @@ func (s *Session) getChildNodes(where, mode string, forExpand bool) map[string]a
 }
 
 func (s *Session) getChildNodesOf(node any, where, mode string, forExpand bool) map[string]any {
-	// zlog.Info("getChildNodes:", reflect.TypeOf(node))
+	zlog.Info("getChildNodes:", reflect.TypeOf(node))
 	m := map[string]any{}
 	for _, st := range anonStructsAndSelf(node) {
+		zlog.Info("getChildNodes2:", reflect.TypeOf(st))
 		s.addChildNodes(where, mode, forExpand, m, st)
 	}
 	return m
@@ -410,16 +412,18 @@ func initCommander(commander any) {
 }
 
 func (s *Session) addChildNodes(where, mode string, forExpand bool, m map[string]any, parent any) {
-	// zlog.Info("s.addChildNode", parent)
+	zlog.Info("s.addChildNode1", reflect.TypeOf(parent))
 	zreflect.ForEachField(parent, zreflect.FlattenIfAnonymous, func(each zreflect.FieldInfo) bool {
 		if each.ReflectValue.Kind() == reflect.Pointer {
 			each.ReflectValue = each.ReflectValue.Elem()
 		}
+		// zlog.Info("s.addChildNode2", each.ReflectValue.Kind())
 		if each.ReflectValue.Kind() != reflect.Struct {
 			return true
 		}
 		commander := each.ReflectValue.Addr().Interface()
 		meths := s.specialMethodNames(commander)
+		// zlog.Info("s.addChildNode3", each.StructField.Name, each.ReflectValue.Type(), len(meths))
 		if len(meths) == 0 {
 			_, no := commander.(NodeOwner)
 			_, io := commander.(Initer)
@@ -430,12 +434,12 @@ func (s *Session) addChildNodes(where, mode string, forExpand bool, m map[string
 			}
 		}
 		name := strings.ToLower(each.StructField.Name)
-		// zlog.Info("addChildNode From field", name, commander)
 		initCommander(commander)
 		m[name] = commander
 		return true
 	})
 	no, _ := parent.(NodeOwner)
+		zlog.Info("addChildNode?", no != nil)
 	if no != nil {
 		cn := no.GetChildrenNodes(s, where, mode, forExpand)
 		for n, commander := range cn {
@@ -506,21 +510,20 @@ func (s *Session) findNodeInPath(sn []namedNode, path string) (nodes []namedNode
 			startNodes = startNodes[:slen-1]
 			continue
 		}
-		// zlog.Info("findNodeInPath:", len(startNodes), len(sn), part, "path:", path)
 		nodes := s.getChildNodesOf(startNodes[len(startNodes)-1].node, part, "", forExpand)
 		node, got := nodes[part]
+		zlog.Info("findNodeInPath:", "path:", path, node, got, zlog.Full(nodes))
 		if !got {
 			return nil, errors.New("no directory: '" + part + "'")
 		}
 		nn := namedNode{part, node}
 		startNodes = append(startNodes, nn)
 	}
-	// zlog.Info("findNodeInPath done:", len(startNodes))
+	zlog.Info("findNodeInPath done:", len(startNodes))
 	return startNodes, nil
 }
 
 func (s *Session) changeDirectory(path string) error {
-	// zlog.Info("changeDirectory:", path)
 	if path == "" {
 		// todo
 		return s.changeDirectory("/")
