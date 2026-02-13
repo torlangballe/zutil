@@ -61,12 +61,14 @@ func LessThan[N cmp.Ordered](t *testing.T, a, b N, parts ...any) bool {
 	return true
 }
 
-func OnError(t *testing.T, err error, parts ...any) {
+func OnError(t *testing.T, err error, parts ...any) bool {
 	if err != nil {
 		str := zstr.Spaced(parts...) + fmt.Sprintf(" Error: %v", err)
 		zlog.Error(zlog.StackAdjust(1), "OnError:", str)
 		t.Error(str)
+		return true
 	}
+	return false
 }
 
 func OnErrorFatal(t *testing.T, err error, parts ...any) {
