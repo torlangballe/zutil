@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zcommands"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/ztermfields"
 	"github.com/torlangballe/zutil/ztime"
@@ -48,7 +49,7 @@ var (
 )
 
 func init() {
-	CommandsNode.SlicePointerFunc = func() any {
+	CommandsNode.SlicePointerFunc = func(c *zcommands.CommandInfo) any {
 		count := MainLogger.logs.Count()
 		list := make([]LogRow, count, count)
 		i := 0
