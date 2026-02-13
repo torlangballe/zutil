@@ -20,8 +20,8 @@ import (
 
 type StructCommander struct {
 	Parameters           zfields.FieldParameters
-	StructurePointerFunc func() any
-	UpdateFunc           func(structPtr any)
+	StructurePointerFunc func(c *zcommands.CommandInfo) any
+	UpdateFunc           func(c *zcommands.CommandInfo, structPtr any)
 	lastEdits            []editField
 }
 
@@ -33,9 +33,9 @@ type editField struct {
 
 const checkedString = zstr.EscMagenta + " [√]" + zstr.EscNoColor
 
-func (s *StructCommander) callUpdate() {
+func (s *StructCommander) callUpdate(c *zcommands.CommandInfo) {
 	if s.UpdateFunc != nil {
-		s.UpdateFunc(s.StructurePointerFunc())
+		s.UpdateFunc(c, s.StructurePointerFunc(c))
 	}
 }
 
@@ -47,7 +47,7 @@ func (s *StructCommander) Show(c *zcommands.CommandInfo) string {
 		return ""
 	}
 	var edits []editField
-	outputFields(s, c, "", s.StructurePointerFunc(), 0, 0, false, &edits)
+	outputFields(s, c, "", s.StructurePointerFunc(c), 0, 0, false, &edits)
 	s.lastEdits = edits
 	return ""
 }
@@ -99,7 +99,7 @@ func editIndex(s *StructCommander, c *zcommands.CommandInfo, edits []editField, 
 	switch kind {
 	case zreflect.KindString:
 		edit.value.SetString(sval)
-		s.callUpdate()
+		s.callUpdate(c)
 	case zreflect.KindInt, zreflect.KindFloat:
 		n, err := strconv.ParseFloat(sval, 64)
 		if err != nil {
@@ -111,7 +111,7 @@ func editIndex(s *StructCommander, c *zcommands.CommandInfo, edits []editField, 
 		} else {
 			edit.value.SetFloat(n)
 		}
-		s.callUpdate()
+		s.callUpdate(c)
 	}
 }
 
@@ -130,14 +130,14 @@ func editEnumIndicator(s *StructCommander, c *zcommands.CommandInfo, edit editFi
 	doRepeatEditIndex(c, "setting index", "Set Index No:", len(enum), func(n int) bool {
 		edit.value.Set(reflect.ValueOf(enum[n].Value))
 		c.Session.TermSession.Writeln(zstr.EscGreen+edit.field.Name, zstr.EscNoColor+"set to", enum[n].Name)
-		s.callUpdate()
+		s.callUpdate(c)
 		return true
 	})
 }
 
 func editLocalEnumIndicator(s *StructCommander, c *zcommands.CommandInfo, edit editField) {
 	zlog.Info("editLocalEnumIndicator:", edit.value.Interface(), zlog.Full(*edit.field))
-	ei, findex := zfields.FindLocalFieldWithFieldName(s.StructurePointerFunc(), edit.field.LocalEnum)
+	ei, findex := zfields.FindLocalFieldWithFieldName(s.StructurePointerFunc(c), edit.field.LocalEnum)
 	zlog.Assert(findex != -1, edit.field.Name, edit.field.LocalEnum)
 	enum := ei.Interface().(zdict.ItemsGetter).GetItems()
 	for i, e := range enum {
@@ -150,7 +150,7 @@ func editLocalEnumIndicator(s *StructCommander, c *zcommands.CommandInfo, edit e
 	doRepeatEditIndex(c, "setting index", "Set Index No:", len(enum), func(n int) bool {
 		edit.value.Set(reflect.ValueOf(enum[n].Value))
 		c.Session.TermSession.Writeln(zstr.EscGreen+edit.field.Name, zstr.EscNoColor+"set to", enum[n].Name)
-		s.callUpdate()
+		s.callUpdate(c)
 		return true
 	})
 }
@@ -188,7 +188,7 @@ func editSliceIndicator(s *StructCommander, c *zcommands.CommandInfo, edit editF
 		zlog.Info("SetIndexForSlice:", ids[n], n)
 		zkeyvalue.DefaultStore.SetString(ids[n], edit.key, true)
 		c.Session.TermSession.Writeln("Set index for", zstr.EscCyan+edit.field.Name+zstr.EscNoColor, "to:", titles[n])
-		s.callUpdate()
+		s.callUpdate(c)
 		return true
 	})
 	return true

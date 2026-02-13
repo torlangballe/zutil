@@ -19,16 +19,16 @@ import (
 type SliceCommander struct {
 	RowParameters    zfields.FieldParameters
 	EditParameters   zfields.FieldParameters
-	SlicePointerFunc func() any
-	UpdateFunc       func(rowPtr any)
+	SlicePointerFunc func(c *zcommands.CommandInfo) any
+	UpdateFunc       func(c *zcommands.CommandInfo, rowPtr any)
 	diffMatch        *diffmatchpatch.DiffMatchPatch
 }
 
 const RowUseZTermSliceName = "$zterm"
 
-func (s *SliceCommander) callUpdate(rowPtr any) {
+func (s *SliceCommander) callUpdate(c *zcommands.CommandInfo, rowPtr any) {
 	if s.UpdateFunc != nil {
-		s.UpdateFunc(rowPtr)
+		s.UpdateFunc(c, rowPtr)
 	}
 }
 
@@ -62,7 +62,8 @@ func (s *SliceCommander) Rows(c *zcommands.CommandInfo, a struct {
 		return "lists rows in the table, indexing each row.\rUse the show <index> command to alter one."
 	}
 	lastFieldValues := map[int]string{}
-	outputRows(s, c, "", s.SlicePointerFunc(), a.WildCard, lastFieldValues) //, &edits)
+	zlog.Info("SliceCommander.Rows:", s.SlicePointerFunc != nil)
+	outputRows(s, c, "", s.SlicePointerFunc(c), a.WildCard, lastFieldValues) //, &edits)
 	return ""
 }
 
@@ -80,20 +81,20 @@ func (s *SliceCommander) Show(c *zcommands.CommandInfo, a struct {
 }
 
 func showSliceStruct(s *SliceCommander, c *zcommands.CommandInfo, index int, goIn bool) {
-	sval := reflect.ValueOf(s.SlicePointerFunc()).Elem()
+	sval := reflect.ValueOf(s.SlicePointerFunc(c)).Elem()
 	if index < 0 || index >= sval.Len() {
 		c.Session.TermSession.Writeln("Index outside of table length")
 		return
 	}
 	structCommander := &StructCommander{}
-	structCommander.StructurePointerFunc = func() any {
+	structCommander.StructurePointerFunc = func(c *zcommands.CommandInfo) any {
 		return sval.Index(index).Addr().Interface()
 	}
 	structCommander.Parameters = s.EditParameters
 	structCommander.UpdateFunc = s.UpdateFunc
 	if goIn {
 		dir := fmt.Sprint(index + 1)
-		rval, f, got := zfields.FindIndicatorRValOfStruct(structCommander.StructurePointerFunc())
+		rval, f, got := zfields.FindIndicatorRValOfStruct(structCommander.StructurePointerFunc(c))
 		if got {
 			dir = fmt.Sprint(rval)
 			if f.Enum != "" {
