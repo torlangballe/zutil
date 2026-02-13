@@ -37,7 +37,7 @@ func CheckIsSlicePtr(s any) error {
 func RemoveAt(slice any, index int) error {
 	err := CheckIsSlicePtr(slice)
 	if err != nil {
-		return zlog.Fatal(err, zlog.StackAdjust(1), "not slice pointer", slice, reflect.TypeOf(slice).Kind(), reflect.TypeOf(slice))
+		return zlog.Fatal(err, zlog.StackAdjust(1), "-Not slice pointer", slice, reflect.TypeOf(slice).Kind(), reflect.TypeOf(slice))
 	}
 
 	slicePtrValue := reflect.ValueOf(slice)
