@@ -24,18 +24,18 @@ type Repeater struct {
 	stack  string
 }
 
-func RepeaterNew() *Repeater {
+func NewRepeater() *Repeater {
 	return &Repeater{}
 }
 
 func Repeat(secs float64, perform func() bool) *Repeater {
-	r := RepeaterNew()
+	r := NewRepeater()
 	r.Set(secs, false, perform)
 	return r
 }
 
 func RepeatForever(secs float64, perform func()) *Repeater {
-	r := RepeaterNew()
+	r := NewRepeater()
 	r.Set(secs, false, func() bool {
 		perform()
 		return true
@@ -44,7 +44,7 @@ func RepeatForever(secs float64, perform func()) *Repeater {
 }
 
 func RepeatForeverNow(secs float64, perform func()) *Repeater {
-	r := RepeaterNew()
+	r := NewRepeater()
 	r.Set(secs, true, func() bool {
 		perform()
 		return true
@@ -53,7 +53,7 @@ func RepeatForeverNow(secs float64, perform func()) *Repeater {
 }
 
 func RepeatNow(secs float64, perform func() bool) *Repeater {
-	r := RepeaterNew()
+	r := NewRepeater()
 	r.Set(secs, true, perform)
 	return r
 }

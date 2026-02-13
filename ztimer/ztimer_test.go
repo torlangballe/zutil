@@ -13,7 +13,7 @@ import (
 var str string
 
 func TestResetRepeat(t *testing.T) {
-	r := RepeaterNew()
+	r := NewRepeater()
 	r.Set(0.1, false, func() bool {
 		str = "first"
 		return false
