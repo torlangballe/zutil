@@ -47,6 +47,7 @@ func NewClient(id, url string, handler func([]byte, error) []byte) (*Client, err
 	c := &Client{}
 	c.shutdown = false
 	c.sendID = true
+	// zlog.Warn("NewClient:", handler != nil)
 	c.handlerFunc = func(msg []byte, err error) []byte {
 		return handler(msg, err)
 	}
@@ -68,7 +69,7 @@ func (b *base) SetHandler(f func(msg []byte, err error) []byte) {
 
 func (b *base) Exchange(msg []byte) ([]byte, error) {
 	if b.conn == nil {
-		return nil, zlog.Error("no ws connection")
+		return nil, zlog.NewError("no ws connection")
 	}
 	var outErr error
 	num := rand.Int63()
@@ -111,8 +112,8 @@ func (b *base) readForever() {
 			zlog.Info("opening ws client to", b.url)
 			if b.openFunc != nil {
 				b.openFunc()
+				time.Sleep(time.Millisecond * 100) // Give it a moment to open before trying to read
 			}
-			time.Sleep(time.Second)
 			continue
 		}
 		var msg []byte
