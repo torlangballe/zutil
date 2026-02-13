@@ -78,12 +78,12 @@ func (v *GraphView) Init(view zview.View, id, grapherName string, height int) {
 	v.grapherName = grapherName
 	v.Job.PixelHeight = height
 	v.Job.ID = id
-	v.TickColor = zgeo.ColorDarkGray
+	v.TickColor = zstyle.DefaultFGColor()
 	v.SetBGColor(zgeo.ColorClear)
 	v.SetStroke(1, zstyle.Gray(0.5, 0.5), true)
 	v.SetDrawHandler(v.draw)
 	v.drawn = map[string]*zimage.Image{}
-	v.repeater = ztimer.RepeaterNew()
+	v.repeater = ztimer.NewRepeater()
 	v.timer = ztimer.TimerNew()
 	v.ShowTicksText = true
 	v.AddOnRemoveFunc(func() {
@@ -223,7 +223,7 @@ func (v *GraphView) draw(rect zgeo.Rect, canvas *zcanvas.Canvas, view zview.View
 		r.SetMaxX(xe)
 		canvas.SetColor(zgeo.ColorNew(1, 1, 0, 0.5))
 		path := zgeo.PathNewRect(r, zgeo.SizeBoth(2))
-		canvas.DrawPath(path, zgeo.ColorBlack, 3, zgeo.PathLineRound, true)
+		canvas.DrawPath(path, zstyle.Gray1(0), 3, zgeo.PathLineRound, true)
 	}
 	if !v.ShowMarkerAt.IsZero() {
 		x := v.xForTime(v.ShowMarkerAt)
