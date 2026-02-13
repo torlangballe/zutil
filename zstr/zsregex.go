@@ -121,8 +121,8 @@ func NewWildCardTransformer(wildFrom, wildTo string) (*WildCardTransformer, erro
 	var err error
 	cf := strings.Count(wildFrom, "*")
 	ct := strings.Count(wildTo, "*")
-	if cf != ct {
-		return nil, fmt.Errorf("Mismatch in number of wildcard asterisks: %d != %d", cf, ct)
+	if cf < ct {
+		return nil, fmt.Errorf("Mismatch in number of wildcard asterisks: %d vs %d", cf, ct)
 	}
 	w.asteriskCount = cf
 	w.wildTo = wildTo
