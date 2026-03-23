@@ -109,3 +109,12 @@ func (m *ExpiringMap[K, V]) ForAll(f func(key K, value V)) {
 func (m *ExpiringMap[K, V]) Count() int {
 	return m.lockedMap.Count()
 }
+
+// AddWithSetFunc adds k to m if it does not exist. Set is called once gotten or on new empty value
+func (m *ExpiringMap[K, V]) AddWithSetFunc(k K, set func(value *V, isNew bool)) bool {
+	m.Changed = true
+	v, has := m.Get(k)
+	set(&v, !has)
+	m.Set(k, v)
+	return !has
+}
