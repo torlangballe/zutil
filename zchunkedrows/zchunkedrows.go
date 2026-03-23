@@ -441,7 +441,7 @@ func (cr *ChunkedRows) Add(rowBytes []byte, auxData any) (int64, error) {
 	if cr.opts.OrdererOffset != 0 {
 		o := int64(binary.LittleEndian.Uint64(rowBytes[cr.opts.OrdererOffset:]))
 		if o < cr.lastOrdererValue && !zdebug.IsInTests {
-			zlog.Error("zchunkRows.Add(): Added with orderer less than previous:", time.UnixMicro(cr.lastOrdererValue), (cr.lastOrdererValue-o)/1000, "ms", zlog.Full(auxData))
+			// zlog.Error("zchunkRows.Add(): Added with orderer less than previous:", time.UnixMicro(cr.lastOrdererValue), (cr.lastOrdererValue-o)/1000, "ms", zlog.Full(auxData))
 		}
 		cr.lastOrdererValue = o
 	}
