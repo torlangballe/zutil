@@ -34,9 +34,10 @@ type Cache struct {
 	NestInHashFolders  bool
 	InterceptServeFunc func(w http.ResponseWriter, req *http.Request, file *string) bool // return true if handled. file set on call, can be changed
 
-	urlPrefix  string
-	cacheName  string
-	lastDelete time.Time
+	urlPrefix    string
+	cacheName    string
+	lastDelete   time.Time
+	diskCritical bool
 }
 
 func (c Cache) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -99,19 +100,23 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 		if zlog.OnError(err) {
 			return false
 		}
-		if ztime.Since(c.lastDelete) < 1800+200*rand.Float64() {
-			return true
+		since := time.Since(c.lastDelete).Seconds()
+		if !(c.diskCritical && since > 5*60) {
+			if since < 1800+200*rand.Float64() {
+				return true
+			}
 		}
-		zlog.Info("DeleteCache:", dir, time.Since(c.lastDelete))
+		c.diskCritical = false
+		// zlog.Info("DeleteCache:", dir, since)
 		c.lastDelete = start
 		cutoff := time.Now().Add(-c.DeleteAfter)
 		err = zfile.DeleteOldInSubFolders(dir, time.Millisecond*1, cutoff, c.DeleteRatio, func(p float32, count, total int) {
-			zlog.Info("DeleteCache:", dir, int(p*100), count, "/", total)
+			// zlog.Info("DeleteCache Sub:", dir, int(p*100), count, "/", total, time.Since(start))
 		})
 		if err != nil {
 			zlog.Error("delete old in cache", c.cacheName, err)
 		}
-		zlog.Info("Deleted in cache:", dir, time.Since(start))
+		// zlog.Info("Deleted in cache:", dir, time.Since(start))
 		return true
 	})
 	// zlog.Info("zfilecache Init:", c.WorkDir+cacheName, c.URL, path)
@@ -119,6 +124,13 @@ func Init(router *mux.Router, workDir, urlPrefix, cacheName string) *Cache {
 }
 
 func (c *Cache) ForceDelete() {
+	if zlog.ErrorIf(c == nil, "ForceDelete on nil cache") {
+		return
+	}
+	zlog.Info("Force Delete Cache:", c != nil)
+	dir := zfile.JoinPathParts(c.WorkDir, c.urlPrefix, c.cacheName)
+	zlog.Info("Force Delete Cache:", dir, time.Since(c.lastDelete))
+	c.diskCritical = true
 	c.lastDelete = time.Time{}
 }
 
