@@ -22,6 +22,7 @@ type FieldInfo struct {
 	FieldIndex   int // this is the index of the field _used_ field, not adding skipped, and increasing in anon
 	ReflectValue reflect.Value
 	StructField  reflect.StructField
+	IsAnonymous  bool
 }
 
 type TypeKind string
@@ -96,7 +97,7 @@ func TagKeyValuesFromString(str string) (vals []zstr.KeyValue, skip bool) {
 }
 
 func ForEachField(istruct any, flatten func(f reflect.StructField) bool, got func(each FieldInfo) bool) {
-	forEachField(reflect.ValueOf(istruct), flatten, 0, got)
+	forEachField(reflect.ValueOf(istruct), false, flatten, 0, got)
 }
 
 func FlattenIfAnonymous(f reflect.StructField) bool {
@@ -107,7 +108,7 @@ func FlattenAll(f reflect.StructField) bool {
 	return true
 }
 
-func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, istart int, got func(each FieldInfo) bool) (stoppedAt int, quit bool) {
+func forEachField(rval reflect.Value, isAnon bool, flatten func(f reflect.StructField) bool, istart int, got func(each FieldInfo) bool) (stoppedAt int, quit bool) {
 	if rval.Kind() == reflect.Pointer {
 		rval = rval.Elem()
 	}
@@ -127,13 +128,13 @@ func forEachField(rval reflect.Value, flatten func(f reflect.StructField) bool, 
 		}
 		if fv.Kind() == reflect.Struct && flatten != nil && flatten(f) {
 			var quit bool
-			j, quit = forEachField(fv, flatten, j, got)
+			j, quit = forEachField(fv, true, flatten, j, got)
 			if quit {
 				return j, true
 			}
 			continue
 		}
-		if !got(FieldInfo{j, fv, f}) {
+		if !got(FieldInfo{j, fv, f, isAnon}) {
 			return j, true
 		}
 		j++
@@ -235,8 +236,10 @@ func TagCommaValuesAsKeyValues(values []string) []zstr.KeyValue {
 }
 
 func DeepCopy(destPtr, source any) error {
-	dv := reflect.ValueOf(destPtr).Elem()
-	sv := reflect.ValueOf(source)
+	return DeepCopyRVals(reflect.ValueOf(destPtr).Elem(), reflect.ValueOf(source))
+}
+
+func DeepCopyRVals(dv, sv reflect.Value) error {
 	if dv.Kind() == reflect.Map && sv.Kind() == reflect.Map { // we do a special case for copying between map[string]<anything> to map[string]string using fmt.Sprintf
 		dt := dv.Type()
 		st := sv.Type()
@@ -257,15 +260,15 @@ func DeepCopy(destPtr, source any) error {
 		}
 	}
 	buf := bytes.Buffer{}
-	err := json.NewEncoder(&buf).Encode(source)
+	err := json.NewEncoder(&buf).Encode(sv.Interface())
 	if err != nil {
 		return err
 	}
-	err = json.NewDecoder(&buf).Decode(destPtr)
+	err = json.NewDecoder(&buf).Decode(dv.Addr().Interface())
 	return err
 }
 
-// CopyVal makes a copy of rval. If rval is a pointer, it makes a copy of element and returns a pointer
+// CopyAny makes a copy of rval. If rval is a pointer, it makes a copy of element and returns a pointer
 func CopyAny(v any) any {
 	rval := reflect.ValueOf(v)
 	isPointer := (rval.Kind() == reflect.Pointer)
@@ -278,6 +281,19 @@ func CopyAny(v any) any {
 		n = n.Addr()
 	}
 	return n.Interface()
+}
+
+func CopyRVal(rval reflect.Value) reflect.Value {
+	isPointer := (rval.Kind() == reflect.Pointer)
+	if isPointer {
+		rval = rval.Elem()
+	}
+	np := reflect.New(rval.Type())
+	np.Elem().Set(rval)
+	if !isPointer {
+		np = np.Elem()
+	}
+	return np
 }
 
 // NewOfAny returns a new'ed item of that type.
@@ -344,10 +360,9 @@ func MapToStruct(m map[string]any, structPtr any) error {
 			rVal = rVal.Elem()
 		}
 		switch rVal.Kind() {
-		case reflect.Struct, reflect.Map:
+		case reflect.Struct, reflect.Map, reflect.Slice:
 			dest := rVal.Addr().Interface()
 			err := DeepCopy(dest, val)
-			// fmt.Println("MapToStruct Map:", each.StructField.Name, err, reflect.TypeOf(dest))
 			if err != nil {
 				outErr = fmt.Errorf("%w %s %s", err, each.StructField.Name, name)
 				return false
@@ -426,4 +441,12 @@ func PasteRegisteredItemsFromClipboardString[P any](str string) (P, error) {
 		return p, err
 	}
 	return p, nil
+}
+
+func NonPointerKind(a any) reflect.Kind {
+	t := reflect.TypeOf(a)
+	if t.Kind() == reflect.Pointer {
+		return t.Elem().Kind()
+	}
+	return t.Kind()
 }

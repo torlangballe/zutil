@@ -52,6 +52,12 @@ func (r *TypeRegistrar[I]) Lookup(typeName string) (rtype reflect.Type, info I, 
 	return row.rtype, row.info, true
 }
 
+func (r *TypeRegistrar[I]) ForEach(got func(key string, row I) bool) {
+	r.m.ForEach(func(key string, row regRow[I]) bool {
+		return got(key, row.info)
+	})
+}
+
 func (r *TypeRegistrar[I]) NewForType(typeName string) (aPtr any, info I, got bool) {
 	rtype, info, got := r.Lookup(typeName)
 	if !got {
