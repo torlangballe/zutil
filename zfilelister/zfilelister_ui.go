@@ -180,7 +180,7 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 		path := v.pathOfID(id)
 		isFolder := (zstr.LastByteAsString(path) == "/")
 		fullpath := zfile.JoinPathParts(v.PathStub, path)
-		zslice.DeleteFromFunc(&v.DirOptions.PickedPaths, func(path string) bool {
+		zslice.RemoveFromFunc(&v.DirOptions.PickedPaths, func(path string) bool {
 			if path == fullpath {
 				return !on // remove self if just turned off
 			}
