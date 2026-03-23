@@ -102,6 +102,10 @@ func NewReverseClient(r *ReverseClientsOwner, receiverID string, userAuthToken s
 	return c
 }
 
+func (r *ReverseClient) PendingCallsCount() int {
+	return len(r.pendingCalls)
+}
+
 // ReversePoll is called by clients, asking for calls. It first finds the correct ReverseClient using receiverID
 // If the caller has an existing result (rp.Token set), the pendingCall is found in pendingCallsSent using rp.Token, and
 // the call is finished by writing the result to the pendingCall's done channel.

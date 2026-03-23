@@ -23,6 +23,9 @@ import (
 	"net/http"
 	"reflect"
 	"time"
+
+	"github.com/torlangballe/zutil/znamedfuncs"
+	"github.com/torlangballe/zutil/znet"
 )
 
 // CallPayload is what a call is packaged into and serialized to json
@@ -75,6 +78,23 @@ type ClientInfo struct {
 	Context   context.Context
 }
 
+func (ci *ClientInfo) GetCallerInfo() znamedfuncs.CallerInfo {
+	return znamedfuncs.CallerInfo{
+		CallerID:          ci.ClientID,
+		Token:             ci.Token,
+		Context:           ci.Context,
+		TimeToLiveSeconds: 0, // not used for now
+	}
+}
+
+// CallerInfo has information about the caller of a namedfuncs function and can be an optional first argument to a namedfuncs function.
+type CallerInfo struct {
+	CallerID          string          // CallerID identifies the caller
+	Token             string          `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
+	Context           context.Context `json:"-"`
+	TimeToLiveSeconds float64         `json:",omitempty"`
+}
+
 // TransportError is a specific error type. Any problem with the actual transport of an zrpc call is
 // returned as is, so we can check if it's an error returned from the call, or a problem calling.
 type TransportError string
@@ -89,4 +109,15 @@ var ExecuteTimedOutError = TransportError("Execution timed out")
 
 func (t TransportError) Error() string {
 	return string(t)
+}
+
+type Executioner interface {
+	Register(callers ...interface{})
+	SetAuthNotNeededForMethod(name string)
+	GetAuthenticator() znet.TokenAuthenticator
+	// Error(parts ...any) error
+}
+
+type Caller interface {
+	Call(method string, args any, resultPtr any) error
 }

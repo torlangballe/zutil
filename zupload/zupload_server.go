@@ -20,18 +20,18 @@ import (
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zrest"
-	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 	"golang.org/x/crypto/ssh"
 )
 
 var (
 	handlers      = map[string]func(name string, reader io.ReadCloser) (zdict.Dict, error){}
-	authenticator zrpc.TokenAuthenticator
+	authenticator znet.TokenAuthenticator
 )
 
-func Init(router *mux.Router, a zrpc.TokenAuthenticator) {
+func Init(router *mux.Router, a znet.TokenAuthenticator) {
 	zrest.AddHandler(router, "zupload", handleUpload).Methods("POST")
 	authenticator = a
 }

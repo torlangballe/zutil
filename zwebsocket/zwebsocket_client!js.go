@@ -1,3 +1,5 @@
+//go:build !js
+
 package zwebsocket
 
 import (
@@ -21,6 +23,7 @@ type socket interface {
 type base struct {
 	ID           string
 	Timeout      time.Duration
+	AuthToken    string
 	conn         *websocket.Conn
 	shutdown     bool
 	receiveChans zmap.LockMap[int64, chan message]
@@ -166,6 +169,7 @@ func (c *Client) open() error {
 	origin := "http://localhost?id=abcd"
 	config, err := websocket.NewConfig(c.url, origin)
 	config.Header.Set(IDHeader, c.ID)
+	config.Header.Set("Authorization", "Bearer "+c.AuthToken)
 	ws, err := websocket.DialConfig(config)
 	if zlog.OnError(err, c.url) {
 		c.handlerFunc(nil, err)

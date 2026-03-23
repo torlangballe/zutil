@@ -146,6 +146,7 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 		return err, nil
 	}
 	var rp clientReceivePayload
+
 	cp := CallPayload{Method: method, Args: input}
 	cp.ClientID = c.ID
 	params := zhttp.MakeParameters()
@@ -191,7 +192,6 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 			zlog.Error(c.AuthToken, "unmarshal", err)
 			return nil, TransportError(err.Error())
 		}
-		// zlog.Info("zrpc.requestHTTPDataFields:", cp.Method, reflect.TypeOf(result))
 		err = requestHTTPDataFields(result, c, "zrpc:"+method+":"+surl) // this is for getting big fields back as data. Doesn't work for sending though
 		if err != nil {
 			zlog.Error("requestHTTPDataFields", err)

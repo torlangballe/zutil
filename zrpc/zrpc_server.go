@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -19,7 +20,7 @@ import (
 // TokenAuthenticator is used to authenticate a token in ClientInfo, can be zuser doing it, or whatever.
 // InitServer initializes a rpc server with an authenticator, and registers RPCCalls,
 // which has the build-in rpc methods for resources and reverse-calls.
-func NewServer(router *mux.Router, a TokenAuthenticator) *Executor {
+func NewServer(router *mux.Router, a znet.TokenAuthenticator) *Executor {
 	e := NewExecutor()
 	// zlog.Info("zrpc.NewServer e:", zlog.Pointer(e))
 	e.Authenticator = a
@@ -68,7 +69,7 @@ func (e *Executor) doServeTempDataHTTP(w http.ResponseWriter, req *http.Request)
 	}
 	n, err := w.Write(data)
 	if err != nil || n < len(data) {
-		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "doServeTempDataHTTP: No data available for id: ", id, n)
+		zrest.ReturnAndPrintError(w, req, http.StatusInternalServerError, "doServeTempDataHTTP: Error getting data for id: ", id, n, err)
 		return
 	}
 }
@@ -151,5 +152,3 @@ func (e *Executor) doServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 }
-
-

@@ -4,25 +4,25 @@ import (
 	"context"
 	"encoding/json"
 	"go/token"
-	"net/http"
 	"reflect"
 	"time"
 
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
+	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
 )
 
-type TokenAuthenticator interface {
-	IsTokenValid(token string, req *http.Request) (bool, int64)
-}
+// type TokenAuthenticator interface {
+// 	IsTokenValid(token string, req *http.Request) (bool, int64)
+// }
 
 type Executor struct {
-	Authenticator      TokenAuthenticator     // used to authenticate a token in a RPC call
-	callMethods        map[string]*methodType // stores all registered types/methods
-	IPAddressWhitelist map[string]bool        // if non-empty, only ip-addresses in map are allowed to be called from
-	ErrorHandler       func(err error)        // calls this with errors that happen, for logging etc in system that uses zrpc
+	Authenticator      znet.TokenAuthenticator // used to authenticate a token in a RPC call
+	callMethods        map[string]*methodType  // stores all registered types/methods
+	IPAddressWhitelist map[string]bool         // if non-empty, only ip-addresses in map are allowed to be called from
+	ErrorHandler       func(err error)         // calls this with errors that happen, for logging etc in system that uses zrpc
 }
 
 var EnableLogExecute zlog.Enabler
@@ -32,6 +32,10 @@ func NewExecutor() *Executor {
 	e.callMethods = map[string]*methodType{}
 	e.IPAddressWhitelist = map[string]bool{}
 	return e
+}
+
+func (e *Executor) GetAuthenticator() znet.TokenAuthenticator {
+	return e.Authenticator
 }
 
 func (e *Executor) Error(parts ...any) error {
@@ -165,6 +169,7 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 	if requestHTTPDataClient != nil { // this is for getting big args in a reverse rpc call
 		// zlog.Info("zrpc.requestHTTPDataFields in revcall:", mtype.Method, reflect.TypeOf(argv.Interface()))
 		requestHTTPDataFields(argv.Interface(), requestHTTPDataClient, "zrpc:"+mtype.Method.Name+":"+ci.IPAddress)
+		// zlog.Info("zrpc.requestHTTPDataFields done:", argv.Type(), mtype.Method.Name, time.Since(start))
 	}
 
 	// zlog.Info("zrpc.CallMethod:", mtype.Method)

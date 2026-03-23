@@ -90,12 +90,20 @@ func NewExecutor() *Executor {
 	return e
 }
 
+func (e *Executor) GetAuthenticator() znet.TokenAuthenticator {
+	return e.Authenticator
+}
+
 func (e *Executor) Error(parts ...any) error {
 	err := zlog.Error(parts...)
 	if e.ErrorHandler != nil {
 		e.ErrorHandler(err)
 	}
 	return err
+}
+
+func (e *Executor) DeleteAllMethods() {
+	e.callMethods = map[string]*methodType{}
 }
 
 // Register registers instances of types that have methods in them suitable for being an namedfuncs call.
@@ -136,7 +144,10 @@ func suitableMethods(c any) map[string]*methodType {
 		}
 		i := 1
 		if mtype.NumIn() > 2 {
-			hasClientInfo = (mtype.In(i) == reflect.TypeOf(CallerInfo{}) || mtype.In(i) == reflect.TypeOf(&CallerInfo{}))
+			coType := reflect.TypeOf((*CallerOwner)(nil)).Elem()
+			hasClientInfo = mtype.In(i).Implements(coType) // check if argument is CallerInfo or *CallerInfo
+			zlog.Info("suitableMethods: method", mname, "has argument that implements CallerOwner:", hasClientInfo, mtype.In(i))
+			// hasClientInfo = (mtype.In(i) == reflect.TypeOf(CallerInfo{}) || mtype.In(i) == reflect.TypeOf(&CallerInfo{}))
 			if hasClientInfo {
 				i++
 			}
@@ -270,7 +281,7 @@ func callMethod(e *Executor, ci CallerInfo, mtype *methodType, rawArg json.RawMe
 }
 
 func (e *Executor) SetAuthNotNeededForMethod(name string) {
-	// zlog.Info("SetAuthNotNeededForMethod:", e != nil, name)
+	zlog.Info("SetAuthNotNeededForMethod:", e != nil, name, e.callMethods[name] != nil)
 	e.callMethods[name].AuthNotNeeded = true
 }
 
@@ -278,7 +289,7 @@ func (e *Executor) Execute(cp *CallPayloadReceive, rp *ReceivePayload) {
 	// defer zdebug.RecoverFromPanic(false, "")
 	if e.Authenticator != nil && e.methodNeedsAuth(cp.Method) {
 		var valid bool
-		valid, _ = e.Authenticator.IsTokenValid(cp.Token)
+		valid, _ = e.Authenticator.IsTokenValid(cp.Token, nil)
 		if !valid {
 			zlog.Error("token not valid: '"+cp.Token+"'", zlog.Full(e.Authenticator), cp.CallerInfo)
 			rp.TransportError = AuthenticationInvalidError

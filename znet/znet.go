@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -26,7 +27,7 @@ type SSLCertificateInfo struct {
 }
 
 type TokenAuthenticator interface {
-	IsTokenValid(token string) (bool, int64) // returns valid, userID if relevant
+	IsTokenValid(token string, req *http.Request) (bool, int64) // returns valid, userID if relevant
 }
 
 var NotFound = errors.New("not found")

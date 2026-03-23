@@ -11,6 +11,7 @@ import (
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmail"
+	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zsql"
 	"github.com/torlangballe/zutil/zstr"
@@ -41,15 +42,15 @@ var (
 	NoTokenError             = fmt.Errorf("no token for user: %w", AuthFailedError)
 	ForgotPassword           = ForgotPasswordData{ProductName: "This service"}
 	temporaryTokens          = zcache.NewExpiringMap[int64, int64](60) // temporaryTokens are tokens that map to a userid, granting that token access as that user for 60 seconds
-	authenticator            zrpc.TokenAuthenticator
+	authenticator            znet.TokenAuthenticator
 )
 
-func setupWithSQLServer(s *SQLServer, executor *zrpc.Executor) {
+func setupWithSQLServer(s *SQLServer, executor zrpc.Executioner) {
 	MainServer = s
 	if executor == nil {
 		return
 	}
-	authenticator = executor.Authenticator
+	authenticator = executor.GetAuthenticator()
 	executor.Register(UsersCalls{})
 	executor.SetAuthNotNeededForMethod("UsersCalls.GetUserForToken")
 	executor.SetAuthNotNeededForMethod("UsersCalls.Authenticate")
@@ -69,7 +70,7 @@ func (UsersCalls) GetUserForToken(ci *zrpc.ClientInfo, token string, user *User)
 	}
 	u, err := MainServer.GetUserForToken(token)
 	if err != nil {
-		valid, uid := authenticator.IsTokenValid("", ci.Request)
+		valid, uid := authenticator.IsTokenValid("", ci.Request) // , ci.Request
 		if valid {
 			u, err = MainServer.GetUserForID(uid)
 			if err != nil {

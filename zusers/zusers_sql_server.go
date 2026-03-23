@@ -23,7 +23,7 @@ type SQLServer struct {
 	TransformPasswordFunc func(pass string, forStore bool) string
 }
 
-func NewSQLServer(db *sql.DB, btype zsql.BaseType, executor *zrpc.Executor) (*SQLServer, error) {
+func NewSQLServer(db *sql.DB, btype zsql.BaseType, executor zrpc.Executioner) (*SQLServer, error) {
 	if db == nil {
 		setupWithSQLServer(nil, executor)
 		return nil, nil
@@ -32,7 +32,7 @@ func NewSQLServer(db *sql.DB, btype zsql.BaseType, executor *zrpc.Executor) (*SQ
 	s.DB = db
 	s.Type = btype
 	err := s.setup()
-	zlog.Info("NewSQLServer:", executor.Authenticator != nil)
+	zlog.Info("NewSQLServer:", executor.GetAuthenticator() != nil)
 	setupWithSQLServer(s, executor)
 	return s, err
 }

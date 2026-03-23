@@ -37,7 +37,7 @@ type ReverseResult struct {
 }
 
 var (
-	temporaryDataServe = zcache.NewExpiringMap[int64, []byte](4) // temporaryDataServe stores temporary bytes to serve within 2 seconds. See AddToTemporaryServe.
+	temporaryDataServe = zcache.NewExpiringMap[int64, []byte](20) // temporaryDataServe stores temporary bytes to serve within 20 seconds. See AddToTemporaryServe.
 	reverseResults     []ReverseResult                           // reverseResults stores results from executed methods, waiting to be sent on next poll
 	EnableLogExecutor  zlog.Enabler                              = false
 )

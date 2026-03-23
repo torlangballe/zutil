@@ -1,3 +1,5 @@
+//go:build !js
+
 package zwebsocket
 
 import (
@@ -8,11 +10,16 @@ import (
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zstr"
 	"golang.org/x/net/websocket"
 )
 
 type ClientToServer struct {
 	base
+}
+
+type TokenAuthenticator interface {
+	IsTokenValid(token string) (bool, int64) // returns valid, userID if relevant
 }
 
 type Server struct {
@@ -21,6 +28,7 @@ type Server struct {
 	Connections       []*ClientToServer
 	GotConnectionFunc func(cs *ClientToServer)
 	httpServer        *http.Server
+	Authenticator     TokenAuthenticator
 }
 
 func NewServer(path string, port int, handler func(id string, data []byte, err error) []byte) (*Server, error) {
@@ -99,8 +107,18 @@ func (s *Server) ExchangeWithID(id string, msg []byte) ([]byte, error) {
 }
 
 func (s *Server) handleSocketRequest(conn *websocket.Conn) {
+	var token string
 	req := conn.Request()
 	id := req.Header.Get(IDHeader)
+	authBearer := req.Header.Get("Authorization")
+	if s.Authenticator != nil && zstr.HasPrefix(authBearer, "Bearer ", &token) {
+		valid, _ := s.Authenticator.IsTokenValid(token)
+		if !valid {
+			zlog.Error("invalid token for connection:", id)
+			conn.Close()
+			return
+		}
+	}
 	cs := s.setClientToServer(id, req.URL.Path, conn)
 	zlog.Info("server connection:", id, req.URL)
 	defer conn.Close()

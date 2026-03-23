@@ -13,13 +13,24 @@ import (
 )
 
 type Client struct {
+	Timeout                  time.Duration
+	DefaultTimeToLiveSeconds float64
+	AuthToken                string
+
 	id           string
 	url          string
 	socketJS     js.Value
 	isOpen       bool
 	receiveChans zmap.LockMap[int64, chan message]
 	handlerFunc  func(data []byte, err error) []byte
-	Timeout      time.Duration
+}
+
+type Server struct {
+	// handlerFunc       func(id string, msg []byte, err error) []byte
+	// Timeout           time.Duration
+	// Connections       []*ClientToServer
+	// GotConnectionFunc func(cs *ClientToServer)
+	// httpServer        *http.Server
 }
 
 type message struct {
@@ -30,7 +41,7 @@ type message struct {
 
 func NewClient(id, url string, handler func(data []byte, err error) []byte) (*Client, error) {
 	c := &Client{}
-	c.ID = id
+	c.id = id
 	c.url = url
 	c.handlerFunc = handler
 	c.Timeout = time.Second * 10
@@ -39,6 +50,7 @@ func NewClient(id, url string, handler func(data []byte, err error) []byte) (*Cl
 }
 
 func (c *Client) open() error {
+	zlog.Info("Opening WebSocket connection to", c.url)
 	c.socketJS = zdom.New("WebSocket", c.url)
 	c.socketJS.Set("binaryType", "arraybuffer")
 	c.socketJS.Set("onopen", js.FuncOf(func(this js.Value, args []js.Value) any {
