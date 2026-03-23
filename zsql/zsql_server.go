@@ -157,17 +157,24 @@ func FieldSettingToParametersFromStruct(istruct any, skip []string, prefix strin
 	return set
 }
 
-func FieldParametersFromStruct(istruct any, skip []string, start int) (parameters string) {
-	var i int
-	ForEachColumn(istruct, skip, "", func(ColumnInfo) bool {
+func NFieldParameters(start, n int) string {
+	var params string
+	for i := range n {
 		if i != 0 {
-			parameters += ","
+			params += ","
 		}
-		parameters += fmt.Sprintf("$%d", start+i)
-		i++
+		params += fmt.Sprintf("$%d", start+i)
+	}
+	return params
+}
+
+func FieldParametersFromStruct(istruct any, skip []string, start int) string {
+	var count int
+	ForEachColumn(istruct, skip, "", func(ColumnInfo) bool {
+		count++
 		return true
 	})
-	return
+	return NFieldParameters(start, count)
 }
 
 /*
@@ -523,4 +530,43 @@ func (b *Base) Exec(query string, args ...any) (sql.Result, error) {
 		b.statementCache[query] = s
 	}
 	return s.Exec(args...)
+}
+
+// SelectIDOfNames generates a query that selects the id column for each name in the names slice.
+// Each id is 0 if the name doesn't exist
+func (b *Base) SelectIDOfNames(table, namecol, idcol string, names []string, where string) ([]int64, error) {
+	for i, n := range names {
+		names[i] = QuoteString(n)
+	}
+	snames := strings.Join(names, ",")
+	if where != "" {
+		where = "WHERE " + where
+	}
+	// query := "SELECT t.$id FROM unnest(ARRAY[$names]) $where AS $table($column) LEFT JOIN $table t ON t.$column = $table.$column"
+
+	query := `SELECT n.id
+				FROM unnest(ARRAY[$names]) AS input(name)
+				LEFT JOIN home n ON n.name = input.name`
+	query = zstr.ReplaceVariablesWithValues(query, "$", "", map[string]any{
+		"table":  table,
+		"column": namecol,
+		"id":     idcol,
+		"names":  snames,
+		"where":  where,
+	})
+	rows, err := b.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	var id sql.NullInt64
+	for rows.Next() {
+		err = rows.Scan(&id)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id.Int64)
+	}
+	return ids, nil
 }
