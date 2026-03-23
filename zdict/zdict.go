@@ -349,6 +349,12 @@ func (d *Items) Add(name string, value any) {
 	*d = append(*d, Item{name, value})
 }
 
+func (d *Items) AddToSet(name string, value any) {
+	if d.FindName(name) == nil {
+		d.Add(name, value)
+	}
+}
+
 func (d *Items) AddAtStart(name string, value any) {
 	*d = append([]Item{Item{name, value}}, (*d)...)
 }
