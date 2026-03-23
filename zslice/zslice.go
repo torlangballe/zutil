@@ -82,11 +82,10 @@ func AddAtEnd(slicePtr any, add any) int {
 	return RValAddAtEnd(reflect.ValueOf(slicePtr), reflect.ValueOf(add))
 }
 
-func RValAddAtEnd(slicePtr, add reflect.Value) int {
-	rval := slicePtr.Elem()
-	rval = reflect.Append(rval, add)
-	slicePtr.Elem().Set(rval)
-	return rval.Len() - 1
+func RValAddAtEnd(slicePtrVal, add reflect.Value) int {
+	rval := reflect.Append(slicePtrVal.Elem(), add)
+	slicePtrVal.Elem().Set(rval)
+	return slicePtrVal.Elem().Len() - 1
 }
 
 func Behead(slice any) {
@@ -117,14 +116,28 @@ func Deleted[S comparable](slice []S, dels ...S) []S {
 	return out
 }
 
-func DeleteFromFunc[S any](s *[]S, del func(s S) bool) {
+func RemoveFromFunc[S any](s *[]S, del func(s S) bool) int {
+	var count int
 	for i := 0; i < len(*s); {
 		if del((*s)[i]) {
 			RemoveAt(s, i)
+			count++
 			continue
 		}
 		i++
 	}
+	return count
+}
+
+func RemoveFromSliceFunc[T any](slice *[]T, dels []T, equal func(a, b T) bool) int {
+	return RemoveFromFunc(slice, func(t T) bool {
+		for _, del := range dels {
+			if equal(t, del) {
+				return true
+			}
+		}
+		return false
+	})
 }
 
 func CopyTo(toPtr, slice any) {
@@ -178,12 +191,11 @@ func FindFunc[S any](slice []S, is func(s S) bool) (*S, int) {
 	return &slice[i], i
 }
 
-func Reverse(s any) {
-	n := reflect.ValueOf(s).Len()
-	swap := reflect.Swapper(s)
-	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
-		swap(i, j)
-	}
+func Reversed[S any](s []S) []S {
+	n := make([]S, len(s))
+	copy(n, s)
+	slices.Reverse(n)
+	return n
 }
 
 func Swap[A any](slice []A, i, j int) {
@@ -207,7 +219,7 @@ func AddToSet[T comparable](s *[]T, adds ...T) int {
 	return count
 }
 
-func AddToSetFunc[T comparable](slice *[]T, adds []T, equal func(a, b T) bool) int {
+func AddToSetFunc[T any](slice *[]T, adds []T, equal func(a, b T) bool) int {
 	var count int
 outer:
 	for _, a := range adds {
@@ -411,4 +423,15 @@ func Any[S any](slice []S) []any {
 		out[i] = s
 	}
 	return out
+}
+
+func SplitFunc[S any](slice []S, isFunc func(s S) bool) (is, isnt []S) {
+	for _, s := range slice {
+		if isFunc(s) {
+			is = append(is, s)
+		} else {
+			isnt = append(isnt, s)
+		}
+	}
+	return is, isnt
 }
