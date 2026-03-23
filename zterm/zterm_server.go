@@ -55,13 +55,13 @@ func (ts *Session) SetPrompt(str string) {
 	ts.goterm.SetPrompt(prompt)
 }
 
-func (ts *Session) GetValue(key string) interface{} {
-	return ts.values[key]
-}
+// func (ts *Session) GetValue(key string) interface{} {
+// 	return ts.values[key]
+// }
 
-func (ts *Session) SetValue(key string, val interface{}) {
-	ts.values[key] = val
-}
+// func (ts *Session) SetValue(key string, val interface{}) {
+// 	ts.values[key] = val
+// }
 
 func (ts *Session) ContextSessionID() string {
 	return ts.session.Context().SessionID()
