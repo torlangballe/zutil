@@ -1184,3 +1184,10 @@ func WeekDayName(w time.Weekday, mondayFirst bool) string {
 	}
 	return w.String()
 }
+
+func SleepUntilAtLeastAfter(atLeast time.Duration, after time.Time) {
+	since := time.Since(after)
+	if since < atLeast {
+		time.Sleep(atLeast - since)
+	}
+}
