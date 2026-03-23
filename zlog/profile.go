@@ -115,7 +115,7 @@ func (p *Profile) End(parts ...any) {
 	if len(parts) != 0 {
 		since := time.Since(p.Start)
 		if since > time.Duration(p.MinSecs) {
-			p.Log(zstr.Spaced(parts), since)
+			p.Log(zstr.Spaced(parts...), since)
 		}
 	}
 	dur := time.Since(p.Start)
