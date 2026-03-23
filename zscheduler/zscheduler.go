@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/torlangballe/zutil/zcommands"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
@@ -315,6 +316,7 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 	if run.ExecutorID == s.zeroID {
 		// if !outsideRequest {
 		zlog.Warn("stopJob: not running", jobID)
+		s.removeRun(jobID)
 		// }
 	}
 	// zlog.Warn("stopJob", jobID, run.Stopping, remove, outsideRequest, zlog.CallingStackString())
@@ -626,9 +628,9 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			// zlog.Warn(i, "FoundExe:", r.ExecutorID, e != nil)
 			// }
 			stop, stopReason := s.shouldStopJob(r, e, capacities)
-			// if stop {
-			// zlog.Warn("ShouldStop:", stop, r.Job.ID, r.Stopping, r.ExecutorID, e != nil, capacities, stopReason)
-			// }
+			if stop {
+				zlog.Warn("ShouldStop:", stop, r.Job.ID, r.Stopping, r.ExecutorID, e != nil, capacities, stopReason)
+			}
 			if stop {
 				jobStopped = true
 				s.stopJob(r.Job.ID, s.stopped, false, true, stopReason)
@@ -1022,7 +1024,7 @@ func (s *Scheduler[I]) changeJob(job Job[I]) {
 
 			// 	s.stopJob(job.ID, false, false, true, reason)
 			// } else {
-			zlog.Warn("ChangeJob:", s.runs[i].Job.Attributes)
+			// zlog.Warn("ChangeJob:", s.runs[i].Job.Attributes)
 			s.startAndStopRuns() // a new cost could start it for example
 			// }
 			return
