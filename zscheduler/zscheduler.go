@@ -1272,3 +1272,43 @@ func (s *Scheduler[I]) GetRunForID(jobID I) (Run[I], error) {
 	// zlog.Warn("Run4job:", r.Job.ID, r.Count)
 	return *r, nil
 }
+
+func (s *Scheduler[I]) CommandNodes(cs *zcommands.Session, wild string, forExpand bool) []zcommands.Node {
+	longList := false
+	nodes := zcommands.NodesForStruct(cs, s, wild, zcommands.FieldNode, longList)
+	// TODO: Do runs and executors as sub-commands
+	/*
+			func initCommandSliceHandler() {
+			CommandsNode.StructurePointerFunc = func(c *zcommands.CommandInfo) any {
+				return Scheduler.CopyOfSetup()
+			}
+			CommandsNode.Runs.SlicePointerFunc = func(c *zcommands.CommandInfo) any {
+				runs := Scheduler.Runs()
+				sort.Slice(runs, func(i, j int) bool {
+					ri := runs[i]
+					rj := runs[j]
+					c := strings.Compare(ri.Job.DebugName, rj.Job.DebugName)
+					if c != 0 {
+						return c > 0
+					}
+					return false
+				})
+				return &runs
+			}
+			CommandsNode.Executors.SlicePointerFunc = func(c *zcommands.CommandInfo) any {
+				es := Scheduler.Executors()
+				sort.Slice(es, func(i, j int) bool {
+					ei := es[i]
+					ej := es[j]
+					c := strings.Compare(ei.DebugName, ej.DebugName)
+					if c != 0 {
+						return c > 0
+					}
+					return false
+				})
+				return &es
+			}
+		}
+	*/
+	return nodes
+}

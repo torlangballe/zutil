@@ -3,13 +3,9 @@
 package zrequests
 
 import (
-	"sort"
-	"strings"
 	"time"
 
-	"github.com/torlangballe/zutil/zcommands"
 	"github.com/torlangballe/zutil/zmap"
-	"github.com/torlangballe/zutil/ztermfields"
 	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/ztimer"
 )
@@ -39,46 +35,44 @@ type Logger struct {
 	deleteTimer *ztimer.Repeater
 }
 
-type Commands struct {
-	ztermfields.SliceCommander
-}
+type Commands struct{}
 
 var (
 	CommandsNode Commands
 	MainLogger   = &Logger{}
 )
 
-func init() {
-	CommandsNode.SlicePointerFunc = func(c *zcommands.CommandInfo) any {
-		count := MainLogger.logs.Count()
-		list := make([]LogRow, count, count)
-		i := 0
-		MainLogger.logs.ForEach(func(id LogID, e LogEntry) bool {
-			var r LogRow
-			r.LogID = id
-			r.LogEntry = e
-			list[i] = r
-			i++
-			return true
-		})
-		sort.Slice(list, func(i, j int) bool {
-			li := list[i]
-			lj := list[j]
-			if li.Count != lj.Count {
-				return li.Count > lj.Count
-			}
-			c := strings.Compare(li.URL, lj.URL)
-			if c != 0 {
-				return c > 0
-			}
-			return li.MaxDuration > lj.MaxDuration
-		})
-		if len(list) > 300 {
-			list = list[:300]
-		}
-		return &list
-	}
-}
+// func init() {
+// 	CommandsNode.SlicePointerFunc = func(c *zcommands.CommandInfo) any {
+// 		count := MainLogger.logs.Count()
+// 		list := make([]LogRow, count, count)
+// 		i := 0
+// 		MainLogger.logs.ForEach(func(id LogID, e LogEntry) bool {
+// 			var r LogRow
+// 			r.LogID = id
+// 			r.LogEntry = e
+// 			list[i] = r
+// 			i++
+// 			return true
+// 		})
+// 		sort.Slice(list, func(i, j int) bool {
+// 			li := list[i]
+// 			lj := list[j]
+// 			if li.Count != lj.Count {
+// 				return li.Count > lj.Count
+// 			}
+// 			c := strings.Compare(li.URL, lj.URL)
+// 			if c != 0 {
+// 				return c > 0
+// 			}
+// 			return li.MaxDuration > lj.MaxDuration
+// 		})
+// 		if len(list) > 300 {
+// 			list = list[:300]
+// 		}
+// 		return &list
+// 	}
+// }
 
 func NewLogger() *Logger {
 	l := &Logger{}
