@@ -270,7 +270,8 @@ func TruncatedFromEnd(str string, length int, endString string) (s string) {
 	return str
 }
 
-func TruncatedMiddle(str string, length int, moreString string) (s string) {
+func TruncatedMiddle(line any, length int, moreString string) (s string) {
+	str := fmt.Sprint(line)
 	if str != "" {
 		r := []rune(str)
 		l := len(r)
@@ -352,8 +353,24 @@ func Concat(divider string, parts ...any) string {
 	return str
 }
 
+func ConcatType[S any](divider string, parts ...S) string {
+	a := make([]any, len(parts))
+	for i, p := range parts {
+		a[i] = p
+	}
+	return Concat(divider, a...)
+}
+
 func Spaced(parts ...any) string {
 	return Concat(" ", parts...)
+}
+
+func SpacedType[S any](parts ...S) string {
+	a := make([]any, len(parts))
+	for i, p := range parts {
+		a[i] = p
+	}
+	return Concat(" ", a...)
 }
 
 func AnySliceToStrings(parts []any) []string {
@@ -766,7 +783,11 @@ func GetQuotedArgs(args string) (parts []string) {
 		} else if s != "" {
 			s = strings.TrimSpace(s)
 			if s != "" {
+				s = strings.Replace(s, "\\ ", "♠️😻👁️", -1)
 				split := strings.Fields(strings.TrimSpace(s))
+				for i := range split {
+					split[i] = strings.Replace(split[i], "♠️😻👁️", " ", -1)
+				}
 				parts = append(parts, split...)
 			}
 		}
@@ -879,7 +900,7 @@ func CopySlice(s []string) []string {
 	return n
 }
 
-func ReplaceVariablesWithValues(text, prefix string, values map[string]string) (content string) {
+func ReplaceVariablesWithValues(text, prefix, postfix string, values map[string]any) string {
 	spairs := make([]string, len(values)*2+2)
 	keys := make([]string, 0, len(values))
 	j := 0
@@ -889,11 +910,11 @@ func ReplaceVariablesWithValues(text, prefix string, values map[string]string) (
 	sort.Strings(keys) // sorts the keys
 
 	for i := len(keys) - 1; i >= 0; i-- { // gets them in reverse, so StoryStartHour before StoryStart
-		spairs[j] = prefix + keys[i]
-		spairs[j+1] = values[keys[i]]
+		spairs[j] = prefix + keys[i] + postfix
+		spairs[j+1] = fmt.Sprintf("%v", values[keys[i]])
 		j += 2
 	}
-	spairs[j] = prefix + prefix
+	spairs[j] = prefix + prefix // just to replace $$ with $ for example, does itterations below
 	spairs[j+1] = prefix
 	j += 2
 	replacer := strings.NewReplacer(spairs...)
@@ -901,7 +922,7 @@ func ReplaceVariablesWithValues(text, prefix string, values map[string]string) (
 	const maxIter = 5 // maximum number of iterations
 	var iter int
 	var oldContent string
-	content = text
+	content := text
 	for iter < maxIter {
 		content = replacer.Replace(content)
 		if content == oldContent {
@@ -910,7 +931,7 @@ func ReplaceVariablesWithValues(text, prefix string, values map[string]string) (
 		oldContent = content
 		iter++
 	}
-	return
+	return content
 }
 
 func ReplaceWithFunc(str string, replace func(rune) string) string {
