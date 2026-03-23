@@ -50,17 +50,10 @@ func (crc *CRCommander) SetTermColumn(offset int, header string, is32Bit, isMask
 	})
 }
 
-func (crc *CRCommander) CC(c *zcommands.CommandInfo) string {
-	switch c.Type {
-	case zcommands.CommandExpand:
-		return ""
-	case zcommands.CommandHelp:
-		return "clear cursor for continuos 'rows' command"
-	}
+func (crc *CRCommander) Command_cc(c *zcommands.CommandInfo) {
 	crc.lastChunkIndex = -1
 	crc.lastIndex = -1
 	c.Session.TermSession.SetPrompt("> ")
-	return ""
 }
 
 func (crc *CRCommander) outputRowsTableHeader(tabs *zstr.TabWriter) {
@@ -84,15 +77,9 @@ func (crc *CRCommander) outputRowsTableHeader(tabs *zstr.TabWriter) {
 	fmt.Fprint(tabs, zstr.EscNoColor, "\n")
 }
 
-func (crc *CRCommander) Row(c *zcommands.CommandInfo, a struct {
+func (crc *CRCommander) Command_row(c *zcommands.CommandInfo, a struct {
 	ID int64 `zui:"desc:row ID to show"`
-}) string {
-	switch c.Type {
-	case zcommands.CommandExpand:
-		return ""
-	case zcommands.CommandHelp:
-		return "lists rows in the table"
-	}
+}) {
 	w := c.Session.TermSession.Writer()
 	tabs := zstr.NewTabWriter(w)
 	tabs.MaxColumnWidth = 60
@@ -100,29 +87,22 @@ func (crc *CRCommander) Row(c *zcommands.CommandInfo, a struct {
 	rowBytes, chunkIndex, rowIndex, exact, err := crc.chunkedRows.BinarySearch(a.ID, isIDOrderer)
 	if err != nil {
 		fmt.Fprintln(w, zstr.EscMagenta, err, zstr.EscNoColor)
-		return ""
+		return
 	}
 	if !exact {
 		fmt.Fprintln(w, zstr.EscMagenta, "id", a.ID, "not found")
-		return ""
+		return
 	}
 	crc.outputRowsTableHeader(tabs)
 	crc.outputRow(c, tabs, rowBytes, chunkIndex, rowIndex, nil)
 	tabs.Flush()
-	return ""
 }
 
-func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
+func (crc *CRCommander) Command_rows(c *zcommands.CommandInfo, a struct {
 	ChunkIndex *int    `zui:"title:ci,desc:Start Chunk"`
 	Index      *int    `zui:"title:i,desc:Start Index"`
 	Match      *string `zui:"title:m,desc:Text to match rows with"`
-}) string {
-	switch c.Type {
-	case zcommands.CommandExpand:
-		return ""
-	case zcommands.CommandHelp:
-		return "lists rows in the table"
-	}
+}) {
 	forward := true
 	if a.ChunkIndex != nil {
 		crc.lastChunkIndex = *a.ChunkIndex
@@ -164,7 +144,7 @@ func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
 	tabs.Flush()
 	if err != nil {
 		fmt.Fprintln(w, zstr.EscMagenta, err, zstr.EscNoColor)
-		return ""
+		return
 	}
 	prompt := ""
 	if crc.lastChunkIndex != -1 {
@@ -176,7 +156,6 @@ func (crc *CRCommander) Rows(c *zcommands.CommandInfo, a struct {
 		w := c.Session.TermSession.Writer()
 		fmt.Fprintln(w, "duration:", zfloat.KeepFractionDigits(since, 1), "total rows:", zint.MakeHumanFriendly(totalRows))
 	}
-	return ""
 }
 
 func (crc *CRCommander) orderToString(row []byte) string {
@@ -238,13 +217,7 @@ func (crc *CRCommander) outputRow(c *zcommands.CommandInfo, tabs *zstr.TabWriter
 	fmt.Fprint(tabs, "\n")
 }
 
-func (crc *CRCommander) Checkup(c *zcommands.CommandInfo) string {
-	switch c.Type {
-	case zcommands.CommandExpand:
-		return ""
-	case zcommands.CommandHelp:
-		return "Show information about the chunked rows."
-	}
+func (crc *CRCommander) command_checkup(c *zcommands.CommandInfo) {
 	w := c.Session.TermSession.Writer()
 	ci := -1
 	count := 0
@@ -288,17 +261,11 @@ func (crc *CRCommander) Checkup(c *zcommands.CommandInfo) string {
 	if err != nil {
 		fmt.Fprintln(w, err)
 	}
-	return ""
 }
 
-func (crc *CRCommander) Info(c *zcommands.CommandInfo) string {
-	// zlog.Warn("CRCommander.Info:", zlog.Pointer(crc.chunkedRows))
-	switch c.Type {
-	case zcommands.CommandExpand:
-		return ""
-	case zcommands.CommandHelp:
-		return "Show information about the chunked rows."
-	}
+func (crc *CRCommander) Command_info(c *zcommands.CommandInfo, a struct {
+	Description string `zui:"desc:Show information about the chunked rows."`
+}) {
 	w := c.Session.TermSession.Writer()
 	dict := zdict.FromStruct(crc.chunkedRows.opts, false)
 	dict["Chunk Indexes"] = fmt.Sprint(crc.chunkedRows.bottomChunkIndex, "-", crc.chunkedRows.topChunkIndex)
@@ -306,21 +273,13 @@ func (crc *CRCommander) Info(c *zcommands.CommandInfo) string {
 	dict["Current ID"] = crc.chunkedRows.currentID
 	dict["Total Rows"] = zint.MakeHumanFriendly(crc.chunkedRows.TotalRowCount())
 	dict.WriteTabulated(w)
-
-	return ""
 }
 
-func (crc *CRCommander) Chunks(c *zcommands.CommandInfo) string {
-	switch c.Type {
-	case zcommands.CommandExpand:
-		return ""
-	case zcommands.CommandHelp:
-		return "Show details about each chunk."
-	}
+func (crc *CRCommander) Chunks(c *zcommands.CommandInfo, a struct {
+	Description string `zui:"desc:Show details about each chunk."`
+}) {
 	w := c.Session.TermSession.Writer()
 	tabs := zstr.NewTabWriter(w)
-	// tabs.MaxColumnWidth = 60
-
 	cr := crc.chunkedRows
 	fmt.Fprintln(tabs, zstr.EscGreen+"chunk\tfilelen\tfilerows\trows\tfirstid\tlastid\tiddiff", zstr.EscNoColor)
 	for i := cr.bottomChunkIndex; i <= cr.topChunkIndex; i++ {
@@ -369,42 +328,30 @@ func (crc *CRCommander) Chunks(c *zcommands.CommandInfo) string {
 		fmt.Fprint(tabs, "\n")
 	}
 	tabs.Flush()
-	return ""
 }
 
-func (crc *CRCommander) DelOld(c *zcommands.CommandInfo, a struct {
-	Days int `zui:"desc:How many days old chunks to delete,default:8"`
-}) string {
-	switch c.Type {
-	case zcommands.CommandExpand:
-		return ""
-	case zcommands.CommandHelp:
-		return "delete old chunks"
-	}
+func (crc *CRCommander) Comand_delold(c *zcommands.CommandInfo, a struct {
+	Days        int    `zui:"desc:How many days old chunks to delete,default:8"`
+	Description string `zui:"desc:Delete chunks older than specified days."`
+}) {
 	if a.Days < 1 {
 		fmt.Fprintln(c.Session.TermSession.Writer(), "bad number of days:", a.Days)
-		return ""
+		return
 	}
 	zlog.Assert(a.Days != 0)
 	crc.chunkedRows.DeleteChunksOlderThan(time.Now().Add(-ztime.Day * time.Duration(a.Days)))
-	return ""
 }
 
-func (crc *CRCommander) Chunk(c *zcommands.CommandInfo, a struct {
-	ChunkIndex int `zui:"title:ChunkIndex,desc:Chunk to show details of"`
-}) string {
-	switch c.Type {
-	case zcommands.CommandExpand:
-		return ""
-	case zcommands.CommandHelp:
-		return "Show details about a specific chunk, including missing ids."
-	}
+func (crc *CRCommander) Command_chunk(c *zcommands.CommandInfo, a struct {
+	ChunkIndex  int    `zui:"title:ChunkIndex,desc:Chunk to show details of"`
+	Description string `zui:"desc:Show details about a specific chunk, including missing ids."`
+}) {
 	w := c.Session.TermSession.Writer()
 
 	cr := crc.chunkedRows
 	if a.ChunkIndex < cr.bottomChunkIndex || a.ChunkIndex > cr.topChunkIndex {
 		fmt.Fprintln(w, "Chunk Index out of bounds:", a.ChunkIndex, "[", cr.bottomChunkIndex, "-", cr.topChunkIndex, "]")
-		return ""
+		return
 	}
 	fpath := cr.chunkFilepath(a.ChunkIndex, isRows)
 	size := zfile.Size(fpath)
@@ -458,5 +405,4 @@ func (crc *CRCommander) Chunk(c *zcommands.CommandInfo, a struct {
 		}
 	}
 	tabs.Flush()
-	return ""
 }
