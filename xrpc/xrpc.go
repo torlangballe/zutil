@@ -3,6 +3,7 @@ package xrpc
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
@@ -28,6 +29,16 @@ type RPC struct {
 	ConnectClientFunc func(clientID string) (*zwebsocket.Client, error)
 	connectRepeater   *ztimer.Repeater
 }
+
+const (
+	MainClientID = "mainclient"
+	MainServerID = "mainserver"
+)
+
+var (
+	MainRPC                *RPC
+	exchangeWithServerFunc func(r *RPC, pipeID string, cpJson []byte) (rpJson []byte, err error)
+)
 
 func NewRPC() *RPC {
 	r := &RPC{}
@@ -127,24 +138,7 @@ func (r *RPC) handleClientError(pipeID string, err error) {
 	}
 }
 
-func (r *RPC) MakeServer(path string, port int) (*zwebsocket.Server, error) {
-	handler := func(id string, msg []byte, err error) []byte {
-		if err != nil {
-			// zlog.Warn("RPC server got error from websocket connection", id, err)
-			return nil
-		}
-		ci := znamedfuncs.CallerInfo{
-			CallerID: id,
-		}
-		var result []byte
-		err = r.Executor.ExecuteFromToJSON(msg, &result, ci)
-		zlog.OnError(err, "RPC server call execute error", msg)
-		return result
-	}
-	return zwebsocket.NewServer(path, port, handler)
-}
-
-func (r *RPC) MakeClient(url, pipeID string) (*zwebsocket.Client, error) {
+func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, error) {
 	var client *zwebsocket.Client
 	handler := func(msg []byte, err error) []byte {
 		if err != nil {
@@ -162,7 +156,16 @@ func (r *RPC) MakeClient(url, pipeID string) (*zwebsocket.Client, error) {
 		return result
 	}
 	var err error
-	client, err = zwebsocket.NewClient(pipeID, url, handler)
+	if port != 0 {
+		url, err := url.Parse(surl)
+		if err != nil {
+			zlog.OnError(err, "Parse URL failed:", surl)
+			return nil, err
+		}
+		url.Host = fmt.Sprintf("%s:%d", url.Hostname(), port)
+		surl = url.String()
+	}
+	client, err = zwebsocket.NewClient(pipeID, surl, handler)
 	if err != nil {
 		r.handleClientError(pipeID, err)
 		return nil, err
@@ -176,6 +179,14 @@ func (r *RPC) RemoveClient(pipeID string) {
 		c.connection.Close()
 	}
 	delete(r.clients, pipeID)
+}
+
+func MainClientCall(fullMethod string, in any, resultPtr any, cis ...znamedfuncs.CallerInfo) error {
+	return MainRPC.Call(MainClientID, fullMethod, in, resultPtr, cis...)
+}
+
+func MainClient() *zwebsocket.Client {
+	return MainRPC.ClientForID(MainClientID)
 }
 
 func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, cis ...znamedfuncs.CallerInfo) error {
@@ -211,42 +222,8 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, cis 
 			r.handleClientError(pipeID, err)
 			return err
 		}
-	} else {
-		var server *zwebsocket.Server
-		// zlog.Warn("RPC Server Call to pipeID:", pipeID, len(r.servers))
-		if len(r.servers) == 0 {
-			return zlog.NewError("RPC Call with no server and no client for pipeID:", pipeID)
-		}
-		if pipeID == "" {
-			if len(r.servers) == 1 {
-				for _, s := range r.servers {
-					if len(s.connection.Connections) == 1 {
-						pipeID = s.connection.Connections[0].ID
-						server = s.connection
-						break
-					}
-				}
-			}
-		} else {
-			for _, s := range r.servers {
-				if s.connection == nil {
-					continue
-				}
-				for _, c := range s.connection.Connections {
-					if c.ID == pipeID {
-						server = s.connection
-						break
-					}
-				}
-			}
-		}
-		if server == nil {
-			// for _, s := range r.servers {
-			// 	zlog.Warn("ServC:", s.connection != nil, zlog.Pointer(s))
-			// }
-			return zlog.NewError("RPC Call with no id and not just one client or connection", pipeID)
-		}
-		rpJson, err = server.ExchangeWithID(pipeID, cpJson)
+	} else if exchangeWithServerFunc != nil {
+		rpJson, err = exchangeWithServerFunc(r, pipeID, cpJson)
 		// zlog.Warn("RPC ServerConnection Call to pipeID:", pipeID, err)
 	}
 	if err != nil {
