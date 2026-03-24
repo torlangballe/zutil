@@ -13,7 +13,7 @@ import (
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztesting"
 	"github.com/torlangballe/zutil/ztime"
@@ -289,7 +289,7 @@ func testAddReadStress(t *testing.T) {
 			if len(*addedPtr) == 0 {
 				continue
 			}
-			r := zslice.Random(*addedPtr)
+			r := zslices.Random(*addedPtr)
 			rowBytes, ci, ri, exact, err := chunkedRows.BinarySearch(r.ID, true)
 			if err != nil {
 				t.Error(err, r.ID)

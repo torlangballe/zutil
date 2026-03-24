@@ -6,7 +6,7 @@ import (
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 )
 
 type LayoutCell struct {
@@ -48,7 +48,7 @@ func fillFreeInOutRect(debugName string, r Rect, vertical bool, out []Rect, scel
 				fr = fr.Swapped()
 			}
 			out[sc.inputIndex] = fr
-			zslice.RemoveAt(scells, i)
+			zslices.RemoveAt(scells, i)
 			// zlog.Info("OR:", j, sc.Name, fr)
 		} else {
 			i++
@@ -208,7 +208,7 @@ func addLeftoverSpaceToWidths(debugName string, r Rect, scells *[]stackCell, ver
 				(*scells)[i].ShowIfExtraSpace = 0
 				changed = true
 			} else {
-				zslice.RemoveAt(scells, i)
+				zslices.RemoveAt(scells, i)
 				i--
 			}
 		}

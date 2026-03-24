@@ -12,7 +12,7 @@ import (
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/znamedfuncs"
 	"github.com/torlangballe/zutil/zreflect"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zterm"
 )
@@ -72,7 +72,7 @@ func (s *Session) PathAsNodes(path string, nodeTypes NodeType) ([]Node, error) {
 		// zlog.Info("PathAsNodes:", part, reflect.TypeOf(startNodes[len(startNodes)-1].Instance))
 		longList := false
 		childNodes := NodesForStruct(s, startNodes[len(startNodes)-1].Instance, part, nodeTypes, longList)
-		n, _ := zslice.FindFunc(childNodes, func(n Node) bool { // maybe not needed, if part above filters out?
+		n, _ := zslices.FindFunc(childNodes, func(n Node) bool { // maybe not needed, if part above filters out?
 			return n.Name == part
 		})
 		if n == nil {
@@ -160,7 +160,7 @@ func (s *Session) doCommand(line string, isExpand bool) string {
 	// zlog.Info("doCommand", command, args, isExpand)
 
 	nodes := []any{s.CurrentNodeValue()}
-	nodes = append(nodes, zslice.Reversed(s.commander.GlobalComs)...)
+	nodes = append(nodes, zslices.Reversed(s.commander.GlobalComs)...)
 	for _, n := range nodes {
 		if isExpand {
 			var add string

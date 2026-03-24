@@ -1,8 +1,6 @@
 package zmath
 
-import (
-	"github.com/torlangballe/zutil/zslice"
-)
+import "github.com/torlangballe/zutil/zslices"
 
 type ParentChild interface {
 	IdentifierOfParent() string
@@ -52,12 +50,12 @@ func addTree[T any](parentID string, rows *[]T, level int) []Leaf[T] {
 			if rpid == parentID && (parentID != "" || level == 0) { // if parentID is empty, we want to include all top-level nodes (those with no parent), but empty==empty should otherwise not add anything
 				added = true
 				one := Leaf[T]{Level: level, Instance: r}
-				zslice.RemoveAt(rows, i)
+				zslices.RemoveAt(rows, i)
 				add := addTree(id, rows, level+1)
 				allAdded := append([]Leaf[T]{one}, add...)
 				// zlog.Info("Added:", len(allAdded), len(add), "of", len(rows))
 				out = append(out, allAdded...)
-				zslice.RemoveFromFunc(rows, func(t T) bool {
+				zslices.RemoveFromFunc(rows, func(t T) bool {
 					for _, leaf := range add { // remove add, "one" already removed
 						if any(leaf.Instance).(Identifier).Identifier() == any(t).(Identifier).Identifier() {
 							return true

@@ -16,7 +16,7 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/zprocess"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zterm"
 	"github.com/torlangballe/zutil/zwords"
@@ -163,7 +163,7 @@ func listNodes(c *CommandInfo, longList bool) {
 		}
 	}
 	headers = append(headers, dotHeaders...)
-	methodNodes, nodes := zslice.SplitFunc(nodes, func(n Node) bool {
+	methodNodes, nodes := zslices.SplitFunc(nodes, func(n Node) bool {
 		return n.Type == MethodNode
 	})
 	if len(methodNodes) > 0 {
@@ -232,7 +232,7 @@ func listNodes(c *CommandInfo, longList bool) {
 			cols.AddToSet("value", n.FieldSVal)
 		}
 		for _, h := range headers {
-			f, _ := zslice.FindFunc(cols, func(item zdict.Item) bool {
+			f, _ := zslices.FindFunc(cols, func(item zdict.Item) bool {
 				return strings.TrimLeft(item.Name, ".") == h
 			})
 			val := ""

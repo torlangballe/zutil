@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 	"golang.org/x/net/websocket"
 )
@@ -64,7 +64,7 @@ func (s *Server) RemoveConnection(id string) {
 			if c.conn != nil {
 				c.conn.Close()
 			}
-			zslice.RemoveAt(&s.Connections, i)
+			zslices.RemoveAt(&s.Connections, i)
 			return
 		}
 	}

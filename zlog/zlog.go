@@ -154,7 +154,7 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 				parts[i] = v.Format("02-Jan-2006 15:04:05.999-07")
 			}
 		case LimitID:
-			parts = append(parts[:i], parts[i+1:]...) // can't use zslice.RemoveAt() as it would create cyclical import
+			parts = append(parts[:i], parts[i+1:]...) // can't use zslices.RemoveAt() as it would create cyclical import
 			i--
 			tl, _ := rateLimiters.Load(v)
 			if tl != nil {

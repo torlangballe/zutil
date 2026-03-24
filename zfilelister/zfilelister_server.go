@@ -19,7 +19,7 @@ import (
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -114,9 +114,9 @@ func (FileServerCalls) ExpandFilePathsFromPicked(dirOpts DirOptions, paths *[]st
 		return nil
 	}
 	for dirOpts.MaxFiles > 0 && len(all) > 0 {
-		i := zslice.RandomIndex(all)
+		i := zslices.RandomIndex(all)
 		f := all[i]
-		zslice.RemoveAt(&all, i)
+		zslices.RemoveAt(&all, i)
 		*paths = append(*paths, f)
 		dirOpts.MaxFiles--
 	}

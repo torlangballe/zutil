@@ -17,7 +17,7 @@ import (
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 )
 
 type Options int
@@ -273,7 +273,7 @@ func (v *FrameEditorView) addBox() {
 		}
 	}
 	box := BoxFromRect(rect)
-	box.Color = zslice.Random(defaultColors)
+	box.Color = zslices.Random(defaultColors)
 	boxCount++
 	box.Name = fmt.Sprint("Box", boxCount)
 	title := "Add New Box"

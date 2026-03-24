@@ -8,7 +8,7 @@ import (
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 )
 
 type Option[V comparable] struct {
@@ -110,7 +110,7 @@ func removeChangedHandler(id any, key string) {
 	for i := 0; i < len(optionChangedHandlers); i++ {
 		h := &optionChangedHandlers[i]
 		if h.id == id && (key == "" || h.key == key) {
-			zslice.RemoveAt(&optionChangedHandlers, i)
+			zslices.RemoveAt(&optionChangedHandlers, i)
 			i--
 		}
 	}

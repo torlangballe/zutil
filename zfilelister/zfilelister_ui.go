@@ -20,7 +20,7 @@ import (
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -180,7 +180,7 @@ func (v *FileListerView) createRow(grid *zgridlist.GridListView, id string) zvie
 		path := v.pathOfID(id)
 		isFolder := (zstr.LastByteAsString(path) == "/")
 		fullpath := zfile.JoinPathParts(v.PathStub, path)
-		zslice.RemoveFromFunc(&v.DirOptions.PickedPaths, func(path string) bool {
+		zslices.RemoveFromFunc(&v.DirOptions.PickedPaths, func(path string) bool {
 			if path == fullpath {
 				return !on // remove self if just turned off
 			}

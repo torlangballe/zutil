@@ -14,7 +14,7 @@ import (
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -45,7 +45,7 @@ func (crc *CRCommander) SetChunkedRows(cr *ChunkedRows) {
 
 func (crc *CRCommander) SetTermColumn(offset int, header string, is32Bit, isMask, isTime bool, names map[int]string) {
 	col := termColumn{offset: offset, header: header, is32Bit: is32Bit, isMask: isMask, isTime: isTime, names: names}
-	zslice.AddOrReplace(&crc.otherColumns, col, func(a, b termColumn) bool {
+	zslices.AddOrReplace(&crc.otherColumns, col, func(a, b termColumn) bool {
 		return a.offset == b.offset
 	})
 }

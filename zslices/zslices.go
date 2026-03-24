@@ -1,4 +1,4 @@
-package zslice
+package zslices
 
 import (
 	"errors"

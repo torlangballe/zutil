@@ -20,7 +20,7 @@ import (
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
-	"github.com/torlangballe/zutil/zslice"
+	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -1088,7 +1088,7 @@ func (s *Scheduler[I]) removeExecutor(exID I) {
 		zlog.Error("remove: no executor with id", exID, zdebug.CallingStackString())
 		return
 	}
-	zslice.RemoveAt(&s.executors, i)
+	zslices.RemoveAt(&s.executors, i)
 	s.startAndStopRuns()
 }
 
@@ -1102,7 +1102,7 @@ func (s *Scheduler[I]) removeRun(jobID I) {
 	// was := len(s.runs)
 	// name := r.Job.DebugName
 	if i != -1 {
-		zslice.RemoveAt(&s.runs, i)
+		zslices.RemoveAt(&s.runs, i)
 	}
 	// zlog.Warn(name, "removeRun", jobID, was, len(s.runs))
 }
@@ -1248,7 +1248,7 @@ func (s *Scheduler[I]) Stop() {
 		if !r.RanAt.IsZero() || r.Stopping {
 			continue
 		}
-		zslice.RemoveAt(&s.runs, i)
+		zslices.RemoveAt(&s.runs, i)
 		i--
 	}
 	s.refreshCh <- struct{}{}
