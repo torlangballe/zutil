@@ -47,7 +47,9 @@ func Init() {
 	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
 	if token != "" {
 		zrpc.MainClient.AuthToken = token
-		xrpc.MainClient().AuthToken = token
+		if xrpc.MainClient() != nil {
+			xrpc.MainClient().AuthToken = token
+		}
 	}
 	perms := append([]string{AdminPermission}, AppSpecificPermissions...)
 	zfields.SetStringBasedEnum("Permissions", perms...)
@@ -232,8 +234,8 @@ func checkAndDoAuth() {
 	}
 	doingAuth = true
 	var user User
+	zlog.Info("checkAndDoAuth0:", RPCCaller != nil, zrpc.MainClient != nil)
 	err = RPCCaller.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
-	// zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken, err)
 	if err == nil {
 		CurrentUser.UserID = user.ID
 		CurrentUser.UserName = user.UserName

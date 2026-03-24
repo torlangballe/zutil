@@ -213,24 +213,21 @@ func MainCaller() Caller {
 }
 
 func MainClient() *zwebsocket.Client {
+	if MainRPC == nil {
+		return nil
+	}
 	c := MainRPC.ClientForID(MainClientID)
 	zlog.Info("MainClient:", c != nil, MainRPC != nil, MainClientID)
 	zlog.Info("MainClient:", MainRPC.clients)
 	return c
 }
 
-func (c Caller) Call(fullMethod string, in any, resultPtr any, cis ...any) error {
-	return c.RPC.Call(c.ID, fullMethod, in, resultPtr, cis...)
+func (c Caller) Call(fullMethod string, in any, resultPtr any) error {
+	return c.RPC.Call(c.ID, fullMethod, in, resultPtr)
 }
-func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, cis ...any) error {
+func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any) error {
 	var cp znamedfuncs.CallPayloadSend
 	cp.Method = fullMethod
-	if len(cis) > 0 {
-		ci, _ := cis[0].(*znamedfuncs.CallerInfo)
-		if ci != nil {
-			cp.CallerInfo = *ci
-		}
-	}
 	var err error
 	cp.CallerInfo.CallerID = pipeID
 	cp.Args = in

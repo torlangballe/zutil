@@ -109,5 +109,5 @@ type Executioner interface {
 }
 
 type Callable interface {
-	Call(method string, args any, resultPtr any, cis ...any) error
+	Call(method string, args any, resultPtr any) error
 }
