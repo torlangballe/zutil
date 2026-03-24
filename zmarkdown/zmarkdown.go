@@ -132,7 +132,7 @@ var headerReplacer = strings.NewReplacer(" ", "_", "#", "", ".", "_")
 
 func headerToAnchorID(header string) string {
 	header = strings.ToLower(header)
-	return zstr.ReplaceWithFunc(header, func(r rune) string {
+	return zstr.ReplaceRuneFunc(header, func(r rune) string {
 		if r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r == '_' || r == '-' {
 			return string(r)
 		}

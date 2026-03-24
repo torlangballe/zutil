@@ -900,6 +900,12 @@ func CopySlice(s []string) []string {
 	return n
 }
 
+// ReplaceVariablesWithValues replaces variables in text with values from map.
+// The variables in the text might have a prefix "$" or pre and post "{" and "}"
+// So it creates a strings.Replacer with pairs of variable and value, and replaces them in the text.
+// Note that zstr.ReplaceAllCapturesFunc might be a better alternative, this is more for a list of variables to replace
+// It does multiple iterations of replacing, so if a value contains another variable, it will also be replaced, up to maxIter times.
+// values is not a zdict.Dict  do to circular import.
 func ReplaceVariablesWithValues(text, prefix, postfix string, values map[string]any) string {
 	spairs := make([]string, len(values)*2+2)
 	keys := make([]string, 0, len(values))
@@ -914,7 +920,7 @@ func ReplaceVariablesWithValues(text, prefix, postfix string, values map[string]
 		spairs[j+1] = fmt.Sprintf("%v", values[keys[i]])
 		j += 2
 	}
-	spairs[j] = prefix + prefix // just to replace $$ with $ for example, does itterations below
+	spairs[j] = prefix + prefix // just to replace $$ with $ for example, does itterations below, to allow using $ in text by using $$
 	spairs[j+1] = prefix
 	j += 2
 	replacer := strings.NewReplacer(spairs...)
@@ -934,7 +940,7 @@ func ReplaceVariablesWithValues(text, prefix, postfix string, values map[string]
 	return content
 }
 
-func ReplaceWithFunc(str string, replace func(rune) string) string {
+func ReplaceRuneFunc(str string, replace func(rune) string) string {
 	var out string
 	for _, r := range str {
 		out += replace(r)
@@ -942,7 +948,7 @@ func ReplaceWithFunc(str string, replace func(rune) string) string {
 	return out
 }
 
-func CreateFilterFunc(keep func(r rune) bool) func(string) string {
+func CreateFilterFunction(keep func(r rune) bool) func(string) string {
 	return func(s string) string {
 		return FilterWithFunc(s, keep)
 	}
