@@ -24,7 +24,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/torlangballe/zutil/znamedfuncs"
 	"github.com/torlangballe/zutil/znet"
 )
 
@@ -78,15 +77,6 @@ type ClientInfo struct {
 	Context   context.Context
 }
 
-func (ci *ClientInfo) GetCallerInfo() znamedfuncs.CallerInfo {
-	return znamedfuncs.CallerInfo{
-		CallerID:          ci.ClientID,
-		Token:             ci.Token,
-		Context:           ci.Context,
-		TimeToLiveSeconds: 0, // not used for now
-	}
-}
-
 // CallerInfo has information about the caller of a namedfuncs function and can be an optional first argument to a namedfuncs function.
 type CallerInfo struct {
 	CallerID          string          // CallerID identifies the caller
@@ -118,6 +108,6 @@ type Executioner interface {
 	// Error(parts ...any) error
 }
 
-type Caller interface {
-	Call(method string, args any, resultPtr any) error
+type Callable interface {
+	Call(method string, args any, resultPtr any, cis ...any) error
 }

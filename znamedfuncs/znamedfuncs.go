@@ -11,13 +11,10 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zprocess"
+	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
-
-type CallerOwner interface {
-	GetCallerInfo() CallerInfo
-}
 
 // CallerInfo has information about the caller of a namedfuncs function and can be an optional first argument to a namedfuncs function.
 type CallerInfo struct {
@@ -56,6 +53,7 @@ type methodType struct {
 	Receiver      reflect.Value
 	Method        reflect.Method
 	hasClientInfo bool
+	hasCallerInfo bool
 	ArgType       reflect.Type
 	ReplyType     reflect.Type
 	AuthNotNeeded bool
@@ -74,10 +72,6 @@ var (
 	AuthenticationInvalidError = TransportError("Authentication Invalid")
 	EnableLogExecute           zlog.Enabler
 )
-
-func (c CallerInfo) GetCallerInfo() CallerInfo {
-	return c
-}
 
 func (t TransportError) Error() string {
 	return string(t)
@@ -135,7 +129,7 @@ func suitableMethods(c any) map[string]*methodType {
 	pre := et.Name() + "."
 	methods := make(map[string]*methodType)
 	for m := 0; m < t.NumMethod(); m++ {
-		var hasClientInfo bool
+		var hasClientInfo, hasCallerInfo bool
 		method := t.Method(m)
 		mtype := method.Type
 		mname := pre + method.Name
@@ -144,11 +138,11 @@ func suitableMethods(c any) map[string]*methodType {
 		}
 		i := 1
 		if mtype.NumIn() > 2 {
-			coType := reflect.TypeOf((*CallerOwner)(nil)).Elem()
-			hasClientInfo = mtype.In(i).Implements(coType) // check if argument is CallerInfo or *CallerInfo
-			zlog.Info("suitableMethods: method", mname, "has argument that implements CallerOwner:", hasClientInfo, mtype.In(i))
+			hasClientInfo = (mtype.In(i) == reflect.TypeOf((*zrpc.ClientInfo)(nil)))
+			hasCallerInfo = (mtype.In(i) == reflect.TypeOf((*CallerInfo)(nil)).Elem())
+			// zlog.Info("suitableMethods: method", mname, "has ci:", hasClientInfo, "has caller info:", hasCallerInfo, mtype.In(i))
 			// hasClientInfo = (mtype.In(i) == reflect.TypeOf(CallerInfo{}) || mtype.In(i) == reflect.TypeOf(&CallerInfo{}))
-			if hasClientInfo {
+			if hasClientInfo || hasCallerInfo {
 				i++
 			}
 		}
@@ -183,7 +177,7 @@ func suitableMethods(c any) map[string]*methodType {
 			zlog.Info("Register: return type of method", mname, "is", returnType, ", must be error")
 			continue
 		}
-		methods[mname] = &methodType{Receiver: rval, Method: method, ArgType: argType, ReplyType: replyType, hasClientInfo: hasClientInfo}
+		methods[mname] = &methodType{Receiver: rval, Method: method, ArgType: argType, ReplyType: replyType, hasClientInfo: hasClientInfo, hasCallerInfo: hasCallerInfo}
 	}
 	return methods
 }
@@ -229,8 +223,23 @@ func callMethod(e *Executor, ci CallerInfo, mtype *methodType, rawArg json.RawMe
 	if argIsValue {
 		argv = argv.Elem()
 	}
+	zlog.Info("callMethod: calling method", mtype.Method.Name, mtype.hasClientInfo, mtype.ArgType)
+	if mtype.hasClientInfo && mtype.ArgType == reflect.TypeOf((*zrpc.ClientInfo)(nil)) {
+		zlog.Warn("callMethod: method has zrpc.ClientInfo argument, but will be given CallerInfo. Method:", mtype.Method.Name)
+	}
 	args := []reflect.Value{mtype.Receiver}
+	if ci.Context == nil {
+		ci.Context = context.Background()
+	}
 	if mtype.hasClientInfo {
+		cli := zrpc.ClientInfo{
+			Type:     "zrpc",
+			ClientID: ci.CallerID,
+			Token:    ci.Token,
+			Context:  ci.Context,
+		}
+		args = append(args, reflect.ValueOf(&cli))
+	} else if mtype.hasCallerInfo {
 		args = append(args, reflect.ValueOf(&ci))
 	}
 	args = append(args, argv)
@@ -249,12 +258,7 @@ func callMethod(e *Executor, ci CallerInfo, mtype *methodType, rawArg json.RawMe
 		args = append(args, replyv)
 	}
 	var returnValues []reflect.Value
-	// deadline, _ := ctx.Deadline()
-	// zlog.Info("Call with deadline:", mtype.Method.Name, -time.Since(deadline))
 
-	if ci.Context == nil {
-		ci.Context = context.Background()
-	}
 	called := time.Now()
 	completed := zprocess.RunFuncUntilContextDone(ci.Context, func() {
 		returnValues = mtype.Method.Func.Call(args)

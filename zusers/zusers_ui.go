@@ -16,6 +16,7 @@ import (
 	"github.com/torlangballe/zui/ztext"
 	"github.com/torlangballe/zui/zview"
 	"github.com/torlangballe/zui/zwindow"
+	"github.com/torlangballe/zutil/xrpc"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zguiutil"
 	"github.com/torlangballe/zutil/zkeyvalue"
@@ -39,13 +40,14 @@ var (
 	MinimumPasswordLength  = 5
 	AppSpecificPermissions = []string{"root"}
 	NoLoginGUI             bool
-	RPCCaller              zrpc.Caller
+	RPCCaller              zrpc.Callable
 )
 
 func Init() {
 	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
 	if token != "" {
 		zrpc.MainClient.AuthToken = token
+		xrpc.MainClient().AuthToken = token
 	}
 	perms := append([]string{AdminPermission}, AppSpecificPermissions...)
 	zfields.SetStringBasedEnum("Permissions", perms...)
@@ -166,7 +168,7 @@ func doForgot(username string) {
 			zalert.Show("Enter a valid email address to set password reset instructions to.")
 			return
 		}
-		err := zrpc.MainClient.Call("UsersCalls.SendResetPasswordMail", email, nil)
+		err := RPCCaller.Call("UsersCalls.SendResetPasswordMail", email, nil)
 		// zlog.Info("Calling:", err)
 		if err != nil {
 			zalert.ShowError(err)
@@ -204,7 +206,7 @@ func callAuthenticate(view zview.View, a Authentication, got func()) {
 	var aret ClientUserInfo
 	zkeyvalue.DefaultStore.SetString(a.UserName, usernameKey, true)
 
-	err := zrpc.MainClient.Call("UsersCalls.Authenticate", a, &aret)
+	err := RPCCaller.Call("UsersCalls.Authenticate", a, &aret)
 	if err != nil {
 		zalert.ShowError(err)
 		return
@@ -230,7 +232,7 @@ func checkAndDoAuth() {
 	}
 	doingAuth = true
 	var user User
-	err = zrpc.MainClient.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
+	err = RPCCaller.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
 	// zlog.Info("checkAndDoAuth0:", zrpc.MainClient.AuthToken, err)
 	if err == nil {
 		CurrentUser.UserID = user.ID
@@ -338,7 +340,7 @@ func HandleResetPassword(args map[string]string) {
 
 func callResetPassword(reset ResetPassword) {
 	var token string
-	err := zrpc.MainClient.Call("UsersCalls.SetNewPasswordFromReset", reset, &token)
+	err := RPCCaller.Call("UsersCalls.SetNewPasswordFromReset", reset, &token)
 	if err != nil {
 		zalert.ShowError(err)
 		return

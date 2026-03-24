@@ -30,7 +30,7 @@ func init() {
 		var server *zwebsocket.Server
 		// zlog.Warn("RPC Server Call to pipeID:", pipeID, len(r.servers))
 		if len(r.servers) == 0 {
-			return zlog.NewError("RPC Call with no server and no client for pipeID:", pipeID)
+			return nil, zlog.NewError("RPC Call with no server and no client for pipeID:", pipeID)
 		}
 		if pipeID == "" {
 			if len(r.servers) == 1 {
@@ -59,8 +59,8 @@ func init() {
 			// for _, s := range r.servers {
 			// 	zlog.Warn("ServC:", s.connection != nil, zlog.Pointer(s))
 			// }
-			return zlog.NewError("RPC Call with no id and not just one client or connection", pipeID)
+			return nil, zlog.NewError("RPC Call with no id and not just one client or connection", pipeID)
 		}
-		rpJson, err = server.ExchangeWithID(pipeID, cpJson)
+		return server.ExchangeWithID(pipeID, cpJson)
 	}
 }

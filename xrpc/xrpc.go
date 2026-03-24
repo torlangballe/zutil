@@ -22,12 +22,20 @@ type ConnectInfo[C any] struct {
 }
 
 type RPC struct {
-	clients           map[string]*ConnectInfo[zwebsocket.Client]
-	servers           map[string]*ConnectInfo[zwebsocket.Server]
-	Executor          *znamedfuncs.Executor
-	ConnectServerFunc func(serverID string) (*zwebsocket.Server, error)
-	ConnectClientFunc func(clientID string) (*zwebsocket.Client, error)
-	connectRepeater   *ztimer.Repeater
+	clients                          map[string]*ConnectInfo[zwebsocket.Client]
+	servers                          map[string]*ConnectInfo[zwebsocket.Server]
+	Executor                         *znamedfuncs.Executor
+	ConnectServerFunc                func(serverID string) (*zwebsocket.Server, error)
+	ConnectClientFunc                func(clientID string) (*zwebsocket.Client, error)
+	connectRepeater                  *ztimer.Repeater
+	HandleAuthenticationFailedFunc   func(id string) // HandleAuthenticationFailedFunc is called if authentication fails
+	KeepTokenOnAuthenticationInvalid bool            // if KeepTokenOnAuthenticationInvalid is true, the auth token isn't cleared on failure to authenticate
+
+}
+
+type Caller struct {
+	RPC *RPC
+	ID  string
 }
 
 const (
@@ -74,6 +82,7 @@ func (ci *ConnectInfo[C]) ConnectIfNeeded(id string, connectFunc func(id string)
 }
 
 func (r *RPC) ClientForID(clientID string) *zwebsocket.Client {
+	zlog.Info("ClientForID:", clientID, r != nil)
 	c := r.clients[clientID]
 	if c != nil {
 		return c.connection
@@ -138,6 +147,8 @@ func (r *RPC) handleClientError(pipeID string, err error) {
 	}
 }
 
+// MakeClient creates a new client connection to the given URL. If port is not 0, it overrides the port in the URL with the given port.
+// Note that you clients are normally made with AddClient() that uses ConnectIfNeeded() and r.ConnectClientFunc to actually create a client.
 func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, error) {
 	var client *zwebsocket.Client
 	handler := func(msg []byte, err error) []byte {
@@ -146,12 +157,21 @@ func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, err
 			return nil
 		}
 		ci := znamedfuncs.CallerInfo{
+			Token:    client.AuthToken,
 			CallerID: pipeID,
 		}
 		ci.TimeToLiveSeconds = client.DefaultTimeToLiveSeconds
 		var result []byte
 		err = r.Executor.ExecuteFromToJSON(msg, &result, ci)
 		zlog.OnError(err, pipeID)
+		if err == znamedfuncs.AuthenticationInvalidError {
+			if !r.KeepTokenOnAuthenticationInvalid {
+				client.AuthToken = ""
+			}
+			if r.HandleAuthenticationFailedFunc != nil {
+				r.HandleAuthenticationFailedFunc(pipeID)
+			}
+		}
 		// zlog.OnError(err, "RPC client call execute error", msg)
 		return result
 	}
@@ -181,19 +201,35 @@ func (r *RPC) RemoveClient(pipeID string) {
 	delete(r.clients, pipeID)
 }
 
-func MainClientCall(fullMethod string, in any, resultPtr any, cis ...znamedfuncs.CallerInfo) error {
-	return MainRPC.Call(MainClientID, fullMethod, in, resultPtr, cis...)
+func (r *RPC) MakeCaller(pipeID string) Caller {
+	return Caller{
+		RPC: r,
+		ID:  pipeID,
+	}
+}
+
+func MainCaller() Caller {
+	return MainRPC.MakeCaller(MainClientID)
 }
 
 func MainClient() *zwebsocket.Client {
-	return MainRPC.ClientForID(MainClientID)
+	c := MainRPC.ClientForID(MainClientID)
+	zlog.Info("MainClient:", c != nil, MainRPC != nil, MainClientID)
+	zlog.Info("MainClient:", MainRPC.clients)
+	return c
 }
 
-func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, cis ...znamedfuncs.CallerInfo) error {
+func (c Caller) Call(fullMethod string, in any, resultPtr any, cis ...any) error {
+	return c.RPC.Call(c.ID, fullMethod, in, resultPtr, cis...)
+}
+func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, cis ...any) error {
 	var cp znamedfuncs.CallPayloadSend
 	cp.Method = fullMethod
 	if len(cis) > 0 {
-		cp.CallerInfo = cis[0]
+		ci, _ := cis[0].(*znamedfuncs.CallerInfo)
+		if ci != nil {
+			cp.CallerInfo = *ci
+		}
 	}
 	var err error
 	cp.CallerInfo.CallerID = pipeID
@@ -215,7 +251,7 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, cis 
 	c := r.clients[pipeID]
 	if c != nil {
 		if c.connection == nil {
-			return zlog.NewError("Connection down for pipe:", pipeID, "method:", fullMethod)
+			return zlog.NewError("Connection down for client pipe:", pipeID, "method:", fullMethod)
 		}
 		rpJson, err = c.connection.Exchange(cpJson)
 		if err != nil {
