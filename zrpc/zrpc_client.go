@@ -106,6 +106,7 @@ func (c *Client) MakeCallURL(name string) string {
 // Call is used to execute a remote call. method is Type.MethodName
 // input can be nil if not used, and result can be nil if not used/not in method.
 func (c *Client) Call(method string, input, result any) error {
+	// zlog.Info("zrpc.Client.Call:", method, "input:", zlog.Full(input), "resultPtr:", reflect.TypeOf(result))
 	err, terr := c.callWithTransportError(method, c.TimeoutSecs, input, result)
 	if terr != nil && err == nil {
 		err = terr

@@ -82,7 +82,7 @@ func (ci *ConnectInfo[C]) ConnectIfNeeded(id string, connectFunc func(id string)
 }
 
 func (r *RPC) ClientForID(clientID string) *zwebsocket.Client {
-	zlog.Info("ClientForID:", clientID, r != nil)
+	// zlog.Info("ClientForID:", clientID, r != nil)
 	c := r.clients[clientID]
 	if c != nil {
 		return c.connection
@@ -217,8 +217,8 @@ func MainClient() *zwebsocket.Client {
 		return nil
 	}
 	c := MainRPC.ClientForID(MainClientID)
-	zlog.Info("MainClient:", c != nil, MainRPC != nil, MainClientID)
-	zlog.Info("MainClient:", MainRPC.clients)
+	// zlog.Info("MainClient:", c != nil, MainRPC != nil, MainClientID)
+	// zlog.Info("MainClient:", MainRPC.clients)
 	return c
 }
 
@@ -228,8 +228,13 @@ func (c Caller) Call(fullMethod string, in any, resultPtr any) error {
 func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any) error {
 	var cp znamedfuncs.CallPayloadSend
 	cp.Method = fullMethod
+	c := r.clients[pipeID]
 	var err error
 	cp.CallerInfo.CallerID = pipeID
+	if c != nil {
+		cp.CallerInfo.Token = c.connection.AuthToken
+		cp.CallerInfo.TimeToLiveSeconds = c.connection.DefaultTimeToLiveSeconds
+	}
 	cp.Args = in
 	if err != nil {
 		return err
@@ -245,7 +250,6 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any) erro
 		pipeID = zmap.GetAnyKeyAsString(r.clients)
 	}
 	var rpJson []byte
-	c := r.clients[pipeID]
 	if c != nil {
 		if c.connection == nil {
 			return zlog.NewError("Connection down for client pipe:", pipeID, "method:", fullMethod)

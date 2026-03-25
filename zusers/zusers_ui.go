@@ -228,29 +228,23 @@ func callAuthenticate(view zview.View, a Authentication, got func()) {
 
 func checkAndDoAuth() {
 	var err error
-	// zlog.Info("checkAndDoAuth", zrpc.MainClient.AuthToken)
 	if doingAuth {
 		return
 	}
 	doingAuth = true
 	var user User
-	zlog.Info("checkAndDoAuth0:", RPCCaller != nil, zrpc.MainClient != nil)
 	err = RPCCaller.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
 	if err == nil {
 		CurrentUser.UserID = user.ID
 		CurrentUser.UserName = user.UserName
 		CurrentUser.Permissions = user.Permissions
 		CurrentUser.Token = zrpc.MainClient.AuthToken
-		// zlog.Info("GetUserForToken:", CurrentUser.UserID)
 		if AuthenticatedFunc != nil {
 			AuthenticatedFunc(nil)
 		}
 		doingAuth = false
 		return
 	}
-	// if zrpc.MainClient.AuthToken == "" {
-	// 	return
-	// }
 	if AuthenticatedFunc != nil {
 		if AuthenticatedFunc(err) {
 			return

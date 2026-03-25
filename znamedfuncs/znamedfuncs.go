@@ -22,6 +22,7 @@ type CallerInfo struct {
 	Token             string          `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
 	Context           context.Context `json:"-"`
 	TimeToLiveSeconds float64         `json:",omitempty"`
+	UserID            int64           `json:",omitempty"` // UserID is optional, but can be used to identify the user of the caller, if known. Can be used for authentication or just information.
 }
 
 type Executor struct {
@@ -89,6 +90,7 @@ func (e *Executor) GetAuthenticator() znet.TokenAuthenticator {
 }
 
 func (e *Executor) Error(parts ...any) error {
+	parts = append([]any{zlog.StackAdjust(1)}, parts...)
 	err := zlog.Error(parts...)
 	if e.ErrorHandler != nil {
 		e.ErrorHandler(err)
@@ -139,12 +141,12 @@ func suitableMethods(c any) map[string]*methodType {
 		i := 1
 		if mtype.NumIn() > 2 {
 			hasClientInfo = (mtype.In(i) == reflect.TypeOf((*zrpc.ClientInfo)(nil)))
-			hasCallerInfo = (mtype.In(i) == reflect.TypeOf((*CallerInfo)(nil)).Elem())
-			// zlog.Info("suitableMethods: method", mname, "has ci:", hasClientInfo, "has caller info:", hasCallerInfo, mtype.In(i))
+			hasCallerInfo = (mtype.In(i) == reflect.TypeOf((*CallerInfo)(nil)))
 			// hasClientInfo = (mtype.In(i) == reflect.TypeOf(CallerInfo{}) || mtype.In(i) == reflect.TypeOf(&CallerInfo{}))
 			if hasClientInfo || hasCallerInfo {
 				i++
 			}
+			// zlog.Info("suitableMethods: method", i, mname, "has ci:", hasClientInfo, "has caller info:", hasCallerInfo, mtype.In(i), reflect.TypeOf((*CallerInfo)(nil)).Elem())
 		}
 		if mtype.NumIn() < i+1 {
 			zlog.Info("Register: method", mname, "has", mtype.NumIn(), "input parameters; wrong amount:", mtype.NumIn()-1)
@@ -161,7 +163,7 @@ func suitableMethods(c any) map[string]*methodType {
 		if mtype.NumIn() > i { // Second arg must be a pointer or interface.
 			replyType = mtype.In(i)
 			if replyType.Kind() != reflect.Ptr && replyType.Kind() != reflect.Interface {
-				zlog.Info("Register: reply type of method", mname, "is not a pointer:", replyType, method.Func.CanAddr())
+				zlog.Info("Register: reply type of method", i, mname, "is not a pointer:", replyType, method.Func.CanAddr())
 				continue
 			}
 			if !isExportedOrBuiltinType(replyType) { // Reply type must be exported.
@@ -193,6 +195,9 @@ func (e *Executor) methodNeedsAuth(name string) bool {
 	m, got := e.callMethods[name]
 	if !got {
 		e.Error("methodNeedsAuth: Couldn't find method:", name)
+		for _, m := range e.callMethods {
+			e.Error("method:", m.Method.Name, m.Method.PkgPath, m.Method.Name)
+		}
 		return true
 	}
 	return !m.AuthNotNeeded
