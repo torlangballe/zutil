@@ -300,7 +300,7 @@ func (e *Executor) Execute(cp *CallPayloadReceive, rp *ReceivePayload) {
 		var valid bool
 		valid, _ = e.Authenticator.IsTokenValid(cp.Token, nil)
 		if !valid {
-			zlog.Error("token not valid: '"+cp.Token+"'", zlog.Full(e.Authenticator), cp.CallerInfo)
+			zlog.Error("token not valid: '"+cp.Token+"'", cp.Method, zlog.Full(e.Authenticator), cp.CallerInfo)
 			rp.TransportError = AuthenticationInvalidError
 			return
 		}
