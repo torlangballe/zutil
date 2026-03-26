@@ -1,11 +1,9 @@
 package zmap
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"reflect"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -141,31 +139,33 @@ func Keys[K comparable, V any](m map[K]V) []K {
 // 	return n
 // }
 
-func FuncSortedKeys[K comparable, V any](m map[K]V, less func(a, b V) bool) []K {
-	keys := Keys(m)
-	sort.Slice(keys, func(i, j int) bool {
-		return less(m[keys[i]], m[keys[j]])
+func SortedValuesFunc[K comparable, V any](m map[K]V, less func(a, b V) bool) ([]V, []K) {
+	var kv []struct {
+		K K
+		V V
+	}
+	for k, v := range m {
+		kv = append(kv, struct {
+			K K
+			V V
+		}{k, v})
+	}
+	sort.Slice(kv, func(i, j int) bool {
+		return less(kv[i].V, kv[j].V)
 	})
+	values := make([]V, len(kv))
+	keys := make([]K, len(kv))
+	for i, kv := range kv {
+		values[i] = kv.V
+		keys[i] = kv.K
+	}
+	return values, keys
+}
+
+func SortedStringKeys[K comparable, V any](m map[K]V) []string {
+	keys := KeysAsStrings(m)
+	sort.Strings(keys)
 	return keys
-}
-
-func KeySortedValues[K cmp.Ordered, V any](m map[K]V) []V {
-	keys := Keys(m)
-	slices.Sort(keys)
-	out := make([]V, len(keys))
-	for i, k := range keys {
-		out[i] = m[k]
-	}
-	return out
-}
-
-func SortedKeyValues[K comparable, V any](m map[K]V, less func(a, b V) bool) ([]K, []V) {
-	keys := FuncSortedKeys(m, less)
-	vals := make([]V, len(keys))
-	for i, k := range keys {
-		vals[i] = m[k]
-	}
-	return keys, vals
 }
 
 func AllValues[K comparable, V any](m map[K]V) []V {

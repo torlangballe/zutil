@@ -378,10 +378,10 @@ func SortByFrequency[S comparable](slice []S) ([]S, []int) {
 	for _, s := range slice {
 		m[s]++
 	}
-	vals, counts := zmap.SortedKeyValues(m, func(a, b int) bool {
+	counts, keys := zmap.SortedValuesFunc(m, func(a, b int) bool {
 		return a > b
 	})
-	return vals, counts
+	return keys, counts
 }
 
 func MoveElement[S any](slice []S, fromIndex, toIndex int) {
