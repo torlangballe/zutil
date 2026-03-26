@@ -3,6 +3,9 @@
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
 #import <Cocoa/Cocoa.h>
 
+// capture video:
+// https://developer.apple.com/documentation/screencapturekit/capturing-screen-content-in-macos?language=objc
+
 CGRect croppedRect(CGRect rect, CGRect with)  {
     CGRect out;
     out.origin.x = rect.origin.x + with.origin.x;
