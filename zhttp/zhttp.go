@@ -925,3 +925,12 @@ func HostFromURL(surl string) string {
 	u, _ := url.Parse(surl)
 	return u.Host
 }
+
+// CookieStr gets the cookie value for name from req, or "" if not found
+func CookieStr(req *http.Request, name string) string {
+	cookie, err := req.Cookie(name)
+	if err != nil {
+		return ""
+	}
+	return cookie.Value
+}
