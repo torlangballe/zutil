@@ -159,6 +159,7 @@ func testLoad(t *testing.T) {
 	ztesting.Equal(t, chunkedRows.TotalRowCount(), chunkedRows2.TotalRowCount(), "loaded len is same")
 }
 
+// joinOrderForIterator itterates from chunk startChunkIndex and index, forward or backwards, get's the orderer as a string
 func joinOrderForIterator(chunkedRows *ChunkedRows, startChunkIndex, index int, forward bool) string {
 	var orderers []string
 	var ierr error
@@ -180,10 +181,10 @@ func joinOrderForIterator(chunkedRows *ChunkedRows, startChunkIndex, index int, 
 		return true
 	})
 	if err != nil {
-		return "<" + err.Error() + ">"
+		return "[" + err.Error() + "]"
 	}
 	if ierr != nil {
-		return "<" + ierr.Error() + ">"
+		return "{" + ierr.Error() + "}"
 	}
 	return strings.Join(orderers, ",")
 }
@@ -201,10 +202,10 @@ func testIterate(t *testing.T) {
 	ztesting.Equal(t, "34,31,28,25,22,19,16,13,10,7,4,1", str, "backwards iterate all not same")
 
 	str = joinOrderForIterator(chunkedRows, 0, -1, false)
-	ztesting.Equal(t, "<index < 0 for chunk not -1 -1 5>", str, "should fail on index outside too small")
+	ztesting.Equal(t, "[index < 0 for chunk not -1 -1 5]", str, "should fail on index outside too small")
 
 	str = joinOrderForIterator(chunkedRows, 0, 6, false)
-	ztesting.Equal(t, "<index too big for chunk 6 5>", str, "should fail on index outside too big")
+	ztesting.Equal(t, "[index too big for chunk 6 5]", str, "should fail on index outside too big")
 
 	str = joinOrderForIterator(chunkedRows, 1, 0, true)
 	ztesting.Equal(t, str, "16,19,22,25,28,31,34", "1) should be end of rows")
