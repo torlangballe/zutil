@@ -75,8 +75,8 @@ func (e *ContextError) GetLowerCaseMatchContent() string {
 
 func MakeContextError(dict zdict.Dict, parts ...any) ContextError {
 	var ie ContextError
-	// var nparts []any
 	ie.KeyValues = dict
+	var left []any
 	for _, p := range parts {
 		err, got := p.(error)
 		if got {
@@ -91,10 +91,15 @@ func MakeContextError(dict zdict.Dict, parts ...any) ContextError {
 			}
 			ie.SetError(err)
 			continue
+		} else {
+			left = append(left, p)
 		}
-		// nparts = append(nparts, p)
 	}
-	ie.Title = zstr.SpacedType(parts...)
+	if len(left) == 0 {
+		ie.Title = "Error"
+	} else {
+		ie.Title = zstr.SpacedType(left...)
+	}
 	return ie
 }
 
