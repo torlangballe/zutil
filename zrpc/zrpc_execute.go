@@ -204,7 +204,9 @@ func (e *Executor) callMethod(ctx context.Context, ci ClientInfo, mtype *methodT
 		returnValues = mtype.Method.Func.Call(args)
 	})
 	if !completed {
-		return rp, zlog.NewError("zrpc.Call expired before call", mtype.Method.Name, "since start/before http-fields:", time.Since(start), "since exe:", time.Since(called))
+		zlog.Info("zrpc.Call expired before call", mtype.Method.Name, "since start/before http-fields:", time.Since(start), "since exe:", time.Since(called))
+		zlog.Info("rpc call timed out:", ExecuteTimedOutError)
+		return rp, ExecuteTimedOutError
 	}
 
 	errInter := returnValues[0].Interface()

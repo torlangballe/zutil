@@ -162,11 +162,12 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 		"method": method,
 	}
 	surl, _ := zhttp.MakeURLWithArgs(c.callURL, urlArgs)
-	// zlog.Warn("CALL:", surl)
+	// zlog.Warn("CALL:", method, surl)
 	dict := zdict.Dict{"RPC Method": method, "TimeoutSecs": timeoutSecs}
 	// now := time.Now()
 	_, err = zhttp.Post(surl, params, cp, &rp)
 	if err != nil {
+		zlog.Warn("zrpc Post error:", err, "url:", surl, "method:", method)
 		limitID := zlog.Limit("zrpc.Post.Err." + method)
 		zlog.Info(limitID, "zrpc Post", surl, err)
 		return nil, zerrors.MakeContextError(dict, "Post to Remote URL", err)
@@ -199,12 +200,14 @@ func (c *Client) callWithTransportError(method string, timeoutSecs float64, inpu
 			return nil, TransportError(err.Error())
 		}
 	}
+	// zlog.Warn("zrpc Call complete:", method, "url:", surl, "err:", err, "transportErr:", terr) //, "since start:", time.Since(now))
 	return nil, nil
 }
 
 // CallWithTimeout is a convenience method that calls method with a different timeout
 func (c *Client) CallWithTimeout(timeoutSecs float64, method string, input, result any) error {
 	err, terr := c.callWithTransportError(method, timeoutSecs, input, result)
+	// zlog.Warn("CallWithTimeout:", method, "timeoutSecs:", timeoutSecs, "err:", err, "terr:", terr)
 	if terr != nil && err == nil {
 		return terr
 	}

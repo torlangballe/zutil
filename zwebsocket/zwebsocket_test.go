@@ -47,7 +47,7 @@ func openClient(t *testing.T) *Client {
 }
 
 func openServer(t *testing.T) *Server {
-	server := NewServer("server1", "/", 7781, func(id string, data []byte, err error) []byte {
+	server, err := NewServer("/", 7781, func(id string, data []byte, err error) []byte {
 		str := string(data)
 		// zlog.Warn("Server Got:", str)
 		serverReceives++
@@ -57,6 +57,7 @@ func openServer(t *testing.T) *Server {
 		}
 		return []byte(str + " reply")
 	})
+	ztesting.OnError(t, err, "Failed to open server")
 	return server
 }
 

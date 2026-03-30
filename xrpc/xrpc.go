@@ -9,6 +9,7 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/znamedfuncs"
+	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/ztimer"
 	"github.com/torlangballe/zutil/zwebsocket"
 )
@@ -156,9 +157,9 @@ func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, err
 			r.handleClientError(pipeID, err)
 			return nil
 		}
-		ci := znamedfuncs.CallerInfo{
+		ci := zrpc.ClientInfo{
 			Token:    client.AuthToken,
-			CallerID: pipeID,
+			ClientID: pipeID,
 		}
 		ci.TimeToLiveSeconds = client.DefaultTimeToLiveSeconds
 		var result []byte
@@ -230,10 +231,10 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any) erro
 	cp.Method = fullMethod
 	c := r.clients[pipeID]
 	var err error
-	cp.CallerInfo.CallerID = pipeID
+	cp.ClientInfo.ClientID = pipeID
 	if c != nil {
-		cp.CallerInfo.Token = c.connection.AuthToken
-		cp.CallerInfo.TimeToLiveSeconds = c.connection.DefaultTimeToLiveSeconds
+		cp.ClientInfo.Token = c.connection.AuthToken
+		cp.ClientInfo.TimeToLiveSeconds = c.connection.DefaultTimeToLiveSeconds
 	}
 	cp.Args = in
 	if err != nil {

@@ -66,15 +66,16 @@ type methodType struct {
 
 // ClientInfo stores information about the client calling.
 type ClientInfo struct {
-	Type      string // Type is zrpc or zrpc-rev for these calls. Might be something else if used elsewhere.
-	ClientID  string // ClientID identifies the rpc client
-	Token     string `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
-	UserID    int64  `json:",omitempty"` // UserID can be a userid gotten when authenticated
-	Request   *http.Request
-	UserAgent string    `json:",omitempty"`
-	IPAddress string    `json:",omitempty"`
-	SendDate  time.Time `json:",omitempty"`
-	Context   context.Context
+	Type              string // Type is zrpc or zrpc-rev for these calls. Might be something else if used elsewhere.
+	ClientID          string // ClientID identifies the rpc client
+	Token             string `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
+	UserID            int64  `json:",omitempty"` // UserID can be a userid gotten when authenticated
+	Request           *http.Request
+	UserAgent         string    `json:",omitempty"`
+	IPAddress         string    `json:",omitempty"`
+	SendDate          time.Time `json:",omitempty"`
+	Context           context.Context
+	TimeToLiveSeconds float64 `json:",omitempty"`
 }
 
 // CallerInfo has information about the caller of a namedfuncs function and can be an optional first argument to a namedfuncs function.

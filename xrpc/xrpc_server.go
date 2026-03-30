@@ -4,7 +4,7 @@ package xrpc
 
 import (
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/znamedfuncs"
+	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zwebsocket"
 )
 
@@ -14,8 +14,8 @@ func (r *RPC) MakeServer(path string, port int) (*zwebsocket.Server, error) {
 			// zlog.Warn("RPC server got error from websocket connection", id, err)
 			return nil
 		}
-		ci := znamedfuncs.CallerInfo{
-			CallerID: id,
+		ci := zrpc.ClientInfo{
+			ClientID: id,
 		}
 		var result []byte
 		err = r.Executor.ExecuteFromToJSON(msg, &result, ci)

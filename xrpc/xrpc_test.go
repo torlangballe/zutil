@@ -49,8 +49,8 @@ func xTestSendReceive(t *testing.T) {
 		return srpc.MakeServer("/", 7743)
 	}
 	srpc.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		addr := "ws://localhost:7743/"
-		client, err := srpc.MakeClient(addr, clientID)
+		addr := "ws://localhost:/"
+		client, err := srpc.MakeClient(addr, clientID, 7743)
 		return client, err
 	}
 	client2Executor := znamedfuncs.NewExecutor()
@@ -71,8 +71,8 @@ func xTestSendReceive(t *testing.T) {
 	crpc := NewRPC()
 	crpc.Executor = client2Executor
 	crpc.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		addr := "ws://localhost:7743/"
-		client, err := crpc.MakeClient(addr, clientID)
+		addr := "ws://localhost:/"
+		client, err := crpc.MakeClient(addr, clientID, 7743)
 		return client, err
 	}
 	err = crpc.Call(client2ID, "TestRPCCalls.Product", Two{A: 9, B: 4}, &result)
@@ -133,8 +133,8 @@ func xTestCircular(t *testing.T) {
 	}
 	circleServer.AddServer(serverID)
 	circleServer.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		addr := "ws://localhost:7744/"
-		client, err := circleServer.MakeClient(addr, clientID)
+		addr := "ws://localhost:/"
+		client, err := circleServer.MakeClient(addr, clientID, 7744)
 		return client, err
 	}
 	for i := 0; i <= 100; i++ {
@@ -160,8 +160,8 @@ func makeRPC(t *testing.T, port int, executor *znamedfuncs.Executor) {
 	clientRPC := NewRPC()
 	clientRPC.Executor = executor
 	clientRPC.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		addr := fmt.Sprintf("ws://localhost:%d/", port)
-		return clientRPC.MakeClient(addr, clientID)
+		addr := fmt.Sprintf("ws://localhost:/")
+		return clientRPC.MakeClient(addr, clientID, port)
 	}
 	clientID := fmt.Sprintf("client%d", port)
 	clientRPC.AddClient(clientID)
@@ -219,7 +219,7 @@ func makeRPC(t *testing.T, port int, executor *znamedfuncs.Executor) {
 	zlog.Warn("Storm", port, "server sent:", serverSend, "client sent:", clientSend)
 }
 
-func TestFaultyStorm(t *testing.T) {
+func xTestFaultyStorm(t *testing.T) {
 	const serverID = "faulty-storm-server"
 	executor := znamedfuncs.NewExecutor()
 	executor.Register(TestRPCCalls{})

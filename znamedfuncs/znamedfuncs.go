@@ -17,13 +17,13 @@ import (
 )
 
 // CallerInfo has information about the caller of a namedfuncs function and can be an optional first argument to a namedfuncs function.
-type CallerInfo struct {
-	CallerID          string          // CallerID identifies the caller
-	Token             string          `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
-	Context           context.Context `json:"-"`
-	TimeToLiveSeconds float64         `json:",omitempty"`
-	UserID            int64           `json:",omitempty"` // UserID is optional, but can be used to identify the user of the caller, if known. Can be used for authentication or just information.
-}
+// type CallerInfo struct {
+// 	CallerID          string          // CallerID identifies the caller
+// 	Token             string          `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
+// 	Context           context.Context `json:"-"`
+// 	TimeToLiveSeconds float64         `json:",omitempty"`
+// 	UserID            int64           `json:",omitempty"` // UserID is optional, but can be used to identify the user of the caller, if known. Can be used for authentication or just information.
+// }
 
 type Executor struct {
 	Authenticator znet.TokenAuthenticator // used to authenticate a token comming from caller
@@ -32,13 +32,13 @@ type Executor struct {
 }
 
 type CallPayloadSend struct {
-	CallerInfo
+	zrpc.ClientInfo
 	Method string
 	Args   any
 }
 
 type CallPayloadReceive struct {
-	CallerInfo
+	zrpc.ClientInfo
 	Method string
 	Args   json.RawMessage
 }
@@ -54,7 +54,6 @@ type methodType struct {
 	Receiver      reflect.Value
 	Method        reflect.Method
 	hasClientInfo bool
-	hasCallerInfo bool
 	ArgType       reflect.Type
 	ReplyType     reflect.Type
 	AuthNotNeeded bool
@@ -69,7 +68,7 @@ type ReceivePayload struct {
 }
 
 var (
-	ExecuteTimedOutError       = TransportError("Execution timed out")
+	ExecuteTimedOutError       = TransportError("Execution timed out2")
 	AuthenticationInvalidError = TransportError("Authentication Invalid")
 	EnableLogExecute           zlog.Enabler
 )
@@ -131,7 +130,7 @@ func suitableMethods(c any) map[string]*methodType {
 	pre := et.Name() + "."
 	methods := make(map[string]*methodType)
 	for m := 0; m < t.NumMethod(); m++ {
-		var hasClientInfo, hasCallerInfo bool
+		var hasClientInfo bool
 		method := t.Method(m)
 		mtype := method.Type
 		mname := pre + method.Name
@@ -141,12 +140,10 @@ func suitableMethods(c any) map[string]*methodType {
 		i := 1
 		if mtype.NumIn() > 2 {
 			hasClientInfo = (mtype.In(i) == reflect.TypeOf((*zrpc.ClientInfo)(nil)))
-			hasCallerInfo = (mtype.In(i) == reflect.TypeOf((*CallerInfo)(nil)))
-			// hasClientInfo = (mtype.In(i) == reflect.TypeOf(CallerInfo{}) || mtype.In(i) == reflect.TypeOf(&CallerInfo{}))
-			if hasClientInfo || hasCallerInfo {
+			if hasClientInfo {
 				i++
 			}
-			// zlog.Info("suitableMethods: method", i, mname, "has ci:", hasClientInfo, "has caller info:", hasCallerInfo, mtype.In(i), reflect.TypeOf((*CallerInfo)(nil)).Elem())
+			// zlog.Info("suitableMethods: method", i, mname, "has ci:", hasClientInfo, "has caller info:", mtype.In(i))
 		}
 		if mtype.NumIn() < i+1 {
 			zlog.Info("Register: method", mname, "has", mtype.NumIn(), "input parameters; wrong amount:", mtype.NumIn()-1)
@@ -179,7 +176,7 @@ func suitableMethods(c any) map[string]*methodType {
 			zlog.Info("Register: return type of method", mname, "is", returnType, ", must be error")
 			continue
 		}
-		methods[mname] = &methodType{Receiver: rval, Method: method, ArgType: argType, ReplyType: replyType, hasClientInfo: hasClientInfo, hasCallerInfo: hasCallerInfo}
+		methods[mname] = &methodType{Receiver: rval, Method: method, ArgType: argType, ReplyType: replyType, hasClientInfo: hasClientInfo}
 	}
 	return methods
 }
@@ -203,7 +200,7 @@ func (e *Executor) methodNeedsAuth(name string) bool {
 	return !m.AuthNotNeeded
 }
 
-func callMethod(e *Executor, ci CallerInfo, mtype *methodType, rawArg json.RawMessage, rp *ReceivePayload) {
+func callMethod(e *Executor, ci zrpc.ClientInfo, mtype *methodType, rawArg json.RawMessage, rp *ReceivePayload) {
 	// zlog.Info("callMethod:", mtype.Method.Name)
 	start := time.Now()
 	defer func() {
@@ -228,7 +225,7 @@ func callMethod(e *Executor, ci CallerInfo, mtype *methodType, rawArg json.RawMe
 	if argIsValue {
 		argv = argv.Elem()
 	}
-	zlog.Info("callMethod: calling method", mtype.Method.Name, mtype.hasClientInfo, mtype.ArgType)
+	// zlog.Info("callMethod: calling method", mtype.Method.Name, mtype.hasClientInfo, mtype.ArgType)
 	if mtype.hasClientInfo && mtype.ArgType == reflect.TypeOf((*zrpc.ClientInfo)(nil)) {
 		zlog.Warn("callMethod: method has zrpc.ClientInfo argument, but will be given CallerInfo. Method:", mtype.Method.Name)
 	}
@@ -237,14 +234,6 @@ func callMethod(e *Executor, ci CallerInfo, mtype *methodType, rawArg json.RawMe
 		ci.Context = context.Background()
 	}
 	if mtype.hasClientInfo {
-		cli := zrpc.ClientInfo{
-			Type:     "zrpc",
-			ClientID: ci.CallerID,
-			Token:    ci.Token,
-			Context:  ci.Context,
-		}
-		args = append(args, reflect.ValueOf(&cli))
-	} else if mtype.hasCallerInfo {
 		args = append(args, reflect.ValueOf(&ci))
 	}
 	args = append(args, argv)
@@ -290,7 +279,7 @@ func callMethod(e *Executor, ci CallerInfo, mtype *methodType, rawArg json.RawMe
 }
 
 func (e *Executor) SetAuthNotNeededForMethod(name string) {
-	zlog.Info("SetAuthNotNeededForMethod:", e != nil, name, e.callMethods[name] != nil)
+	// zlog.Info("SetAuthNotNeededForMethod:", zlog.Pointer(e), e != nil, name, e.callMethods[name] != nil)
 	e.callMethods[name].AuthNotNeeded = true
 }
 
@@ -300,29 +289,29 @@ func (e *Executor) Execute(cp *CallPayloadReceive, rp *ReceivePayload) {
 		var valid bool
 		valid, _ = e.Authenticator.IsTokenValid(cp.Token, nil)
 		if !valid {
-			zlog.Error("token not valid: '"+cp.Token+"'", cp.Method, zlog.Full(e.Authenticator), cp.CallerInfo)
+			zlog.Error("token not valid: '"+cp.Token+"'", cp.Method, zlog.Full(e.Authenticator), cp.ClientInfo)
 			rp.TransportError = AuthenticationInvalidError
 			return
 		}
 	}
 	for n, m := range e.callMethods {
 		if n == cp.Method {
-			callMethod(e, cp.CallerInfo, m, cp.Args, rp)
+			callMethod(e, cp.ClientInfo, m, cp.Args, rp)
 			return
 		}
 	}
-	rp.TransportError = TransportError("no method registered: " + cp.Method + " " + zlog.Full(cp.CallerInfo))
+	rp.TransportError = TransportError("no method registered: " + cp.Method + " " + zlog.Full(cp.ClientInfo))
 }
 
-func (e *Executor) ExecuteFromToJSON(payload []byte, result *[]byte, ci CallerInfo) error {
+func (e *Executor) ExecuteFromToJSON(payload []byte, result *[]byte, ci zrpc.ClientInfo) error {
 	var cp CallPayloadReceive
 	var rp ReceivePayload
 	err := json.Unmarshal(payload, &cp)
 	if err != nil {
 		rp.TransportError = TransportError(err.Error())
 	} else {
-		if cp.TimeToLiveSeconds > 0 {
-			ctx, cancel := context.WithTimeout(context.Background(), ztime.SecondsDur(cp.TimeToLiveSeconds))
+		if cp.ClientInfo.TimeToLiveSeconds > 0 {
+			ctx, cancel := context.WithTimeout(context.Background(), ztime.SecondsDur(cp.ClientInfo.TimeToLiveSeconds))
 			defer cancel()
 			cp.Context = ctx
 		}
