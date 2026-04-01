@@ -19,6 +19,17 @@ func Equal[N comparable](t *testing.T, a, b N, parts ...any) bool {
 	return true
 }
 
+func NearEqualF(t *testing.T, a, b float64, parts ...any) bool {
+	if a-b < 0.00001 || b-a < 0.00001 {
+		return true
+	}
+	str := zstr.Spaced(parts...) + fmt.Sprintf(" '%v' ~= '%v'", a, b)
+	zlog.Error(zlog.StackAdjust(1), zlog.StackAdjust(1), "Fail:", str)
+	t.Error(str)
+	return false
+
+}
+
 func MultiEqual[N comparable](t *testing.T, a N, bs ...N) bool {
 	for _, b := range bs {
 		if a == b {
