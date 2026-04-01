@@ -233,7 +233,11 @@ func CellSizeInWidthF(width, spacing, marginMin, marginMax float64, count int) (
 // EaseInOut makes t "ease in" gradually at 0, and easy out, flattening off near 1.
 // Good for animations
 func EaseInOut(t float64) float64 {
-	return 1 - math.Cos(t*math.Pi)
+	return (1 - math.Cos(t*math.Pi)) / 2
+}
+
+func EaseInOutInterpolate(start, end, t float64) float64 {
+	return start + (end-start)*EaseInOut(t)
 }
 
 // for length items, IndexOfMostFrequent compares them with each other and finds which one is used the most.
