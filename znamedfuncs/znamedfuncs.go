@@ -286,13 +286,13 @@ func (e *Executor) SetAuthNotNeededForMethod(name string) {
 func (e *Executor) Execute(cp *CallPayloadReceive, rp *ReceivePayload) {
 	// defer zdebug.RecoverFromPanic(false, "")
 	if e.Authenticator != nil && e.methodNeedsAuth(cp.Method) {
-		var valid bool
-		valid, _ = e.Authenticator.IsTokenValid(cp.Token, nil)
+		valid, userID := e.Authenticator.IsTokenValid(cp.Token, nil)
 		if !valid {
 			zlog.Error("token not valid: '"+cp.Token+"'", cp.Method, zlog.Full(e.Authenticator), cp.ClientInfo)
 			rp.TransportError = AuthenticationInvalidError
 			return
 		}
+		cp.ClientInfo.UserID = userID
 	}
 	for n, m := range e.callMethods {
 		if n == cp.Method {
