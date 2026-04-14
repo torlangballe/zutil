@@ -235,8 +235,6 @@ func NodesForStruct(s *Session, instance any, part string, nodeTypes NodeType, l
 			if each.ReflectValue.Kind() == reflect.Pointer {
 				each.ReflectValue = each.ReflectValue.Elem()
 			}
-			// getter, _ := each.ReflectValue.Interface().(NodeOwner)
-			// zlog.Info("NodesForStruct", reflect.TypeOf(instance), each.ReflectValue.Type(), getter != nil, part, each.StructField.Name)
 			// if getter != nil {
 			// 	otherNodes := getter.CommandNodes(s, part, false)
 			// 	nodes = append(nodes, otherNodes...)
@@ -258,8 +256,6 @@ func NodesForStruct(s *Session, instance any, part string, nodeTypes NodeType, l
 				}
 			}
 			name := strings.ToLower(each.StructField.Name)
-			// zlog.Info("NodesForStruct", reflect.TypeOf(instance), part, name)
-			// initCommander(commander)
 			nodes = append(nodes, MakeNode(name, ComNode, commander, 0))
 			return true
 		})
@@ -302,6 +298,9 @@ func fieldNodes(s *Session, instancePtr any, part string, indent int, inStatic b
 			}
 		}
 		kind := zreflect.KindFromReflectKindAndType(each.ReflectValue.Kind(), each.ReflectValue.Type())
+		if kind == zreflect.KindStruct || kind == zreflect.KindPointer && each.ReflectValue.Type().Elem().Kind() == reflect.Struct {
+			return true
+		}
 		sval, skip := getValueString(instancePtr, each.ReflectValue, each.Field, each.StructField, 3000, false)
 		// zlog.Info("fieldNodes2:", each.StructField.Name, each.ReflectValue.Interface(), skip, sval)
 		if skip {
