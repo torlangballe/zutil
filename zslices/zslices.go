@@ -204,8 +204,11 @@ func Swap[A any](slice []A, i, j int) {
 	slice[j] = t
 }
 
-func Add[T any](s *[]T, a T) {
-	*s = append(*s, a)
+// Add is a convenience function for appending to a slice pointer.
+// It's used if what you want to append to is very long to type twice with append:
+// long = append(long, a)
+func Add[T any](s *[]T, a ...T) {
+	*s = append(*s, a...)
 }
 
 func AddToSet[T comparable](s *[]T, adds ...T) int {
