@@ -70,7 +70,7 @@ type ReceivePayload struct {
 var (
 	ExecuteTimedOutError       = TransportError("Execution timed out2")
 	AuthenticationInvalidError = TransportError("Authentication Invalid")
-	EnableLogExecute           zlog.Enabler
+	EnableLogExecute           = zlog.NewEnabler()
 )
 
 func (t TransportError) Error() string {
@@ -201,7 +201,7 @@ func (e *Executor) methodNeedsAuth(name string) bool {
 }
 
 func callMethod(e *Executor, ci zrpc.ClientInfo, mtype *methodType, rawArg json.RawMessage, rp *ReceivePayload) {
-	// zlog.Info("callMethod:", mtype.Method.Name)
+	zlog.Info(EnableLogExecute, "callMethod:", mtype.Method.Name)
 	start := time.Now()
 	defer func() {
 		if time.Since(start) > time.Second*2 && mtype.Method.Name != "ReversePoll" { // ReversePoll waits for some result, so can take time on purpose

@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/torlangballe/zutil/zcommands"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
@@ -44,18 +43,18 @@ type Setup[I comparable] struct {
 
 type Scheduler[I comparable] struct {
 	// The channels are made in NewScheduler()
-	StopJobCh               chan I                 // Write a Job ID to StopJobCh to stop the job.
-	RemoveJobCh             chan I                 // Write a Job ID to RemoveJobCh to stop and remove the job.
-	ChangeJobCh             chan Job[I]            // Write  a Job with existing ID to ChangeJobCh to change it.
-	JobIsRunningCh          chan I                 // Write a JobID to JobIsRunningCh to flag it as now running. Not needed if JobIsRunningOnSuccessfullStart true.
-	RemoveExecutorCh        chan I                 //  Write an executor ID to RemoveExecutorCh to remove it. Jobs on it will immediately be stopped and restarted.
-	ChangeExecutorCh        chan Executor[I]       // Write an executor with existing ID to ChangeExecutorCh to change it. Jobs on it will be restarted if anything but DebugName is changed.
-	FlushExecutorJobsCh     chan I                 // Write an executor ID to FlushExecutorJobsCh to restart all jobs on it.
-	SetExecutorIsAliveCh    chan I                 // Write an executor ID to SetExecutorIsAliveCh to keep it alive at least with frequency ExecutorAliveDuration.
-	SetJobsOnExecutorCh     chan JobsOnExecutor[I] // Write a list of job ids and executor id to SetJobsOnExecutorCh to update what is running on the executor. Since the executor might crash, this keeps jobs in sync.
-	SetTotalMaxJobCountCh   chan int               // Change TotalMaxJobCount and refresh scheduler based on that.
-	SetJobHasMilestoneNowCh chan I                 // Sets job's run's milestone to now. See StopJobIfSinceMilestoneLessThan.
-	SetJobHasErrorCh        chan I                 // Sets the run's ErrorAt to now
+	StopJobCh               chan I                 `zui:"-"` // Write a Job ID to StopJobCh to stop the job.
+	RemoveJobCh             chan I                 `zui:"-"` // Write a Job ID to RemoveJobCh to stop and remove the job.
+	ChangeJobCh             chan Job[I]            `zui:"-"` // Write  a Job with existing ID to ChangeJobCh to change it.
+	JobIsRunningCh          chan I                 `zui:"-"` // Write a JobID to JobIsRunningCh to flag it as now running. Not needed if JobIsRunningOnSuccessfullStart true.
+	RemoveExecutorCh        chan I                 `zui:"-"` //  Write an executor ID to RemoveExecutorCh to remove it. Jobs on it will immediately be stopped and restarted.
+	ChangeExecutorCh        chan Executor[I]       `zui:"-"` // Write an executor with existing ID to ChangeExecutorCh to change it. Jobs on it will be restarted if anything but DebugName is changed.
+	FlushExecutorJobsCh     chan I                 `zui:"-"` // Write an executor ID to FlushExecutorJobsCh to restart all jobs on it.
+	SetExecutorIsAliveCh    chan I                 `zui:"-"` // Write an executor ID to SetExecutorIsAliveCh to keep it alive at least with frequency ExecutorAliveDuration.
+	SetJobsOnExecutorCh     chan JobsOnExecutor[I] `zui:"-"` // Write a list of job ids and executor id to SetJobsOnExecutorCh to update what is running on the executor. Since the executor might crash, this keeps jobs in sync.
+	SetTotalMaxJobCountCh   chan int               `zui:"-"` // Change TotalMaxJobCount and refresh scheduler based on that.
+	SetJobHasMilestoneNowCh chan I                 `zui:"-"` // Sets job's run's milestone to now. See StopJobIfSinceMilestoneLessThan.
+	SetJobHasErrorCh        chan I                 `zui:"-"` // Sets the run's ErrorAt to now
 
 	setup       Setup[I]
 	refreshCh   chan struct{} // Writing an empty struct to refreshCh calls startAndStopRuns(), but without recursion (and possible locking).
@@ -1024,12 +1023,13 @@ func (s *Scheduler[I]) changeJob(job Job[I]) {
 
 			// 	s.stopJob(job.ID, false, false, true, reason)
 			// } else {
-			// zlog.Warn("ChangeJob:", s.runs[i].Job.Attributes)
+			zlog.Warn(DebugLog, "ChangeJob:", job.DebugName, s.runs[i].Job.Attributes)
 			s.startAndStopRuns() // a new cost could start it for example
 			// }
 			return
 		}
 	}
+	zlog.Warn(DebugLog, "ChangeJob addJob:", job.DebugName, job.Attributes)
 	s.addJob(job)
 }
 
@@ -1273,44 +1273,4 @@ func (s *Scheduler[I]) GetRunForID(jobID I) (Run[I], error) {
 	}
 	// zlog.Warn("Run4job:", r.Job.ID, r.Count)
 	return *r, nil
-}
-
-func (s *Scheduler[I]) CommandNodes(cs *zcommands.Session, wild string, forExpand bool) []zcommands.Node {
-	longList := false
-	nodes := zcommands.NodesForStruct(cs, s, wild, zcommands.FieldNode, longList)
-	// TODO: Do runs and executors as sub-commands
-	/*
-			func initCommandSliceHandler() {
-			CommandsNode.StructurePointerFunc = func(c *zcommands.CommandInfo) any {
-				return Scheduler.CopyOfSetup()
-			}
-			CommandsNode.Runs.SlicePointerFunc = func(c *zcommands.CommandInfo) any {
-				runs := Scheduler.Runs()
-				sort.Slice(runs, func(i, j int) bool {
-					ri := runs[i]
-					rj := runs[j]
-					c := strings.Compare(ri.Job.DebugName, rj.Job.DebugName)
-					if c != 0 {
-						return c > 0
-					}
-					return false
-				})
-				return &runs
-			}
-			CommandsNode.Executors.SlicePointerFunc = func(c *zcommands.CommandInfo) any {
-				es := Scheduler.Executors()
-				sort.Slice(es, func(i, j int) bool {
-					ei := es[i]
-					ej := es[j]
-					c := strings.Compare(ei.DebugName, ej.DebugName)
-					if c != 0 {
-						return c > 0
-					}
-					return false
-				})
-				return &es
-			}
-		}
-	*/
-	return nodes
 }

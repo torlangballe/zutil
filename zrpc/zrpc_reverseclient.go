@@ -63,7 +63,7 @@ type MultiCallResult[R any] struct {
 
 var (
 	NoCallForTokenErr       = errors.New("NoCallForTokenErr")
-	EnableLogReverseClient  zlog.Enabler
+	EnableLogReverseClient  = zlog.NewEnabler()
 	MainReverseClientsOwner *ReverseClientsOwner
 )
 
@@ -71,8 +71,8 @@ func NewReverseClientsOwner(executor *Executor) *ReverseClientsOwner {
 	r := &ReverseClientsOwner{}
 	r.executor = executor
 	executor.Register(r)
-	zlog.RegisterEnabler("zrpc.EnableLogReverseClient", &EnableLogReverseClient)
-	EnableLogReverseClient = false
+	// zlog.RegisterEnabler("zrpc.EnableLogReverseClient", &EnableLogReverseClient)
+	*EnableLogReverseClient = false
 	ztimer.RepeatForever(PollRestartSecs+5, func() {
 		r.allReverseClients.ForAll(func(cid string, c *ReverseClient) {
 			if time.Since(c.LastPolled) > ztime.SecondsDur(PollRestartSecs+5) {

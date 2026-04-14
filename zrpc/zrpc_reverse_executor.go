@@ -39,11 +39,11 @@ type ReverseResult struct {
 var (
 	temporaryDataServe = zcache.NewExpiringMap[int64, []byte](20) // temporaryDataServe stores temporary bytes to serve within 20 seconds. See AddToTemporaryServe.
 	reverseResults     []ReverseResult                           // reverseResults stores results from executed methods, waiting to be sent on next poll
-	EnableLogExecutor  zlog.Enabler                              = false
+	EnableLogExecutor  = zlog.NewEnabler()
 )
 
 func init() {
-	zlog.RegisterEnabler("zrpc.EnableLogReverseExe", &EnableLogExecutor)
+	// zlog.RegisterEnabler("zrpc.EnableLogReverseExe", &EnableLogExecutor)
 }
 
 func (r *ReverseExecutor) Remove() {

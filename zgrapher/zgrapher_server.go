@@ -43,10 +43,10 @@ type Grapher struct {
 	renderingOldParts zmap.LockMap[Job, bool]
 }
 
-var EnableLog zlog.Enabler
+var EnableLog = zlog.NewEnabler()
 
 func Init() {
-	zlog.RegisterEnabler("zgrapher.Log", &EnableLog)
+	// zlog.RegisterEnabler("zgrapher.Log", &EnableLog)
 }
 
 func NewGrapher(router *mux.Router, deleteDays int, grapherName, folderPath string, secondsPerPixel int) *Grapher {

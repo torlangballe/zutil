@@ -7,6 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/torlangballe/zutil/zcommands"
+	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -36,7 +39,7 @@ type JobDebug struct {
 }
 
 var (
-	debugLog                      zlog.Enabler
+	DebugLog                      = zlog.NewEnabler()
 	debugPrintExecutorRowsPrinted int
 )
 
@@ -171,4 +174,84 @@ func (s *Scheduler[I]) PrintDebugRows(w io.Writer) {
 		return true
 	})
 	tabWriter.Flush()
+}
+
+func idToInt64[I comparable](i I) int64 {
+	switch v := any(i).(type) {
+	case int:
+		return int64(v)
+	case int64:
+		return v
+	default:
+		return zint.HashTo64(fmt.Sprint(i))
+	}
+}
+
+func (s *Scheduler[I]) CommandNodes(cs *zcommands.Session, wild string, forExpand bool) []zcommands.Node {
+	nodes := zcommands.NodesForStruct(cs, s, wild, zcommands.FieldNode, forExpand)
+
+	runs := zcommands.MakeNode("runs", zcommands.ComNode, &RunsCom[I]{s: s}, 0)
+	nodes = append(nodes, runs)
+
+	executors := zcommands.MakeNode("executors", zcommands.ComNode, &ExecutorsCom[I]{s: s}, 0)
+	nodes = append(nodes, executors)
+
+	setup := zcommands.MakeNode("setup", zcommands.ComNode, &s.setup, 0)
+	nodes = append(nodes, setup)
+	return nodes
+}
+
+type RunsCom[I comparable] struct {
+	s *Scheduler[I]
+}
+
+type ExecutorsCom[I comparable] struct {
+	s *Scheduler[I]
+}
+
+func (rc *RunsCom[I]) CommandNodes(s *zcommands.Session, wild string, forExpand bool) []zcommands.Node {
+	var nodes []zcommands.Node
+	for i := range rc.s.runs {
+		run := rc.s.runs[i]
+		n := zcommands.MakeNode(run.Job.DebugName, zcommands.RowNode|zcommands.ComNode, &run, idToInt64(run.Job.ID))
+		nodes = append(nodes, n)
+	}
+	return nodes
+}
+
+func (run *Run[I]) CommandColumns() zdict.Items {
+	return zdict.MakeItems(
+		".id", idToInt64(run.Job.ID),
+		"name", run.Job.DebugName,
+		"executor", run.ExecutorID,
+		"started@", run.StartedAt,
+		"ran@", run.RanAt,
+		"stopped@", run.StoppedAt,
+		"milestone@", run.MilestoneAt,
+		"progress", run.Progress(),
+		"removing", run.Removing,
+		"duration", run.Job.Duration,
+	)
+}
+
+func (ec *ExecutorsCom[I]) CommandNodes(s *zcommands.Session, wild string, forExpand bool) []zcommands.Node {
+	var nodes []zcommands.Node
+	for i := range ec.s.executors {
+		executor := ec.s.executors[i]
+		n := zcommands.MakeNode(executor.DebugName, zcommands.RowNode|zcommands.ComNode, &executor, idToInt64(executor.ID))
+		nodes = append(nodes, n)
+	}
+	return nodes
+}
+
+func (e *Executor[I]) CommandColumns() zdict.Items {
+	return zdict.MakeItems(
+		".id", idToInt64(e.ID),
+		"name", e.DebugName,
+		"able", e.IsAble,
+		"paused", e.Paused,
+		"alive@", e.KeptAliveAt,
+		"cost", e.CostCapacity,
+		"attributes", e.AcceptAttributes,
+	)
 }

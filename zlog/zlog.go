@@ -15,6 +15,7 @@ import (
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zerrors"
 	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -37,7 +38,7 @@ var (
 	outputHooks                = map[string]func(s string){}
 	UseColor                   = false
 	PrintDate                  = true
-	EnablerList                sync.Map // map[string]*Enabler
+	EnablerMap                 zmap.LockMap[*Enabler, string]
 	rateLimiters               sync.Map
 	isInTests                  = (strings.HasSuffix(os.Args[0], ".test"))
 	hookingLock                sync.Mutex
@@ -60,6 +61,22 @@ func init() {
 		ce.SetKeyValue("Invoked", invokeFunc)
 		return ce
 	}
+}
+
+func NewEnabler() *Enabler {
+	var e Enabler
+	funcStr := zdebug.FileLineAndCallingFunctionString(3, true)
+	if !EnablerMap.Has(&e) {
+		EnablerMap.Set(&e, funcStr)
+		fmt.Println("New Enabler:", funcStr, "enabled:")
+	}
+	return &e
+}
+
+func NewTrueEnabler() *Enabler {
+	e := NewEnabler()
+	*e = true
+	return e
 }
 
 func Error(parts ...any) error {
@@ -163,8 +180,8 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 				}
 			}
 			rateLimiters.Store(v, now)
-		case Enabler:
-			if !bool(v) {
+		case *Enabler:
+			if !bool(*v) {
 				return nil
 			}
 			parts = append(parts[:i], parts[i+1:]...) // can't use zslice as it would create cyclical import
@@ -378,6 +395,8 @@ func Func() {
 	Info(zdebug.CallingFunctionString(3))
 }
 
-func RegisterEnabler(name string, b *Enabler) {
-	EnablerList.Store(name, b)
+func (e *Enabler) CommandColumns() zdict.Items {
+	return zdict.MakeItems(
+		"enabled", bool(*e),
+	)
 }

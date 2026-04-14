@@ -57,7 +57,7 @@ const (
 var (
 	MainClient          *Client
 	registeredResources []string
-	EnableLogClient     zlog.Enabler
+	EnableLogClient     = zlog.NewEnabler()
 )
 
 func NewClientWithLocalExecutor(e *Executor, id string) *Client {

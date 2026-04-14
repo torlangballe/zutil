@@ -25,7 +25,7 @@ type Executor struct {
 	ErrorHandler       func(err error)         // calls this with errors that happen, for logging etc in system that uses zrpc
 }
 
-var EnableLogExecute zlog.Enabler
+var EnableLogExecute = zlog.NewEnabler()
 
 func NewExecutor() *Executor {
 	e := &Executor{}

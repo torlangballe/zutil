@@ -373,3 +373,31 @@ func (defaultCommands) Command_delvar(c *CommandInfo, a struct {
 	}
 	c.Session.TermSession.Writeln("Deleted variable", "'"+node.Name+"'")
 }
+
+func (lc LogEnablersCom) CommandNodes(s *Session, wild string, forExpand bool) []Node {
+	var nodes []Node
+	zlog.EnablerMap.ForEach(func(e *zlog.Enabler, funcStr string) bool {
+		n := MakeNode(funcStr, RowNode, e, 0)
+		nodes = append(nodes, n)
+		return true
+	})
+	return nodes
+}
+
+func (d *LogEnablersCom) Command_toggle(c *CommandInfo, a struct {
+	Path        string
+	Description string `zui:"desc:toggle <path>  -- Toggle a log enabler on/off."`
+}) {
+	node, err := c.Session.PathAsItsTopNode(a.Path, RowNode)
+	if err != nil {
+		c.Session.TermSession.Writeln(err)
+		return
+	}
+	enabler, ok := node.Instance.(*zlog.Enabler)
+	if !ok {
+		c.Session.TermSession.Writeln("Node is not a log enabler:", a.Path, reflect.TypeOf(node.Instance))
+		return
+	}
+	*enabler = !*enabler
+	c.Session.TermSession.Writeln("Toggled", node.Name, "to", *enabler)
+}
