@@ -9,6 +9,7 @@ import (
 	"runtime/pprof"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zdict"
@@ -19,6 +20,7 @@ import (
 	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zterm"
+	"github.com/torlangballe/zutil/ztime"
 	"github.com/torlangballe/zutil/zwords"
 )
 
@@ -29,6 +31,9 @@ type UtilCommands struct {
 
 type helpGetter interface {
 	GetHelpForNode_() string
+}
+
+type LogEnablersCom struct {
 }
 
 func init() {
@@ -237,7 +242,12 @@ func listNodes(c *CommandInfo, longList bool) {
 			})
 			val := ""
 			if f != nil {
-				val = fmt.Sprint(f.Value)
+				t, _ := f.Value.(time.Time)
+				if !t.IsZero() {
+					val = ztime.GetNice(t, true)
+				} else {
+					val = fmt.Sprint(f.Value)
+				}
 			}
 			fmt.Fprint(tabs, "\t", val)
 		}
