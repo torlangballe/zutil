@@ -242,8 +242,8 @@ func listNodes(c *CommandInfo, longList bool) {
 			})
 			val := ""
 			if f != nil {
-				t, _ := f.Value.(time.Time)
-				if !t.IsZero() {
+				t, is := f.Value.(time.Time)
+				if is {
 					val = ztime.GetNice(t, true)
 				} else {
 					val = fmt.Sprint(f.Value)
