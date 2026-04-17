@@ -8,7 +8,6 @@ import (
 
 	"github.com/torlangballe/zui/zapp"
 	"github.com/torlangballe/zui/zbutton"
-	"github.com/torlangballe/zui/zcheckbox"
 	"github.com/torlangballe/zui/zclipboard"
 	"github.com/torlangballe/zui/zcontainer"
 	"github.com/torlangballe/zui/zkeyboard"
@@ -23,7 +22,6 @@ import (
 	"github.com/torlangballe/zutil/zgraphana"
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zkeyvalue"
-	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/ztimer"
 )
@@ -129,16 +127,6 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string,
 		}
 	}
 	frame, _ = makeFrame(&v.StackView, "Enable GUI named log sections")
-	zlog.EnablerList.Range(func(k, v any) bool {
-		name := k.(string)
-		e := v.(*zlog.Enabler)
-		check, _, stack := zcheckbox.NewWithLabel(false, name, name+".zlog.Enabler")
-		frame.Add(stack, zgeo.CenterLeft)
-		check.SetValueHandler("", func(edited bool) {
-			*e = zlog.Enabler(check.On())
-		})
-		return true
-	})
 	var header *zcontainer.StackView
 	frame, header = makeFrame(&v.StackView, "Telemetry")
 	grid := zcontainer.NewGridView("options", 2)
