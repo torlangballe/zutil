@@ -68,7 +68,6 @@ func NewEnabler() *Enabler {
 	funcStr := zdebug.FileLineAndCallingFunctionString(3, true)
 	if !EnablerMap.Has(&e) {
 		EnablerMap.Set(&e, funcStr)
-		fmt.Println("New Enabler:", funcStr, "enabled:")
 	}
 	return &e
 }

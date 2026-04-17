@@ -1023,13 +1023,13 @@ func (s *Scheduler[I]) changeJob(job Job[I]) {
 
 			// 	s.stopJob(job.ID, false, false, true, reason)
 			// } else {
-			zlog.Warn(DebugLog, "ChangeJob:", job.DebugName, s.runs[i].Job.Attributes)
+			zlog.Info(DebugLog, "ChangeJob:", job.DebugName, s.runs[i].Job.Attributes)
 			s.startAndStopRuns() // a new cost could start it for example
 			// }
 			return
 		}
 	}
-	zlog.Warn(DebugLog, "ChangeJob addJob:", job.DebugName, job.Attributes)
+	zlog.Info(DebugLog, "ChangeJob addJob:", job.DebugName, job.Attributes)
 	s.addJob(job)
 }
 

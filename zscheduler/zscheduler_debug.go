@@ -9,6 +9,7 @@ import (
 
 	"github.com/torlangballe/zutil/zcommands"
 	"github.com/torlangballe/zutil/zdict"
+	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zstr"
@@ -228,9 +229,12 @@ func (run *Run[I]) CommandColumns() zdict.Items {
 		"ran@", run.RanAt,
 		"stopped@", run.StoppedAt,
 		"milestone@", run.MilestoneAt,
-		"progress", run.Progress(),
+		"progress", fmt.Sprintf("%d%%", int(run.Progress()*100)),
 		"removing", run.Removing,
 		"duration", run.Job.Duration,
+		"attributes", run.Job.Attributes,
+		"cost", zfloat.KeepFractionDigits(run.Job.Cost, 2),
+		"able", run.Job.IsAble,
 	)
 }
 
@@ -251,7 +255,7 @@ func (e *Executor[I]) CommandColumns() zdict.Items {
 		"able", e.IsAble,
 		"paused", e.Paused,
 		"alive@", e.KeptAliveAt,
-		"cost", e.CostCapacity,
+		"capacity", e.CostCapacity,
 		"attributes", e.AcceptAttributes,
 	)
 }
