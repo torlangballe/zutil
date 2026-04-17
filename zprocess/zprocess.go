@@ -18,11 +18,9 @@ import (
 
 // OnceWait is something you call Wait() on and it waits until Done() is called on it. Once.
 // Use to wait for some global data to be inited for example.
-// TODO: Check if a semaphore could be used.
 type OnceWait struct {
-	done   bool
-	inited bool
-	wg     sync.WaitGroup
+	ready chan struct{}
+	once  sync.Once
 }
 
 var (
@@ -34,6 +32,12 @@ var (
 func init() {
 	zdebug.GetOngoingProcsCountFunc = func() int {
 		return procs.Count()
+	}
+}
+
+func NewOnceWait() *OnceWait {
+	return &OnceWait{
+		ready: make(chan struct{}),
 	}
 }
 
@@ -145,22 +149,13 @@ func PopProcess(p *proc) {
 }
 
 func (o *OnceWait) Wait() {
-	if !o.inited {
-		o.inited = true
-		o.wg.Add(1)
-	}
-	o.wg.Wait()
+	<-o.ready
 }
 
 func (o *OnceWait) Done() {
-	if !o.inited {
-		o.inited = true
-		o.wg.Add(1)
-	}
-	if !o.done {
-		o.done = true
-		o.wg.Done()
-	}
+	o.once.Do(func() {
+		close(o.ready)
+	})
 }
 
 // OnThreadExecutor returns a channel of func() to push functions you want to run on the thread OnThreadExecutor was called on.
