@@ -3,6 +3,7 @@ package znamedfuncs
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"go/token"
 	"reflect"
 	"time"
@@ -33,14 +34,16 @@ type Executor struct {
 
 type CallPayloadSend struct {
 	zrpc.ClientInfo
-	Method string
-	Args   any
+	Method   string
+	Args     any
+	TargetID int64 // if non-zero, TargetID is checked against the TargetID of the executor receiving the call, and if they don't match, the call is rejected. This is to avoid calls being received by an executor that restarted and has a different TargetID, when the call was made before the restart and might not be valid anymore.
 }
 
 type CallPayloadReceive struct {
 	zrpc.ClientInfo
-	Method string
-	Args   json.RawMessage
+	Method   string
+	Args     json.RawMessage
+	TargetID int64 // See CallPayloadSend.TargetID
 }
 
 // TransportError is a specific error type. Any problem with the actual business logic of a namedfuncs call, not something the called function does.
@@ -61,10 +64,10 @@ type methodType struct {
 
 // ReceivePayload is what the result of the call is returned in.
 type ReceivePayload struct {
-	Result         json.RawMessage
-	Error          string         `json:",omitempty"`
-	TransportError TransportError `json:",omitempty"`
-	// AuthenticationInvalid bool
+	Result           json.RawMessage
+	Error            string         `json:",omitempty"`
+	TransportError   TransportError `json:",omitempty"`
+	ExecutorTargetID int64          `json:",omitempty"` // Target ID of the executor that executed the call, for client to update targetID if changed.
 }
 
 var (
@@ -288,7 +291,7 @@ func (e *Executor) Execute(cp *CallPayloadReceive, rp *ReceivePayload) {
 	if e.Authenticator != nil && e.methodNeedsAuth(cp.Method) {
 		valid, userID := e.Authenticator.IsTokenValid(cp.Token, nil)
 		if !valid {
-			zlog.Error("token not valid: '"+cp.Token+"'", cp.Method, zlog.Full(e.Authenticator), cp.ClientInfo)
+			zlog.Error("token not valid: '"+cp.Token+"'", cp.Method, cp.ClientInfo)
 			rp.TransportError = AuthenticationInvalidError
 			return
 		}
@@ -303,13 +306,17 @@ func (e *Executor) Execute(cp *CallPayloadReceive, rp *ReceivePayload) {
 	rp.TransportError = TransportError("no method registered: " + cp.Method + " " + zlog.Full(cp.ClientInfo))
 }
 
-func (e *Executor) ExecuteFromToJSON(payload []byte, result *[]byte, ci zrpc.ClientInfo) error {
+func (e *Executor) ExecuteFromToJSON(payload []byte, result *[]byte, ci zrpc.ClientInfo, executorTargetID int64) error {
 	var cp CallPayloadReceive
 	var rp ReceivePayload
 	err := json.Unmarshal(payload, &cp)
 	if err != nil {
 		rp.TransportError = TransportError(err.Error())
 	} else {
+		if cp.TargetID != 0 && cp.TargetID != executorTargetID {
+			rp.TransportError = TransportError(fmt.Sprintf("TargetID mismatch: callid:%d != target:%d", cp.TargetID, executorTargetID))
+			err = nil
+		}
 		if cp.ClientInfo.TimeToLiveSeconds > 0 {
 			ctx, cancel := context.WithTimeout(context.Background(), ztime.SecondsDur(cp.ClientInfo.TimeToLiveSeconds))
 			defer cancel()
@@ -317,6 +324,7 @@ func (e *Executor) ExecuteFromToJSON(payload []byte, result *[]byte, ci zrpc.Cli
 		}
 		e.Execute(&cp, &rp)
 	}
+	rp.ExecutorTargetID = executorTargetID
 	*result, err = json.Marshal(rp)
 	if err != nil {
 		zlog.Error("encode namedfuncs result", cp.Method, rp, err, zdebug.CallingStackString())

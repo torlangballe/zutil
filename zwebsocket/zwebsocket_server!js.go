@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
@@ -32,6 +33,7 @@ type Server struct {
 }
 
 func NewServer(path string, port int, handler func(id string, data []byte, err error) []byte) (*Server, error) {
+	zlog.Fatal("NewServer!")
 	s := &Server{}
 	s.Timeout = time.Second * 10
 	s.handlerFunc = handler
@@ -46,6 +48,15 @@ func NewServer(path string, port int, handler func(id string, data []byte, err e
 	}()
 	time.Sleep(time.Millisecond * 50) // Give ListenAndServe time to start
 	return s, err
+}
+
+func NewServerWithRouter(path string, router *mux.Router, handler func(id string, data []byte, err error) []byte) (*Server, error) {
+	s := &Server{}
+	s.Timeout = time.Second * 10
+	s.handlerFunc = handler
+	router.Handle(path, websocket.Handler(s.handleSocketRequest))
+	// time.Sleep(time.Millisecond * 50) // Give ListenAndServe time to start
+	return s, nil
 }
 
 func (s *Server) Close() {
@@ -120,7 +131,6 @@ func (s *Server) handleSocketRequest(conn *websocket.Conn) {
 		}
 	}
 	cs := s.setClientToServer(id, req.URL.Path, conn)
-	zlog.Info("server connection:", id, req.URL)
 	defer conn.Close()
 	cs.base.readForever()
 }

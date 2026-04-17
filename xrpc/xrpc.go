@@ -2,13 +2,16 @@ package xrpc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand"
 	"net/url"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/znamedfuncs"
+	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/ztimer"
 	"github.com/torlangballe/zutil/zwebsocket"
@@ -19,19 +22,22 @@ type ConnectInfo[C any] struct {
 	currentBackoffSecs float64
 	maxBackoffSecs     float64
 	lastConnectTry     time.Time
-	// connectFunc        func(pipeID string) *C
+	targetID           int64
 }
 
 type RPC struct {
-	clients                          map[string]*ConnectInfo[zwebsocket.Client]
-	servers                          map[string]*ConnectInfo[zwebsocket.Server]
 	Executor                         *znamedfuncs.Executor
 	ConnectServerFunc                func(serverID string) (*zwebsocket.Server, error)
 	ConnectClientFunc                func(clientID string) (*zwebsocket.Client, error)
-	connectRepeater                  *ztimer.Repeater
 	HandleAuthenticationFailedFunc   func(id string) // HandleAuthenticationFailedFunc is called if authentication fails
 	KeepTokenOnAuthenticationInvalid bool            // if KeepTokenOnAuthenticationInvalid is true, the auth token isn't cleared on failure to authenticate
+	IPAddress                        string          // IP address to report in ClientInfo for outgoing calls.
+	targetID                         int64
+	waitForStart                     *zprocess.OnceWait
 
+	clients         map[string]*ConnectInfo[zwebsocket.Client]
+	servers         map[string]*ConnectInfo[zwebsocket.Server]
+	connectRepeater *ztimer.Repeater
 }
 
 type Caller struct {
@@ -47,6 +53,7 @@ const (
 var (
 	MainRPC                *RPC
 	exchangeWithServerFunc func(r *RPC, pipeID string, cpJson []byte) (rpJson []byte, err error)
+	xRPCLog                = zlog.NewEnabler()
 )
 
 func NewRPC() *RPC {
@@ -54,6 +61,8 @@ func NewRPC() *RPC {
 	r.clients = make(map[string]*ConnectInfo[zwebsocket.Client])
 	r.servers = make(map[string]*ConnectInfo[zwebsocket.Server])
 	r.connectRepeater = ztimer.NewRepeater()
+	r.targetID = rand.Int63()
+	r.waitForStart = zprocess.NewOnceWait()
 	return r
 }
 
@@ -83,7 +92,6 @@ func (ci *ConnectInfo[C]) ConnectIfNeeded(id string, connectFunc func(id string)
 }
 
 func (r *RPC) ClientForID(clientID string) *zwebsocket.Client {
-	// zlog.Info("ClientForID:", clientID, r != nil)
 	c := r.clients[clientID]
 	if c != nil {
 		return c.connection
@@ -99,23 +107,31 @@ func (r *RPC) ServerForID(serverID string) *zwebsocket.Server {
 	return nil
 }
 
-func (r *RPC) AddClient(clientID string) {
-	c := ConnectInfo[zwebsocket.Client]{
-		maxBackoffSecs: 5,
+func (r *RPC) SetClient(clientID string) {
+	zlog.Info("SetClient called for clientID:", clientID)
+	c, has := r.clients[clientID]
+	if !has {
+		c = &ConnectInfo[zwebsocket.Client]{
+			maxBackoffSecs: 5,
+		}
+		r.clients[clientID] = c
 	}
-	r.clients[clientID] = &c
 	c.ConnectIfNeeded(clientID, r.ConnectClientFunc)
 }
 
-func (r *RPC) AddServer(serverID string) {
-	s := ConnectInfo[zwebsocket.Server]{
-		maxBackoffSecs: 5,
+func (r *RPC) SetServer(serverID string) {
+	s, has := r.servers[serverID]
+	if !has {
+		s = &ConnectInfo[zwebsocket.Server]{
+			maxBackoffSecs: 5,
+		}
+		r.servers[serverID] = s
 	}
-	r.servers[serverID] = &s
 	s.ConnectIfNeeded(serverID, r.ConnectServerFunc)
 }
 
 func (r *RPC) Start() {
+	r.waitForStart.Done() // allow incoming calls to be handled now that we're starting
 	r.connectRepeater.Set(0.1, true, func() bool {
 		for id, c := range r.clients {
 			err := c.ConnectIfNeeded(id, r.ConnectClientFunc)
@@ -151,19 +167,21 @@ func (r *RPC) handleClientError(pipeID string, err error) {
 // MakeClient creates a new client connection to the given URL. If port is not 0, it overrides the port in the URL with the given port.
 // Note that you clients are normally made with AddClient() that uses ConnectIfNeeded() and r.ConnectClientFunc to actually create a client.
 func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, error) {
+	zlog.Info("RPC.MakeClient:", surl, pipeID, port)
 	var client *zwebsocket.Client
 	handler := func(msg []byte, err error) []byte {
 		if err != nil {
 			r.handleClientError(pipeID, err)
 			return nil
 		}
+		r.waitForStart.Wait() // wait for Start() to be called before handling any messages
 		ci := zrpc.ClientInfo{
 			Token:    client.AuthToken,
 			ClientID: pipeID,
 		}
 		ci.TimeToLiveSeconds = client.DefaultTimeToLiveSeconds
 		var result []byte
-		err = r.Executor.ExecuteFromToJSON(msg, &result, ci)
+		err = r.Executor.ExecuteFromToJSON(msg, &result, ci, r.targetID)
 		zlog.OnError(err, pipeID)
 		if err == znamedfuncs.AuthenticationInvalidError {
 			if !r.KeepTokenOnAuthenticationInvalid {
@@ -196,6 +214,9 @@ func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, err
 
 func (r *RPC) RemoveClient(pipeID string) {
 	c := r.clients[pipeID]
+	if c == nil {
+		return
+	}
 	if c.connection != nil {
 		c.connection.Close()
 	}
@@ -226,7 +247,16 @@ func MainClient() *zwebsocket.Client {
 func (c Caller) Call(fullMethod string, in any, resultPtr any) error {
 	return c.RPC.Call(c.ID, fullMethod, in, resultPtr)
 }
-func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any) error {
+
+func (r *RPC) TokenForClientID(clientID string) (string, error) {
+	c := r.clients[clientID]
+	if c != nil && c.connection != nil {
+		return c.connection.AuthToken, nil
+	}
+	return "", errors.New("not found")
+}
+
+func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, timeoutSecs ...float64) error {
 	var cp znamedfuncs.CallPayloadSend
 	cp.Method = fullMethod
 	c := r.clients[pipeID]
@@ -235,6 +265,9 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any) erro
 	if c != nil {
 		cp.ClientInfo.Token = c.connection.AuthToken
 		cp.ClientInfo.TimeToLiveSeconds = c.connection.DefaultTimeToLiveSeconds
+		cp.ClientInfo.SendDate = time.Now().UTC()
+		cp.ClientInfo.IPAddress = r.IPAddress
+		cp.TargetID = c.targetID
 	}
 	cp.Args = in
 	if err != nil {
@@ -255,6 +288,9 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any) erro
 		if c.connection == nil {
 			return zlog.NewError("Connection down for client pipe:", pipeID, "method:", fullMethod)
 		}
+		if len(timeoutSecs) > 0 {
+			c.connection.DefaultTimeToLiveSeconds = timeoutSecs[0]
+		}
 		rpJson, err = c.connection.Exchange(cpJson)
 		if err != nil {
 			r.handleClientError(pipeID, err)
@@ -262,7 +298,6 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any) erro
 		}
 	} else if exchangeWithServerFunc != nil {
 		rpJson, err = exchangeWithServerFunc(r, pipeID, cpJson)
-		// zlog.Warn("RPC ServerConnection Call to pipeID:", pipeID, err)
 	}
 	if err != nil {
 		r.handleServerConnectionError(pipeID, err)
@@ -270,9 +305,13 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any) erro
 	}
 	var rp znamedfuncs.ReceivePayload
 	err = json.Unmarshal(rpJson, &rp)
-	// zlog.Warn("RPC Call to pipeID:", pipeID, "method:", fullMethod, "args:", in, "got result json:", string(rpJson), "err:", err)
+	zlog.Info(xRPCLog, "RPC Call to pipeID:", pipeID, "method:", fullMethod, "args:", in, "got result json:", string(rpJson), "err:", err)
 	if err != nil {
 		return zlog.NewError(err, "unmarshal RP failed json:"+string(rpJson))
+	}
+	c = r.clients[pipeID] // let's get it again in case it was removed
+	if c != nil {
+		c.targetID = rp.ExecutorTargetID // update client TargetID to match the executor that executed the call, in case it changed after a restart
 	}
 	if resultPtr != nil {
 		err = json.Unmarshal(rp.Result, resultPtr)

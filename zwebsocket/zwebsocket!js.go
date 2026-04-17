@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zbytes"
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
+	"github.com/torlangballe/zutil/zstr"
 	"golang.org/x/net/websocket"
 )
 
@@ -93,7 +95,7 @@ func (b *base) Exchange(msg []byte) ([]byte, error) {
 			outErr = r.err
 			return data, outErr
 		case <-time.After(b.Timeout):
-			outErr = zlog.Error("WebSocket client exchange timeout")
+			outErr = zlog.Error("WebSocket exchange timeout", zstr.Head(string(msg), 500), zdebug.CallingStackString())
 			return nil, outErr
 		}
 	}
@@ -168,6 +170,9 @@ func (c *Client) open() error {
 	// origin := "http://localhost"
 	origin := "http://localhost?id=abcd"
 	config, err := websocket.NewConfig(c.url, origin)
+	if zlog.OnError(err) {
+		return err
+	}
 	config.Header.Set(IDHeader, c.ID)
 	config.Header.Set("Authorization", "Bearer "+c.AuthToken)
 	ws, err := websocket.DialConfig(config)

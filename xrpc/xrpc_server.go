@@ -3,12 +3,13 @@
 package xrpc
 
 import (
+	"github.com/gorilla/mux"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zwebsocket"
 )
 
-func (r *RPC) MakeServer(path string, port int) (*zwebsocket.Server, error) {
+func (r *RPC) MakeServer(path string, port int, router *mux.Router) (*zwebsocket.Server, error) {
 	handler := func(id string, msg []byte, err error) []byte {
 		if err != nil {
 			// zlog.Warn("RPC server got error from websocket connection", id, err)
@@ -18,9 +19,12 @@ func (r *RPC) MakeServer(path string, port int) (*zwebsocket.Server, error) {
 			ClientID: id,
 		}
 		var result []byte
-		err = r.Executor.ExecuteFromToJSON(msg, &result, ci)
+		err = r.Executor.ExecuteFromToJSON(msg, &result, ci, r.targetID)
 		zlog.OnError(err, "RPC server call execute error", msg)
 		return result
+	}
+	if router != nil {
+		return zwebsocket.NewServerWithRouter(path, router, handler)
 	}
 	return zwebsocket.NewServer(path, port, handler)
 }
