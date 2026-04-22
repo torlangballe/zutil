@@ -282,6 +282,8 @@ func callMethod(e *Executor, ci zrpc.ClientInfo, mtype *methodType, rawArg json.
 }
 
 func (e *Executor) SetAuthNotNeededForMethod(name string) {
+	_, got := e.callMethods[name]
+	zlog.Assert(got, name)
 	// zlog.Info("SetAuthNotNeededForMethod:", zlog.Pointer(e), e != nil, name, e.callMethods[name] != nil)
 	e.callMethods[name].AuthNotNeeded = true
 }
