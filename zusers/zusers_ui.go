@@ -232,12 +232,12 @@ func checkAndDoAuth() {
 		return
 	}
 	doingAuth = true
-	var user User
-	err = RPCCaller.Call("UsersCalls.GetUserForToken", zrpc.MainClient.AuthToken, &user)
+	var us UserSession
+	err = RPCCaller.Call("UsersCalls.GetUserSessionForToken", zrpc.MainClient.AuthToken, &us)
 	if err == nil {
-		CurrentUser.UserID = user.ID
-		CurrentUser.UserName = user.UserName
-		CurrentUser.Permissions = user.Permissions
+		CurrentUser.UserID = us.User.ID
+		CurrentUser.UserName = us.User.UserName
+		CurrentUser.Permissions = us.User.Permissions
 		CurrentUser.Token = zrpc.MainClient.AuthToken
 		if AuthenticatedFunc != nil {
 			AuthenticatedFunc(nil)

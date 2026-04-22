@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zkeyvalue"
+	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -22,6 +23,12 @@ type User struct {
 	Sessions          int       `zui:"usein:$row,minwidth:60"`
 }
 
+type Session struct {
+	zrpc.ClientInfo
+	Created time.Time
+	Used    time.Time
+}
+
 type Authentication struct {
 	UserName   string
 	Password   string
@@ -33,6 +40,7 @@ type ClientUserInfo struct {
 	UserName    string
 	Permissions []string
 	UserID      int64
+	ClientID    int64
 }
 
 type ChangeInfo struct {
@@ -45,11 +53,10 @@ type ResetPassword struct {
 	Password   string
 }
 
-// type AllUserInfo struct {
-// 	AdminStar string `zui:"notitle,width:16,justify:center,tip:star for admin user"`
-// 	User
-// 	Sessions int `zui:"static,width:70"`
-// }
+type UserSession struct {
+	User    User
+	Session Session
+}
 
 const (
 	AdminPermission = "admin" // This is someone who can add/delete users, set permissions

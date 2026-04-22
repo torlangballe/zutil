@@ -5,7 +5,7 @@ package zusers
 import (
 	"fmt"
 	"math/rand"
-	"time"
+	"net/http"
 
 	"github.com/torlangballe/zutil/zcache"
 	"github.com/torlangballe/zutil/zhttp"
@@ -21,12 +21,6 @@ import (
 // https://css-tricks.com/passkeys-what-the-heck-and-why/
 
 type UsersCalls zrpc.CallsBase
-
-type Session struct {
-	zrpc.ClientInfo
-	UserID  int64
-	Created time.Time
-}
 
 type ForgotPasswordData struct {
 	MailAuth    zmail.Authentication
@@ -52,36 +46,42 @@ func setupWithSQLServer(s *SQLServer, executor zrpc.Executioner) {
 	}
 	authenticator = executor.GetAuthenticator()
 	executor.Register(UsersCalls{})
-	executor.SetAuthNotNeededForMethod("UsersCalls.GetUserForToken")
+	executor.SetAuthNotNeededForMethod("UsersCalls.GetUserSessionForToken")
 	executor.SetAuthNotNeededForMethod("UsersCalls.Authenticate")
 	executor.SetAuthNotNeededForMethod("UsersCalls.SendForgotPasswordPasswordMail")
 	executor.SetAuthNotNeededForMethod("UsersCalls.SetNewPasswordFromForgotPassword")
 	zsql.GetUserIDFromTokenFunc = MainServer.GetUserIDFromToken
 }
 
-// func (UsersCalls) IsAuthWorking(ci *zrpc.ClientInfo, arg zrpc.Unused, token *string) error {
-// 	*token = ci.Token // if we actually get here at all, we're good
-// 	return nil
-// }
+func (UsersCalls) GetUserIDFromToken(token string, id *int64) error {
+	uid, err := MainServer.GetUserIDFromToken(token)
+	if err != nil {
+		return err
+	}
+	*id = uid
+	return nil
+}
 
-func (UsersCalls) GetUserForToken(ci *zrpc.ClientInfo, token string, user *User) error {
+func (UsersCalls) GetUserSessionForToken(ci *zrpc.ClientInfo, token string, us *UserSession) error {
+	return GetUserSessionForToken(token, us, ci.Request)
+}
+
+func GetUserSessionForToken(token string, us *UserSession, req *http.Request) error {
 	if MainServer == nil {
 		return nil
 	}
-	u, err := MainServer.GetUserForToken(token)
+	usession, err := MainServer.GetUserSessionForToken(token)
 	if err != nil {
-		valid, uid := authenticator.IsTokenValid("", ci.Request) // , ci.Request
-		if valid {
-			u, err = MainServer.GetUserForID(uid)
-			if err != nil {
-				return err
+		if authenticator != nil {
+			valid, _ := authenticator.IsTokenValid("", req) // Authenticates with Request instead??
+			if valid {
+				*us = usession
+				return nil
 			}
-			*user = u
-			return nil
 		}
 		return err
 	}
-	*user = u
+	*us = usession
 	return nil
 }
 
@@ -103,8 +103,8 @@ func (UsersCalls) Authenticate(ci *zrpc.ClientInfo, a Authentication, ui *Client
 		if !AllowRegistration {
 			fail := true
 			if ci.Token != "" {
-				u, err := MainServer.GetUserForToken(ci.Token)
-				fail = !(err == nil && IsAdmin(u.Permissions))
+				us, err := MainServer.GetUserSessionForToken(ci.Token)
+				fail = !(err == nil && IsAdmin(us.User.Permissions))
 			}
 			if fail {
 				return zlog.NewError("registration not allowed")
@@ -208,11 +208,11 @@ func (UsersCalls) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change 
 	if MainServer == nil {
 		return nil
 	}
-	callingUser, err := MainServer.GetUserForToken(ci.Token)
+	callingUserSession, err := MainServer.GetUserSessionForToken(ci.Token)
 	if err != nil {
 		return zlog.Error("getting admin user", err)
 	}
-	if !callingUser.IsAdmin() {
+	if !callingUserSession.User.IsAdmin() {
 		return zlog.Error("change user name / permissions: must be done my admin user", err)
 	}
 	changeUser, err := MainServer.GetUserForID(change.UserID)
@@ -237,11 +237,11 @@ func (UsersCalls) UnauthenticateUser(ci *zrpc.ClientInfo, userID int64) error {
 		return nil
 	}
 	zlog.Info("US.UnauthenticateUser")
-	callingUser, err := MainServer.GetUserForToken(ci.Token)
+	callingUserSession, err := MainServer.GetUserSessionForToken(ci.Token)
 	if err != nil {
 		return zlog.Error("getting admin user", err)
 	}
-	if !callingUser.IsAdmin() {
+	if !callingUserSession.User.IsAdmin() {
 		return zlog.Error("unauthenticating other user: must be done my admin user", err)
 	}
 	err = MainServer.UnauthenticateUser(userID)

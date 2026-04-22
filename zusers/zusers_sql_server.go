@@ -76,6 +76,7 @@ func (s *SQLServer) setup() error {
 		zlog.Error("create tokens", squery, err)
 		return err
 	}
+
 	squery = `CREATE INDEX IF NOT EXISTS idx_tokens_ids ON zuser_sessions (token, userid)`
 	squery = s.customizeQuery(squery)
 	_, err = s.DB.Exec(squery)
@@ -92,24 +93,52 @@ func (s *SQLServer) setup() error {
 	return nil
 }
 
-func (s *SQLServer) GetNewestTokenForUserID(userID int64) (token string, err error) {
+func (s *SQLServer) GetNewestTokenForUserID(userID int64) (string, error) {
+	var token string
 	squery := "SELECT token FROM zuser_sessions WHERE userid=$1 ORDER BY used DESC LIMIT 1"
 	squery = s.customizeQuery(squery)
 	row := s.DB.QueryRow(squery, userID)
-	err = row.Scan(&token)
+	err := row.Scan(&token)
 	return token, err
 }
 
-func (s *SQLServer) GetUserForToken(token string) (user User, err error) {
-	id, err := s.GetUserIDFromToken(token)
+func (s *SQLServer) GetUserSessionForToken(token string) (UserSession, error) {
+	session, err := s.GetSessionForToken(token)
 	if err != nil {
-		return
+		return UserSession{}, err
 	}
-	if id == 0 {
+	if session.UserID == 0 {
 		err = fmt.Errorf("no user for token: %w", AuthFailedError)
-		return
+		return UserSession{}, err
 	}
-	return s.GetUserForID(id)
+	user, err := s.GetUserForID(session.UserID)
+	if err != nil {
+		return UserSession{}, err
+	}
+	us := UserSession{
+		User:    user,
+		Session: session,
+	}
+	return us, nil
+}
+
+func (s *SQLServer) GetSessionsForClientID(clientID int64) ([]Session, error) {
+	var sessions []Session
+	squery := "SELECT " + allSessionFields + " FROM zuser_sessions WHERE clientid=$1 LIMIT 1"
+	squery = s.customizeQuery(squery)
+	rows, err := s.DB.Query(squery, clientID)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var session Session
+		err = rows.Scan(&session.Token, &session.UserID, &session.ClientID, &session.UserAgent, &session.IPAddress, &session.Created, &session.Used)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, session)
+	}
+	return sessions, nil
 }
 
 func (s *SQLServer) IsTokenValid(token string, req *http.Request) (bool, int64) {
@@ -134,6 +163,27 @@ func (s *SQLServer) GetUserForID(id int64) (User, error) {
 		return user, fmt.Errorf("No user for id %d (%w)", id, AuthFailedError)
 	}
 	return user, nil
+}
+
+func (s *SQLServer) GetSessionForToken(token string) (Session, error) {
+	var session Session
+	squery := "SELECT " + allSessionFields + " FROM zuser_sessions WHERE token=$1 LIMIT 1"
+	squery = s.customizeQuery(squery)
+	row := s.DB.QueryRow(squery, token)
+	err := row.Scan(&session.Token, &session.UserID, &session.ClientID, &session.UserAgent, &session.IPAddress, &session.Created, &session.Used)
+	if err != nil {
+		zlog.Error(squery, "token:", token, err)
+		// zlog.Error(squery, "token:", token, err, zlog.CallingStackString())
+		return Session{}, AuthFailedError
+	}
+	squery = "UPDATE zuser_sessions SET used=$NOW WHERE token=$1"
+	squery = s.customizeQuery(squery)
+	_, err = s.DB.Exec(squery, token)
+	if err != nil {
+		zlog.Error(squery, token, err)
+		return Session{}, AuthFailedError
+	}
+	return session, nil
 }
 
 func (s *SQLServer) GetUserIDFromToken(token string) (id int64, err error) {
@@ -239,6 +289,7 @@ func (s *SQLServer) GetAllUsers() (us []User, err error) {
 }
 
 const allUserFields = "id, username, passwordhash, transpasswordhash, salt, permissions, created, login"
+const allSessionFields = "token, userid, clientid, useragent, ipaddress, created, used"
 
 func (s *SQLServer) GetUserForUserName(username string) (user User, err error) {
 	squery := "SELECT " + allUserFields + " FROM zusers WHERE username=$1 LIMIT 1"
@@ -273,7 +324,6 @@ func (s *SQLServer) UnauthenticateUser(id int64) error {
 func (s *SQLServer) AddNewSession(session Session) error {
 	squery := `INSERT INTO zuser_sessions (token, userid, clientid, useragent, ipaddress) VALUES ($1, $2, $3, $4, $5)`
 	squery = s.customizeQuery(squery)
-	zlog.Info("SQL AddNewSession:", zlog.Full(session))
 	_, err := s.DB.Exec(squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
 	if err != nil {
 		zlog.Error("insert", err, squery, session.Token, session.UserID, session.ClientID, session.UserAgent, session.IPAddress)
@@ -379,10 +429,10 @@ func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, chang
 	return nil
 }
 
-func (s *SQLServer) GetOrCreateSessionForUserIDAndClientID(ci *zrpc.ClientInfo, userID int64, clientID string) (token string, err error) {
+func (s *SQLServer) GetOrCreateSessionForUserIDAndClientID(ci *zrpc.ClientInfo) (token string, err error) {
 	squery := "SELECT token FROM zuser_sessions us WHERE userid=$1 AND clientid=$2 LIMIT 1"
 	squery = s.customizeQuery(squery)
-	row := s.DB.QueryRow(squery, userID, clientID)
+	row := s.DB.QueryRow(squery, ci.UserID, ci.ClientID)
 	err = row.Scan(&token)
 	if err == nil {
 		return token, err
@@ -390,8 +440,8 @@ func (s *SQLServer) GetOrCreateSessionForUserIDAndClientID(ci *zrpc.ClientInfo, 
 	var session Session
 	session.ClientInfo = *ci
 	session.Token = zstr.Concat(".", ci.Type, zstr.GenerateUUID())
-	session.ClientID = clientID
-	session.UserID = userID
+	session.ClientID = ci.ClientID
+	session.UserID = ci.UserID
 	err = s.AddNewSession(session)
 	if err != nil {
 		zlog.Error("GetOrCreateSessionForUserID", err)
