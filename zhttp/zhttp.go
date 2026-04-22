@@ -390,12 +390,10 @@ func GetResponseAndIPAddress(surl string, params Parameters) (resp *http.Respons
 	}
 
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
-	zlog.Info("GetResponse:", err, req != nil, client != nil)
 	if err != nil {
 		return
 	}
 	resp, err = GetResponseFromReqClient(params, req, client)
-	zlog.Warn("GetResponseAndIPAddress:", err, *fip, *tip, surl, params.Method)
 	return resp, *fip, *tip, err
 }
 
