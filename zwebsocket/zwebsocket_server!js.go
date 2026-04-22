@@ -33,7 +33,6 @@ type Server struct {
 }
 
 func NewServer(path string, port int, handler func(id string, data []byte, err error) []byte) (*Server, error) {
-	zlog.Fatal("NewServer!")
 	s := &Server{}
 	s.Timeout = time.Second * 10
 	s.handlerFunc = handler
