@@ -192,7 +192,7 @@ func ForwardPortToRemote(port int, remoteAddress string) error {
 		}
 		proxy, err := net.Dial("tcp", remoteAddress)
 		if err != nil {
-			zlog.Error("dial target", err)
+			zlog.Error("dial target:", port, remoteAddress, err)
 			continue
 		}
 		zlog.Info("ForwardPortToRemote copy start")
