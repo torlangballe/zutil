@@ -401,7 +401,7 @@ func InsertRows[S any](table string, rows []S, skipColumns []string, userToken s
 	return ids, nil
 }
 
-func UpsertRow[S any](table, conflictCol string, row S, skipColumns []string, idCol, userToken, where string) (id int64, native string, err error) {
+func UpsertRow[S any](row S, table, conflictCol string, skipColumns []string, idCol, where string) (id int64, err error) {
 	var sets []string
 	params := FieldParametersFromStruct(row, skipColumns, 1)
 	vals := FieldValuesFromStruct(row, skipColumns)
@@ -414,46 +414,17 @@ func UpsertRow[S any](table, conflictCol string, row S, skipColumns []string, id
 	if where != "" {
 		query += "WHERE " + where + "\n"
 	}
-	query += " RETURNING " + idCol + "," + conflictCol + "\n"
+	query += " RETURNING " + idCol + "\n"
 
 	dbRow := Main.DB.QueryRow(query, vals...)
-	err = dbRow.Scan(&id, &native)
+	err = dbRow.Scan(&id)
 	if err == sql.ErrNoRows {
 		err = nil
 	}
 	if zlog.OnError(err, ReplaceDollarArguments(query, vals...)) {
-		return 0, "", err
+		return 0, err
 	}
-	return id, native, nil
-}
-
-func UpsertRows[S any](table, conflictCol string, rows []S, skipColumns []string, userToken string) (map[string]int64, error) {
-	if len(rows) == 0 {
-		return nil, nil
-	}
-	var where string
-	idCol, uidCol, _, _, err := getSpecialColumns(rows[0])
-	if err != nil {
-		return nil, err
-	}
-	if userToken != "" && uidCol != "" {
-		userID, err := setUserIDInRows[S](rows, uidCol, userToken)
-		if err != nil {
-			return nil, err
-		}
-		where = fmt.Sprintf("%s.%s=%d", table, uidCol, userID)
-	}
-	zstr.AddToSet(&skipColumns, idCol)
-
-	m := map[string]int64{}
-	for _, row := range rows {
-		id, native, err := UpsertRow(table, conflictCol, row, skipColumns, idCol, userToken, where)
-		if err != nil {
-			return nil, err
-		}
-		m[native] = id
-	}
-	return m, nil
+	return id, nil
 }
 
 func (SQLCalls) ExecuteQuery(query string, rowsAffected *int64) error {
