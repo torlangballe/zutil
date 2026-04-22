@@ -63,16 +63,6 @@ type VariableCreator interface {
 
 type NodeType int
 
-const (
-	FieldNode NodeType = 1 << iota
-	StaticFieldNode
-	RowNode
-	ComNode
-	MethodNode
-	EnumNode
-	VariableNode
-)
-
 type Node struct {
 	Name        string
 	Type        NodeType
@@ -91,6 +81,18 @@ type Updater interface {
 type Deleter interface {
 	Delete(uid int64) error
 }
+
+var VariableStringFromInstanceFunc func(a any) (string, bool)
+
+const (
+	FieldNode NodeType = 1 << iota
+	StaticFieldNode
+	RowNode
+	ComNode
+	MethodNode
+	EnumNode
+	VariableNode
+)
 
 func MakeNode(name string, ntype NodeType, instance any, id int64) Node {
 	n := Node{Name: name, Type: ntype, Instance: instance, id: id}
@@ -298,13 +300,23 @@ func fieldNodes(s *Session, instancePtr any, part string, indent int, inStatic b
 			}
 		}
 		kind := zreflect.KindFromReflectKindAndType(each.ReflectValue.Kind(), each.ReflectValue.Type())
+		var sval string
+		var skip bool
+		var gotSVal bool
 		if kind == zreflect.KindStruct || kind == zreflect.KindPointer && each.ReflectValue.Type().Elem().Kind() == reflect.Struct {
-			return true
+			uis, _ := each.ReflectValue.Interface().(zfields.UIStringer)
+			if uis != nil {
+				sval = uis.ZUIString(each.Field.HasFlag(zfields.FlagAllowEmptyAsZero))
+				gotSVal = true
+			} else {
+				return true
+			}
 		}
-		sval, skip := getValueString(instancePtr, each.ReflectValue, each.Field, each.StructField, 3000, false)
-		// zlog.Info("fieldNodes2:", each.StructField.Name, each.ReflectValue.Interface(), skip, sval)
-		if skip {
-			return true
+		if !gotSVal {
+			sval, skip = getValueString(instancePtr, each.ReflectValue, each.Field, each.StructField, 3000, false)
+			if skip {
+				return true
+			}
 		}
 		var readOnlyStruct bool
 		if each.ReflectValue.Kind() == reflect.Struct {

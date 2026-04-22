@@ -2,6 +2,7 @@ package zcommands
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -150,18 +151,30 @@ func (s *Session) TopNode() *Node {
 	return &s.NodeHistory[len(s.NodeHistory)-1]
 }
 
+func (s *Session) GetCurrentAndGlobalNodeValues() []any {
+	nodes := []any{s.CurrentNodeValue()}
+	nodes = append(nodes, zslices.Reversed(s.commander.GlobalComs)...)
+	return nodes
+}
+
 func (s *Session) doCommand(line string, isExpand bool) string {
 	parts := zstr.GetQuotedArgs(line)
 	if len(parts) == 0 {
 		return ""
 	}
+	for i, p := range parts {
+		rep, err := ReplaceVariablesForInstance(s, p, s.TermSession.UserID())
+		if err == nil {
+			parts[i] = rep
+		} else if !isExpand {
+			s.TermSession.Writeln("Error replacing variables:", err)
+		}
+	}
 	command := parts[0]
 	args := parts[1:]
 	// zlog.Info("doCommand", command, args, isExpand)
 
-	nodes := []any{s.CurrentNodeValue()}
-	nodes = append(nodes, zslices.Reversed(s.commander.GlobalComs)...)
-	for _, n := range nodes {
+	for _, n := range s.GetCurrentAndGlobalNodeValues() {
 		if isExpand {
 			var add string
 			if s.structExpand(n, command, strings.Join(args, " "), &add) {
@@ -352,4 +365,31 @@ func (s *Session) structCommandWithMethod(method reflect.Method, structVal refle
 	// zlog.Info("structCommandWithMethod:", method.Name, argVal.Type(), argVal.Type())
 	sparams := []reflect.Value{structVal, reflect.ValueOf(c), argVal.Elem()}
 	method.Func.Call(sparams)
+}
+
+func ReplaceVariablesForInstance(s *Session, inString string, uid int64) (string, error) {
+	var outErr error
+	// zlog.Info("ReplaceVariablesForInstance: inString:", inString)
+	out := zstr.ReplaceAllCapturesFunc(zstr.DollarArgWithSpaceRegex, inString, zstr.RegWithoutMatch, func(cap string, index int) string {
+		node, err := s.PathAsItsTopNode(cap, VariableNode|FieldNode|StaticFieldNode)
+		if err != nil {
+			outErr = zlog.Error("Error finding variable for capture $"+cap, ":", err)
+			return ""
+		}
+		if node.Type&(FieldNode|StaticFieldNode) != 0 {
+			return node.FieldSVal
+		}
+		if node.Type == VariableNode {
+			vs, is := node.Instance.(fmt.Stringer)
+			if !is {
+				outErr = zlog.Error("Error casting instance to Variable for capture $" + cap)
+				return ""
+			}
+			// zlog.Info("ReplaceVariablesForInstance capture:", node.Name, node.Instance)
+			return vs.String()
+		}
+		zlog.Info("ReplaceVariablesForInstance: Replacing wrong node type:", cap, node.Type)
+		return cap
+	})
+	return out, outErr
 }

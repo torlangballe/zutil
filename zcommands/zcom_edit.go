@@ -24,12 +24,11 @@ type editField struct {
 
 const checkedString = zstr.EscMagenta + " [√]" + zstr.EscNoColor
 
-func editNode(c *CommandInfo, node Node) {
+func editFieldNode(c *CommandInfo, node Node) {
 	parentNode := c.Session.TopNode()
 	rval := node.editField.value
 
 	kind := zreflect.KindFromReflectKindAndType(rval.Kind(), rval.Type())
-	// zlog.Info("editNode:", kind, rval.Interface(), rval.Type())
 	if kind == zreflect.KindPointer {
 		node.editField.value = reflect.New(rval.Type().Elem()).Elem()
 	}
@@ -66,9 +65,9 @@ func editNode(c *CommandInfo, node Node) {
 
 	switch kind {
 	case zreflect.KindString:
-		// zlog.Info("editNode set string:", sval, node.editField.value.Type(), node.editField.value.CanAddr(), parentNode.Name, zlog.Full(parentNode.Instance))
+		zlog.Info("editNode set string:", sval, node.editField.value.Type(), node.editField.value.CanAddr(), parentNode.Name, zlog.Full(parentNode.Instance))
 		node.editField.value.SetString(sval)
-		//! c.Session.callUpdate(c)
+		//! c.Session.callUpdate(s)
 	case zreflect.KindInt, zreflect.KindFloat:
 		n, err := strconv.ParseFloat(sval, 64)
 		if err != nil {
@@ -80,8 +79,9 @@ func editNode(c *CommandInfo, node Node) {
 		} else {
 			node.editField.value.SetFloat(n)
 		}
-		//! c.Session.callUpdate(c)
+		//! c.Session.callUpdate(s)
 	}
+	zlog.Info("Edited:", parentNode.Name)
 	callUpdater(c, *parentNode)
 }
 
@@ -101,7 +101,7 @@ func editEnumIndicator(c *CommandInfo, parentNode, node Node) {
 
 func callUpdater(c *CommandInfo, parentNode Node) {
 	updater, _ := parentNode.Instance.(Updater)
-	// zlog.Info("callUpdater for parent node:", parentNode.Name, "type:", reflect.TypeOf(parentNode.Instance), "updater:", updater != nil)
+	zlog.Info("callUpdater for parent node:", parentNode.Name, "type:", reflect.TypeOf(parentNode.Instance), "updater:", updater != nil)
 	if updater != nil {
 		updater.Update(c.Session)
 	}
@@ -126,7 +126,7 @@ func editAnyEnumIndicator(c *CommandInfo, parentNode, node Node, enum zdict.Item
 	doRepeatEditIndex(c, "setting index", "Set Index No:", len(enum), func(n int) bool {
 		node.editField.value.Set(reflect.ValueOf(enum[n].Value))
 		c.Session.TermSession.Writeln(zstr.EscGreen+node.editField.field.Name, zstr.EscNoColor+"set to", enum[n].Name)
-		//! c.Session.callUpdate(c)
+		//! c.Session.callUpdate(s)
 		return true
 	})
 	callUpdater(c, parentNode)
@@ -165,7 +165,7 @@ func editSliceIndicator(c *CommandInfo, parentNode, node Node) bool {
 		// zlog.Info("SetIndexForSlice:", ids[n], n)
 		zkeyvalue.DefaultStore.SetString(ids[n], node.editField.key, true)
 		c.Session.TermSession.Writeln("Set index for", zstr.EscCyan+node.editField.field.Name+zstr.EscNoColor, "to:", titles[n])
-		// s.callUpdate(c)
+		// c.Session.callUpdate(s)
 		return true
 	})
 	callUpdater(c, parentNode)
@@ -189,4 +189,60 @@ func doRepeatEditIndex(c *CommandInfo, what, prompt string, length int, do func(
 			break
 		}
 	}
+}
+
+func (defaultCommands) Expand_edit(c *CommandInfo, line string, add *string) {
+	ExpandPath(c.Session, line, add, FieldNode)
+	// zlog.Info("Expand_cd2", line, *add)
+}
+
+func (defaultCommands) Command_edit(c *CommandInfo, a struct {
+	Path        string
+	Description string `zui:"desc:Edit a field/variable. Use path to specify name or number of listed items."`
+}) {
+	node, err := c.Session.PathAsItsTopNode(a.Path, FieldNode)
+	if err != nil {
+		c.Session.TermSession.Writeln(err)
+		return
+	}
+	if node.Type == VariableNode {
+		eo, _ := node.Instance.(Editer)
+		if eo != nil {
+			eo.Edit(c.Session)
+			callUpdater(c, node)
+			return
+		}
+	}
+	if node.Type != FieldNode {
+		c.Session.TermSession.Writeln("Node is not a field/variable:", a.Path)
+		return
+	}
+	editFieldNode(c, node)
+}
+
+func (defaultCommands) Command_setname(c *CommandInfo, a struct {
+	Path        string
+	Name        string
+	Description string `zui:"desc:setname <path> <name> --Set name of a variable. Use path to specify name or number of listed items."`
+}) {
+	node, err := c.Session.PathAsItsTopNode(a.Path, FieldNode)
+	if err != nil {
+		c.Session.TermSession.Writeln(err)
+		return
+	}
+	if node.Type != VariableNode {
+		c.Session.TermSession.Writeln("Node is not a field/variable:", a.Path)
+		return
+	}
+	if a.Name == "" {
+		c.Session.TermSession.Writeln("No name given")
+		return
+	}
+	ns, is := node.Instance.(zstr.NameSetter)
+	if zlog.ErrorIf(!is, reflect.TypeOf(node.Instance)) {
+		return
+	}
+	ns.SetName(a.Name) // it's a variables.Variable, but we can't include that here
+	callUpdater(c, node)
+	c.Session.TermSession.Writeln(zstr.EscYellow+node.Name, `name changed to: "`+a.Name+`"`, zstr.EscNoColor)
 }

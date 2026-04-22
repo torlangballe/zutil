@@ -29,10 +29,6 @@ type defaultCommands struct{}
 type UtilCommands struct {
 }
 
-type helpGetter interface {
-	GetHelpForNode_() string
-}
-
 type LogEnablersCom struct {
 }
 
@@ -58,53 +54,12 @@ func (defaultCommands) Command_cd(c *CommandInfo, a struct {
 	c.Session.changeDirectory(a.Path)
 }
 
-func (defaultCommands) Expand_edit(c *CommandInfo, line string, add *string) {
-	ExpandPath(c.Session, line, add, FieldNode)
-	// zlog.Info("Expand_cd2", line, *add)
-}
-
-func (defaultCommands) Command_edit(c *CommandInfo, a struct {
-	Path        string
-	Description string `zui:"desc:Edit a field. Use path to specify name or number of listed items."`
+func (defaultCommands) Command_help(c *CommandInfo, a struct {
+	Description string `zui:"desc:Show help"`
 }) {
-	nodes, err := c.Session.PathAsNodes(a.Path, FieldNode)
-	if err != nil {
-		c.Session.TermSession.Writeln(err)
-		return
+	for _, n := range c.Session.commander.GlobalComs {
+		listNodesForAny(c, n, MethodNode, true, true)
 	}
-	if len(nodes) == 0 {
-		c.Session.TermSession.Writeln("No nodes found for path:", a.Path)
-		return
-	}
-	node := nodes[len(nodes)-1]
-	if node.Type == VariableNode {
-		eo, _ := node.Instance.(Editer)
-		if eo != nil {
-			eo.Edit(c.Session)
-			callUpdater(c, node)
-			return
-		}
-	}
-	if node.Type != FieldNode {
-		c.Session.TermSession.Writeln("Node is not a field:", a.Path)
-		zlog.Info("Node is not a field:", a.Path, zlog.Full(node))
-		return
-	}
-	editNode(c, node)
-}
-
-func (defaultCommands) Help(c *CommandInfo) {
-	h, _ := c.Session.CurrentNodeValue().(helpGetter)
-	if h != nil {
-		str := h.GetHelpForNode_()
-		c.Session.TermSession.Writeln(str)
-	}
-	tabs := zstr.NewTabWriter(c.Session.TermSession.Writer())
-	// helpForStruct(c.Session, c.Session.CurrentNodeValue(), tabs)
-	// for _, n := range c.Session.commander.GlobalNodes {
-	// 	helpForStruct(c.Session, n, tabs)
-	// }
-	tabs.Flush()
 }
 
 // func helpForStruct(s *Session, structure any, tabs *zstr.TabWriter) {
@@ -134,12 +89,14 @@ func (defaultCommands) Command_ls(c *CommandInfo, a struct {
 
 func listNodes(c *CommandInfo, longList bool) {
 	c.Session.NodeNumberedList = map[int]Node{}
-	nodes := NodesForStruct(c.Session, c.Session.CurrentNodeValue(), "", FieldNode|StaticFieldNode|RowNode|ComNode|MethodNode|VariableNode, longList) // use part with **?? or filter below?
+	listNodesForAny(c, c.Session.CurrentNodeValue(), FieldNode|StaticFieldNode|RowNode|ComNode|MethodNode|VariableNode, longList, false)
+}
 
-	headers := []string{"#", "name"}
+func listNodesForAny(c *CommandInfo, a any, types NodeType, longList, isHelp bool) {
 	var hasValue bool
 	var dotHeaders []string
-
+	nodes := NodesForStruct(c.Session, a, "", types, longList) // use part with **?? or filter below?
+	headers := []string{"#", "name"}
 	for _, n := range nodes {
 		if n.Type == MethodNode {
 			continue
@@ -171,6 +128,10 @@ func listNodes(c *CommandInfo, longList bool) {
 	methodNodes, nodes := zslices.SplitFunc(nodes, func(n Node) bool {
 		return n.Type == MethodNode
 	})
+	if longList && !isHelp {
+		n := MakeNode("help", MethodNode, nil, 0)
+		methodNodes = append([]Node{n}, methodNodes...)
+	}
 	if len(methodNodes) > 0 {
 		tabs := zstr.NewTabWriter(c.Session.TermSession.Writer())
 		// tabs.MaxColumnWidth = 60
