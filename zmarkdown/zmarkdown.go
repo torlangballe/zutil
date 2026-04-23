@@ -112,7 +112,6 @@ func (m *MarkdownConverter) ConvertToHTMLFromString(w io.Writer, fullmd, name st
 		cssName += "-dark"
 	}
 	params.CSS = zrest.AppURLPrefix + "css/zcore/" + cssName + ".css"
-	zlog.Info("MarkDown CSS:", params.CSS)
 	renderer := blackfriday.NewHTMLRenderer(params)
 	renderer.AbsolutePrefix = m.AbsolutePrefix
 	output := blackfriday.Run([]byte(input),

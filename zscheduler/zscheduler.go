@@ -415,18 +415,20 @@ func (s *Scheduler[I]) hasUnrunJobs() bool {
 	return false
 }
 
-func jobMatchesExecutorAttributes(debugName string, jobA, exeA []string) bool {
-	if len(jobA) == 0 {
+// jobMatchesExecutorAttributes returns true if jobAttributes is empty
+// Or for each jobAttribute, there's at least one executorAttribute with the same prefix and either same value or empty value.
+func jobMatchesExecutorAttributes(debugName string, jobAttributes, exeAttributes []string) bool {
+	if len(jobAttributes) == 0 {
 		return true
 	}
-	for _, ja := range jobA {
+	for _, ja := range jobAttributes {
 		var jpre, jval string
 		if !zstr.SplitN(ja, ".", &jpre, &jval) {
 			zlog.Error("Job attribute not it two parts:", ja)
 			return false
 		}
 		found := false
-		for _, ea := range exeA {
+		for _, ea := range exeAttributes {
 			var epre, eval string
 			if !zstr.SplitN(ea, ".", &epre, &eval) {
 				zlog.Error("Executor attribute not in two parts:", ea)
