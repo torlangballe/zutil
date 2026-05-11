@@ -46,7 +46,7 @@ func xTestSendReceive(t *testing.T) {
 	executor.Register(TestRPCCalls{})
 	srpc.Executor = executor
 	srpc.ConnectServerFunc = func(serverID string) (*zwebsocket.Server, error) {
-		return srpc.MakeServer("/", 7743)
+		return srpc.MakeServer("/", 7743, nil)
 	}
 	srpc.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
 		addr := "ws://localhost:/"
@@ -129,9 +129,9 @@ func xTestCircular(t *testing.T) {
 	executor.Register(TestRPCCalls{})
 	circleServer.Executor = executor
 	circleServer.ConnectServerFunc = func(serverID string) (*zwebsocket.Server, error) {
-		return circleServer.MakeServer("/", 7744)
+		return circleServer.MakeServer("/", 7744, nil)
 	}
-	circleServer.AddServer(serverID)
+	circleServer.SetServer(serverID)
 	circleServer.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
 		addr := "ws://localhost:/"
 		client, err := circleServer.MakeClient(addr, clientID, 7744)
@@ -139,7 +139,7 @@ func xTestCircular(t *testing.T) {
 	}
 	for i := 0; i <= 100; i++ {
 		clientID := makeClientID(i)
-		circleServer.AddClient(clientID)
+		circleServer.SetClient(clientID)
 	}
 	var index int = 0
 	err := circleServer.Call(makeClientID(0), "TestRPCCalls.PassTheBuck", index, nil)
@@ -152,10 +152,10 @@ func makeRPC(t *testing.T, port int, executor *znamedfuncs.Executor) {
 	serverRPC := NewRPC()
 	serverRPC.Executor = executor
 	serverRPC.ConnectServerFunc = func(serverID string) (*zwebsocket.Server, error) {
-		return serverRPC.MakeServer("/", port)
+		return serverRPC.MakeServer("/", port, nil)
 	}
 	serverID := fmt.Sprintf("server%d", port)
-	serverRPC.AddServer(serverID)
+	serverRPC.SetServer(serverID)
 	var err error
 	clientRPC := NewRPC()
 	clientRPC.Executor = executor
@@ -164,7 +164,7 @@ func makeRPC(t *testing.T, port int, executor *znamedfuncs.Executor) {
 		return clientRPC.MakeClient(addr, clientID, port)
 	}
 	clientID := fmt.Sprintf("client%d", port)
-	clientRPC.AddClient(clientID)
+	clientRPC.SetClient(clientID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +219,7 @@ func makeRPC(t *testing.T, port int, executor *znamedfuncs.Executor) {
 	zlog.Warn("Storm", port, "server sent:", serverSend, "client sent:", clientSend)
 }
 
-func xTestFaultyStorm(t *testing.T) {
+func TestFaultyStorm(t *testing.T) {
 	const serverID = "faulty-storm-server"
 	executor := znamedfuncs.NewExecutor()
 	executor.Register(TestRPCCalls{})
