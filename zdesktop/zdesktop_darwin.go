@@ -27,7 +27,6 @@ package zdesktop
 // int canControlComputer(int prompt);
 // int GetWindowCountForPID(long pid);
 // int CanRecordScreen();
-// int CanUseCamera();
 // void PrintWindowTitles();
 // const char *GetAllWindowTitlesTabSeparated(long forPid);
 // typedef struct Image {
@@ -39,11 +38,6 @@ package zdesktop
 // int CloseOldWindowWithSamePIDAndRectOnceNew(long pid, int x, int y, int w, int h);
 // void CloseOldWindowWithSamePIDAndRect(long pid, int x, int y, int w, int h);
 // const char *ImageOfWindow(const char *winTitle, const char *appBundleID, int displayID, int preflightOnly, CGRect cropRect, CGImageRef *cgImage);
-// void *startCameraCaptureStream(void *stream);
-// void stopCameraCaptureStream(void *stream);
-// void stopCameraCaptureStream(void *stream);
-// int isCameraCaptureStreamRunning(void *stream);
-// int snapImageFromCaptureStream(void *stream, CGImageRef *image);
 import "C"
 
 import (
@@ -282,10 +276,6 @@ func CanGetWindowInfo() bool {
 	return C.GetWindowCountForPID(C.long(pid)) != -1
 }
 
-func CanUseCamera() bool {
-	return C.CanUseCamera() != 0
-}
-
 func GetWindowCountForPid(pid int64) int {
 	return int(C.GetWindowCountForPID(C.long(pid)))
 }
@@ -371,47 +361,4 @@ func getImageForWindowOrDisplay(title, appID, displayID string, preflightOnly bo
 	// zlog.Warn("GetImageForWindowTitle Done:", image != nil, err)
 	C.CGImageRelease(cgImage)
 	return image, err
-}
-
-type CameraStreamType unsafe.Pointer
-
-func StartCameraCaptureStream(cs CameraStreamType) CameraStreamType {
-	return CameraStreamType(C.startCameraCaptureStream(unsafe.Pointer(cs)))
-}
-
-func StopCameraCaptureStream(cs CameraStreamType) {
-	C.stopCameraCaptureStream(unsafe.Pointer(cs))
-}
-
-func IsCameraCaptureStreamRunning(cs CameraStreamType) bool {
-	return C.isCameraCaptureStreamRunning(unsafe.Pointer(cs)) == 1
-}
-
-func CaptureCameraStreamImage(cs CameraStreamType, cropRect zgeo.Rect) (image.Image, error) {
-	var cgImage C.CGImageRef
-	now := time.Now()
-	sleepMS := time.Duration(8)
-	count := 0
-	for {
-		timedOut := (time.Since(now) > time.Second)
-		// clearWantIfFail := C.int(0)
-		// if timedOut {
-		// 	clearWantIfFail = 1
-		// }
-		r := C.snapImageFromCaptureStream(unsafe.Pointer(cs), &cgImage) // clearWantIfFail
-		count++
-		if r != 0 {
-			img, err := zimage.CGImageToGoImage(unsafe.Pointer(cgImage), cropRect, 1)
-			C.CGImageRelease(cgImage)
-			zlog.Info("CaptureCameraStreamImage:", time.Since(now), img.Bounds(), cropRect, count)
-			return img, err
-		}
-		if timedOut {
-			return nil, zlog.NewError("No imaged captured in time interval", count)
-		}
-		time.Sleep(time.Millisecond * sleepMS)
-		if sleepMS > 1 {
-			sleepMS /= 2
-		}
-	}
 }

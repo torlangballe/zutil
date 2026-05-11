@@ -371,6 +371,9 @@ func OnDarwin() bool {
 }
 
 func GetNeededSoftwareUpdates() ([]zstr.KeyValue, error) {
+	if OnLinux() {
+		return nil, nil
+	}
 	str, err := RunCommand("softwareupdate", 40, "-l")
 	if err != nil {
 		return nil, err

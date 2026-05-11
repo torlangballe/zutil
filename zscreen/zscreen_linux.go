@@ -65,3 +65,8 @@ func GetAll() []Screen {
 }
 
 func SetMainResolutionWithinWidths(min, max zgeo.Size) {}
+
+func IsGUISessionActive() bool {
+	return false
+}
+

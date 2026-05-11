@@ -33,12 +33,17 @@ func CanRecordScreen() bool                                                     
 func CanControlComputer(prompt bool) bool                                        { return true }
 func GetAllWindowTitlesForApp(app string) []string                               { return nil }
 func ShowAlert(str string)                                                       {}
+func MakeWindowFrontmost(title, appID string, activateApp bool) error            { return nil }
+
+func GetImageForDisplay(displayID string, cropInsetRect zgeo.Rect) (image.Image, error) {
+	return nil, nil
+}
 
 func SetWindowRectForTitle(title, app string, rect zgeo.Rect) (winPID int64, err error) {
 	return 0, nil
 }
 
-func GetImageForWindowTitle(title, app string, insetRect zgeo.Rect) (img image.Image, err error) {
+func GetImageForWindowTitle(title, appID string, preflightOnly bool, cropRect zgeo.Rect, croppingFromDisplayID string) (image.Image, error) {
 	return nil, nil
 }
 
