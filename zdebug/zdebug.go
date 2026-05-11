@@ -35,7 +35,9 @@ var (
 
 func init() {
 	HandleRestartFunc = func(err error) {
-		fmt.Println("fatal handler:", err)
+		if err != nil {
+			fmt.Println("fatal handler:", err)
+		}
 	}
 }
 
