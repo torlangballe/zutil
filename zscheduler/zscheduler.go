@@ -315,7 +315,12 @@ func (s *Scheduler[I]) stopJob(jobID I, remove, outsideRequest, refresh bool, re
 	if run.ExecutorID == s.zeroID {
 		// if !outsideRequest {
 		zlog.Warn("stopJob: not running", jobID)
-		s.removeRun(jobID)
+		run.Stopping = false
+		run.Removing = false
+		run.StoppedAt = time.Time{}
+		run.StartedAt = time.Time{}
+
+		// s.removeRun(jobID)
 		// }
 	}
 	// zlog.Warn("stopJob", jobID, run.Stopping, remove, outsideRequest, zlog.CallingStackString())
@@ -455,14 +460,6 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		// zlog.Warn("Hear1")
 		return false, "stopping already"
 	}
-	if !run.Job.IsAble {
-		return true, "not able"
-	}
-	alive := s.isExecutorAlive(e)
-	if !alive {
-		// s.setup.HandleSituationFastFunc(run, ExecutorHasExpired, "")
-		return true, "not alive executor"
-	}
 	if e == nil {
 		// zlog.Warn("Hear2", run.Stopping, run.StartedAt.IsZero(), run.RanAt)
 		if !run.StartedAt.IsZero() {
@@ -471,16 +468,18 @@ func (s *Scheduler[I]) shouldStopJob(run Run[I], e *Executor[I], caps map[I]capa
 		if !run.RanAt.IsZero() {
 			return true, "No executor, and RanAt is not zero"
 		}
-		if !alive {
-			return true, "No executor, and not alive"
-		}
 		return false, "No executor, no need to stop job"
 	}
+	alive := s.isExecutorAlive(e)
 	if !alive {
-		return true, "Not alive"
+		// s.setup.HandleSituationFastFunc(run, ExecutorHasExpired, "")
+		return true, "not alive executor"
+	}
+	if !run.Job.IsAble {
+		return true, "Job Not Able"
 	}
 	if !e.IsAble {
-		return true, "Not Able"
+		return true, "Executor Not Able"
 	}
 	if !jobMatchesExecutorAttributes(run.Job.DebugName, run.Job.Attributes, e.AcceptAttributes) {
 		return true, zstr.Spaced("No attribute:", e.AcceptAttributes, run.Job.Attributes)
@@ -628,32 +627,50 @@ func (s *Scheduler[I]) startAndStopRuns() {
 			// if s.stopped {
 			// zlog.Warn(i, "FoundExe:", r.ExecutorID, e != nil)
 			// }
-			stop, stopReason := s.shouldStopJob(r, e, capacities)
-			if stop {
-				zlog.Warn("ShouldStop:", stop, r.Job.ID, r.Stopping, r.ExecutorID, e != nil, capacities, stopReason)
-			}
-			if stop {
-				jobStopped = true
-				s.stopJob(r.Job.ID, s.stopped, false, true, stopReason)
-				break
+			if r.ExecutorID != s.zeroID && !r.StartedAt.IsZero() && !r.Stopping {
+				stop, stopReason := s.shouldStopJob(r, e, capacities)
+				if stop {
+					zlog.Warn(DebugLog, "ShouldStop:", stop, r.Job.ID, r.Stopping, r.ExecutorID, e != nil, capacities, stopReason)
+					jobStopped = true
+					s.stopJob(r.Job.ID, s.stopped, false, true, stopReason)
+					break
+				}
 			}
 			if s.stopped {
+				zlog.Warn(DebugLog, "startAndStopRuns2:", i)
 				continue
 			}
 			if !r.Job.IsAble {
+				zlog.Warn("startAndStopRuns3:", i)
 				continue
 			}
 			if !(r.StartedAt.IsZero() && r.RanAt.IsZero()) {
 				active++
 			}
-			// zlog.Warn(i, "loop:", r.Job.ID, r.ErrorAt, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
+			if !r.StoppedAt.IsZero() && time.Since(r.StoppedAt) > time.Second*3 {
+				if r.ExecutorID != s.zeroID {
+					zlog.Warn("Remove stuck job with executor:", r.Job.DebugName, r.Job.ID, r.Stopping, r.Removing, r.StoppedAt, time.Since(r.StoppedAt))
+					r.Stopping = false
+					r.StoppedAt = time.Time{}
+					r.Removing = false
+					r.ExecutorID = s.zeroID
+					// s.removeRun(r.Job.ID)
+					continue
+				}
+				if r.Removing && !r.Stopping && !r.StoppedAt.IsZero() {
+					zlog.Warn("Remove stuck removing job:", r.Job.DebugName, r.Job.ID, r.Stopping, r.Removing, r.StoppedAt, time.Since(r.StoppedAt))
+					s.removeRun(r.Job.ID)
+					continue
+				}
+			}
+			zlog.Warn(DebugLog, i, "loop:", r.Job.ID, r.ErrorAt, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
 			if r.ExecutorID == s.zeroID && !r.Stopping && r.StartedAt.IsZero() {
 				if oldestRun == nil || isBetterRunCandidate[I](&r, oldestRun) {
 					// zlog.Info(i, "set oldestRun:", oldestRun != nil, len(s.runs), oldestRun != nil, s.runs[i].Job.DebugName, s.runs[i].Job.ID, ssCount, r.ErrorAt, s.runs[i].triedToRunIndex)
 					oldestRun = &s.runs[i]
 				}
 			}
-			if hasUnrun || s.setup.LoadBalanceIfCostDifference == 0 || r.RanAt.IsZero() || r.Stopping {
+			if hasUnrun || s.setup.LoadBalanceIfCostDifference == 0 || r.Stopping {
 				continue
 			}
 			runLeft := capacities[r.ExecutorID].unusedRatio()
@@ -678,7 +695,7 @@ func (s *Scheduler[I]) startAndStopRuns() {
 				if eLeft > bestLeft && eLeft >= diff { //s.LoadBalanceIfCostDifference {
 					bestLeft = eLeft
 					bestExID = exID
-					if r.Job.Cost < cap.spare() && (bestRunTime.IsZero() || r.RanAt.Sub(bestRunTime) < 0) {
+					if !r.RanAt.IsZero() && r.Job.Cost < cap.spare() && (bestRunTime.IsZero() || r.RanAt.Sub(bestRunTime) < 0) {
 						// zlog.Warn("Balance at:", r.Job.ID, "eLeft:", eLeft, "bestLeft:", bestLeft, "runLeft:", runLeft, "diff:", diff)
 						if s.setup.StopJobIfSinceMilestoneLessThan != 0 && !r.MilestoneAt.IsZero() && time.Since(r.MilestoneAt) > s.setup.StopJobIfSinceMilestoneLessThan {
 							zlog.Info("zscheduler:Not adding job to bestBalance since not near milestone:", r.Job.DebugName, r.MilestoneAt)
@@ -883,6 +900,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 			continue
 		}
 		if !jobMatchesExecutorAttributes(run.Job.DebugName, run.Job.Attributes, e.AcceptAttributes) {
+			zlog.Info(DebugLog, "job!MatchExeAtt:", run.Job.DebugName, "att:", run.Job.Attributes, "exeAtt:", e.DebugName, e.AcceptAttributes)
 			//!!! run.ErrorAt = time.Now()
 			continue
 		}
@@ -930,8 +948,7 @@ func (s *Scheduler[I]) startJob(run *Run[I], load map[I]capacity) bool {
 		}
 	}
 	if bestExID == s.zeroID {
-		// zlog.Warn("NoWorkersToRunJob:", run.Job.DebugName, str)
-		str += " load: " + zlog.Full(load)
+		str += zstr.Spaced("att:", run.Job.Attributes, "load:", zlog.Full(load))
 		s.setup.HandleSituationFastFunc(*run, NoWorkersToRunJob, str)
 		return false
 	}
@@ -1016,6 +1033,7 @@ func (s *Scheduler[I]) changeExecutor(e Executor[I]) {
 }
 
 func (s *Scheduler[I]) changeJob(job Job[I]) {
+	zlog.Info(DebugLog, "ChangeJob1:", job.IsAble, job.DebugName)
 	for i, r := range s.runs {
 		if r.Job.ID == job.ID {
 			s.runs[i].Job.Attributes = job.Attributes
@@ -1025,13 +1043,13 @@ func (s *Scheduler[I]) changeJob(job Job[I]) {
 
 			// 	s.stopJob(job.ID, false, false, true, reason)
 			// } else {
-			zlog.Info(DebugLog, "ChangeJob:", job.DebugName, s.runs[i].Job.Attributes)
+			zlog.Info(DebugLog, "ChangeJob:", job.IsAble, job.DebugName, s.runs[i].Job.Attributes)
 			s.startAndStopRuns() // a new cost could start it for example
 			// }
 			return
 		}
 	}
-	zlog.Info(DebugLog, "ChangeJob addJob:", job.DebugName, job.Attributes)
+	zlog.Info(DebugLog, "ChangeJob addJob:", job.DebugName, job.Attributes, job.IsAble)
 	s.addJob(job)
 }
 
