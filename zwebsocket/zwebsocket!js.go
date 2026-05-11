@@ -176,7 +176,7 @@ func (c *Client) open() error {
 	config.Header.Set(IDHeader, c.ID)
 	config.Header.Set("Authorization", "Bearer "+c.AuthToken)
 	ws, err := websocket.DialConfig(config)
-	if zlog.OnError(err, c.url) {
+	if zlog.OnError(err, c.url, zdebug.CallingStackString()) {
 		c.handlerFunc(nil, err)
 		time.Sleep(time.Second)
 		return err
