@@ -233,11 +233,15 @@ func baseLog(priority Priority, pos int, parts ...any) error {
 		n := p
 		s, got := p.(string)
 		if got {
-			var did bool
-			s, did = zstr.EscapeColorSymbols(s)
-			if did {
-				endCol = zstr.EscNoColor
-				p = s
+			if UseColor {
+				var did bool
+				s, did = zstr.EscapeColorSymbols(s)
+				if did {
+					endCol = zstr.EscNoColor
+					p = s
+				}
+			} else {
+				p, _ = zstr.RemoveColorSymbols(s)
 			}
 			e, did := zstr.RemoveColorSymbols(s)
 			if did {
