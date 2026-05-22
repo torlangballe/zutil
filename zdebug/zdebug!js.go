@@ -23,11 +23,14 @@ import (
 
 var AppURLPrefix func() string
 
-func SetupSignalHandler() {
+func SetupSignalHandler(terminatingFunc func(signal os.Signal)) {
 	c := make(chan os.Signal, 10)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGABRT, syscall.SIGQUIT, syscall.SIGILL, syscall.SIGTRAP, syscall.SIGSYS)
 	go func() {
 		sig := <-c
+		if terminatingFunc != nil {
+			terminatingFunc(sig)
+		}
 		if sig == syscall.SIGTRAP {
 			fmt.Println("************* SIGTRAP received, continuing *************")
 			return
