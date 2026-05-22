@@ -1,6 +1,7 @@
 package zscreen
 
 import (
+	"os"
 	"strconv"
 
 	"github.com/jezek/xgb"
@@ -21,9 +22,22 @@ func GetAll() []Screen {
 	// 	}
 	// }()
 
-	c, err := xgb.NewConnDisplay(":0")
+	display := os.Getenv("DISPLAY")
+	if display == "" {
+		display = ":0"
+	}
+	c, err := xgb.NewConnDisplay(display)
 	if zlog.OnError(err, "NewConn") {
-		return nil
+		s := Screen{
+			ID:        "1",
+			Scale:     1,
+			SoftScale: 1,
+			Rect:      zgeo.RectFromXYWH(0, 0, 1920, 1080),
+			IsMain:    true,
+		}
+		s.UsableRect = s.Rect
+		return []Screen{s}
+		return screens
 	}
 	defer c.Close()
 
@@ -67,6 +81,5 @@ func GetAll() []Screen {
 func SetMainResolutionWithinWidths(min, max zgeo.Size) {}
 
 func IsGUISessionActive() bool {
-	return false
+	return true
 }
-
