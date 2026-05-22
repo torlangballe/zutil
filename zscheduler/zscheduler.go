@@ -119,7 +119,7 @@ type JobsOnExecutor[I comparable] struct {
 type SituationType string
 
 const (
-	NoWorkersToRunJob           SituationType = "no workers fit to run job"
+	NoWorkersToRunJob           SituationType = "no workers fit/ready to run job"
 	RemoveJobFromExecutorFailed SituationType = "remove job from executor failed"
 	ErrorStartingJob            SituationType = "error starting job"
 	ExecutorHasExpired          SituationType = "executor is no longer alive"
@@ -663,7 +663,6 @@ func (s *Scheduler[I]) startAndStopRuns() {
 					continue
 				}
 			}
-			zlog.Warn(DebugLog, i, "loop:", r.Job.ID, r.ErrorAt, r.ExecutorID, r.Stopping, r.StartedAt.IsZero())
 			if r.ExecutorID == s.zeroID && !r.Stopping && r.StartedAt.IsZero() {
 				if oldestRun == nil || isBetterRunCandidate[I](&r, oldestRun) {
 					// zlog.Info(i, "set oldestRun:", oldestRun != nil, len(s.runs), oldestRun != nil, s.runs[i].Job.DebugName, s.runs[i].Job.ID, ssCount, r.ErrorAt, s.runs[i].triedToRunIndex)
@@ -1036,6 +1035,7 @@ func (s *Scheduler[I]) changeJob(job Job[I]) {
 	zlog.Info(DebugLog, "ChangeJob1:", job.IsAble, job.DebugName)
 	for i, r := range s.runs {
 		if r.Job.ID == job.ID {
+			s.runs[i].Job.IsAble = job.IsAble
 			s.runs[i].Job.Attributes = job.Attributes
 			s.runs[i].Job.DebugName = job.DebugName
 			s.runs[i].Job.Duration = job.Duration
