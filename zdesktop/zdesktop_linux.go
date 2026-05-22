@@ -12,7 +12,7 @@ func GetAppNameOfBrowser(btype zdevice.BrowserType, fullName bool) string {
 	case zdevice.Safari:
 		return "Safari"
 	case zdevice.Chrome:
-		return "chromium-browser"
+		return "google-chrome"
 	case zdevice.Edge:
 		if fullName {
 			return "Microsoft Edge Canary"
