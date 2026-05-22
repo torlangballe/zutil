@@ -86,19 +86,23 @@ func GetAppProgramPath(appName string) string {
 
 // RunApp runs appName in Applications (for mac), and returns the exec.Cmd and out/err readers and in writer.
 // If ctx is nil, the command it run without a context. using exec.Command in MakeCommand.
-func RunApp(appName string, ctx context.Context, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
+func RunApp(appName string, ctx context.Context, envArgs map[string]string, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, inPipe io.WriteCloser, err error) {
 	path := GetAppProgramPath(appName)
-	cmd, outPipe, errPipe, err = MakeCommand(path, ctx, true, &inPipe, args...)
+	cmd, outPipe, errPipe, err = MakeCommand(path, ctx, envArgs, true, &inPipe, args...)
 	return
 }
 
-func MakeCommand(command string, ctx context.Context, start bool, inPipe *io.WriteCloser, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
+func MakeCommand(command string, ctx context.Context, envArgs map[string]string, start bool, inPipe *io.WriteCloser, args ...any) (cmd *exec.Cmd, outPipe, errPipe io.ReadCloser, err error) {
 	sargs := zstr.AnySliceToStrings(args)
 	if ctx != nil {
 		cmd = exec.CommandContext(ctx, command, sargs...)
 	} else {
 		cmd = exec.Command(command, sargs...)
 	}
+	for k, v := range envArgs {
+		cmd.Env = append(cmd.Env, k+"="+v)
+	}
+	zlog.Info("MakeCommand:", command, cmd.Env)
 	outPipe, err = cmd.StdoutPipe()
 	if err != nil {
 		err = zlog.Error("connect stdout pipe", err)

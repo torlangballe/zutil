@@ -251,7 +251,7 @@ func (d *UtilCommands) Command_bash(c *CommandInfo, a struct {
 	if !AllowBash {
 		c.Session.TermSession.Writeln("bash not enabled.")
 	}
-	cmd, outPipe, errPipe, err := zprocess.MakeCommand("/bin/bash", nil, false, nil, []any{"-c", a.Command}...)
+	cmd, outPipe, errPipe, err := zprocess.MakeCommand("/bin/bash", nil, nil, false, nil, []any{"-c", a.Command}...)
 	// fmt.Fprintln(s, "Running via ssh")
 	if err != nil {
 		c.Session.TermSession.Writeln(err)
