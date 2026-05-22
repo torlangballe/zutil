@@ -45,7 +45,7 @@ func (crc *CRCommander) SetChunkedRows(cr *ChunkedRows) {
 
 func (crc *CRCommander) SetTermColumn(offset int, header string, is32Bit, isMask, isTime bool, names map[int]string) {
 	col := termColumn{offset: offset, header: header, is32Bit: is32Bit, isMask: isMask, isTime: isTime, names: names}
-	zslices.AddOrReplace(&crc.otherColumns, col, func(a, b termColumn) bool {
+	zslices.AddOrReplaceFunc(&crc.otherColumns, col, func(a, b termColumn) bool {
 		return a.offset == b.offset
 	})
 }
