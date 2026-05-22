@@ -323,7 +323,7 @@ func SetEtcHostsEntries(forwards map[string]string, comment, sudoPassword string
 	zlog.Info("SetEtcHostsEntries:", commands)
 	str, err := zprocess.RunCommandWithSudo("sh", sudoPassword, "-c", commands)
 	if err != nil {
-		return zlog.NewError(str, err)
+		return zlog.NewError(zstr.Spaced(str, err), "\nYour can add lines manually:\n", strings.Join(echos, "\n"), "\n")
 	}
 	return err
 }
