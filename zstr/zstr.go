@@ -361,6 +361,14 @@ func ConcatType[S any](divider string, parts ...S) string {
 	return Concat(divider, a...)
 }
 
+func SpacedAndQuoted(parts ...any) string {
+	ss := make([]string, len(parts))
+	for i, p := range parts {
+		ss[i] = fmt.Sprintf(`"%v"`, p)
+	}
+	return strings.Join(ss, " ")
+}
+
 func Spaced(parts ...any) string {
 	return Concat(" ", parts...)
 }
