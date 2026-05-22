@@ -156,9 +156,7 @@ func (r *RPC) handleServerConnectionError(pipeID string, err error) {
 
 func (r *RPC) handleClientError(pipeID string, err error) {
 	c := r.clients[pipeID]
-	// zlog.Warn("handleClientError:", pipeID, c != nil, err)
 	if c != nil && c.connection != nil {
-		// zlog.Warn("handleClientError in:", pipeID)
 		c.connection.Close()
 		c.connection = nil
 	}
@@ -328,7 +326,7 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, time
 		}
 	}
 	if rp.Error != "" {
-		return fmt.Errorf("RPC call result error: %s", rp.Error)
+		return errors.New(rp.Error)
 	}
 	if rp.TransportError != "" {
 		return fmt.Errorf("RPC call transport error: %s", rp.TransportError)
