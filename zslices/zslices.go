@@ -183,6 +183,11 @@ func IndexOf(length int, is func(i int) bool) int {
 	return -1
 }
 
+func ContainsFunc[S any](slice []S, is func(s S) bool) bool {
+	i := slices.IndexFunc(slice, is)
+	return i != -1
+}
+
 func FindFunc[S any](slice []S, is func(s S) bool) (*S, int) {
 	i := slices.IndexFunc(slice, is)
 	if i == -1 {
@@ -261,6 +266,19 @@ func Exclusion[T comparable](a, b []T) []T { // todo: Done in slices already???
 	return append(x, n...)
 }
 
+func SubtractedFunc[T any](a, sub []T, equal func(a, b T) bool) []T {
+	n := make([]T, 0, len(a))
+	for _, is := range sub {
+		i := IndexOf(len(a), func(i int) bool {
+			return equal(a[i], is)
+		})
+		if i == -1 {
+			n = append(n, is)
+		}
+	}
+	return n
+}
+
 func SetsOverlap[S comparable](a, b []S) bool {
 	for _, ib := range b {
 		if slices.Contains(a, ib) {
@@ -314,7 +332,7 @@ func SplitWithFunc[S any](slice []S, match func(s S) bool) (is []S, not []S) {
 	return is, not
 }
 
-func Map[S any, O any](slice []S, mapFunc func(s S) O) []O {
+func MapFunc[S any, O any](slice []S, mapFunc func(s S) O) []O {
 	out := make([]O, len(slice))
 	for i, s := range slice {
 		out[i] = mapFunc(s)
@@ -322,7 +340,7 @@ func Map[S any, O any](slice []S, mapFunc func(s S) O) []O {
 	return out
 }
 
-func FilterMapped[S any, O any](slice []S, mapFunc func(s S) (O, bool)) []O {
+func FilterMappedFunc[S any, O any](slice []S, mapFunc func(s S) (O, bool)) []O {
 	out := make([]O, len(slice))
 	for _, s := range slice {
 		r, keep := mapFunc(s)
@@ -333,7 +351,7 @@ func FilterMapped[S any, O any](slice []S, mapFunc func(s S) (O, bool)) []O {
 	return out
 }
 
-func Filtered[S any](slice []S, keep func(s S) bool) []S {
+func FilteredFunc[S any](slice []S, keep func(s S) bool) []S {
 	out := make([]S, 0, len(slice))
 	for _, s := range slice {
 		if keep(s) {
@@ -343,7 +361,7 @@ func Filtered[S any](slice []S, keep func(s S) bool) []S {
 	return out
 }
 
-func AddOrReplace[S any](slice *[]S, add S, equal func(a, b S) bool) {
+func AddOrReplaceFunc[S any](slice *[]S, add S, equal func(a, b S) bool) {
 	for i, s := range *slice {
 		if equal(add, s) {
 			(*slice)[i] = add
@@ -353,7 +371,7 @@ func AddOrReplace[S any](slice *[]S, add S, equal func(a, b S) bool) {
 	*slice = append(*slice, add)
 }
 
-func InsertSorted[S any](slice []S, insert S, less func(a, b S) bool) []S {
+func InsertSortedFunc[S any](slice []S, insert S, less func(a, b S) bool) []S {
 	for i, s := range slice {
 		if less(s, insert) {
 			return slices.Insert(slice, i, insert)
