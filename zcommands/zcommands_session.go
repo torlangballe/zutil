@@ -29,6 +29,9 @@ type Session struct {
 }
 
 func (s *Session) SetNumberedNode(node Node, i int) {
+	if s.NodeNumberedList == nil {
+		s.NodeNumberedList = map[int]Node{}
+	}
 	s.NodeNumberedList[i] = node
 }
 
