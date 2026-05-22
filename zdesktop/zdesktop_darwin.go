@@ -139,7 +139,7 @@ func OpenURLInBrowser(surl string, btype zdevice.BrowserType, args ...any) error
 func RunURLInBrowser(surl string, btype zdevice.BrowserType, args ...any) (*exec.Cmd, error) {
 	args = append(args, surl)
 	name := GetAppNameOfBrowser(btype, true)
-	cmd, _, _, _, err := zprocess.RunApp(name, nil, args...)
+	cmd, _, _, _, err := zprocess.RunApp(name, nil, nil, args...)
 	if err != nil {
 		return nil, zlog.Error("RunURLInBrowser", err)
 	}
@@ -342,7 +342,6 @@ func getImageForWindowOrDisplay(title, appID, displayID string, preflightOnly bo
 	var cgImage C.CGImageRef = C.CGImageRef(C.NULL)
 
 	displayInt, _ := strconv.Atoi(displayID)
-	// zlog.Warn("GetImageForWindowTitle:", title)
 	// start := time.Now()//
 	preflightInt := zbool.ToInt(preflightOnly)
 	cerr := C.ImageOfWindow(ctitle, cappid, C.int(displayInt), C.int(preflightInt), cgrect, &cgImage)
