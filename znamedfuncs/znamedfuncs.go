@@ -305,6 +305,7 @@ func (e *Executor) Execute(cp *CallPayloadReceive, rp *ReceivePayload) {
 			return
 		}
 	}
+	zlog.Info("No method reg:", cp.Method, zlog.Pointer(e))
 	rp.TransportError = TransportError("no method registered: " + cp.Method + " " + zlog.Full(cp.ClientInfo))
 }
 
