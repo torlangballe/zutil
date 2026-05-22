@@ -77,11 +77,24 @@ func RunCommandWithSudo(command, password string, args ...any) (string, error) {
 	return str, err
 }
 
+// RunCommandWithSu runs command with args on the shell, using su and stdin to 'type' password to su.
+func RunCommandWithSu(command, user, password string, args ...any) (string, error) {
+	suArgs := []any{"-", user, "<<!"}
+	cmd := exec.Command("su", zstr.AnySliceToStrings(suArgs)...)
+	pipe := password + "\n" + command + " " + zstr.SpacedAndQuoted(args) + "\n!\n"
+	cmd.Stdin = strings.NewReader(pipe) // your password + command/args + ! fed directly to su's stdin
+	output, err := cmd.CombinedOutput()
+	str := string(output)
+
+	zlog.Info("RunCommandWithSu:", suArgs, "pipe:", pipe, "output:", str, "err:", err)
+	return str, err
+}
+
 func GetAppProgramPath(appName string) string {
 	if OnDarwin() {
 		return "/Applications/" + appName + ".app/Contents/MacOS/" + appName
 	}
-	return appName
+	return "/usr/bin/" + appName
 }
 
 // RunApp runs appName in Applications (for mac), and returns the exec.Cmd and out/err readers and in writer.
