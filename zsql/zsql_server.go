@@ -541,3 +541,14 @@ func (b *Base) SelectIDOfNames(table, namecol, idcol string, names []string, whe
 	}
 	return ids, nil
 }
+
+func (base *Base) SelectString(query string, params ...any) (string, error) {
+	query = CustomizeQuery(query, base.Type)
+	row := base.DB.QueryRow(query, params...)
+	var result string
+	err := row.Scan(&result)
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
