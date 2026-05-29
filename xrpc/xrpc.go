@@ -196,7 +196,7 @@ func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, err
 	if port != 0 {
 		url, err := url.Parse(surl)
 		if err != nil {
-			zlog.OnError(err, "Parse URL failed:", surl)
+			zlog.OnError(err, zlog.StackAdjust(1), "Parse URL failed:", surl)
 			return nil, err
 		}
 		url.Host = fmt.Sprintf("%s:%d", url.Hostname(), port)
