@@ -40,7 +40,6 @@ var (
 	MinimumPasswordLength  = 5
 	AppSpecificPermissions = []string{"root"}
 	NoLoginGUI             bool
-	RPCCaller              zrpc.Callable
 )
 
 func Init() {

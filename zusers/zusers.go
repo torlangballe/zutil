@@ -72,6 +72,7 @@ var (
 	UserNamePasswordWrongError = fmt.Errorf("Incorrect username/email or password: %w", AuthFailedError)
 	DefaultUserName            = "user@example.com"
 	DefaultPassword            = "admin"
+	RPCCaller                  zrpc.Callable
 )
 
 func (u User) GetStrID() string {
