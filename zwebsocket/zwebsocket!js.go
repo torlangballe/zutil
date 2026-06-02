@@ -3,6 +3,7 @@
 package zwebsocket
 
 import (
+	"context"
 	"io"
 	"math/rand"
 	"time"
@@ -58,7 +59,7 @@ func NewClient(id, url string, handler func([]byte, error) []byte) (*Client, err
 	}
 	c.url = url
 	c.ID = id
-	c.Timeout = time.Second * 10
+	c.Timeout = time.Second * 5
 	c.openFunc = c.open
 	err := c.open()
 	if err != nil {
@@ -175,7 +176,9 @@ func (c *Client) open() error {
 	}
 	config.Header.Set(IDHeader, c.ID)
 	config.Header.Set("Authorization", "Bearer "+c.AuthToken)
-	ws, err := websocket.DialConfig(config)
+	ctx, cancel := context.WithTimeout(context.Background(), c.Timeout)
+	defer cancel()
+	ws, err := config.DialContext(ctx)
 	if zlog.OnError(err, c.url, zdebug.CallingStackString()) {
 		c.handlerFunc(nil, err)
 		time.Sleep(time.Second)
