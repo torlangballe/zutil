@@ -19,8 +19,9 @@ import (
 // OnceWait is something you call Wait() on and it waits until Done() is called on it. Once.
 // Use to wait for some global data to be inited for example.
 type OnceWait struct {
-	ready chan struct{}
-	once  sync.Once
+	ready   chan struct{}
+	once    sync.Once
+	timeout time.Duration
 }
 
 var (
@@ -32,12 +33,6 @@ var (
 func init() {
 	zdebug.GetOngoingProcsCountFunc = func() int {
 		return procs.Count()
-	}
-}
-
-func NewOnceWait() *OnceWait {
-	return &OnceWait{
-		ready: make(chan struct{}),
 	}
 }
 
@@ -148,8 +143,28 @@ func PopProcess(p *proc) {
 	procs.Remove(p.id)
 }
 
-func (o *OnceWait) Wait() {
-	<-o.ready
+func NewOnceWait() *OnceWait {
+	return &OnceWait{
+		ready:   make(chan struct{}),
+		timeout: time.Second * 10,
+	}
+}
+
+func NewOnceWaitForever() *OnceWait {
+	return &OnceWait{
+		ready:   make(chan struct{}),
+		timeout: -time.Since(ztime.BigTime),
+	}
+}
+
+func (o *OnceWait) Wait() error {
+	select {
+	case <-o.ready:
+		break
+	case <-time.After(o.timeout):
+		return zlog.Error(zlog.StackAdjust(1), "OnceWait.Wait timed out after", o.timeout)
+	}
+	return nil
 }
 
 func (o *OnceWait) Done() {
