@@ -165,7 +165,7 @@ func (r *RPC) handleClientError(pipeID string, err error) {
 // MakeClient creates a new client connection to the given URL. If port is not 0, it overrides the port in the URL with the given port.
 // Note that you clients are normally made with AddClient() that uses ConnectIfNeeded() and r.ConnectClientFunc to actually create a client.
 func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, error) {
-	// zlog.Info("RPC.MakeClient:", surl, pipeID, port, zdebug.CallingStackString())
+	// zlog.Info("RPC.MakeClient:", surl, pipeID, port)
 	var client *zwebsocket.Client
 	handler := func(msg []byte, err error) []byte {
 		if err != nil {
