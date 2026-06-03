@@ -242,8 +242,8 @@ func MainClient() *zwebsocket.Client {
 	return c
 }
 
-func (c Caller) Call(fullMethod string, in any, resultPtr any) error {
-	return c.RPC.Call(c.ID, fullMethod, in, resultPtr)
+func (c Caller) Call(fullMethod string, in any, resultPtr any, timeoutSecs ...float64) error {
+	return c.RPC.Call(c.ID, fullMethod, in, resultPtr, timeoutSecs...)
 }
 
 func (r *RPC) TokenForClientID(clientID string) (string, error) {
@@ -332,4 +332,19 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, time
 		return fmt.Errorf("RPC call transport error: %s", rp.TransportError)
 	}
 	return nil
+}
+
+func SetupSimpleClient(port int, address string) {
+	zlog.Warn("SetupSimpleClient with port:", port, "address:", address)
+	rpc := NewRPC()
+	MainRPC = rpc
+	rpc.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
+		c, err := rpc.MakeClient("ws://"+address, clientID, port)
+		if err != nil {
+			zlog.OnError(err, "NewClient")
+			return nil, err
+		}
+		return c, nil
+	}
+	rpc.SetClient(MainClientID)
 }
