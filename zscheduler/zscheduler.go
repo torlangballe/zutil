@@ -641,7 +641,6 @@ func (s *Scheduler[I]) startAndStopRuns() {
 				continue
 			}
 			if !r.Job.IsAble {
-				zlog.Warn("startAndStopRuns3:", i)
 				continue
 			}
 			if !(r.StartedAt.IsZero() && r.RanAt.IsZero()) {
@@ -1032,7 +1031,7 @@ func (s *Scheduler[I]) changeExecutor(e Executor[I]) {
 }
 
 func (s *Scheduler[I]) changeJob(job Job[I]) {
-	zlog.Info(DebugLog, "ChangeJob1:", job.IsAble, job.DebugName)
+	zlog.Warn(DebugLog, "ChangeJob1:", job.IsAble, job.DebugName)
 	for i, r := range s.runs {
 		if r.Job.ID == job.ID {
 			s.runs[i].Job.IsAble = job.IsAble
@@ -1043,13 +1042,13 @@ func (s *Scheduler[I]) changeJob(job Job[I]) {
 
 			// 	s.stopJob(job.ID, false, false, true, reason)
 			// } else {
-			zlog.Info(DebugLog, "ChangeJob:", job.IsAble, job.DebugName, s.runs[i].Job.Attributes)
+			zlog.Warn(DebugLog, "ChangeJob:", job.IsAble, job.DebugName, s.runs[i].Job.Attributes)
 			s.startAndStopRuns() // a new cost could start it for example
 			// }
 			return
 		}
 	}
-	zlog.Info(DebugLog, "ChangeJob addJob:", job.DebugName, job.Attributes, job.IsAble)
+	zlog.Warn(DebugLog, "ChangeJob addJob:", job.DebugName, job.Attributes, job.IsAble)
 	s.addJob(job)
 }
 
