@@ -261,7 +261,7 @@ func callMethod(e *Executor, ci zrpc.ClientInfo, mtype *methodType, rawArg json.
 		returnValues = mtype.Method.Func.Call(args)
 	})
 	if !completed {
-		str := zstr.Spaced("namedfuncs.Call expired before call", mtype.Method.Name, "since start/before http-fields:", time.Since(start), "since exe:", time.Since(called))
+		str := zstr.Spaced("namedfuncs.Call expired before call done:", mtype.Method.Name, "since start/before http-fields:", time.Since(start), "since exe:", time.Since(called))
 		rp.TransportError = TransportError(str)
 		return
 	}
