@@ -75,7 +75,7 @@ func MakeDialogLabel(text string, minWidth float64, maxLines int, isDebug bool) 
 	label.SetMaxLines(maxLines)
 	label.SetWrap(ztextinfo.WrapTailTruncate)
 	if isDebug {
-		label.SetBGColor(zstyle.DebugBackgroundColor)
+		label.SetBGColor(zstyle.DebugBackgroundColor())
 	}
 	label.SetPressWithModifierToClipboard(zkeyboard.ModifierAlt)
 	return label
@@ -89,7 +89,7 @@ func AddDialogLabeledTextRow(grid *zcontainer.StackView, title, text, desc strin
 func AddDialogLabeledRow(grid *zcontainer.StackView, title string, field zview.View, desc string, isDebug bool) *zcontainer.Cell {
 	_, stack, cell, _ := Labelize(field, title, "", 0, zgeo.Left, desc)
 	if isDebug {
-		stack.SetBGColor(zstyle.DebugBackgroundColor)
+		stack.SetBGColor(zstyle.DebugBackgroundColor())
 	}
 	grid.Add(stack, zgeo.TopLeft|zgeo.HorExpand)
 	return cell
