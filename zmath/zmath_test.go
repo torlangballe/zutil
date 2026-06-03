@@ -10,31 +10,30 @@ import (
 type Hierarchy struct {
 	ID       string
 	ParentID string
-	Instance string
 }
 
 func (h Hierarchy) Identifier() string {
 	return h.ID
 }
 
-func (h Hierarchy) ParentIdentifier() string {
+func (h Hierarchy) IdentifierOfParent() string {
 	return h.ParentID
 }
 
 func TestTree(t *testing.T) {
 	rows := []Hierarchy{
-		{ID: "Animal", ParentID: "", Instance: ""},
-		{ID: "Mammal", ParentID: "Animal", Instance: ""},
-		{ID: "Bird", ParentID: "Animal", Instance: ""},
-		{ID: "Dog", ParentID: "Mammal", Instance: ""},
-		{ID: "Cat", ParentID: "Mammal", Instance: ""},
-		{ID: "Monkey", ParentID: "Mammal", Instance: ""},
-		{ID: "TomCat", ParentID: "Cat", Instance: ""},
-		{ID: "Chimpanzee", ParentID: "Monkey", Instance: ""},
+		{ID: "Animal", ParentID: ""},
+		{ID: "Mammal", ParentID: "Animal"},
+		{ID: "Bird", ParentID: "Animal"},
+		{ID: "Dog", ParentID: "Mammal"},
+		{ID: "Cat", ParentID: "Mammal"},
+		{ID: "Monkey", ParentID: "Mammal"},
+		{ID: "TomCat", ParentID: "Cat"},
+		{ID: "Chimpanzee", ParentID: "Monkey"},
 	}
 	tree := MakeTree(rows)
 	str := fmt.Sprint(tree)
-	ztesting.Equal(t, str, "[{Animal 1 } {Mammal 2 } {Dog 3 } {Cat 3 } {TomCat 4 } {Monkey 3 } {Chimpanzee 4 } {Bird 2 }]")
+	ztesting.Equal(t, str, "[{0 {Animal }} {1 {Mammal Animal}} {2 {Dog Mammal}} {2 {Cat Mammal}} {3 {TomCat Cat}} {2 {Monkey Mammal}} {3 {Chimpanzee Monkey}} {1 {Bird Animal}}]")
 }
 
 func TestEaseInOut(t *testing.T) {

@@ -1,6 +1,8 @@
 package zmath
 
-import "github.com/torlangballe/zutil/zslices"
+import (
+	"github.com/torlangballe/zutil/zslices"
+)
 
 type ParentChild interface {
 	IdentifierOfParent() string
@@ -20,7 +22,7 @@ type Leaf[T any] struct {
 // MakeTree takes a slice of T where T implements Identifier, and some implement ParentChild.
 // It returns a slice of Leaf[T] where the instances are ordered in a way that parents come before their children,
 // and the Level field indicates the depth in the tree.
-// The parent-child relationships are determined by the IdentifierOfParent method, which should return the identifier of the parent instance.
+// The parent-child relationships are determined by the IdentifierOfParent method, which should return the id of the parent instance.
 // The Identifier method should return a unique identifier for each instance.
 // The function uses a recursive helper function addTree to build the tree structure.
 func MakeTree[T any](rows []T) []Leaf[T] {
@@ -34,8 +36,6 @@ func MakeTree[T any](rows []T) []Leaf[T] {
 
 func addTree[T any](parentID string, rows *[]T, level int) []Leaf[T] {
 	var out []Leaf[T]
-
-	// zlog.Info("addTree1", len(*rows))
 	for len(*rows) > 0 {
 		var added bool
 		for i := 0; i < len(*rows); i++ {
@@ -46,14 +46,12 @@ func addTree[T any](parentID string, rows *[]T, level int) []Leaf[T] {
 				rpid = pc.IdentifierOfParent()
 			}
 			id := a.(Identifier).Identifier()
-			// zlog.Info(i, "addTree:", "parentID:", parentID, "id:", id, "rpid:", rpid, "level:", level)
 			if rpid == parentID && (parentID != "" || level == 0) { // if parentID is empty, we want to include all top-level nodes (those with no parent), but empty==empty should otherwise not add anything
 				added = true
 				one := Leaf[T]{Level: level, Instance: r}
 				zslices.RemoveAt(rows, i)
 				add := addTree(id, rows, level+1)
-				allAdded := append([]Leaf[T]{one}, add...)
-				// zlog.Info("Added:", len(allAdded), len(add), "of", len(rows))
+				allAdded := append([]Leaf[T]{one}, add...) // adds one at this level, and any children at deeper levels
 				out = append(out, allAdded...)
 				zslices.RemoveFromFunc(rows, func(t T) bool {
 					for _, leaf := range add { // remove add, "one" already removed
@@ -66,7 +64,6 @@ func addTree[T any](parentID string, rows *[]T, level int) []Leaf[T] {
 				i--
 			}
 		}
-		// zlog.Info("addTree2:", len(rows), added, level)
 		if !added {
 			break
 		}
