@@ -339,7 +339,7 @@ func SetupSimpleClient(port int, address string) {
 	rpc := NewRPC()
 	MainRPC = rpc
 	rpc.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		c, err := rpc.MakeClient("ws://"+address, clientID, port)
+		c, err := rpc.MakeClient("ws://"+address+"xrpc/", clientID, port)
 		if err != nil {
 			zlog.OnError(err, "NewClient")
 			return nil, err

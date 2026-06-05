@@ -110,5 +110,5 @@ type Executioner interface {
 }
 
 type Callable interface {
-	Call(method string, args any, resultPtr any) error
+	Call(method string, args any, resultPtr any, timeoutSecs ...float64) error
 }
