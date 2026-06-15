@@ -364,28 +364,11 @@ func getValueString(parent any, val reflect.Value, f *zfields.Field, sf reflect.
 			return
 		}
 	}
-	var enum zdict.Items
 	istr := fmt.Sprint(val.Interface())
-	if f.HasFlag(zfields.FlagEmptyEnum) {
-		eg, _ := parent.(zfields.EnumGetter)
-		if zlog.ErrorIf(eg == nil, "field is empty enum but does not implement EnumGetter", f.Name, val.Type()) {
-			return "", false
-		}
-		enum = eg.GetEnum(f.FieldName)
-		// zlog.Info("getValueString: got enum for field", f.Name, "enum:", zlog.Full(enum), "value:", istr)
+	enum, selected := zfields.GetEnumFromNameOrGetter(f, f.Enum, parent, val)
+	if len(enum) != 0 {
+		val = reflect.ValueOf(selected.Value)
 	}
-	if f.Enum != "" {
-		enum = zfields.GetEnum(f.Enum)
-	}
-	if len(enum) > 0 {
-		for _, e := range enum {
-			if val.Equal(reflect.ValueOf(e.Value)) {
-				return e.Name, false
-			}
-		}
-		return "", false
-	}
-
 	if kind == zreflect.KindTime {
 		t := val.Interface().(time.Time)
 		str = ztime.GetNice(t, true)

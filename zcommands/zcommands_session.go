@@ -30,7 +30,7 @@ type Session struct {
 
 func (s *Session) SetNumberedNode(node Node, i int) {
 	if s.NodeNumberedList == nil {
-		s.NodeNumberedList = map[int]Node{}
+		s.ClearNodeNumberedList()
 	}
 	s.NodeNumberedList[i] = node
 }
@@ -41,6 +41,10 @@ func (s *Session) PathAsItsTopNode(path string, nodeTypes NodeType) (Node, error
 		return Node{}, err
 	}
 	return nodes[len(nodes)-1], nil
+}
+
+func (s *Session) ClearNodeNumberedList() {
+	s.NodeNumberedList = map[int]Node{}
 }
 
 func (s *Session) PathAsNodes(path string, nodeTypes NodeType) ([]Node, error) {
@@ -90,12 +94,12 @@ func (s *Session) PathAsNodes(path string, nodeTypes NodeType) ([]Node, error) {
 func (s *Session) changeDirectory(path string) error {
 	if path == "" {
 		// todo
-		s.NodeNumberedList = map[int]Node{}
+		s.ClearNodeNumberedList()
 		return s.changeDirectory("/")
 	}
 	if path == "/" {
 		s.NodeHistory = s.NodeHistory[:1]
-		s.NodeNumberedList = map[int]Node{}
+		s.ClearNodeNumberedList()
 		s.updatePrompt()
 		return nil
 	}

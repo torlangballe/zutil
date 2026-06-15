@@ -88,7 +88,7 @@ func (defaultCommands) Command_ls(c *CommandInfo, a struct {
 }
 
 func listNodes(c *CommandInfo, longList bool) {
-	c.Session.NodeNumberedList = map[int]Node{}
+	c.Session.ClearNodeNumberedList()
 	listNodesForAny(c, c.Session.CurrentNodeValue(), FieldNode|StaticFieldNode|RowNode|ComNode|MethodNode|VariableNode, longList, false)
 }
 
