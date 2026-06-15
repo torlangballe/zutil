@@ -903,7 +903,7 @@ type FS struct {
 func (cr *ChunkedRows) DeleteChunksOlderThan(old time.Time) error {
 	isIDOrderer := false
 	t := old.UnixMicro()
-	zlog.Info("ChunkedRows.DeleteChunksOlderThan:", old)
+	zlog.Info("ChunkedRows.DeleteChunksOlderThan:", old, cr != nil)
 	index, cpos, err := cr.binarySearchForChunk(t, cr.bottomChunkIndex, cr.topChunkIndex, isIDOrderer)
 	zlog.Info("ChunkedRows.DeleteChunksOlderThan2:", index, cpos, err)
 	if err != nil {
