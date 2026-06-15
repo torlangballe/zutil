@@ -75,6 +75,11 @@ func (m *ExpiringMap[K, V]) Get(k K) (V, bool) {
 	return m.get(k, true)
 }
 
+func (m *ExpiringMap[K, V]) Index(k K) V {
+	v, _ := m.get(k, true)
+	return v
+}
+
 func (m *ExpiringMap[K, V]) Has(k K) bool {
 	return m.lockedMap.Has(k)
 }
