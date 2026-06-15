@@ -554,3 +554,54 @@ func ReverseProxy_not_made_yet() {
 
 	log.Fatal(http.ListenAndServe(":8080", reverseProxy))
 }
+
+type readCloser interface {
+	io.Reader
+	io.Closer
+}
+
+type countingReadCloser struct {
+	readCloser
+	count *int64
+}
+
+func (c *countingReadCloser) Read(p []byte) (int, error) {
+	n, err := c.readCloser.Read(p)
+
+	if n > 0 {
+		*c.count += int64(n)
+	}
+
+	return n, err
+}
+
+type countingResponseWriter struct {
+	http.ResponseWriter
+	bytesWritten int64
+}
+
+func (w *countingResponseWriter) Write(b []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(b)
+	w.bytesWritten += int64(n)
+	return n, err
+}
+
+func BandwidthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cw := &countingResponseWriter{ResponseWriter: w}
+		var bytesRead int64
+		if r.Body != nil {
+			r.Body = &countingReadCloser{
+				readCloser: r.Body,
+				count:      &bytesRead,
+			}
+		}
+		next.ServeHTTP(cw, r)
+		log.Printf(
+			"path=%s in=%d out=%d",
+			r.URL.Path,
+			bytesRead,
+			cw.bytesWritten,
+		)
+	})
+}
