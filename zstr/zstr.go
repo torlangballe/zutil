@@ -72,7 +72,7 @@ type KeyValue struct {
 	Value string
 }
 
-type StrInt struct {
+type StrInt64 struct {
 	Str string
 	Int int64
 }
@@ -88,11 +88,11 @@ const (
 
 var UTFPostModifierForRoundRect = "\xe2\x83\xa3"
 
-func StrInt64(s string, i int64) StrInt {
-	return StrInt{Str: s, Int: i}
+func StrInt(s string, i int) StrInt64 {
+	return StrInt64{Str: s, Int: int64(i)}
 }
 
-func FindIntInStrInts(n int64, sis []StrInt) (*StrInt, int) {
+func FindIntInStrInts(n int64, sis []StrInt64) (*StrInt64, int) {
 	for i, si := range sis {
 		if si.Int == n {
 			return &sis[i], i
