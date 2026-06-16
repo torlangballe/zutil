@@ -97,8 +97,9 @@ func (m *MarkdownConverter) ConvertToHTML(w io.Writer, name string) error {
 
 func (m *MarkdownConverter) ConvertToHTMLFromString(w io.Writer, fullmd, name string) error {
 	var extensions = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
-		blackfriday.Autolink | blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HeadingIDs |
-		blackfriday.BackslashLineBreak | blackfriday.DefinitionLists | blackfriday.HardLineBreak
+		blackfriday.Autolink | blackfriday.Strikethrough | blackfriday.SpaceHeadings |
+		blackfriday.HeadingIDs | blackfriday.AutoHeadingIDs | blackfriday.BackslashLineBreak |
+		blackfriday.DefinitionLists | blackfriday.HardLineBreak
 
 	templater := &Templater{TeXFontSize: 14, DPI: 144}
 
@@ -115,7 +116,7 @@ func (m *MarkdownConverter) ConvertToHTMLFromString(w io.Writer, fullmd, name st
 	renderer := blackfriday.NewHTMLRenderer(params)
 	renderer.AbsolutePrefix = m.AbsolutePrefix
 	output := blackfriday.Run([]byte(input),
-		blackfriday.WithExtensions(extensions|blackfriday.AutoHeadingIDs),
+		blackfriday.WithExtensions(extensions),
 		blackfriday.WithRenderer(renderer))
 	_, err := w.Write([]byte(output))
 	return err
