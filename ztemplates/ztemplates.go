@@ -38,7 +38,7 @@ func NewHandler(base string, fileSystem fs.FS) (h *Handler) {
 
 func AddHandler(router *mux.Router, pattern string, handler *Handler, handlerFunc func(http.ResponseWriter, *http.Request, *Handler)) *mux.Route {
 	return zrest.AddHandler(router, "templates/"+pattern, func(w http.ResponseWriter, req *http.Request) {
-		zlog.Info("PlayTemplate:", req.Method, req.URL.Query().Get("Title"), req.RemoteAddr, req.URL)
+		// zlog.Info("PlayTemplate:", req.Method, req.URL.Query().Get("Title"), req.RemoteAddr, req.URL)
 		handlerFunc(w, req, handler)
 	})
 }
