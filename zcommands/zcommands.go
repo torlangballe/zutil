@@ -291,7 +291,6 @@ func fieldNodes(s *Session, instancePtr any, part string, indent int, inStatic b
 	var nodes []Node
 	var path string
 	params := zfields.FieldParameters{}
-	// zlog.Info("fieldNodes:", reflect.TypeOf(instancePtr), zlog.Full(instancePtr))
 	zfields.ForEachField(instancePtr, params, nil, func(each zfields.FieldInfo) bool {
 		// col := indentColors[indent%len(indentColors)]
 		if each.Field.Flags&zfields.FlagIsButton != 0 || each.Field.Flags&zfields.FlagIsImage != 0 {
@@ -351,7 +350,6 @@ func fieldNodes(s *Session, instancePtr any, part string, indent int, inStatic b
 func getValueString(parent any, val reflect.Value, f *zfields.Field, sf reflect.StructField, maxChars int, setStructString bool) (str string, skip bool) {
 	kind := zreflect.KindFromReflectKindAndType(val.Kind(), val.Type())
 	zuis, _ := val.Interface().(zfields.UIStringer)
-	// zlog.Info("GetValueString", f.Name, zuis != nil)
 	if zuis != nil {
 		return zuis.ZUIString(f.HasFlag(zfields.FlagAllowEmptyAsZero)), false
 	}
@@ -366,7 +364,7 @@ func getValueString(parent any, val reflect.Value, f *zfields.Field, sf reflect.
 	}
 	istr := fmt.Sprint(val.Interface())
 	enum, selected := zfields.GetEnumFromNameOrGetter(f, f.Enum, parent, val)
-	if len(enum) != 0 {
+	if len(enum) != 0 && selected.Value != nil {
 		val = reflect.ValueOf(selected.Value)
 	}
 	if kind == zreflect.KindTime {
