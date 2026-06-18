@@ -855,7 +855,7 @@ func (s *Scheduler[I]) calculateLoadOfUsableExecutors() map[I]capacity {
 		m[e.ID] = capacity{capacity: e.CostCapacity, attributes: e.AcceptAttributes}
 	}
 	for _, r := range s.runs {
-		if !r.Job.IsAble || !runnableEx[r.ExecutorID] {
+		if !r.Job.IsAble || r.ExecutorID == s.zeroID || !runnableEx[r.ExecutorID] {
 			continue
 		}
 		c := m[r.ExecutorID]
