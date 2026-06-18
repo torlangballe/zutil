@@ -83,6 +83,7 @@ type Deleter interface {
 }
 
 var VariableStringFromInstanceFunc func(a any) (string, bool)
+var UpdateStructFunc func(structure any, uid int64) error
 
 const (
 	FieldNode NodeType = 1 << iota
@@ -287,6 +288,7 @@ func NodesForStruct(s *Session, instance any, part string, nodeTypes NodeType, l
 	return nodes
 }
 
+// fieldNodes returns the struct's fields as nodes to view/edit
 func fieldNodes(s *Session, instancePtr any, part string, indent int, inStatic bool) []Node {
 	var nodes []Node
 	var path string
@@ -364,8 +366,9 @@ func getValueString(parent any, val reflect.Value, f *zfields.Field, sf reflect.
 	}
 	istr := fmt.Sprint(val.Interface())
 	enum, selected := zfields.GetEnumFromNameOrGetter(f, f.Enum, parent, val)
+	zlog.Info("getValueString:", f.Name, "enum:", len(enum), "selected:", selected.Value, "istr:", istr)
 	if len(enum) != 0 && selected.Value != nil {
-		val = reflect.ValueOf(selected.Value)
+		return selected.Name, false
 	}
 	if kind == zreflect.KindTime {
 		t := val.Interface().(time.Time)

@@ -104,6 +104,16 @@ func callUpdater(c *CommandInfo, parentNode Node) {
 	zlog.Info("callUpdater for parent node:", parentNode.Name, "type:", reflect.TypeOf(parentNode.Instance), "updater:", updater != nil)
 	if updater != nil {
 		updater.Update(c.Session)
+		return
+	}
+	if UpdateStructFunc != nil {
+		uid := c.Session.TermSession.UserID()
+		err := UpdateStructFunc(parentNode.Instance, uid)
+		if err != nil {
+			fmt.Fprintln(c.Session.TermSession.Writer(), err)
+		}
+	} else {
+		zlog.Info("No UpdateStructFunc set. Not updating struct.")
 	}
 }
 
@@ -138,7 +148,10 @@ func editSliceIndicator(c *CommandInfo, parentNode, node Node) bool {
 		sliceVal = sliceVal.Elem()
 	}
 	length := sliceVal.Len()
-	zlog.Assert(length != 0)
+	if length == 0 {
+		c.Session.TermSession.Writeln("Slice is empty, nothing to edit")
+		return false
+	}
 	indicatorName := zfields.FindIndicatorOfSlice(sliceVal.Interface())
 	c.Session.TermSession.Writeln("Set", zstr.EscCyan+node.editField.field.Name+zstr.EscNoColor, "index:")
 	lastUsedID, _ := zkeyvalue.DefaultStore.GetString(node.editField.key)
