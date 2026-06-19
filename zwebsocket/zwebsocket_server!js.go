@@ -53,6 +53,7 @@ func NewServerWithRouter(path string, router *mux.Router, handler func(id string
 	s := &Server{}
 	s.Timeout = time.Second * 10
 	s.handlerFunc = handler
+	zlog.Info("Starting WebSocket server on path", path)
 	router.Handle(path, websocket.Handler(s.handleSocketRequest))
 	// time.Sleep(time.Millisecond * 50) // Give ListenAndServe time to start
 	return s, nil
@@ -117,6 +118,7 @@ func (s *Server) ExchangeWithID(id string, msg []byte) ([]byte, error) {
 }
 
 func (s *Server) handleSocketRequest(conn *websocket.Conn) {
+	zlog.Info("Got WebSocket connection request from", conn.RemoteAddr())
 	var token string
 	req := conn.Request()
 	id := req.Header.Get(IDHeader)

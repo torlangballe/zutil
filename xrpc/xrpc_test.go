@@ -49,7 +49,7 @@ func xTestSendReceive(t *testing.T) {
 		return srpc.MakeServer("/", 7743, nil)
 	}
 	srpc.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		addr := "ws://localhost:/"
+		addr := "localhost:/"
 		client, err := srpc.MakeClient(addr, clientID, 7743)
 		return client, err
 	}
@@ -71,7 +71,7 @@ func xTestSendReceive(t *testing.T) {
 	crpc := NewRPC()
 	crpc.Executor = client2Executor
 	crpc.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		addr := "ws://localhost:/"
+		addr := "localhost:/"
 		client, err := crpc.MakeClient(addr, clientID, 7743)
 		return client, err
 	}
@@ -133,7 +133,7 @@ func xTestCircular(t *testing.T) {
 	}
 	circleServer.SetServer(serverID)
 	circleServer.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		addr := "ws://localhost:/"
+		addr := "localhost:/"
 		client, err := circleServer.MakeClient(addr, clientID, 7744)
 		return client, err
 	}
@@ -160,7 +160,7 @@ func makeRPC(t *testing.T, port int, executor *znamedfuncs.Executor) {
 	clientRPC := NewRPC()
 	clientRPC.Executor = executor
 	clientRPC.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		addr := fmt.Sprintf("ws://localhost:/")
+		addr := fmt.Sprintf("localhost:/")
 		return clientRPC.MakeClient(addr, clientID, port)
 	}
 	clientID := fmt.Sprintf("client%d", port)

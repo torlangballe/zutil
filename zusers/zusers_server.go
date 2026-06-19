@@ -11,8 +11,8 @@ import (
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmail"
+	"github.com/torlangballe/zutil/znamedfuncs"
 	"github.com/torlangballe/zutil/znet"
-	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zsql"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -20,7 +20,7 @@ import (
 // https://github.com/go-webauthn/webauthn -- for passwordless  Web Authentication public key login
 // https://css-tricks.com/passkeys-what-the-heck-and-why/
 
-type UsersCalls zrpc.CallsBase
+type UsersCalls struct{}
 
 type ForgotPasswordData struct {
 	MailAuth    zmail.Authentication
@@ -39,7 +39,7 @@ var (
 	authenticator            znet.TokenAuthenticator
 )
 
-func setupWithSQLServer(s *SQLServer, executor zrpc.Executioner) {
+func setupWithSQLServer(s *SQLServer, executor znamedfuncs.Executioner) {
 	MainServer = s
 	if executor == nil {
 		return
@@ -62,7 +62,7 @@ func (UsersCalls) GetUserIDFromToken(token string, id *int64) error {
 	return nil
 }
 
-func (UsersCalls) GetUserSessionForToken(ci *zrpc.ClientInfo, token string, us *UserSession) error {
+func (UsersCalls) GetUserSessionForToken(ci *znamedfuncs.ClientInfo, token string, us *UserSession) error {
 	return GetUserSessionForToken(token, us, ci.Request)
 }
 
@@ -85,14 +85,14 @@ func GetUserSessionForToken(token string, us *UserSession, req *http.Request) er
 	return nil
 }
 
-func (UsersCalls) Logout(ci *zrpc.ClientInfo, username string, reply *zrpc.Unused) error {
+func (UsersCalls) Logout(ci *znamedfuncs.ClientInfo, username string) error {
 	if MainServer == nil {
 		return nil
 	}
 	return MainServer.UnauthenticateToken(ci.Token)
 }
 
-func (UsersCalls) Authenticate(ci *zrpc.ClientInfo, a Authentication, ui *ClientUserInfo) error {
+func (UsersCalls) Authenticate(ci *znamedfuncs.ClientInfo, a Authentication, ui *ClientUserInfo) error {
 	zlog.Info("UC.Authenticate:", ui)
 	if MainServer == nil {
 		return nil
@@ -126,7 +126,7 @@ func (UsersCalls) Authenticate(ci *zrpc.ClientInfo, a Authentication, ui *Client
 	return nil
 }
 
-func (UsersCalls) SendForgotPasswordPasswordMail(email string, r *zrpc.Unused) error {
+func (UsersCalls) SendForgotPasswordPasswordMail(email string) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -149,7 +149,7 @@ func (UsersCalls) SendForgotPasswordPasswordMail(email string, r *zrpc.Unused) e
 	return err
 }
 
-func (UsersCalls) SetNewPasswordFromForgotPassword(ci *zrpc.ClientInfo, reset ResetPassword, token *string) error {
+func (UsersCalls) SetNewPasswordFromForgotPassword(ci *znamedfuncs.ClientInfo, reset ResetPassword, token *string) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -172,7 +172,7 @@ func (UsersCalls) SetNewPasswordFromForgotPassword(ci *zrpc.ClientInfo, reset Re
 	return err
 }
 
-func (UsersCalls) ChangePasswordForSelf(ci *zrpc.ClientInfo, change ChangeInfo, token *string) error {
+func (UsersCalls) ChangePasswordForSelf(ci *znamedfuncs.ClientInfo, change ChangeInfo, token *string) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -181,14 +181,14 @@ func (UsersCalls) ChangePasswordForSelf(ci *zrpc.ClientInfo, change ChangeInfo, 
 	return err
 }
 
-func (UsersCalls) ChangeUserNameForSelf(ci *zrpc.ClientInfo, change ChangeInfo) error {
+func (UsersCalls) ChangeUserNameForSelf(ci *znamedfuncs.ClientInfo, change ChangeInfo) error {
 	if MainServer == nil {
 		return nil
 	}
 	return MainServer.ChangeUserNameForUser(change.UserID, change.NewString)
 }
 
-func (UsersCalls) GetAllUsers(in *zrpc.Unused, us *[]User) error {
+func (UsersCalls) GetAllUsers(in *struct{}, us *[]User) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -204,7 +204,7 @@ func (UsersCalls) DeleteUserForID(id int64) error {
 	return MainServer.DeleteUserForID(id)
 }
 
-func (UsersCalls) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change ClientUserInfo) error {
+func (UsersCalls) ChangeUsersUserNameAndPermissions(ci *znamedfuncs.ClientInfo, change ClientUserInfo) error {
 	if MainServer == nil {
 		return nil
 	}
@@ -232,7 +232,7 @@ func (UsersCalls) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change 
 	return nil
 }
 
-func (UsersCalls) UnauthenticateUser(ci *zrpc.ClientInfo, userID int64) error {
+func (UsersCalls) UnauthenticateUser(ci *znamedfuncs.ClientInfo, userID int64) error {
 	if MainServer == nil {
 		return nil
 	}

@@ -3,10 +3,10 @@
 package zkeyvalrpc
 
 import (
+	"github.com/torlangballe/zutil/xrpc"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zrpc"
 )
 
 var rpcStore = newRPCStore()
@@ -16,8 +16,8 @@ type dictRPC struct {
 }
 
 func Init() {
-	zrpc.MainClient.RegisterPollGetter(ResourceID, getAll)
-	zrpc.RegisterResources(ResourceID)
+	// xrpc.MainCaller().RegisterPollGetter(ResourceID, getAll)
+	xrpc.RegisterResources(ResourceID)
 }
 
 func newRPCStore() *zkeyvalue.Store {
@@ -37,7 +37,7 @@ func (d *dictRPC) RawSetItem(key string, v any) error {
 	item.Name = key
 	item.Value = v
 	go func() {
-		err := zrpc.MainClient.Call("KeyValueRPCCalls.SetItem", item, nil)
+		err := xrpc.MainCaller().Call("KeyValueRPCCalls.SetItem", item, nil)
 		zlog.OnError(err)
 	}()
 	return nil
@@ -46,7 +46,7 @@ func (d *dictRPC) RawSetItem(key string, v any) error {
 func getAll() {
 	go func() {
 		var dict zdict.Dict
-		err := zrpc.MainClient.Call("KeyValueRPCCalls.GetAll", nil, &dict)
+		err := xrpc.MainCaller().Call("KeyValueRPCCalls.GetAll", nil, &dict)
 		if zlog.OnError(err) {
 			return
 		}

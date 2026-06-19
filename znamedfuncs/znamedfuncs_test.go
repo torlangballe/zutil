@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/xrpc"
 	"github.com/torlangballe/zutil/ztesting"
 )
 
@@ -24,7 +24,7 @@ func (Calls) Add(in AddStruct, out *int) error {
 func TestCall(t *testing.T) {
 	executor := NewExecutor()
 	executor.Register(Calls{})
-	ci := zrpc.ClientInfo{
+	ci := xrpc.ClientInfo{
 		ClientID: "testcaller",
 		Context:  context.Background(),
 	}

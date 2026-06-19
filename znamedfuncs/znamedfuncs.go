@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/token"
+	"net/http"
 	"reflect"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zprocess"
-	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
 )
@@ -32,15 +32,36 @@ type Executor struct {
 	ErrorHandler  func(err error)         // calls this with errors that happen, for logging etc in system that uses namedfuncs
 }
 
+type Executioner interface {
+	Register(callers ...interface{})
+	SetAuthNotNeededForMethod(name string)
+	GetAuthenticator() znet.TokenAuthenticator
+	// Error(parts ...any) error
+}
+
+// ClientInfo stores information about the client calling.
+type ClientInfo struct {
+	Type              string // Type is xrpc or xrpc-rev for these calls. Might be something else if used elsewhere.
+	ClientID          string // ClientID identifies the rpc client
+	Token             string `json:",omitempty"` // Token can be any token, or a authentication token needed to allow the call
+	UserID            int64  `json:",omitempty"` // UserID can be a userid gotten when authenticated
+	Request           *http.Request
+	UserAgent         string    `json:",omitempty"`
+	IPAddress         string    `json:",omitempty"`
+	SendDate          time.Time `json:",omitempty"`
+	Context           context.Context
+	TimeToLiveSeconds float64 `json:",omitempty"`
+}
+
 type CallPayloadSend struct {
-	zrpc.ClientInfo
+	ClientInfo
 	Method   string
 	Args     any
 	TargetID int64 // if non-zero, TargetID is checked against the TargetID of the executor receiving the call, and if they don't match, the call is rejected. This is to avoid calls being received by an executor that restarted and has a different TargetID, when the call was made before the restart and might not be valid anymore.
 }
 
 type CallPayloadReceive struct {
-	zrpc.ClientInfo
+	ClientInfo
 	Method   string
 	Args     json.RawMessage
 	TargetID int64 // See CallPayloadSend.TargetID
@@ -92,7 +113,7 @@ func (e *Executor) GetAuthenticator() znet.TokenAuthenticator {
 }
 
 func (e *Executor) Error(parts ...any) error {
-	parts = append([]any{zlog.StackAdjust(1)}, parts...)
+	parts = append([]any{zlog.StackAdjust(2)}, parts...)
 	err := zlog.Error(parts...)
 	if e.ErrorHandler != nil {
 		e.ErrorHandler(err)
@@ -142,7 +163,7 @@ func suitableMethods(c any) map[string]*methodType {
 		}
 		i := 1
 		if mtype.NumIn() > 2 {
-			hasClientInfo = (mtype.In(i) == reflect.TypeOf((*zrpc.ClientInfo)(nil)))
+			hasClientInfo = (mtype.In(i) == reflect.TypeOf((*ClientInfo)(nil)))
 			if hasClientInfo {
 				i++
 			}
@@ -203,7 +224,7 @@ func (e *Executor) methodNeedsAuth(name string) bool {
 	return !m.AuthNotNeeded
 }
 
-func callMethod(e *Executor, ci zrpc.ClientInfo, mtype *methodType, rawArg json.RawMessage, rp *ReceivePayload) {
+func callMethod(e *Executor, ci ClientInfo, mtype *methodType, rawArg json.RawMessage, rp *ReceivePayload) {
 	zlog.Info(EnableLogExecute, "callMethod:", mtype.Method.Name)
 	start := time.Now()
 	defer func() {
@@ -229,8 +250,8 @@ func callMethod(e *Executor, ci zrpc.ClientInfo, mtype *methodType, rawArg json.
 		argv = argv.Elem()
 	}
 	// zlog.Info("callMethod: calling method", mtype.Method.Name, mtype.hasClientInfo, mtype.ArgType)
-	if mtype.hasClientInfo && mtype.ArgType == reflect.TypeOf((*zrpc.ClientInfo)(nil)) {
-		zlog.Warn("callMethod: method has zrpc.ClientInfo argument, but will be given CallerInfo. Method:", mtype.Method.Name)
+	if mtype.hasClientInfo && mtype.ArgType == reflect.TypeOf((*ClientInfo)(nil)) {
+		zlog.Warn("callMethod: method has ClientInfo argument, but will be given CallerInfo. Method:", mtype.Method.Name)
 	}
 	args := []reflect.Value{mtype.Receiver}
 	if ci.Context == nil {
@@ -309,7 +330,7 @@ func (e *Executor) Execute(cp *CallPayloadReceive, rp *ReceivePayload) {
 	rp.TransportError = TransportError("no method registered: " + cp.Method + " " + zlog.Full(cp.ClientInfo))
 }
 
-func (e *Executor) ExecuteFromToJSON(payload []byte, result *[]byte, ci zrpc.ClientInfo, executorTargetID int64) error {
+func (e *Executor) ExecuteFromToJSON(payload []byte, result *[]byte, ci ClientInfo, executorTargetID int64) error {
 	var cp CallPayloadReceive
 	var rp ReceivePayload
 	err := json.Unmarshal(payload, &cp)

@@ -3,9 +3,10 @@
 package zkeyvalrpc
 
 import (
+	"github.com/torlangballe/zutil/xrpc"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zkeyvalue"
-	"github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/znamedfuncs"
 )
 
 type KeyValueRPCCalls struct{}
@@ -34,12 +35,12 @@ func NewOption[V comparable](key string, val V) *zkeyvalue.Option[V] {
 		o.SetAny(value, true)
 	})
 	o.AddChangedHandler(func() {
-		zrpc.SetResourceUpdated(ResourceID, "")
+		xrpc.SetResourceUpdated(ResourceID, "")
 	})
 	return o
 }
 
-func (KeyValueRPCCalls) GetAll(in *zrpc.Unused, store *zdict.Dict) error {
+func (KeyValueRPCCalls) GetAll(in struct{}, store *zdict.Dict) error {
 	d := zdict.Dict{}
 	for _, key := range rpcStore.Raw.AllKeys() {
 		val, got := rpcStore.GetItemAsAny(key)
@@ -51,14 +52,12 @@ func (KeyValueRPCCalls) GetAll(in *zrpc.Unused, store *zdict.Dict) error {
 	return nil
 }
 
-func (KeyValueRPCCalls) SetItem(ci *zrpc.ClientInfo, kv zdict.Item, result *zrpc.Unused) error {
-	// zlog.Info("zkeyvalrpc SetItem1:", kv)
+func (KeyValueRPCCalls) SetItem(ci *znamedfuncs.ClientInfo, kv zdict.Item) error {
 	rpcStore.SetItem(kv.Name, kv.Value, true)
 	f, got := externalChangeHandlers.Get(kv.Name)
 	if got {
 		f(kv.Name, kv.Value, true)
 	}
-	// zlog.Info("zkeyvalrpc SetItem:", rpcStore.DictRawStore().All())
 	err := rpcStore.Saver.Save()
 	return err
 }

@@ -7,8 +7,8 @@ import (
 	"github.com/torlangballe/zui/zimageview"
 	"github.com/torlangballe/zui/zmenu"
 	"github.com/torlangballe/zui/zwidgets"
+	"github.com/torlangballe/zutil/xrpc"
 	"github.com/torlangballe/zutil/zgeo"
-	"github.com/torlangballe/zutil/zrpc"
 )
 
 func NewActionsIcon() *zimageview.ImageView {
@@ -62,18 +62,18 @@ func changePassword() {
 		var change ChangeInfo
 		change.NewString = newPassword
 		change.UserID = CurrentUser.UserID
-		err := zrpc.MainClient.Call("UsersCalls.ChangePasswordForSelf", change, &CurrentUser.Token)
+		err := xrpc.MainCaller().Call("UsersCalls.ChangePasswordForSelf", change, &CurrentUser.Token)
 		if err != nil {
 			zalert.ShowError(err)
 			return
 		}
-		zrpc.MainClient.AuthToken = CurrentUser.Token
+		xrpc.MainClient().AuthToken = CurrentUser.Token
 	})
 }
 
 func logoutUser() {
 	go func() {
-		err := zrpc.MainClient.Call("UsersCalls.Logout", CurrentUser.UserName, nil)
+		err := xrpc.MainCaller().Call("UsersCalls.Logout", CurrentUser.UserName, nil)
 		if err != nil {
 			zalert.ShowError(err)
 			return
@@ -87,7 +87,7 @@ func changeUserName() {
 		var change ChangeInfo
 		change.NewString = newUserName
 		change.UserID = CurrentUser.UserID
-		err := zrpc.MainClient.Call("UsersCalls.ChangeUserNameForSelf", change, nil)
+		err := xrpc.MainCaller().Call("UsersCalls.ChangeUserNameForSelf", change, nil)
 		if err != nil {
 			zalert.ShowError(err)
 			return

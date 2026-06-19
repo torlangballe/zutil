@@ -6,8 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/torlangballe/zutil/xrpc"
 	"github.com/torlangballe/zutil/zkeyvalue"
-	"github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/znamedfuncs"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -24,7 +25,7 @@ type User struct {
 }
 
 type Session struct {
-	zrpc.ClientInfo
+	znamedfuncs.ClientInfo
 	Created time.Time
 	Used    time.Time
 }
@@ -72,7 +73,7 @@ var (
 	UserNamePasswordWrongError = fmt.Errorf("Incorrect username/email or password: %w", AuthFailedError)
 	DefaultUserName            = "user@example.com"
 	DefaultPassword            = "admin"
-	RPCCaller                  zrpc.Callable
+	RPCCaller                  xrpc.Caller
 )
 
 func (u User) GetStrID() string {

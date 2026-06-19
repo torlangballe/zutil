@@ -1,9 +1,12 @@
-package zrpc
+//go:build server
+
+package xrpc
 
 import (
 	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
+	"github.com/torlangballe/zutil/znamedfuncs"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -15,18 +18,22 @@ type Resources struct {
 	updatedResourcesSentToClient zmap.LockMap[string, []string]
 }
 
-type ZRPCResourceCalls struct {
+type XRPCResourceCalls struct {
 	Resources *Resources
 }
 
 var (
 	MainResources     = new(Resources)
-	MainResourceCalls = &ZRPCResourceCalls{Resources: MainResources}
+	MainResourceCalls = &XRPCResourceCalls{Resources: MainResources}
 )
+
+func InitResources(executor *znamedfuncs.Executor) {
+	executor.Register(MainResourceCalls)
+}
 
 // GetUpdatedResourcesAndSetSent is called from clients (often browsers) to ask for updated resource-ids
 // The client id is stored as it having checked them out for that given update.
-func (rc *ZRPCResourceCalls) GetUpdatedResourcesAndSetSent(ci *ClientInfo, int Unused, reply *[]string) error {
+func (rc *XRPCResourceCalls) GetUpdatedResourcesAndSetSent(ci *znamedfuncs.ClientInfo, a struct{}, reply *[]string) error {
 	*reply = []string{}
 	rc.Resources.updatedResourcesSentToClient.ForEach(func(res string, c []string) bool {
 		if !zstr.StringsContain(c, ci.ClientID) {
@@ -68,14 +75,14 @@ func (r *Resources) SetClientKnowsResourceUpdated(resID, clientID string) {
 }
 
 // SetResourceUpdatedFromClient is called from client to say it knows of update
-func (r *ZRPCResourceCalls) SetResourceUpdatedFromClient(ci *ClientInfo, resID string) error {
+func (r *XRPCResourceCalls) SetResourceUpdatedFromClient(ci *znamedfuncs.ClientInfo, resID string) error {
 	// fmt.Println("SetResourceUpdatedFromClient:", *resID)
 	r.Resources.SetResourceUpdated(resID, ci.ClientID)
 	return nil
 }
 
 // GetURL is a convenience function to get the contents of a url via the server.
-func (*ZRPCResourceCalls) GetURL(surl string, reply *[]byte) error {
+func (*XRPCResourceCalls) GetURL(surl string, reply *[]byte) error {
 	params := zhttp.MakeParameters()
 	// params.PrintBody = true
 	// params.Headers["User-Agent"] = "Mozilla"

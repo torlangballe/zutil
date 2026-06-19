@@ -12,7 +12,7 @@ import (
 	"github.com/torlangballe/term"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/znamedfuncs"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zusers"
 )
@@ -193,7 +193,7 @@ func (t *Terminal) ListenForever(port int) {
 			t.noUserAuthValidKeys[t.sessionPublicKeys[ctx.SessionID()]] = true
 			return true
 		}
-		var ci zrpc.ClientInfo
+		var ci znamedfuncs.ClientInfo
 		ci.Type = "ssh"
 		ci.IPAddress = ctx.RemoteAddr().String()
 		ci.UserAgent = ctx.ClientVersion()

@@ -15,11 +15,11 @@ import (
 	"github.com/torlangballe/zui/zlabel"
 	"github.com/torlangballe/zui/zpresent"
 	"github.com/torlangballe/zui/zview"
+	"github.com/torlangballe/zutil/xrpc"
 	"github.com/torlangballe/zutil/zbool"
 	"github.com/torlangballe/zutil/zfile"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 )
@@ -36,7 +36,7 @@ type FileListerView struct {
 	title      *zlabel.Label
 	errorLabel *zlabel.Label
 	grid       *zgridlist.GridListView
-	rpcClient  *zrpc.Client
+	rpcCaller  xrpc.Caller
 }
 
 const (
@@ -50,11 +50,11 @@ func makeLabel(text string) *zlabel.Label {
 	return label
 }
 
-func NewFileListerView(opts DirOptions, rpcClient *zrpc.Client) *FileListerView {
+func NewFileListerView(opts DirOptions, caller xrpc.Caller) *FileListerView {
 	v := &FileListerView{}
 
 	v.SetMarginS(zgeo.SizeBoth(5))
-	v.rpcClient = rpcClient
+	v.rpcCaller = caller
 	v.Init(v, true, opts.StoreName+".FileLister")
 
 	if opts.IconSize.IsNull() {
@@ -238,13 +238,13 @@ func (v *FileListerView) updatePage() {
 // 	return basePrefix
 // }
 
-func NewRemoteFileListerView(urlPrefix, urlStub string, opts DirOptions, rpcClient *zrpc.Client) *FileListerView {
-	flister := NewFileListerView(opts, rpcClient)
+func NewRemoteFileListerView(urlPrefix, urlStub string, opts DirOptions, rpcCaller xrpc.Caller) *FileListerView {
+	flister := NewFileListerView(opts, rpcCaller)
 	// zlog.Info("NewRemoteFileListerView.rpcClient:", flister.rpcClient != nil)
 	flister.DirFunc = func(dirOpts DirOptions, got func(paths []string, err error)) {
 		go func() {
 			var paths []string
-			err := flister.rpcClient.Call("FileServerCalls.GetDirectory", dirOpts, &paths)
+			err := flister.rpcCaller.Call("FileServerCalls.GetDirectory", dirOpts, &paths)
 			// zlog.Info("NewRemoteFileListerView.GetDir:", paths, err)
 			if err != nil {
 				got(nil, err)

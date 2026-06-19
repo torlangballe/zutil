@@ -21,7 +21,6 @@ import (
 	"github.com/torlangballe/zutil/zguiutil"
 	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zrpc"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztimer"
 	"github.com/torlangballe/zutil/zwords"
@@ -45,7 +44,7 @@ var (
 func Init() {
 	token, _ := zkeyvalue.DefaultStore.GetString(tokenKey)
 	if token != "" {
-		zrpc.MainClient.AuthToken = token
+		xrpc.MainClient().AuthToken = token
 		if xrpc.MainClient() != nil {
 			xrpc.MainClient().AuthToken = token
 		}
@@ -55,7 +54,7 @@ func Init() {
 }
 
 func StartAuth() {
-	zrpc.MainClient.HandleAuthenticationFailedFunc = func() {
+	xrpc.MainRPC.HandleAuthenticationFailedFunc = func(id string) {
 		checkAndDoAuth()
 	}
 	ztimer.StartIn(0.1, checkAndDoAuth)
@@ -214,7 +213,7 @@ func callAuthenticate(view zview.View, a Authentication, got func()) {
 	}
 	if !(a.IsRegister && !AllowRegistration) {
 		CurrentUser = aret
-		zrpc.MainClient.AuthToken = CurrentUser.Token
+		xrpc.MainClient().AuthToken = CurrentUser.Token
 		StoreTokenInKeyValueStore(CurrentUser.Token)
 	}
 	doingAuth = false
@@ -232,12 +231,12 @@ func checkAndDoAuth() {
 	}
 	doingAuth = true
 	var us UserSession
-	err = RPCCaller.Call("UsersCalls.GetUserSessionForToken", zrpc.MainClient.AuthToken, &us)
+	err = RPCCaller.Call("UsersCalls.GetUserSessionForToken", xrpc.MainClient().AuthToken, &us)
 	if err == nil {
 		CurrentUser.UserID = us.User.ID
 		CurrentUser.UserName = us.User.UserName
 		CurrentUser.Permissions = us.User.Permissions
-		CurrentUser.Token = zrpc.MainClient.AuthToken
+		CurrentUser.Token = xrpc.MainClient().AuthToken
 		if AuthenticatedFunc != nil {
 			AuthenticatedFunc(nil)
 		}

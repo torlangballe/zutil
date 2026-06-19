@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
-	"net/url"
+	"strings"
 	"time"
 
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/znamedfuncs"
 	"github.com/torlangballe/zutil/zprocess"
-	"github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztimer"
 	"github.com/torlangballe/zutil/zwebsocket"
 )
@@ -45,13 +46,17 @@ type Caller struct {
 	ID  string
 }
 
-const (
-	MainClientID = "mainclient"
-	MainServerID = "mainserver"
-)
+type Callable interface {
+	Call(method string, args any, resultPtr any, timeoutSecs ...float64) error
+}
+
+const TempDataMethod = "xrpc-tempdata"
 
 var (
-	MainRPC                *RPC
+	MainRPC      *RPC
+	MainClientID = "mainclient"
+	MainServerID = "mainserver"
+
 	exchangeWithServerFunc func(r *RPC, pipeID string, cpJson []byte) (rpJson []byte, err error)
 	xRPCLog                = zlog.NewEnabler()
 )
@@ -71,10 +76,11 @@ func (ci *ConnectInfo[C]) ConnectIfNeeded(id string, connectFunc func(id string)
 		return nil
 	}
 	if time.Since(ci.lastConnectTry).Seconds() < ci.currentBackoffSecs {
+		zlog.Warn("ConnectIfNeeded since ok", id, ci.lastConnectTry)
 		return nil
 	}
 	connection, err := connectFunc(id)
-	// zlog.Warn("ConnectIfNeeded", id, connection != nil, zlog.Pointer(ci), err)
+	zlog.Warn("ConnectIfNeeded", id, connection != nil, zlog.Pointer(ci), err)
 	if err != nil {
 		return err
 	}
@@ -108,7 +114,6 @@ func (r *RPC) ServerForID(serverID string) *zwebsocket.Server {
 }
 
 func (r *RPC) SetClient(clientID string) {
-	zlog.Info("SetClient called for clientID:", clientID)
 	c, has := r.clients[clientID]
 	if !has {
 		c = &ConnectInfo[zwebsocket.Client]{
@@ -164,7 +169,7 @@ func (r *RPC) handleClientError(pipeID string, err error) {
 
 // MakeClient creates a new client connection to the given URL. If port is not 0, it overrides the port in the URL with the given port.
 // Note that you clients are normally made with AddClient() that uses ConnectIfNeeded() and r.ConnectClientFunc to actually create a client.
-func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, error) {
+func (r *RPC) MakeClient(address, pipeID string, port int) (*zwebsocket.Client, error) {
 	// zlog.Info("RPC.MakeClient:", surl, pipeID, port)
 	var client *zwebsocket.Client
 	handler := func(msg []byte, err error) []byte {
@@ -173,7 +178,7 @@ func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, err
 			return nil
 		}
 		r.waitForStart.Wait() // wait for Start() to be called before handling any messages
-		ci := zrpc.ClientInfo{
+		ci := znamedfuncs.ClientInfo{
 			Token:    client.AuthToken,
 			ClientID: pipeID,
 		}
@@ -192,17 +197,13 @@ func (r *RPC) MakeClient(surl, pipeID string, port int) (*zwebsocket.Client, err
 		// zlog.OnError(err, "RPC client call execute error", msg)
 		return result
 	}
-	var err error
 	if port != 0 {
-		url, err := url.Parse(surl)
-		if err != nil {
-			zlog.OnError(err, zlog.StackAdjust(1), "Parse URL failed:", surl)
-			return nil, err
-		}
-		url.Host = fmt.Sprintf("%s:%d", url.Hostname(), port)
-		surl = url.String()
+		address = strings.Replace(address, "/", fmt.Sprintf(":%d/", port), 1)
 	}
-	client, err = zwebsocket.NewClient(pipeID, surl, handler)
+	var err error
+	// zlog.Info("RPC.MakeClient connecting to", address)
+	address = "ws://" + address
+	client, err = zwebsocket.NewClient(pipeID, address, handler)
 	if err != nil {
 		r.handleClientError(pipeID, err)
 		return nil, err
@@ -334,17 +335,38 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, time
 	return nil
 }
 
-func SetupSimpleClient(port int, address string) {
-	zlog.Warn("SetupSimpleClient with port:", port, "address:", address)
+func SetupSimpleClient(port int, address, clientID string) {
 	rpc := NewRPC()
 	MainRPC = rpc
 	rpc.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		c, err := rpc.MakeClient("ws://"+address+"xrpc/", clientID, port)
+		a := zstr.Concat("/", address, "/xrpc/")
+		zlog.Warn("SetupSimpleClient Connect:", clientID, port, a)
+		c, err := rpc.MakeClient(a, clientID, port)
 		if err != nil {
 			zlog.OnError(err, "NewClient")
 			return nil, err
 		}
 		return c, nil
 	}
-	rpc.SetClient(MainClientID)
+	rpc.SetClient(clientID)
+}
+
+// RequestTemporaryServe requests to get data bytes with id set up with AddToTemporaryServe() in executor.
+func RequestTemporaryServe(id int64) (io.ReadCloser, error) {
+	// params := zhttp.MakeParameters()
+	// params.Method = http.MethodGet
+	// params.TimeoutSecs = 20
+	// if c.AuthToken != "" {
+	// 	params.Headers["X-Token"] = c.AuthToken
+	// }
+	// args := map[string]string{"id": strconv.FormatInt(id, 10)}
+	// surl := c.MakeCallURL(TempDataMethod)
+	// surl, _ = zhttp.MakeURLWithArgs(surl, args)
+	// // zlog.Warn("CALL:", surl)
+	// resp, err := zhttp.GetResponse(surl, params)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// return resp.Body, nil
+	return nil, nil
 }

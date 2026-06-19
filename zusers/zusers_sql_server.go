@@ -11,7 +11,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zrpc"
+	"github.com/torlangballe/zutil/znamedfuncs"
 	"github.com/torlangballe/zutil/zsql"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/ztime"
@@ -23,7 +23,7 @@ type SQLServer struct {
 	TransformPasswordFunc func(pass string, forStore bool) string
 }
 
-func NewSQLServer(db *sql.DB, btype zsql.BaseType, executor zrpc.Executioner) (*SQLServer, error) {
+func NewSQLServer(db *sql.DB, btype zsql.BaseType, executor znamedfuncs.Executioner) (*SQLServer, error) {
 	if db == nil {
 		setupWithSQLServer(nil, executor)
 		return nil, nil
@@ -246,7 +246,7 @@ func (s *SQLServer) ChangeUserNameForUser(id int64, username string) error {
 	return err
 }
 
-func (s *SQLServer) ChangePasswordForUser(ci *zrpc.ClientInfo, id int64, password string) (token string, err error) {
+func (s *SQLServer) ChangePasswordForUser(ci *znamedfuncs.ClientInfo, id int64, password string) (token string, err error) {
 	var hash, transHash, salt string
 	squery := "UPDATE zusers SET passwordhash=$1, transpasswordhash=$2, salt=$3, login=$NOW WHERE id=$4"
 	squery = s.customizeQuery(squery)
@@ -351,15 +351,15 @@ func (s *SQLServer) AddNewUser(username, password, hash, transHash, salt string,
 	return
 }
 
-func (s *SQLServer) Login(ci *zrpc.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
+func (s *SQLServer) Login(ci *znamedfuncs.ClientInfo, username, password string) (ui ClientUserInfo, err error) {
 	return s.baseLogin(ci, username, password, false)
 }
 
-func (s *SQLServer) LoginWithPasswordTransformer(ci *zrpc.ClientInfo, username, preHashedPassword string) (ui ClientUserInfo, err error) {
+func (s *SQLServer) LoginWithPasswordTransformer(ci *znamedfuncs.ClientInfo, username, preHashedPassword string) (ui ClientUserInfo, err error) {
 	return s.baseLogin(ci, username, preHashedPassword, true)
 }
 
-func (s *SQLServer) baseLogin(ci *zrpc.ClientInfo, username, password string, useTransformer bool) (ui ClientUserInfo, err error) {
+func (s *SQLServer) baseLogin(ci *znamedfuncs.ClientInfo, username, password string, useTransformer bool) (ui ClientUserInfo, err error) {
 	u, err := s.GetUserForUserName(username)
 	if err != nil {
 		return
@@ -396,7 +396,7 @@ func (s *SQLServer) baseLogin(ci *zrpc.ClientInfo, username, password string, us
 	return
 }
 
-func (s *SQLServer) RegisterUser(ci *zrpc.ClientInfo, username, password string, makeToken bool) (id int64, token string, err error) {
+func (s *SQLServer) RegisterUser(ci *znamedfuncs.ClientInfo, username, password string, makeToken bool) (id int64, token string, err error) {
 	_, err = s.GetUserForUserName(username)
 	if err == nil {
 		err = errors.New("user already exists: " + username)
@@ -419,7 +419,7 @@ func (s *SQLServer) RegisterUser(ci *zrpc.ClientInfo, username, password string,
 	return
 }
 
-func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, change ClientUserInfo) error {
+func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci *znamedfuncs.ClientInfo, change ClientUserInfo) error {
 	squery := "UPDATE zusers SET username=$1, permissions=$2 WHERE id=$3"
 	squery = s.customizeQuery(squery)
 	_, err := s.DB.Exec(squery, change.UserName, pq.Array(change.Permissions), change.UserID)
@@ -429,7 +429,7 @@ func (s *SQLServer) ChangeUsersUserNameAndPermissions(ci *zrpc.ClientInfo, chang
 	return nil
 }
 
-func (s *SQLServer) GetOrCreateSessionForUserIDAndClientID(ci *zrpc.ClientInfo) (token string, err error) {
+func (s *SQLServer) GetOrCreateSessionForUserIDAndClientID(ci *znamedfuncs.ClientInfo) (token string, err error) {
 	squery := "SELECT token FROM zuser_sessions us WHERE userid=$1 AND clientid=$2 LIMIT 1"
 	squery = s.customizeQuery(squery)
 	row := s.DB.QueryRow(squery, ci.UserID, ci.ClientID)

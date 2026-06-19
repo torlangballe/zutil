@@ -50,7 +50,6 @@ func NewClient(id, url string, handler func(data []byte, err error) []byte) (*Cl
 }
 
 func (c *Client) open() error {
-	zlog.Info("Opening WebSocket connection to", c.url)
 	c.socketJS = zdom.New("WebSocket", c.url)
 	c.socketJS.Set("binaryType", "arraybuffer")
 	c.socketJS.Set("onopen", js.FuncOf(func(this js.Value, args []js.Value) any {
@@ -63,7 +62,7 @@ func (c *Client) open() error {
 		return nil
 	}))
 	c.socketJS.Set("onerror", js.FuncOf(func(this js.Value, args []js.Value) any {
-		zlog.Info("ws error")
+		zlog.Info("ws on error", args[0].String())
 		if !c.socketJS.IsUndefined() {
 			c.socketJS.Call("close")
 		}
@@ -95,11 +94,12 @@ func (c *Client) Close() error {
 
 func (c *Client) send(msg []byte) error {
 	for count := 0; !c.isOpen; count++ {
-		time.Sleep(time.Millisecond * 50)
-		if count > 10 {
+		if count > 100 {
 			return zlog.Error("ws not open for sending")
 		}
+		time.Sleep(time.Millisecond * 50)
 	}
+	zlog.Info("ws send read now")
 	if c.socketJS.IsUndefined() {
 		return zlog.Error("no ws connection")
 	}

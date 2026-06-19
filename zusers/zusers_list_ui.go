@@ -12,9 +12,9 @@ import (
 	"github.com/torlangballe/zui/zpresent"
 	"github.com/torlangballe/zui/zslicegrid"
 	"github.com/torlangballe/zui/zstyle"
+	"github.com/torlangballe/zutil/xrpc"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zlog"
-	"github.com/torlangballe/zutil/zrpc"
 )
 
 type userTable struct {
@@ -104,14 +104,14 @@ func storeUser(item User, last bool) error {
 	changed.Permissions = item.Permissions
 	changed.UserID = item.ID
 	changed.UserName = item.UserName
-	err := zrpc.MainClient.Call("UsersCalls.ChangeUsersUserNameAndPermissions", changed, nil)
+	err := xrpc.MainCaller().Call("UsersCalls.ChangeUsersUserNameAndPermissions", changed, nil)
 	// zlog.Info("ChangeUsersUserNameAndPermissions", changed.Permissions, err)
 	return err
 }
 
 func deleteUser(sid string, showErr *bool, last bool) error {
 	userID, _ := strconv.ParseInt(sid, 10, 64)
-	err := zrpc.MainClient.Call("UsersCalls.DeleteUserForID", userID, nil)
+	err := xrpc.MainCaller().Call("UsersCalls.DeleteUserForID", userID, nil)
 	zlog.Info("deleteUsers", userID, err)
 	if err != nil && *showErr {
 		*showErr = false
@@ -125,7 +125,7 @@ func (t *userTable) unauthorizeUsers(sids []string) {
 	for _, sid := range sids {
 		id, _ := strconv.ParseInt(sid, 10, 64)
 		t.grid.Grid.SetDirtyRow(sid)
-		err := zrpc.MainClient.Call("UsersCalls.UnauthenticateUser", id, nil)
+		err := xrpc.MainCaller().Call("UsersCalls.UnauthenticateUser", id, nil)
 		if err != nil && !shownError {
 			zalert.ShowError(err)
 			shownError = true
@@ -168,7 +168,7 @@ func (u *User) HandleAction(ap zfields.ActionPack) bool {
 
 func getAndShowUserList() {
 	var us []User
-	err := zrpc.MainClient.Call("UsersCalls.GetAllUsers", nil, &us)
+	err := xrpc.MainCaller().Call("UsersCalls.GetAllUsers", nil, &us)
 	if err != nil {
 		zalert.ShowError(err)
 		return
@@ -183,7 +183,7 @@ func getAndShowUserList() {
 func (t *userTable) addUser() {
 	OpenDialog(true, false, true, func() {
 		go func() {
-			err := zrpc.MainClient.Call("UsersCalls.GetAllUsers", nil, &t.users)
+			err := xrpc.MainCaller().Call("UsersCalls.GetAllUsers", nil, &t.users)
 			if err != nil {
 				zalert.ShowError(err)
 				return

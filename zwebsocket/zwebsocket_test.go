@@ -29,7 +29,7 @@ const (
 var clientSends, serverSends, clientReceives, serverReceives int
 
 func openClient(t *testing.T) *Client {
-	client, err := NewClient("client1", "ws://localhost:7781/", func(data []byte, err error) []byte {
+	client, err := NewClient("client1", "localhost:7781/", func(data []byte, err error) []byte {
 		str := string(data)
 		// zlog.Warn("Client Got:", string(data))
 		if !strings.HasPrefix(str, "server ") {
