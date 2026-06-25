@@ -68,21 +68,26 @@ func (s *FileServer) AddFolder(baseFolder, storeName, servePath string) {
 	// zrest.AddFileHandler(s.router, urlBase, folder, s.handleServeFile)
 }
 
-func (FileServerCalls) GetDirectory(dirOpts DirOptions, paths *[]string) error {
-	baseFolder := MainServer.folders[dirOpts.StoreName]
-	folder := zfile.JoinPathParts(baseFolder, dirOpts.StoreName, dirOpts.PathStub)
+func (FileServerCalls) GetDirectory(DirOpts DirOptions, paths *[]string) error {
+	return MainServer.getDirectory(DirOpts, paths)
+}
+
+func (fs *FileServer) getDirectory(DirOpts DirOptions, paths *[]string) error {
+
+	baseFolder := fs.folders[DirOpts.StoreName]
+	folder := zfile.JoinPathParts(baseFolder, DirOpts.StoreName, DirOpts.PathStub)
 	walkOpts := zfile.WalkOptionGiveNameOnly
-	if dirOpts.ChooseFolders || dirOpts.FoldersOnly {
+	if DirOpts.ChooseFolders || DirOpts.FoldersOnly {
 		walkOpts |= zfile.WalkOptionGiveFolders
 	}
 	var wildcards string
-	if len(dirOpts.ExtensionsAllowed) != 0 {
-		wildcards = "*" + strings.Join(dirOpts.ExtensionsAllowed, "\t*")
+	if len(DirOpts.ExtensionsAllowed) != 0 {
+		wildcards = "*" + strings.Join(DirOpts.ExtensionsAllowed, "\t*")
 	}
 	zlog.Info("FileServerCalls.GetDir", folder, wildcards)
 	err := zfile.Walk(folder, wildcards, walkOpts, func(fpath string, info os.FileInfo) error {
-		// zlog.Info("FileServerCalls.GetDir2", fpath, dirOpts.ChooseFolders, dirOpts.FoldersOnly)
-		if dirOpts.FoldersOnly && !info.IsDir() {
+		// zlog.Info("FileServerCalls.GetDir2", fpath, DirOpts.ChooseFolders, DirOpts.FoldersOnly)
+		if DirOpts.FoldersOnly && !info.IsDir() {
 			return nil
 		}
 		if info.IsDir() {
@@ -98,9 +103,9 @@ func (FileServerCalls) GetDirectory(dirOpts DirOptions, paths *[]string) error {
 	return nil
 }
 
-func (FileServerCalls) ExpandFilePathsFromPicked(dirOpts DirOptions, paths *[]string) error {
+func (FileServerCalls) ExpandFilePathsFromPicked(DirOpts DirOptions, paths *[]string) error {
 	var all []string
-	for _, f := range dirOpts.PickedPaths {
+	for _, f := range DirOpts.PickedPaths {
 		if strings.HasSuffix(f, "/") {
 			files, err := zfile.GetFilesFromPath(f, "", zfile.WalkOptionRecursive)
 			zlog.OnError(err, f)
@@ -109,16 +114,16 @@ func (FileServerCalls) ExpandFilePathsFromPicked(dirOpts DirOptions, paths *[]st
 			all = append(all, f)
 		}
 	}
-	if dirOpts.MaxFiles == 0 {
+	if DirOpts.MaxFiles == 0 {
 		*paths = all
 		return nil
 	}
-	for dirOpts.MaxFiles > 0 && len(all) > 0 {
+	for DirOpts.MaxFiles > 0 && len(all) > 0 {
 		i := zslices.RandomIndex(all)
 		f := all[i]
 		zslices.RemoveAt(&all, i)
 		*paths = append(*paths, f)
-		dirOpts.MaxFiles--
+		DirOpts.MaxFiles--
 	}
 	return nil
 }

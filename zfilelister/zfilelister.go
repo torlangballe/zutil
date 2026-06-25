@@ -17,3 +17,98 @@ type DirOptions struct {
 const (
 	cachePrefix = "caches/filelister-icons"
 )
+
+var ExtensionToSymbol = map[string]string{
+	".txt":  "📝",
+	".md":   "📄",
+	".rtf":  "📄",
+	".doc":  "📄",
+	".docx": "📄",
+	".pdf":  "📕",
+	".epub": "📚",
+
+	".xls":  "📊",
+	".xlsx": "📊",
+	".csv":  "📊",
+
+	".ppt":  "📈",
+	".pptx": "📈",
+
+	".json": "🧩",
+	".xml":  "🏷",
+	".yaml": "⚙",
+	".yml":  "⚙",
+	".ini":  "⚙",
+	".cfg":  "⚙",
+
+	".log": "📜",
+
+	".sql":    "🗄",
+	".db":     "🗄",
+	".sqlite": "🗄",
+
+	".zip": "📦",
+	".7z":  "📦",
+	".rar": "📦",
+	".tar": "📦",
+	".gz":  "📦",
+
+	".iso": "💿",
+	".img": "💿",
+
+	".exe": "⚙",
+	".msi": "⚙",
+	".app": "⚙",
+
+	".sh":  "🖥",
+	".bat": "🖥",
+	".ps1": "🖥",
+
+	".py":   "🐍",
+	".js":   "🟨",
+	".ts":   "🔷",
+	".java": "☕",
+	".c":    "⚡",
+	".cpp":  "⚡",
+	".cc":   "⚡",
+	".h":    "⚡",
+	".hpp":  "⚡",
+
+	".rs":  "🦀",
+	".go":  "🐹",
+	".php": "🐘",
+	".rb":  "💎",
+
+	".html": "🌐",
+	".htm":  "🌐",
+	".css":  "🎨",
+	".svg":  "🎨",
+
+	".png":  "🖼",
+	".jpg":  "🖼",
+	".jpeg": "🖼",
+	".gif":  "🎞",
+	".webp": "🖼",
+	".ico":  "🔲",
+
+	".mp3":  "🎵",
+	".wav":  "🎵",
+	".flac": "🎵",
+	".ogg":  "🎵",
+
+	".mp4": "🎬",
+	".mkv": "🎬",
+	".avi": "🎬",
+	".mov": "🎬",
+
+	".srt": "💬",
+
+	".torrent": "🧲",
+
+	".pem": "🔐",
+	".crt": "🔐",
+	".cer": "🔐",
+	".key": "🔑",
+
+	".asc": "✍",
+}
