@@ -88,11 +88,11 @@ var UpdateStructFunc func(structure any, uid int64) error
 const (
 	FieldNode NodeType = 1 << iota
 	StaticFieldNode
-	RowNode
+	RowNode // A RowNode is simple value of many, like a row in a table. It can be edited, but it doesn't have subnodes.
 	ComNode
-	MethodNode
-	EnumNode
-	VariableNode
+	MethodNode   // MethodNode is a method, or command that can be executed in this context.
+	EnumNode     // EnumNode is for a node that is an enum, with a value of many. Editing it should give choice of enum values.
+	VariableNode // A VariableNode is a variable a user can add in a context, for reference anywhere. It can be for any instance within, or references by path.
 )
 
 func MakeNode(name string, ntype NodeType, instance any, id int64) Node {
@@ -366,7 +366,7 @@ func getValueString(parent any, val reflect.Value, f *zfields.Field, sf reflect.
 	}
 	istr := fmt.Sprint(val.Interface())
 	enum, selected := zfields.GetEnumFromNameOrGetter(f, f.Enum, parent, val)
-	zlog.Info("getValueString:", f.Name, "enum:", len(enum), "selected:", selected.Value, "istr:", istr)
+	// zlog.Info("getValueString:", f.Name, "enum:", len(enum), "selected:", selected.Value, "istr:", istr)
 	if len(enum) != 0 && selected.Value != nil {
 		return selected.Name, false
 	}
