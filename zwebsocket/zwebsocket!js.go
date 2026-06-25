@@ -4,6 +4,8 @@ package zwebsocket
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"time"
@@ -48,6 +50,8 @@ type message struct {
 }
 
 const IDHeader = "X-ZWEBSOCKET-ID"
+
+var TimeoutError = errors.New("timeout")
 
 func NewClient(id, url string, handler func([]byte, error) []byte) (*Client, error) {
 	c := &Client{}
@@ -96,7 +100,7 @@ func (b *base) Exchange(msg []byte) ([]byte, error) {
 			outErr = r.err
 			return data, outErr
 		case <-time.After(b.Timeout):
-			outErr = zlog.Error("WebSocket exchange timeout", zstr.Head(string(msg), 500), zdebug.CallingStackString())
+			outErr = fmt.Errorf("WebSocket exchange %w: %s", TimeoutError, zstr.Head(string(msg), 500))
 			return nil, outErr
 		}
 	}
@@ -186,4 +190,8 @@ func (c *Client) open() error {
 	}
 	c.conn = ws
 	return nil
+}
+
+func (c *Client) IsConnected() bool {
+	return c.conn != nil
 }

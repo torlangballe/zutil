@@ -137,6 +137,10 @@ func (c *Client) handleNewMessage(msg []byte) {
 	}
 }
 
+func (c *Client) IsConnected() bool {
+	return c.isOpen && !c.socketJS.IsUndefined()
+}
+
 func (c *Client) Exchange(msg []byte) ([]byte, error) {
 	var outErr error
 	num := rand.Int63()

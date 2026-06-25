@@ -37,7 +37,11 @@ func NewServer(path string, port int, handler func(id string, data []byte, err e
 	s.Timeout = time.Second * 10
 	s.handlerFunc = handler
 	router := http.NewServeMux()
-	router.Handle(path, websocket.Handler(s.handleSocketRequest))
+	// router.Handle(path, websocket.Handler(s.handleSocketRequest))
+	router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		websocket.Handler(s.handleSocketRequest).ServeHTTP(w, r)
+	})
+	zlog.Info("Starting WebSocket server on path", path, "port", port)
 	addr := fmt.Sprintf(":%d", port)
 	s.httpServer = &http.Server{Addr: addr, Handler: router}
 	var err error
@@ -55,7 +59,7 @@ func NewServerWithRouter(path string, router *mux.Router, handler func(id string
 	s.handlerFunc = handler
 	zlog.Info("Starting WebSocket server on path", path)
 	router.Handle(path, websocket.Handler(s.handleSocketRequest))
-	// time.Sleep(time.Millisecond * 50) // Give ListenAndServe time to start
+	time.Sleep(time.Millisecond * 50) // Give ListenAndServe time to start
 	return s, nil
 }
 

@@ -11,6 +11,7 @@ import (
 
 func (r *RPC) MakeServer(path string, port int, router *mux.Router) (*zwebsocket.Server, error) {
 	handler := func(id string, msg []byte, err error) []byte {
+		// zlog.Info("RPC server got message from websocket connection", id, len(msg), err)
 		if err != nil {
 			// zlog.Warn("RPC server got error from websocket connection", id, err)
 			return nil
@@ -35,7 +36,6 @@ func (r *RPC) MakeServer(path string, port int, router *mux.Router) (*zwebsocket
 func init() {
 	exchangeWithServerFunc = func(r *RPC, pipeID string, cpJson []byte) (rpJson []byte, err error) {
 		var server *zwebsocket.Server
-		// zlog.Warn("RPC Server Call to pipeID:", pipeID, len(r.servers))
 		if len(r.servers) == 0 {
 			return nil, zlog.NewError("RPC Call with no server and no client for pipeID:", pipeID)
 		}
@@ -69,5 +69,14 @@ func init() {
 			return nil, zlog.NewError("RPC Call with no id and not just one client or connection", pipeID)
 		}
 		return server.ExchangeWithID(pipeID, cpJson)
+	}
+}
+
+func (r *RPC) handleServerConnectionError(pipeID string, err error) {
+	zlog.Info("handleServerConnectionError", pipeID, err)
+	s := r.servers[pipeID]
+	if s != nil && s.connection != nil {
+		s.connection.Close()
+		s.connection = nil
 	}
 }

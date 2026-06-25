@@ -76,18 +76,15 @@ func (ci *ConnectInfo[C]) ConnectIfNeeded(id string, connectFunc func(id string)
 		return nil
 	}
 	if time.Since(ci.lastConnectTry).Seconds() < ci.currentBackoffSecs {
-		zlog.Warn("ConnectIfNeeded since ok", id, ci.lastConnectTry)
+		zlog.Warn("ConnectIfNeeded since ok", id, time.Since(ci.lastConnectTry).Seconds(), ci.currentBackoffSecs, zlog.Pointer(ci))
 		return nil
 	}
 	connection, err := connectFunc(id)
-	zlog.Warn("ConnectIfNeeded", id, connection != nil, zlog.Pointer(ci), err)
-	if err != nil {
-		return err
-	}
-	if connection == nil {
+	zlog.Warn("ConnectIfNeeded", id, connection != nil, zlog.Pointer(ci), zlog.Pointer(connection), err)
+	if err != nil || connection == nil {
 		if ci.currentBackoffSecs == 0 {
 			ci.currentBackoffSecs = 0.1
-		} else {
+		} else if ci.currentBackoffSecs < 10 {
 			ci.currentBackoffSecs *= 2
 		}
 		return nil
@@ -155,11 +152,8 @@ func (r *RPC) Close() {
 	r.connectRepeater.Stop()
 }
 
-func (r *RPC) handleServerConnectionError(pipeID string, err error) {
-
-}
-
 func (r *RPC) handleClientError(pipeID string, err error) {
+	zlog.Info("handleClientError", pipeID, err)
 	c := r.clients[pipeID]
 	if c != nil && c.connection != nil {
 		c.connection.Close()
@@ -256,6 +250,7 @@ func (r *RPC) TokenForClientID(clientID string) (string, error) {
 }
 
 func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, timeoutSecs ...float64) error {
+	// zlog.Info("RPC Call to pipeID:", pipeID, "method:", fullMethod, "args:", in)
 	var cp znamedfuncs.CallPayloadSend
 	cp.Method = fullMethod
 	c := r.clients[pipeID]
@@ -264,7 +259,7 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, time
 	if c != nil {
 		now := time.Now()
 		for c.connection == nil && c.lastConnectTry.IsZero() && time.Since(now) <= time.Millisecond*300 {
-			zlog.Warn("Waiting for connect:", pipeID)
+			zlog.Warn("Waiting for connect:", pipeID, zlog.Pointer(c), zlog.Pointer(c.connection))
 			time.Sleep(time.Millisecond * 50)
 		}
 		if c.connection == nil {

@@ -91,3 +91,6 @@ func (c Caller) CallToDownload(method, filename string, input any) error {
 	zview.DownloadURI(surl, filename)
 	return nil
 }
+
+// Dummy handleServerConnectionError needed to match one called for server
+func (r *RPC) handleServerConnectionError(pipeID string, err error) {}
