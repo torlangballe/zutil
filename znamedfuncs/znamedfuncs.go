@@ -216,8 +216,8 @@ func (e *Executor) methodNeedsAuth(name string) bool {
 	m, got := e.callMethods[name]
 	if !got {
 		e.Error("methodNeedsAuth: Couldn't find method:", name)
-		for _, m := range e.callMethods {
-			e.Error("method:", m.Method.Name, m.Method.PkgPath, m.Method.Name)
+		for full, m := range e.callMethods {
+			e.Error("method:", full, ":", m.Method.PkgPath, m.Receiver.String(), m.Method.Name)
 		}
 		return true
 	}
