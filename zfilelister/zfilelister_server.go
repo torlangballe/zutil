@@ -48,7 +48,7 @@ func NewFileServer(router *mux.Router, cacheBaseFolder string) *FileServer {
 	}
 	// zlog.Info("NewFileServer:", cacheBaseFolder)
 	s := &FileServer{}
-	s.IconCache = zfilecache.Init(router, cacheBaseFolder, "caches", "filelister-icons")
+	s.IconCache = zfilecache.Init(router, cacheBaseFolder, "caches", "zfilelister-icons")
 	s.IconCache.DeleteAfter = ztime.Day * 7
 	s.IconCache.ServeEmptyImage = true
 	s.IconCache.DeleteRatio = 0.1
@@ -60,12 +60,11 @@ func NewFileServer(router *mux.Router, cacheBaseFolder string) *FileServer {
 }
 
 func (s *FileServer) AddFolder(baseFolder, storeName, servePath string) {
-	folder := zfile.JoinPathParts(baseFolder, storeName)
-	zfile.MakeDirAllIfNotExists(folder)
+	zfile.MakeDirAllIfNotExists(baseFolder)
 	urlBase := zfile.JoinPathParts(urlPrefix, storeName)
 	s.folders[storeName] = baseFolder
-	zlog.Info("zfilelister.AddFolder:", storeName, urlBase, servePath, folder)
-	// zrest.AddFileHandler(s.router, urlBase, folder, s.handleServeFile)
+	zlog.Info("zfilelister.AddFolder:", storeName, urlBase, servePath, baseFolder)
+	// zrest.AddFileHandler(s.router, urlBase, baseFolder, s.handleServeFile)
 }
 
 func (FileServerCalls) GetDirectory(DirOpts DirOptions, paths *[]string) error {
@@ -73,20 +72,17 @@ func (FileServerCalls) GetDirectory(DirOpts DirOptions, paths *[]string) error {
 }
 
 func (fs *FileServer) getDirectory(DirOpts DirOptions, paths *[]string) error {
-
 	baseFolder := fs.folders[DirOpts.StoreName]
-	folder := zfile.JoinPathParts(baseFolder, DirOpts.StoreName, DirOpts.PathStub)
-	walkOpts := zfile.WalkOptionGiveNameOnly
+	folder := zfile.JoinPathParts(baseFolder, DirOpts.PathStub)
+	walkOpts := zfile.WalkOptionGiveNameOnly | zfile.WalkOptionGiveFolders
 	if DirOpts.ChooseFolders || DirOpts.FoldersOnly {
 		walkOpts |= zfile.WalkOptionGiveFolders
 	}
 	var wildcards string
-	if len(DirOpts.ExtensionsAllowed) != 0 {
-		wildcards = "*" + strings.Join(DirOpts.ExtensionsAllowed, "\t*")
+	if len(DirOpts.AllowedExtensions) != 0 {
+		wildcards = "*" + strings.Join(DirOpts.AllowedExtensions, "\t*")
 	}
-	zlog.Info("FileServerCalls.GetDir", folder, wildcards)
 	err := zfile.Walk(folder, wildcards, walkOpts, func(fpath string, info os.FileInfo) error {
-		// zlog.Info("FileServerCalls.GetDir2", fpath, DirOpts.ChooseFolders, DirOpts.FoldersOnly)
 		if DirOpts.FoldersOnly && !info.IsDir() {
 			return nil
 		}

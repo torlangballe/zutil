@@ -150,7 +150,6 @@ func listNodesForAny(c *CommandInfo, a any, types NodeType, longList, isHelp boo
 	headers = headers[2:] // skip # and name
 
 	tree := zmath.MakeTree(nodes)
-	// zlog.Info("listNodes:", len(nodes), len(tree))
 	for _, t := range tree {
 		n := t.Instance
 		// zlog.Info("List:", n.Name, n.Type, "id:", n.Identifier(), t.Level)
@@ -215,6 +214,11 @@ func listNodesForAny(c *CommandInfo, a any, types NodeType, longList, isHelp boo
 		fmt.Fprint(tabs, zstr.EscNoColor, "\n")
 	}
 	tabs.Flush()
+	d, _ := a.(Dumper)
+	zlog.Info("listNodesForAny:", reflect.TypeOf(a), d != nil)
+	if d != nil {
+		d.DumpToTerminal(c.Session)
+	}
 }
 
 func (defaultCommands) Command_ll(c *CommandInfo, a struct {

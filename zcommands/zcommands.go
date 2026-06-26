@@ -57,6 +57,10 @@ type ColumnOwner interface {
 	CommandColumns() zdict.Items
 }
 
+type Dumper interface {
+	DumpToTerminal(s *Session)
+}
+
 type VariableCreator interface {
 	VariableNodesForStruct(s *Session, nodeInstance any) []Node
 }
@@ -234,7 +238,8 @@ func NodesForStruct(s *Session, instance any, part string, nodeTypes NodeType, l
 		return nil
 	}
 	if nodeTypes&ComNode != 0 {
-		zreflect.ForEachField(instance, zreflect.FlattenIfAnonymous, func(each zreflect.FieldInfo) bool {
+		params := zfields.FieldParameters{}
+		zfields.ForEachField(instance, params, nil, func(each zfields.FieldInfo) bool {
 			if each.ReflectValue.Kind() == reflect.Pointer {
 				each.ReflectValue = each.ReflectValue.Elem()
 			}
