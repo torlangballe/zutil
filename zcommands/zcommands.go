@@ -62,7 +62,7 @@ type Dumper interface {
 }
 
 type VariableCreator interface {
-	VariableNodesForStruct(s *Session, nodeInstance any) []Node
+	VariableNodesForStruct(s *Session, nodeInstance any, shelfOnly bool) []Node
 }
 
 type NodeType int
@@ -97,6 +97,7 @@ const (
 	MethodNode   // MethodNode is a method, or command that can be executed in this context.
 	EnumNode     // EnumNode is for a node that is an enum, with a value of many. Editing it should give choice of enum values.
 	VariableNode // A VariableNode is a variable a user can add in a context, for reference anywhere. It can be for any instance within, or references by path.
+	AllNodeTypes = FieldNode | StaticFieldNode | RowNode | ComNode | MethodNode | EnumNode | VariableNode
 )
 
 func MakeNode(name string, ntype NodeType, instance any, id int64) Node {
@@ -237,6 +238,8 @@ func NodesForStruct(s *Session, instance any, part string, nodeTypes NodeType, l
 		// fmt.Fprintln(s.TermSession.Writer(), "command on non-struct:", reflect.TypeOf(instance))
 		return nil
 	}
+	vnodes := VariableNodesForStruct(s, instance, true)
+	nodes = append(nodes, vnodes...)
 	if nodeTypes&ComNode != 0 {
 		params := zfields.FieldParameters{}
 		zfields.ForEachField(instance, params, nil, func(each zfields.FieldInfo) bool {
@@ -285,7 +288,7 @@ func NodesForStruct(s *Session, instance any, part string, nodeTypes NodeType, l
 		for _, gc := range s.commander.GlobalComs {
 			vc, _ := gc.(VariableCreator)
 			if vc != nil {
-				vnodes := vc.VariableNodesForStruct(s, instance)
+				vnodes := vc.VariableNodesForStruct(s, instance, false)
 				nodes = append(nodes, vnodes...)
 			}
 		}

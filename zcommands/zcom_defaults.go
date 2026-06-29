@@ -11,11 +11,13 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zint"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
+	"github.com/torlangballe/zutil/zobj"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
@@ -231,6 +233,36 @@ func (defaultCommands) Command_pwd(c *CommandInfo, a struct {
 	Description string `zui:"desc:Print working directory, show path to where you are in the node hierarchy."`
 }) {
 	c.Session.TermSession.Writeln(c.Session.Path())
+}
+
+func (defaultCommands) Command_push(c *CommandInfo, a struct {
+	Path        string `zui:"desc:Push anything at <path> onto the stack. It will then "`
+	Description string `zui:"desc:Push a path onto the stack. Use .. to go to parent, - to go to previous directory."`
+}) {
+	node, err := c.Session.PathAsItsTopNode(a.Path, AllNodeTypes)
+	if err != nil {
+		c.Session.TermSession.Writeln(err)
+		return
+	}
+	ug, _ := node.Instance.(zstr.URLGetter)
+	if ug == nil {
+		c.Session.TermSession.Writeln("Node cn not be pushed:", a.Path, reflect.TypeOf(node.Instance))
+		return
+	}
+	var v Variable
+	v.VarType = VarString
+	v.Name = node.Name
+	v.Value.Add("url", ug.GetURL())
+	uid := c.Session.TermSession.UserID()
+	id, err := zobj.Insert(&v, uid, uid)
+	if err != nil {
+		c.Session.TermSession.Writeln("Error saving variable:", err)
+		return
+	}
+	c.Session.TermSession.Writeln("Variable '"+node.Name+"' added. id:", id)
+	zdebug.Consume(node)
+
+	// Implementation for the push command
 }
 
 type copier struct {
