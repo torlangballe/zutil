@@ -36,31 +36,33 @@ func (r *RPC) MakeServer(path string, port int, router *mux.Router) (*zwebsocket
 func init() {
 	exchangeWithServerFunc = func(r *RPC, pipeID string, cpJson []byte) (rpJson []byte, err error) {
 		var server *zwebsocket.Server
-		if len(r.servers) == 0 {
+		if r.servers.Count() == 0 {
 			return nil, zlog.NewError("RPC Call with no server and no client for pipeID:", pipeID)
 		}
 		if pipeID == "" {
-			if len(r.servers) == 1 {
-				for _, s := range r.servers {
+			if r.servers.Count() == 1 {
+				r.servers.ForAll(func(id string, s *ConnectInfo[zwebsocket.Server]) {
 					if len(s.connection.Connections) == 1 {
 						pipeID = s.connection.Connections[0].ID
 						server = s.connection
-						break
+						return
 					}
-				}
+				})
 			}
 		} else {
-			for _, s := range r.servers {
+			r.servers.ForEach(func(id string, s *ConnectInfo[zwebsocket.Server]) bool {
 				if s.connection == nil {
-					continue
+					return true
 				}
-				for _, c := range s.connection.Connections {
+				for i, c := range s.connection.Connections {
+					zlog.Info("handleServerConnectionError: looking for pipeID", i, pipeID, "in server", id, "with connections", c.ID)
 					if c.ID == pipeID {
 						server = s.connection
-						break
+						return false
 					}
 				}
-			}
+				return true
+			})
 		}
 		if server == nil {
 			// for _, s := range r.servers {
@@ -74,7 +76,7 @@ func init() {
 
 func (r *RPC) handleServerConnectionError(pipeID string, err error) {
 	zlog.Info("handleServerConnectionError", pipeID, err)
-	s := r.servers[pipeID]
+	s := r.servers.Index(pipeID)
 	if s != nil && s.connection != nil {
 		s.connection.Close()
 		s.connection = nil

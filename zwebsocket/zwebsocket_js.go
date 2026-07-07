@@ -99,7 +99,7 @@ func (c *Client) send(msg []byte) error {
 		}
 		time.Sleep(time.Millisecond * 50)
 	}
-	zlog.Info("ws send read now")
+	// zlog.Info("ws send read now")
 	if c.socketJS.IsUndefined() {
 		return zlog.Error("no ws connection")
 	}

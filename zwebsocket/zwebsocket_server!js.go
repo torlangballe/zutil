@@ -86,6 +86,7 @@ func (s *Server) RemoveConnection(id string) {
 }
 
 func (s *Server) setClientToServer(id, path string, conn *websocket.Conn) *ClientToServer {
+	zlog.Info("ws.server.setClientToServer", id, path, conn.RemoteAddr())
 	s.Connections = slices.DeleteFunc(s.Connections, func(c *ClientToServer) bool {
 		return c.ID == id
 	})
