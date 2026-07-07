@@ -194,7 +194,9 @@ func (s *Session) doCommand(line string, isExpand bool) string {
 		}
 		// zlog.Info("doCommand", command, method, got, str)
 	}
-	s.TermSession.Writeln("command not found:", command)
+	if !isExpand {
+		s.TermSession.Writeln("command not found:", command)
+	}
 	return ""
 }
 

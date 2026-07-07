@@ -227,11 +227,11 @@ func (e *Executor) methodNeedsAuth(name string) bool {
 func callMethod(e *Executor, ci ClientInfo, mtype *methodType, rawArg json.RawMessage, rp *ReceivePayload) {
 	zlog.Info(EnableLogExecute, "callMethod:", mtype.Method.Name)
 	start := time.Now()
-	defer func() {
-		if time.Since(start) > time.Second*2 && mtype.Method.Name != "ReversePoll" { // ReversePoll waits for some result, so can take time on purpose
-			zlog.Info("🟪Warning: Slow namedfuncs excute:", mtype.Method.Name, time.Since(start))
-		}
-	}()
+	// defer func() {
+	// 	if time.Since(start) > time.Second*2 && mtype.Method.Name != "ReversePoll" { // ReversePoll waits for some result, so can take time on purpose
+	// 		zlog.Info("🟪Warning: Slow namedfuncs excute:", mtype.Method.Name, time.Since(start))
+	// 	}
+	// }()
 	var argv, replyv reflect.Value
 	argIsValue := false // if true, need to indirect before calling.
 	if mtype.ArgType.Kind() == reflect.Ptr {

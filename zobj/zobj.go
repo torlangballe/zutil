@@ -46,7 +46,7 @@ type StructTable struct {
 	toJSON         map[string]bool
 	created        bool
 	isBaseType     bool // isBaseType means other types use it's table. Forces json column to be added for sub-type's fields.
-	IsSubType      bool // is a StructTable that uses another a StructBable with isBaseType as it's SQL table.
+	IsSubType      bool // is a StructTable that uses another StructTable with isBaseType as it's SQL table.
 	EventHandlers  zmap.LockMap[EventType, func(et EventType, objPtr any)]
 }
 

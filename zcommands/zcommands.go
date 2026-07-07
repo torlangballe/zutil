@@ -16,6 +16,7 @@ import (
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/znet"
 	"github.com/torlangballe/zutil/zreflect"
+	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zsql"
 	"github.com/torlangballe/zutil/zstr"
 	"github.com/torlangballe/zutil/zterm"
@@ -70,6 +71,7 @@ type NodeType int
 type Node struct {
 	Name        string
 	Type        NodeType
+	IsClip      bool
 	Description string
 	Instance    any
 	FieldSVal   string
@@ -238,8 +240,10 @@ func NodesForStruct(s *Session, instance any, part string, nodeTypes NodeType, l
 		// fmt.Fprintln(s.TermSession.Writer(), "command on non-struct:", reflect.TypeOf(instance))
 		return nil
 	}
-	vnodes := VariableNodesForStruct(s, instance, true)
-	nodes = append(nodes, vnodes...)
+	if longList {
+		vnodes := VariableNodesForStruct(s, instance, true)
+		nodes = append(nodes, vnodes...)
+	}
 	if nodeTypes&ComNode != 0 {
 		params := zfields.FieldParameters{}
 		zfields.ForEachField(instance, params, nil, func(each zfields.FieldInfo) bool {
@@ -374,9 +378,14 @@ func getValueString(parent any, val reflect.Value, f *zfields.Field, sf reflect.
 	}
 	istr := fmt.Sprint(val.Interface())
 	enum, selected := zfields.GetEnumFromNameOrGetter(f, f.Enum, parent, val)
-	// zlog.Info("getValueString:", f.Name, "enum:", len(enum), "selected:", selected.Value, "istr:", istr)
-	if len(enum) != 0 && selected.Value != nil {
-		return selected.Name, false
+	if len(enum) != 0 {
+		names := zslices.MapFunc(selected, func(d zdict.Item) string {
+			return d.Name
+		})
+		if len(selected) == 0 {
+			return "not set. (" + zwords.Pluralize("item", len(enum)) + ")", false
+		}
+		return strings.Join(names, ", "), false
 	}
 	if kind == zreflect.KindTime {
 		t := val.Interface().(time.Time)

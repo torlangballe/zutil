@@ -162,7 +162,11 @@ func listNodesForAny(c *CommandInfo, a any, types NodeType, longList, isHelp boo
 		col := zstr.EscYellow
 		sindex := ""
 		if n.Type&VariableNode != 0 {
-			name = "⊙ " + name
+			if n.IsClip {
+				name = "📋 " + name
+			} else {
+				name = "⊙ " + name
+			}
 			col = zstr.EscCyan
 		}
 		if n.Type&FieldNode != 0 {
@@ -235,24 +239,76 @@ func (defaultCommands) Command_pwd(c *CommandInfo, a struct {
 	c.Session.TermSession.Writeln(c.Session.Path())
 }
 
+func (defaultCommands) Command_setval(c *CommandInfo, a struct {
+	Path        string `zui:"desc:<name/index> to set."`
+	Value       string `zui:"desc:Value to set."`
+	Description string `zui:"desc:set <path> <value> -- Set a field by path/index to a value."`
+}) {
+	fieldNode, err := c.Session.PathAsItsTopNode(a.Path, FieldNode)
+	if err != nil {
+		c.Session.TermSession.Writeln(err)
+		return
+	}
+	fieldNode.editField.value.SetString(a.Value)
+	parentNode := c.Session.TopNode()
+	callUpdater(c, *parentNode)
+	c.Session.TermSession.Writeln("Set field '" + fieldNode.Name + "' to value '" + a.Value + "'.")
+}
+
+func (defaultCommands) Expand_copy(c *CommandInfo, line string, add *string) {
+	zlog.Info("Expand copy", line)
+	ExpandPath(c.Session, line, add, RowNode|ComNode|FieldNode|MethodNode)
+}
+
+func (defaultCommands) Command_copy(c *CommandInfo, a struct {
+	ToPath      string `zui:"desc:Destination <path/index> to set."`
+	FromPath    string `zui:"desc:Path/Index source to copy from."`
+	Description string `zui:"desc:set <path> <from> -- Set a field by path/index to another field by name/index, or to a value."`
+}) {
+	fieldNode, err := c.Session.PathAsItsTopNode(a.ToPath, FieldNode)
+	if err != nil {
+		c.Session.TermSession.Writeln(err)
+		return
+	}
+	indexNode, err := c.Session.PathAsItsTopNode(a.FromPath, VariableNode)
+	if err != nil {
+		c.Session.TermSession.Writeln(err)
+		return
+	}
+	svg, _ := indexNode.Instance.(zstr.StringValueGetter)
+	if svg == nil {
+		c.Session.TermSession.Writeln("Node could not be copied from:", indexNode.Name, reflect.TypeOf(indexNode.Instance))
+		return
+	}
+	fieldNode.editField.value.SetString(svg.GetStringValue())
+	parentNode := c.Session.TopNode()
+	callUpdater(c, *parentNode)
+	// err = zobj.Delete[Variable]([]int64{indexNode.id}, c.Session.TermSession.UserID(), "")
+	// if err != nil {
+	// 	c.Session.TermSession.Writeln("Error deleting/popping pushed variable:", err)
+	// 	return
+	// }
+	c.Session.TermSession.Writeln("Set field '" + fieldNode.Name + "' to value from '" + indexNode.Name + "'")
+}
+
 func (defaultCommands) Command_push(c *CommandInfo, a struct {
 	Path        string `zui:"desc:Push anything at <path> onto the stack. It will then "`
-	Description string `zui:"desc:Push a path onto the stack. Use .. to go to parent, - to go to previous directory."`
+	Description string `zui:"desc:Push a path onto the stack."`
 }) {
 	node, err := c.Session.PathAsItsTopNode(a.Path, AllNodeTypes)
 	if err != nil {
 		c.Session.TermSession.Writeln(err)
 		return
 	}
-	ug, _ := node.Instance.(zstr.URLGetter)
-	if ug == nil {
-		c.Session.TermSession.Writeln("Node cn not be pushed:", a.Path, reflect.TypeOf(node.Instance))
+	svg, _ := node.Instance.(zstr.StringValueGetter)
+	if svg == nil {
+		c.Session.TermSession.Writeln("Node could not be pushed:", node.Name, reflect.TypeOf(node.Instance))
 		return
 	}
 	var v Variable
 	v.VarType = VarString
 	v.Name = node.Name
-	v.Value.Add("url", ug.GetURL())
+	v.Value.Add("url", svg.GetStringValue())
 	uid := c.Session.TermSession.UserID()
 	id, err := zobj.Insert(&v, uid, uid)
 	if err != nil {

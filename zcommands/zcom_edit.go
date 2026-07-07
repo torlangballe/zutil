@@ -13,6 +13,7 @@ import (
 	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zreflect"
+	"github.com/torlangballe/zutil/zslices"
 	"github.com/torlangballe/zutil/zstr"
 )
 
@@ -33,10 +34,6 @@ func editFieldNode(c *CommandInfo, node Node) {
 		node.editField.value = reflect.New(rval.Type().Elem()).Elem()
 	}
 
-	if kind == zreflect.KindSlice {
-		editSliceIndicator(c, *parentNode, node)
-		return
-	}
 	if node.editField.field.HasFlag(zfields.FlagEmptyEnum) {
 		editEnumInterface(c, *parentNode, node)
 		return
@@ -47,6 +44,10 @@ func editFieldNode(c *CommandInfo, node Node) {
 	}
 	if node.editField.field.LocalEnum != "" {
 		editLocalEnumIndicator(c, *parentNode, node)
+		return
+	}
+	if kind == zreflect.KindSlice {
+		editSliceIndicator(c, *parentNode, node)
 		return
 	}
 	c.Session.TermSession.Write(zstr.EscGreen+node.editField.field.Name+zstr.EscNoColor, ": ")
@@ -126,16 +127,32 @@ func editLocalEnumIndicator(c *CommandInfo, parentNode, node Node) {
 }
 
 func editAnyEnumIndicator(c *CommandInfo, parentNode, node Node, enum zdict.Items) {
+	rnVal := node.editField.value
+	renum := reflect.ValueOf(enum)
+	isMultiSelect := (node.editField.value.Kind() == reflect.Slice)
 	for i, e := range enum {
+		renumVal := reflect.ValueOf(e.Value)
 		c.Session.TermSession.Write(i+1, ") ", e.Name)
-		if node.editField.value.Equal(reflect.ValueOf(e.Value)) {
+		if node.editField.value.Equal(reflect.ValueOf(e.Value)) || isMultiSelect && zslices.ReflectIndexOf(rnVal, renumVal) != -1 {
 			c.Session.TermSession.Write(" " + checkedString)
 		}
 		c.Session.TermSession.Writeln("")
 	}
 	doRepeatEditIndex(c, "setting index", "Set Index No:", len(enum), func(n int) bool {
-		node.editField.value.Set(reflect.ValueOf(enum[n].Value))
-		c.Session.TermSession.Writeln(zstr.EscGreen+node.editField.field.Name, zstr.EscNoColor+"set to", enum[n].Name)
+		if isMultiSelect {
+			verb := "added"
+			renumVal := reflect.ValueOf(enum[n].Value)
+			in, _ := zslices.ReflectSlicesHaveUnion(rnVal, renum)
+			if in != -1 {
+				zslices.RemoveAt(rnVal.Addr(), in)
+			} else {
+				zslices.RValAddAtEnd(rnVal.Addr(), renumVal)
+			}
+			c.Session.TermSession.Writeln(zstr.EscGreen+node.editField.field.Name, zstr.EscNoColor+verb, enum[n].Name)
+		} else {
+			node.editField.value.Set(reflect.ValueOf(enum[n].Value))
+			c.Session.TermSession.Writeln(zstr.EscGreen+node.editField.field.Name, zstr.EscNoColor+"set to", enum[n].Name)
+		}
 		//! c.Session.callUpdate(s)
 		return true
 	})

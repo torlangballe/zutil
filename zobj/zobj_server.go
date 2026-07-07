@@ -41,6 +41,10 @@ func checkForUserByUser(forUserID, byUserID int64) error {
 	return nil
 }
 
+func (st *StructTable) needsTypeNameColumn() bool {
+	return st.isBaseType || st.IsSubType
+}
+
 func createTableForStruct(st *StructTable) {
 	squery := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (", st.Table)
 	uniqueGroups := map[string][]string{}
@@ -50,7 +54,10 @@ func createTableForStruct(st *StructTable) {
 		}
 		squery += "\n" + c.name + " "
 		if c.name == "id" {
-			squery += "SERIAL PRIMARY KEY, typename TEXT NOT NULL"
+			squery += "SERIAL PRIMARY KEY"
+			if st.needsTypeNameColumn() {
+				squery += ", typename TEXT NOT NULL"
+			}
 			continue
 		}
 		switch c.kind {
@@ -149,8 +156,10 @@ func selectIntoSlice(slicePtr any, st *StructTable, rtype reflect.Type, where st
 	var cols []string
 
 	var typeName string
-	cols = append(cols, "typename")
-	results = append(results, &typeName)
+	if st.needsTypeNameColumn() {
+		cols = append(cols, "typename")
+		results = append(results, &typeName)
+	}
 	// zlog.Info("selectIntoSlice", reflect.TypeOf(slicePtr))
 	err := checkForUserByUser(forUserID, byUserID)
 	if err != nil {
@@ -207,7 +216,7 @@ func selectIntoSlice(slicePtr any, st *StructTable, rtype reflect.Type, where st
 			}
 		}
 		var oval reflect.Value
-		if typeName != st.typeName {
+		if st.needsTypeNameColumn() && typeName != st.typeName {
 			subRow, _, got := ObjRegister.NewForType(typeName)
 			if !got {
 				return zlog.NewError("type not found:", typeName)
@@ -344,10 +353,12 @@ func insertFromStruct(objPtr any, st *StructTable, rtype reflect.Type, forUserID
 		i++
 		return true
 	})
-	cols += ", typename"
-	vals += fmt.Sprintf(",$%d", i)
-	params = append(params, st.typeName)
-	i++
+	if st.needsTypeNameColumn() {
+		cols += ", typename"
+		vals += fmt.Sprintf(",$%d", i)
+		params = append(params, st.typeName)
+		i++
+	}
 	if len(st.toJSON) > 0 {
 		vals += fmt.Sprintf(",$%d", i)
 		cols += ",jsondata"

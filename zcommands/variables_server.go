@@ -238,6 +238,9 @@ func VariableNodesForStruct(s *Session, nodeInstance any, shelfOnly bool) []Node
 	for _, v := range vars {
 		set := v
 		n := MakeNode(set.Name, VariableNode, &set, v.ID)
+		if shelfOnly {
+			n.IsClip = true
+		}
 		nodes = append(nodes, n)
 	}
 	return nodes
@@ -271,6 +274,9 @@ func GetVariablesForInstance(nodeInstance any, userID int64, name string, shelfO
 			table = to.GetTable()
 		}
 	}
+	if table == "" && !shelfOnly {
+		return nil
+	}
 	w = append(w, str)
 	if table != "" || shelfOnly {
 		tw := fmt.Sprintf("fortable=''")
@@ -299,7 +305,7 @@ func GetVariablesForInstance(nodeInstance any, userID int64, name string, shelfO
 	}
 	var vars []Variable
 	where := strings.Join(w, " AND ")
-	zlog.Info("GetVariablesForInstance:", where)
+	// zlog.Info("GetVariablesForInstance:", where)
 	err := zobj.Select(&vars, userID, userID, where)
 	if zlog.OnError(err, where) {
 		return nil
@@ -435,4 +441,8 @@ func DeleteVariablesForInstance(instance any, uid int64) {
 	if err != nil {
 		zlog.Info("DeleteVariablesForInstance: Error deleting variables for instance", stype, err)
 	}
+}
+
+func (v *Variable) GetStringValue() string {
+	return v.String()
 }

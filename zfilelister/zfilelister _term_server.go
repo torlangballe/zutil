@@ -39,8 +39,8 @@ func (fs *FileServer) CommandNodes(s *zcommands.Session, wild string, forExpand 
 	return nodes
 }
 
-func (fc FilesCom) GetURL() string {
-	return "file://" + fc.FullPath
+func (fc FilesCom) GetStringValue() string {
+	return "file:" + fc.FullPath
 }
 
 func (fc FilesCom) CommandNodes(s *zcommands.Session, wild string, forExpand bool) []zcommands.Node {
@@ -98,6 +98,6 @@ func (fc FileCom) DumpToTerminal(s *zcommands.Session) {
 	s.TermSession.Writeln("")
 }
 
-func (fc FileCom) GetURL() string {
+func (fc FileCom) GetStringValue() string {
 	return "file://" + fc.FullPath
 }
