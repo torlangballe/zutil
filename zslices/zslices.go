@@ -106,6 +106,27 @@ func Delete[S comparable](s *[]S, dels ...S) int {
 	return count
 }
 
+// SlicesHaveUnion returns first index into A and B where they are the same, outer looping thru A.
+func ReflectSlicesHaveUnion(a, b reflect.Value) (iA, iB int) {
+	for ia := 0; ia < a.Len(); ia++ {
+		for ib := 0; ib < b.Len(); ib++ {
+			if reflect.DeepEqual(a.Index(ia), b.Index(ib)) {
+				return ia, ib
+			}
+		}
+	}
+	return -1, -1
+}
+
+func ReflectIndexOf(slice, of reflect.Value) int {
+	for i := 0; i < slice.Len(); i++ {
+		if slice.Index(i).Equal(of) {
+			return i
+		}
+	}
+	return -1
+}
+
 func Deleted[S comparable](slice []S, dels ...S) []S {
 	var out []S
 	for _, s := range slice {
