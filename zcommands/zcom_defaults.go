@@ -11,6 +11,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/torlangballe/zui/zfields"
 	"github.com/torlangballe/zutil/zdebug"
 	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zdict"
@@ -275,12 +276,12 @@ func (defaultCommands) Command_copy(c *CommandInfo, a struct {
 		c.Session.TermSession.Writeln(err)
 		return
 	}
-	svg, _ := indexNode.Instance.(zstr.StringValueGetter)
-	if svg == nil {
+	uis, _ := indexNode.Instance.(zfields.UIStringer)
+	if uis == nil {
 		c.Session.TermSession.Writeln("Node could not be copied from:", indexNode.Name, reflect.TypeOf(indexNode.Instance))
 		return
 	}
-	fieldNode.editField.value.SetString(svg.GetStringValue())
+	fieldNode.editField.value.SetString(uis.ZUIString(true))
 	parentNode := c.Session.TopNode()
 	callUpdater(c, *parentNode)
 	// err = zobj.Delete[Variable]([]int64{indexNode.id}, c.Session.TermSession.UserID(), "")
@@ -300,15 +301,15 @@ func (defaultCommands) Command_push(c *CommandInfo, a struct {
 		c.Session.TermSession.Writeln(err)
 		return
 	}
-	svg, _ := node.Instance.(zstr.StringValueGetter)
-	if svg == nil {
+	uis, _ := node.Instance.(zfields.UIStringer)
+	if uis == nil {
 		c.Session.TermSession.Writeln("Node could not be pushed:", node.Name, reflect.TypeOf(node.Instance))
 		return
 	}
 	var v Variable
 	v.VarType = VarString
 	v.Name = node.Name
-	v.Value.Add("url", svg.GetStringValue())
+	v.Value.Add("url", uis.ZUIString(true))
 	uid := c.Session.TermSession.UserID()
 	id, err := zobj.Insert(&v, uid, uid)
 	if err != nil {
