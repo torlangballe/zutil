@@ -564,7 +564,7 @@ func SlicesAreEqual(aset, bset []string) bool {
 	return true
 }
 
-func SetOrClearInSlices(set bool, strs *[]string, removes ...string) {
+func SetOrClearInSlice(set bool, strs *[]string, removes ...string) {
 	if set {
 		AddToSet(strs, removes...)
 	} else {
