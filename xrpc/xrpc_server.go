@@ -54,8 +54,7 @@ func init() {
 				if s.connection == nil {
 					return true
 				}
-				for i, c := range s.connection.Connections {
-					zlog.Info("handleServerConnectionError: looking for pipeID", i, pipeID, "in server", id, "with connections", c.ID)
+				for _, c := range s.connection.Connections {
 					if c.ID == pipeID {
 						server = s.connection
 						return false
