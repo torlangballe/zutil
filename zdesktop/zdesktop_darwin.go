@@ -27,6 +27,7 @@ package zdesktop
 // int canControlComputer(int prompt);
 // int GetWindowCountForPID(long pid);
 // int CanRecordScreen();
+// int CanUseMicrophone();
 // void PrintWindowTitles();
 // const char *GetAllWindowTitlesTabSeparated(long forPid);
 // typedef struct Image {
@@ -282,6 +283,10 @@ func GetWindowCountForPid(pid int64) int {
 
 func CanRecordScreen() bool {
 	return C.CanRecordScreen() == 1
+}
+
+func CanUseMicrophone() bool {
+	return C.CanUseMicrophone() == 1
 }
 
 func GetAllWindowTitlesForApp(app string) []string {

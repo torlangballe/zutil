@@ -72,6 +72,33 @@ int CanUseCamera() {
     return 0;
 }
 
+int CanUseMicrophone() {
+    return true;
+    switch ([AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio]) {
+        case AVAuthorizationStatusAuthorized:
+            return 1;
+
+        case AVAuthorizationStatusNotDetermined:
+            NSLog(@"MicrophoneIndet\n");
+            [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted) {
+                NSLog(@"Microphone Req: %d\n", granted);
+                if (granted) {
+                    NSLog(@"MicrophoneGranted\n");
+                }
+            }];
+            return 0;
+
+        case AVAuthorizationStatusRestricted:
+            NSLog(@"MicrophoneRestricted\n");
+            return 0;
+
+        case AVAuthorizationStatusDenied:
+            NSLog(@"MicrophoneDenied\n");
+            return 0;
+    }
+    return 0;
+}
+
 int GetWindowCountForPID(long pid) {
     AXUIElementRef appElementRef = AXUIElementCreateApplication(pid);
     //  NSLog(@"getWindowCountForPID: %ld %p\n", pid, appElementRef);
