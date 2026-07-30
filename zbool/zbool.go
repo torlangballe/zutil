@@ -158,3 +158,11 @@ func SetAny(toPtr any, from bool) {
 	}
 	fmt.Println("bad type:", reflect.TypeOf(toPtr))
 }
+
+// IfElse returns ifVal if condition is true, else elseVal, for simple inline conditional assignment.
+func IfElse[V any](condition bool, ifVal, elseVal V) V {
+	if condition {
+		return ifVal
+	}
+	return elseVal
+}
