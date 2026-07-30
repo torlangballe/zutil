@@ -85,9 +85,14 @@ var (
 	ServerTimezoneOffsetSecs int
 	SundayFirstWeekdays      = []time.Weekday{time.Sunday, time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday}
 	Weekdays                 = []time.Weekday{time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday, time.Sunday}
+	ActivationTime           time.Time
 )
 
 // https://github.com/jinzhu/now -- interesting library for getting start of this minute etc
+
+func init() {
+	ActivationTime = time.Now()
+}
 
 func (jt *JSONTime) UnmarshalJSON(raw []byte) error {
 	s := strings.Trim(string(raw), "\"")
@@ -1190,4 +1195,12 @@ func SleepUntilAtLeastAfter(atLeast time.Duration, after time.Time) {
 	if since < atLeast {
 		time.Sleep(atLeast - since)
 	}
+}
+
+func GetRuntimeSecs() float64 {
+	return time.Since(ActivationTime).Seconds()
+}
+
+func GetRuntimeMillisecs() int64 {
+	return time.Since(ActivationTime).Milliseconds()
 }
