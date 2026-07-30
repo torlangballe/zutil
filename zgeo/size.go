@@ -27,7 +27,7 @@ var (
 	SizeNull  Size
 )
 
-// SizeF creates a Size from float64 w and h
+// SizeF creates a Size from float32 w and h
 func SizeF(w, h float32) Size {
 	return Size{float64(w), float64(h)}
 }
