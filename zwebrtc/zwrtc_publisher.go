@@ -12,14 +12,9 @@ import (
 	"github.com/torlangballe/zutil/zlog"
 )
 
-type WebRTCPublishSessioner interface {
-	Close()
-}
-
 type WebRTCPublisher struct {
-	cfg webrtc.Configuration
-	// sessions      map[string]*WebRTCPublishSession
-	sessions      map[string]WebRTCPublishSessioner
+	cfg           webrtc.Configuration
+	sessions      map[string]*WebRTCPublishSession
 	nextSessionID uint64
 	mu            sync.Mutex
 
@@ -37,10 +32,19 @@ type PublisherOfferResult struct {
 	Answer             webrtc.SessionDescription `json:"answer,omitempty"`
 }
 
+type WebRTCPublishSession struct {
+	PeerConnection *webrtc.PeerConnection
+
+	Streamer  any // *zdesktop.WindowWebRTCStreamer
+	CloseFunc func() error
+	SourceKey string
+	CloseOnce sync.Once
+}
+
 func NewWebRTCPublisher(cfg webrtc.Configuration) *WebRTCPublisher {
 	return &WebRTCPublisher{
 		cfg:      cfg,
-		sessions: map[string]WebRTCPublishSessioner{},
+		sessions: map[string]*WebRTCPublishSession{},
 	}
 }
 
@@ -73,7 +77,9 @@ func (a *WebRTCPublisher) HandleClose(publisherSessionID string) error {
 	}
 	a.mu.Unlock()
 	if ok {
-		sess.Close()
+		if sess.CloseFunc != nil {
+			sess.CloseFunc()
+		}
 	}
 	return nil
 }
@@ -84,10 +90,12 @@ func (a *WebRTCPublisher) CloseAll() {
 	}
 	a.mu.Lock()
 	sessions := a.sessions
-	a.sessions = map[string]WebRTCPublishSessioner{}
+	a.sessions = map[string]*WebRTCPublishSession{}
 	a.mu.Unlock()
 	for _, sess := range sessions {
-		sess.Close()
+		if sess.CloseFunc != nil {
+			sess.CloseFunc()
+		}
 	}
 }
 
@@ -112,4 +120,10 @@ func (a *WebRTCPublisher) Close(publisherSessionID string) error {
 		return errors.New("webRTC publisher rpc calls: agent is nil")
 	}
 	return a.HandleClose(publisherSessionID)
+}
+
+func (s *WebRTCPublishSession) Close() {
+	if s.CloseFunc == nil {
+		s.CloseFunc()
+	}
 }

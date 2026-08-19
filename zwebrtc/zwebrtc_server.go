@@ -12,7 +12,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pion/webrtc/v3"
-	"github.com/torlangballe/zutil/zhttp"
 	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 )
@@ -111,7 +110,6 @@ func (s *WebRTCServer) HandleOffer(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var req OfferRequest
-	zlog.Info("zwebrtc.HandleOffer:", r.URL, r.RemoteAddr, zhttp.GetCopyOfRequestBodyAsString(r))
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, OfferResponse{Error: "invalid JSON body"})
 		return

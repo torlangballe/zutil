@@ -558,7 +558,7 @@ func (v *WebRTCView) RepeatSampleLoudness(frequency time.Duration, got func(volu
 			return true
 		}
 		found := new(bool)
-		zdom.ForEachObject(stats, func(e js.Value) {
+		zdom.ForEach(stats, func(e js.Value) {
 			if *found {
 				return
 			}

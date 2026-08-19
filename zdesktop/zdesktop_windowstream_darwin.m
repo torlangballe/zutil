@@ -8,16 +8,19 @@
 #import <unistd.h>
 #import <string.h>
 #import <stdlib.h>
+#import <math.h>
+#import <sys/types.h>
+#import <sys/sysctl.h>
+#import <unistd.h>
 #import "zdesktop_windowstream_darwin.h"
 
-// Initializes minimal Cocoa/graphics state needed by ScreenCaptureKit in non-app processes.
 void EnsureCocoaGraphicsInitialized() {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         // In CLI/server processes there is no app run loop driving the main queue,
         // so dispatch_sync(dispatch_get_main_queue(), ...) can deadlock.
-        // [NSApplication sharedApplication];
-        // [NSScreen screens];
+        [NSApplication sharedApplication];
+        [NSScreen screens];
         CGMainDisplayID();
     });
 }
@@ -25,12 +28,14 @@ void EnsureCocoaGraphicsInitialized() {
 @interface WindowCaptureStream : NSObject <SCStreamOutput>
 @property (nonatomic, retain) SCStream *stream;
 @property (nonatomic, retain) dispatch_queue_t outputQueue;
-@property (nonatomic, retain) dispatch_queue_t audioOutputQueue;
 @property (nonatomic, retain) NSLock *lock;
 @property void *latestH264Bytes;
 @property int latestH264Length;
 @property void *latestAudioPCM16Bytes;
 @property int latestAudioPCM16Length;
+@property int latestAudioPCM16SampleRate;
+@property int latestAudioPCM16Channels;
+@property int64_t latestAudioPCM16PTSNS;
 @property void *latestAudioOpusBytes;
 @property int latestAudioOpusLength;
 @property int latestAudioSampleRate;
@@ -55,7 +60,6 @@ typedef struct {
     BOOL consumed;
 } OpusConverterInputState;
 
-// Supplies one PCM16 input buffer to the AudioConverter when encoding Opus.
 static OSStatus opusConverterInputDataProc(AudioConverterRef inAudioConverter,
                                            UInt32 *ioNumberDataPackets,
                                            AudioBufferList *ioData,
@@ -85,61 +89,44 @@ static OSStatus opusConverterInputDataProc(AudioConverterRef inAudioConverter,
     return noErr;
 }
 
-// Converts AVCC-length-prefixed H264 NAL units into Annex-B start-code format.
-static void appendAVCCNALUs(NSMutableData *dst, CMBlockBufferRef blockBuffer) {
-    size_t lengthAtOffset = 0;
-    size_t totalLength = 0;
-    char *dataPointer = NULL;
-    OSStatus status = CMBlockBufferGetDataPointer(blockBuffer, 0, &lengthAtOffset, &totalLength, &dataPointer);
-    if (status != noErr || dataPointer == NULL) {
-        return;
-    }
-    size_t offset = 0;
-    while (offset + 4 <= totalLength) {
-        uint32_t naluLen = 0;
-        memcpy(&naluLen, dataPointer + offset, 4);
-        naluLen = CFSwapInt32BigToHost(naluLen);
-        offset += 4;
-        if (naluLen == 0 || offset + naluLen > totalLength) {
-            break;
-        }
-        static const uint8_t startCode[] = {0x00, 0x00, 0x00, 0x01};
-        [dst appendBytes:startCode length:4];
-        [dst appendBytes:(dataPointer + offset) length:naluLen];
-        offset += naluLen;
-    }
-}
+static void onEncodedFrame(void *outputCallbackRefCon,
+                           void *sourceFrameRefCon,
+                           OSStatus status,
+                           VTEncodeInfoFlags infoFlags,
+                           CMSampleBufferRef sampleBuffer);
 
-// Appends H264 SPS/PPS parameter sets (if available) in Annex-B format.
-static void appendParameterSets(NSMutableData *dst, CMFormatDescriptionRef formatDesc) {
-    static const uint8_t startCode[] = {0x00, 0x00, 0x00, 0x01};
-    for (int i = 0; i < 2; i++) {
-        const uint8_t *ps = NULL;
-        size_t psSize = 0;
-        size_t psCount = 0;
-        if (CMVideoFormatDescriptionGetH264ParameterSetAtIndex(formatDesc, i, &ps, &psSize, &psCount, NULL) == noErr && psSize > 0) {
-            [dst appendBytes:startCode length:4];
-            [dst appendBytes:ps length:psSize];
-        }
+static double rmsPCM16ForData(NSData *data) {
+    if (data == nil) {
+        return 0.0;
     }
+    NSUInteger byteLen = [data length];
+    NSUInteger sampleCount = byteLen / sizeof(int16_t);
+    if (sampleCount == 0) {
+        return 0.0;
+    }
+    const int16_t *samples = (const int16_t *)[data bytes];
+    double sumSquares = 0.0;
+    for (NSUInteger i = 0; i < sampleCount; i++) {
+        double v = (double)samples[i];
+        sumSquares += v * v;
+    }
+    return sqrt(sumSquares / (double)sampleCount);
 }
-
-// VideoToolbox callback that receives encoded H264 samples and stores the latest frame.
-static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, OSStatus status, VTEncodeInfoFlags infoFlags, CMSampleBufferRef sampleBuffer);
 
 @implementation WindowCaptureStream
 
-// Creates a capture stream object and initializes runtime state.
 - (instancetype)init {
     self = [super init];
     if (self) {
         _outputQueue = dispatch_queue_create("zdesktop.window.stream.queue", DISPATCH_QUEUE_SERIAL);
-        _audioOutputQueue = dispatch_queue_create("zdesktop.window.audio.stream.queue", DISPATCH_QUEUE_SERIAL);
         _lock = [[NSLock alloc] init];
         _latestH264Bytes = NULL;
         _latestH264Length = 0;
         _latestAudioPCM16Bytes = NULL;
         _latestAudioPCM16Length = 0;
+        _latestAudioPCM16SampleRate = 0;
+        _latestAudioPCM16Channels = 0;
+        _latestAudioPCM16PTSNS = 0;
         _latestAudioOpusBytes = NULL;
         _latestAudioOpusLength = 0;
         _latestAudioSampleRate = 0;
@@ -159,13 +146,11 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     return self;
 }
 
-// Ensures capture and encoder resources are released on object teardown.
 - (void)dealloc {
     [self stop];
     [super dealloc];
 }
 
-// Creates or recreates the H264 encoder for the provided frame dimensions.
 - (BOOL)setupEncoderForWidth:(int)width height:(int)height {
     if (_vtSession != nil && _videoWidth == width && _videoHeight == height) {
         return YES;
@@ -178,7 +163,16 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     }
     _videoWidth = width;
     _videoHeight = height;
-    OSStatus err = VTCompressionSessionCreate(kCFAllocatorDefault, width, height, kCMVideoCodecType_H264, NULL, NULL, NULL, onEncodedFrame, self, &_vtSession);
+    OSStatus err = VTCompressionSessionCreate(kCFAllocatorDefault,
+                                              width,
+                                              height,
+                                              kCMVideoCodecType_H264,
+                                              NULL,
+                                              NULL,
+                                              NULL,
+                                              onEncodedFrame,
+                                              self,
+                                              &_vtSession);
     if (err != noErr || _vtSession == nil) {
         NSLog(@"VTCompressionSessionCreate failed: %d", (int)err);
         return NO;
@@ -189,20 +183,11 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     int32_t fps = 30;
     CFNumberRef fpsNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &fps);
     VTSessionSetProperty(_vtSession, kVTCompressionPropertyKey_ExpectedFrameRate, fpsNum);
-    int32_t keyIntervalFrames = fps * 2;
-    CFNumberRef keyFramesNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &keyIntervalFrames);
-    VTSessionSetProperty(_vtSession, kVTCompressionPropertyKey_MaxKeyFrameInterval, keyFramesNum);
-    CFRelease(keyFramesNum);
-    int32_t keyIntervalSeconds = 2;
-    CFNumberRef keySecondsNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &keyIntervalSeconds);
-    VTSessionSetProperty(_vtSession, kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, keySecondsNum);
-    CFRelease(keySecondsNum);
     CFRelease(fpsNum);
     VTCompressionSessionPrepareToEncodeFrames(_vtSession);
     return YES;
 }
 
-// Resolves target window/display into an SCContentFilter used for capture.
 - (SCContentFilter *)filterFromShareableContent:(SCShareableContent *)shareableContent
                                        winTitle:(NSString *)winTitle
                                      appBundleID:(NSString *)appBundleID
@@ -243,21 +228,24 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     return [[[SCContentFilter alloc] initWithDisplay:display excludingWindows:@[]] autorelease];
 }
 
-// startWithWindowTitle starts a ScreenCaptureKit stream for the requested target and optional audio.
+BOOL isChildProcessOfPID(pid_t childPID, pid_t parentPID) {
+    struct kinfo_proc info;
+    size_t length = sizeof(info);
+    int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, childPID };
+    
+    if (sysctl(mib, 4, &info, &length, NULL, 0) == 0 && length > 0) {
+        return info.kp_eproc.e_ppid == parentPID;
+    }
+    return NO;
+}
+
 - (BOOL)startWithWindowTitle:(NSString *)winTitle
                   appBundleID:(NSString *)appBundleID
                  captureAudio:(int)captureAudio
-                                     srcOffsetX:(int)srcOffsetX
-                                     srcOffsetY:(int)srcOffsetY
-                                         srcWidth:(int)srcWidth
-                                        srcHeight:(int)srcHeight
-                                        destWidth:(int)destWidth
-                                     destHeight:(int)destHeight
+            cropRect:(CGRect)cropRect
+            destSize:(CGSize)destSize
                         error:(NSString **)errorOut {
-    if (_stream != nil || _vtSession != nil || _opusConverter != NULL) {
-        [self stop];
-    }
-    dispatch_semaphore_t started = dispatch_semaphore_create(0);
+    __block BOOL done = NO;
     __block BOOL ok = NO;
     __block NSString *startErr = nil;
     _captureAudio = captureAudio;
@@ -266,7 +254,141 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
                                                  completionHandler:^(SCShareableContent * _Nullable shareableContent, NSError * _Nullable error) {
         if (error != nil) {
             startErr = [error localizedDescription];
-            dispatch_semaphore_signal(started);
+            done = YES;
+            return;
+        }
+        NSString *ferr = nil;
+        __block SCWindow *targetWindow = nil;
+        // 2. Locate the specific window by its title string
+        for (SCWindow *window in shareableContent.windows) {
+            if ([window.title containsString:@"Your Shaka Player Title"]) {
+                targetWindow = window;
+                break;
+            }
+        }
+        if (!targetWindow) {
+            startErr = [NSString stringWithFormat:@"Target Chrome window not found."];
+            done = YES;
+            return;
+        }
+        // 3. Identify the parent PID of the specific target window
+        pid_t targetPID = targetWindow.owningApplication.processID;
+        NSMutableArray<SCRunningApplication *> *isolatedApps = [NSMutableArray array];
+
+        // 4. Collect only Chrome processes that belong to this browser instance tree
+        for (SCRunningApplication *app in shareableContent.applications) {
+            BOOL isMainTargetBrowser = (app.processID == targetPID);
+            BOOL isAssociatedHelper = [app.applicationName containsString:@"Google Chrome Helper"] && isChildProcessOfPID(app.processID, targetPID);
+            if (isMainTargetBrowser || isAssociatedHelper) {
+                [isolatedApps addObject:app];
+            }
+        }
+        // 5. Build the ScreenCaptureKit content filter
+        SCDisplay *activeDisplay = shareableContent.displays.firstObject; // Default fallback
+        CGRect windowFrame = targetWindow.frame;
+        CGPoint windowCenter = CGPointMake(CGRectGetMidX(windowFrame), CGRectGetMidY(windowFrame));
+
+        for (SCDisplay *display in shareableContent.displays) {
+            CGRect displayFrame = display.frame;
+            if (CGRectContainsPoint(displayFrame, windowCenter)) {
+                activeDisplay = display;
+                break;
+            }
+        }
+        SCContentFilter *filter = [[SCContentFilter alloc] initWithDisplay:activeDisplay
+                                                 includingApplications:isolatedApps
+                                                      exceptingWindows:@[]];
+
+        if (filter == nil) {
+            startErr = ferr;
+            done = YES;
+            return;
+        }
+        SCStreamConfiguration *config = [[[SCStreamConfiguration alloc] init] autorelease];
+        config.capturesAudio = true; //(captureAudio != 0);
+        // config.excludesCurrentProcessAudio = YES;
+        config.showsCursor = NO;
+        config.preservesAspectRatio = YES;
+        config.captureResolution = SCCaptureResolutionBest;
+        BOOL hasCrop = cropRect.size.width > 0 && cropRect.size.height > 0;
+        BOOL hasDestSize = destSize.width > 0 && destSize.height > 0;
+        if (hasCrop) {
+            config.sourceRect = cropRect;
+        }
+        if (hasDestSize) {
+            config.width = (size_t)destSize.width;
+            config.height = (size_t)destSize.height;
+        } else if (hasCrop) {
+            config.width = NSWidth(cropRect) * filter.pointPixelScale;
+            config.height = NSHeight(cropRect) * filter.pointPixelScale;
+        } else {
+            config.width = NSWidth(filter.contentRect) * filter.pointPixelScale;
+            config.height = NSHeight(filter.contentRect) * filter.pointPixelScale;
+        }
+        config.pixelFormat = kCVPixelFormatType_32BGRA;
+        config.minimumFrameInterval = CMTimeMake(1, 30);
+        config.sampleRate = 48000;
+        config.channelCount = 2;
+
+        NSError *addOutErr = nil;
+        if (![self.stream addStreamOutput:self type:SCStreamOutputTypeScreen sampleHandlerQueue:self.outputQueue error:&addOutErr]) {
+            startErr = [addOutErr localizedDescription];
+            done = YES;
+            return;
+        }
+        if (captureAudio != 0) {
+            NSError *addAudioErr = nil;
+            if (![self.stream addStreamOutput:self type:SCStreamOutputTypeAudio sampleHandlerQueue:self.outputQueue error:&addAudioErr]) {
+                startErr = [addAudioErr localizedDescription];
+                done = YES;
+                return;
+            }
+        }
+
+        [self.stream startCaptureWithCompletionHandler:^(NSError * _Nullable serr) {
+            if (serr != nil) {
+                startErr = [serr localizedDescription];
+                done = YES;
+                return;
+            }
+            self.running = YES;
+            ok = YES;
+            done = YES;
+        }];
+    }];
+
+    int waited = 0;
+    while (!done && waited < 2500) {
+        usleep(1000);
+        waited++;
+    }
+    if (!done) {
+        *errorOut = @"timeout waiting for stream start";
+        return NO;
+    }
+    if (!ok) {
+        *errorOut = startErr;
+        return NO;
+    }
+    return YES;
+}
+/*
+- (BOOL)startWithWindowTitle:(NSString *)winTitle
+                  appBundleID:(NSString *)appBundleID
+                 captureAudio:(int)captureAudio
+            cropRect:(CGRect)cropRect
+            destSize:(CGSize)destSize
+                        error:(NSString **)errorOut {
+    __block BOOL done = NO;
+    __block BOOL ok = NO;
+    __block NSString *startErr = nil;
+    _captureAudio = captureAudio;
+    [SCShareableContent getShareableContentExcludingDesktopWindows:true
+                                               onScreenWindowsOnly:true
+                                                 completionHandler:^(SCShareableContent * _Nullable shareableContent, NSError * _Nullable error) {
+        if (error != nil) {
+            startErr = [error localizedDescription];
+            done = YES;
             return;
         }
         NSString *ferr = nil;
@@ -276,46 +398,47 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
                                                               error:&ferr];
         if (filter == nil) {
             startErr = ferr;
-            dispatch_semaphore_signal(started);
+            done = YES;
             return;
         }
         SCStreamConfiguration *config = [[[SCStreamConfiguration alloc] init] autorelease];
-        config.capturesAudio = (captureAudio != 0);
-        config.excludesCurrentProcessAudio = YES;
+        config.capturesAudio = true; //(captureAudio != 0);
+        // config.excludesCurrentProcessAudio = YES;
         config.showsCursor = NO;
+        config.preservesAspectRatio = YES;
         config.captureResolution = SCCaptureResolutionBest;
-        CGRect captureRectPts = filter.contentRect;
-        if (srcWidth > 0 && srcHeight > 0) {
-            // Match screenshot behavior: inset crop rect directly in content coordinate space.
-            CGRect contentRectPts = filter.contentRect;
-            CGRect requested = CGRectMake((CGFloat)srcOffsetX,
-                                          (CGFloat)srcOffsetY,
-                                          (CGFloat)srcWidth,
-                                          (CGFloat)srcHeight);
-            captureRectPts = requested;
-            config.sourceRect = requested;
+        BOOL hasCrop = cropRect.size.width > 0 && cropRect.size.height > 0;
+        BOOL hasDestSize = destSize.width > 0 && destSize.height > 0;
+        if (hasCrop) {
+            config.sourceRect = cropRect;
         }
-        config.width = destWidth;
-        config.height = destHeight;
+        if (hasDestSize) {
+            config.width = (size_t)destSize.width;
+            config.height = (size_t)destSize.height;
+        } else if (hasCrop) {
+            config.width = NSWidth(cropRect) * filter.pointPixelScale;
+            config.height = NSHeight(cropRect) * filter.pointPixelScale;
+        } else {
+            config.width = NSWidth(filter.contentRect) * filter.pointPixelScale;
+            config.height = NSHeight(filter.contentRect) * filter.pointPixelScale;
+        }
         config.pixelFormat = kCVPixelFormatType_32BGRA;
         config.minimumFrameInterval = CMTimeMake(1, 30);
         config.sampleRate = 48000;
         config.channelCount = 2;
-        NSLog(@"Stream config: captureRectPts x: %f y: %f w: %f h: %f, dest: %dx%d, pixelFormat: %u",
-              captureRectPts.origin.x, captureRectPts.origin.y, captureRectPts.size.width, captureRectPts.size.height,
-              (int)destWidth, (int)destHeight, (unsigned int)config.pixelFormat);
+
         self.stream = [[[SCStream alloc] initWithFilter:filter configuration:config delegate:nil] autorelease];
         NSError *addOutErr = nil;
         if (![self.stream addStreamOutput:self type:SCStreamOutputTypeScreen sampleHandlerQueue:self.outputQueue error:&addOutErr]) {
             startErr = [addOutErr localizedDescription];
-            dispatch_semaphore_signal(started);
+            done = YES;
             return;
         }
         if (captureAudio != 0) {
             NSError *addAudioErr = nil;
-            if (![self.stream addStreamOutput:self type:SCStreamOutputTypeAudio sampleHandlerQueue:self.audioOutputQueue error:&addAudioErr]) {
+            if (![self.stream addStreamOutput:self type:SCStreamOutputTypeAudio sampleHandlerQueue:self.outputQueue error:&addAudioErr]) {
                 startErr = [addAudioErr localizedDescription];
-                dispatch_semaphore_signal(started);
+                done = YES;
                 return;
             }
         }
@@ -323,58 +446,42 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
         [self.stream startCaptureWithCompletionHandler:^(NSError * _Nullable serr) {
             if (serr != nil) {
                 startErr = [serr localizedDescription];
-                dispatch_semaphore_signal(started);
+                done = YES;
                 return;
             }
             self.running = YES;
             ok = YES;
-            dispatch_semaphore_signal(started);
+            done = YES;
         }];
     }];
 
-    long waitResult = dispatch_semaphore_wait(started, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)));
-    if (waitResult != 0) {
+    int waited = 0;
+    while (!done && waited < 2500) {
+        usleep(1000);
+        waited++;
+    }
+    if (!done) {
         *errorOut = @"timeout waiting for stream start";
         return NO;
     }
     if (!ok) {
-        [startErr retain];
         *errorOut = startErr;
-        NSLog(@"getShareableContent6 error: %@", *errorOut);
         return NO;
     }
     return YES;
 }
-
-// Stops capture and frees all active buffers and encoder resources.
+*/
 - (void)stop {
     if (!_running && _stream == nil && _vtSession == nil && _opusConverter == NULL) {
         return;
     }
     _running = NO;
-    _captureAudio = 0;
     if (_stream != nil) {
-        NSError *removeErr = nil;
-        [_stream removeStreamOutput:self type:SCStreamOutputTypeScreen error:&removeErr];
-        if (removeErr != nil) {
-            NSLog(@"removeStreamOutput(screen) error: %@", removeErr.localizedDescription);
-        }
-        removeErr = nil;
-        [_stream removeStreamOutput:self type:SCStreamOutputTypeAudio error:&removeErr];
-        if (removeErr != nil) {
-            NSLog(@"removeStreamOutput(audio) error: %@", removeErr.localizedDescription);
-        }
-        dispatch_semaphore_t stopped = dispatch_semaphore_create(0);
-        [_stream stopCaptureWithCompletionHandler:^(NSError * _Nullable error) {
+        [ _stream stopCaptureWithCompletionHandler:^(NSError * _Nullable error) {
             if (error != nil) {
                 NSLog(@"stopCapture error: %@", error.localizedDescription);
             }
-            dispatch_semaphore_signal(stopped);
         }];
-        long stopWait = dispatch_semaphore_wait(stopped, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)));
-        if (stopWait != 0) {
-            NSLog(@"stopCapture timed out waiting for completion");
-        }
         _stream = nil;
     }
     if (_vtSession != nil) {
@@ -397,6 +504,9 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     _latestH264Length = 0;
     _latestAudioPCM16Bytes = NULL;
     _latestAudioPCM16Length = 0;
+    _latestAudioPCM16SampleRate = 0;
+    _latestAudioPCM16Channels = 0;
+    _latestAudioPCM16PTSNS = 0;
     _latestAudioOpusBytes = NULL;
     _latestAudioOpusLength = 0;
     _latestAudioSampleRate = 0;
@@ -416,7 +526,6 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     }
 }
 
-// Replaces the latest encoded H264 frame with the newly produced one.
 - (void)storeEncodedVideo:(NSData *)data pts:(int64_t)ptsNS {
     if (data == nil || [data length] == 0) {
         return;
@@ -438,11 +547,12 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     }
 }
 
-// Replaces the latest PCM16 audio buffer and metadata.
 - (void)storePCM16Audio:(NSData *)data sampleRate:(int)sampleRate channels:(int)channels pts:(int64_t)ptsNS {
     if (data == nil || [data length] == 0) {
         return;
     }
+    double rmsPCM16 = rmsPCM16ForData(data);
+    NSLog(@"storePCM16Audio rms=%f bytes=%lu rate=%d channels=%d ptsNS=%lld", rmsPCM16, (unsigned long)[data length], sampleRate, channels, ptsNS);
     int len = (int)[data length];
     void *newBuf = malloc(len);
     if (newBuf == NULL) {
@@ -453,6 +563,9 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     void *old = _latestAudioPCM16Bytes;
     _latestAudioPCM16Bytes = newBuf;
     _latestAudioPCM16Length = len;
+    _latestAudioPCM16SampleRate = sampleRate;
+    _latestAudioPCM16Channels = channels;
+    _latestAudioPCM16PTSNS = ptsNS;
     _latestAudioSampleRate = sampleRate;
     _latestAudioChannels = channels;
     _latestAudioPTSNS = ptsNS;
@@ -462,7 +575,6 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     }
 }
 
-// Replaces the latest Opus packet and associated timing metadata.
 - (void)storeOpusAudio:(NSData *)data sampleRate:(int)sampleRate channels:(int)channels durationNS:(int64_t)durationNS pts:(int64_t)ptsNS {
     if (data == nil || [data length] == 0) {
         return;
@@ -487,7 +599,6 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     }
 }
 
-// Creates or reuses an AudioConverter configured for PCM16-to-Opus encoding.
 - (BOOL)setupOpusEncoderForSampleRate:(int)sampleRate channels:(int)channels {
     if (sampleRate <= 0 || channels <= 0) {
         return NO;
@@ -531,7 +642,10 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
                     if (descs[i].mSubType == kAudioFormatOpus) {
                         chosen = descs[i];
                         haveChosen = YES;
-                        break;
+                        // if (descs[i].mManufacturer == kAppleSoftwareAudioCodecManufacturer) { // only on iPhone...
+                        if (descs[i].mManufacturer == (UInt32)'appl') {
+                            break;
+                        }
                     }
                 }
             }
@@ -556,7 +670,6 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     return YES;
 }
 
-// Encodes one PCM16 audio buffer into Opus and stores the resulting packet.
 - (void)encodePCM16ToOpus:(NSData *)pcmData sampleRate:(int)sampleRate channels:(int)channels pts:(int64_t)ptsNS {
     if (pcmData == nil || [pcmData length] == 0 || sampleRate <= 0 || channels <= 0) {
         return;
@@ -599,7 +712,6 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     [self storeOpusAudio:packet sampleRate:48000 channels:channels durationNS:durationNS pts:ptsNS];
 }
 
-// Submits one captured video sample to VideoToolbox for H264 encoding.
 - (void)encodeVideoSampleBuffer:(CMSampleBufferRef)sampleBuffer {
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     if (imageBuffer == nil) {
@@ -624,7 +736,6 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     }
 }
 
-// Converts captured audio samples to PCM16, stores them, and also encodes Opus.
 - (void)consumeAudioSampleBuffer:(CMSampleBufferRef)sampleBuffer {
     if (_captureAudio == 0) {
         return;
@@ -789,7 +900,6 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     }
 }
 
-// SCStreamOutput callback that dispatches screen and audio sample processing.
 - (void)stream:(SCStream *)stream didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer ofType:(SCStreamOutputType)type {
     if (!CMSampleBufferIsValid(sampleBuffer)) {
         return;
@@ -801,7 +911,6 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     }
 }
 
-// SCStream delegate callback that marks stream state when capture stops unexpectedly.
 - (void)stream:(SCStream *)stream didStopWithError:(NSError *)error {
     if (error != nil) {
         NSLog(@"WindowCaptureStream didStopWithError: %@", error.localizedDescription);
@@ -811,7 +920,54 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
 
 @end
 
-static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, OSStatus status, VTEncodeInfoFlags infoFlags, CMSampleBufferRef sampleBuffer) {
+static void appendAVCCNALUs(NSMutableData *dst, CMBlockBufferRef blockBuffer) {
+    size_t lengthAtOffset = 0;
+    size_t totalLength = 0;
+    char *dataPointer = NULL;
+    OSStatus status = CMBlockBufferGetDataPointer(blockBuffer, 0, &lengthAtOffset, &totalLength, &dataPointer);
+    if (status != noErr || dataPointer == NULL) {
+        return;
+    }
+    size_t offset = 0;
+    while (offset + 4 <= totalLength) {
+        uint32_t naluLen = 0;
+        memcpy(&naluLen, dataPointer + offset, 4);
+        naluLen = CFSwapInt32BigToHost(naluLen);
+        offset += 4;
+        if (naluLen == 0 || offset + naluLen > totalLength) {
+            break;
+        }
+        static const uint8_t startCode[] = {0x00, 0x00, 0x00, 0x01};
+        [dst appendBytes:startCode length:4];
+        [dst appendBytes:(dataPointer + offset) length:naluLen];
+        offset += naluLen;
+    }
+}
+
+static void appendParameterSets(NSMutableData *dst, CMFormatDescriptionRef formatDesc) {
+    const uint8_t *sps = NULL;
+    size_t spsSize = 0;
+    size_t spsCount = 0;
+    const uint8_t *pps = NULL;
+    size_t ppsSize = 0;
+    size_t ppsCount = 0;
+    if (CMVideoFormatDescriptionGetH264ParameterSetAtIndex(formatDesc, 0, &sps, &spsSize, &spsCount, NULL) == noErr && spsSize > 0) {
+        static const uint8_t startCode[] = {0x00, 0x00, 0x00, 0x01};
+        [dst appendBytes:startCode length:4];
+        [dst appendBytes:sps length:spsSize];
+    }
+    if (CMVideoFormatDescriptionGetH264ParameterSetAtIndex(formatDesc, 1, &pps, &ppsSize, &ppsCount, NULL) == noErr && ppsSize > 0) {
+        static const uint8_t startCode[] = {0x00, 0x00, 0x00, 0x01};
+        [dst appendBytes:startCode length:4];
+        [dst appendBytes:pps length:ppsSize];
+    }
+}
+
+static void onEncodedFrame(void *outputCallbackRefCon,
+                           void *sourceFrameRefCon,
+                           OSStatus status,
+                           VTEncodeInfoFlags infoFlags,
+                           CMSampleBufferRef sampleBuffer) {
     if (status != noErr || sampleBuffer == nil || !CMSampleBufferDataIsReady(sampleBuffer)) {
         return;
     }
@@ -841,7 +997,6 @@ static void onEncodedFrame(void *outputCallbackRefCon, void *sourceFrameRefCon, 
     [wcs storeEncodedVideo:encoded pts:ptsNS];
 }
 
-// Returns whether the native stream object is currently marked as running.
 int isWindowCaptureStreamRunning(void *stream) {
     WindowCaptureStream *wcs = (WindowCaptureStream *)stream;
     if (wcs == nil) {
@@ -850,8 +1005,23 @@ int isWindowCaptureStreamRunning(void *stream) {
     return wcs.running ? 1 : 0;
 }
 
-// C entry point that creates and starts a window capture stream instance with optional crop+scale.
-void *startWindowCaptureStreamWithRegion(const char *winTitle, const char *appBundleID, int captureAudio, int srcOffsetX, int srcOffsetY, int srcWidth, int srcHeight, int destWidth, int destHeight, char *err, int errLen) {
+void *startWindowCaptureStream(const char *winTitle, const char *appBundleID, int captureAudio, char *err, int errLen) {
+    return startWindowCaptureStreamWithCropAndDestSize(winTitle,
+                                                       appBundleID,
+                                                       captureAudio,
+                                                       CGRectZero,
+                                                       CGSizeZero,
+                                                       err,
+                                                       errLen);
+}
+
+void *startWindowCaptureStreamWithCropAndDestSize(const char *winTitle,
+                                                  const char *appBundleID,
+                                                  int captureAudio,
+                                                  CGRect cropRect,
+                                                  CGSize destSize,
+                                                  char *err,
+                                                  int errLen) {
     NSString *sTitle = nil;
     NSString *sAppID = nil;
     if (winTitle != NULL && strlen(winTitle) > 0) {
@@ -861,21 +1031,15 @@ void *startWindowCaptureStreamWithRegion(const char *winTitle, const char *appBu
         sAppID = [NSString stringWithUTF8String:appBundleID];
     }
     WindowCaptureStream *wcs = [[WindowCaptureStream alloc] init];
-            NSLog(@"startWindowCaptureStream9\n");
     NSString *startErr = nil;
     if (![wcs startWithWindowTitle:sTitle
                         appBundleID:sAppID
                        captureAudio:captureAudio
-                         srcOffsetX:srcOffsetX
-                         srcOffsetY:srcOffsetY
-                           srcWidth:srcWidth
-                          srcHeight:srcHeight
-                          destWidth:destWidth
-                         destHeight:destHeight
+                          cropRect:cropRect
+                          destSize:destSize
                               error:&startErr]) {
         if (startErr != nil && err != NULL && errLen > 0) {
             [startErr getCString:err maxLength:errLen encoding:NSUTF8StringEncoding];
-            NSLog(@"startWindowCaptureStream error: %@\n", startErr);
         }
         [wcs release];
         return nil;
@@ -883,7 +1047,6 @@ void *startWindowCaptureStreamWithRegion(const char *winTitle, const char *appBu
     return (void *)wcs;
 }
 
-// C entry point that stops and releases a previously created capture stream.
 void stopWindowCaptureStream(void *stream) {
     WindowCaptureStream *wcs = (WindowCaptureStream *)stream;
     if (wcs == nil) {
@@ -893,7 +1056,6 @@ void stopWindowCaptureStream(void *stream) {
     [wcs release];
 }
 
-// Copies and clears the latest encoded H264 frame from the stream state.
 int copyLatestWindowStreamH264(void *stream, unsigned char **data, int *length, int64_t *ptsNS) {
     WindowCaptureStream *wcs = (WindowCaptureStream *)stream;
     if (wcs == nil || data == NULL || length == NULL || ptsNS == NULL) {
@@ -919,42 +1081,9 @@ int copyLatestWindowStreamH264(void *stream, unsigned char **data, int *length, 
     return 1;
 }
 
-// Copies and clears the latest PCM16 audio buffer from the stream state.
-int copyLatestWindowStreamAudioPCM16(void *stream, short **data, int *sampleCount, int *sampleRate, int *channels, int64_t *ptsNS) {
+int copyLatestWindowStreamAudioOpus(void *stream, unsigned char **data, int *byteLength, int *sampleRate, int *channels, int64_t *ptsNS) {
     WindowCaptureStream *wcs = (WindowCaptureStream *)stream;
-    if (wcs == nil || data == NULL || sampleCount == NULL || sampleRate == NULL || channels == NULL || ptsNS == NULL) {
-        return 0;
-    }
-    if (wcs.lock == nil) {
-        return 0;
-    }
-    [wcs.lock lock];
-    void *pcm = wcs.latestAudioPCM16Bytes;
-    int len = wcs.latestAudioPCM16Length;
-    int sr = wcs.latestAudioSampleRate;
-    int ch = wcs.latestAudioChannels;
-    int64_t pts = wcs.latestAudioPTSNS;
-    wcs.latestAudioPCM16Bytes = NULL;
-    wcs.latestAudioPCM16Length = 0;
-    wcs.latestAudioSampleRate = 0;
-    wcs.latestAudioChannels = 0;
-    wcs.latestAudioPTSNS = 0;
-    [wcs.lock unlock];
-    if (pcm == NULL || len <= 0 || sr == 0 || ch == 0) {
-        return 0;
-    }
-    *data = (short *)pcm;
-    *sampleCount = len / (int)sizeof(short);
-    *sampleRate = sr;
-    *channels = ch;
-    *ptsNS = pts;
-    return 1;
-}
-
-// Copies and clears the latest Opus packet and timing metadata from the stream state.
-int copyLatestWindowStreamAudioOpus(void *stream, unsigned char **data, int *length, int *sampleRate, int *channels, int64_t *durationNS, int64_t *ptsNS) {
-    WindowCaptureStream *wcs = (WindowCaptureStream *)stream;
-    if (wcs == nil || data == NULL || length == NULL || sampleRate == NULL || channels == NULL || durationNS == NULL || ptsNS == NULL) {
+    if (wcs == nil || data == NULL || byteLength == NULL || sampleRate == NULL || channels == NULL || ptsNS == NULL) {
         return 0;
     }
     if (wcs.lock == nil) {
@@ -965,21 +1094,21 @@ int copyLatestWindowStreamAudioOpus(void *stream, unsigned char **data, int *len
     int len = wcs.latestAudioOpusLength;
     int sr = wcs.latestAudioSampleRate;
     int ch = wcs.latestAudioChannels;
-    int64_t duration = wcs.latestAudioDurationNS;
     int64_t pts = wcs.latestAudioPTSNS;
     wcs.latestAudioOpusBytes = NULL;
     wcs.latestAudioOpusLength = 0;
-    wcs.latestAudioDurationNS = 0;
+    wcs.latestAudioSampleRate = 0;
+    wcs.latestAudioChannels = 0;
     wcs.latestAudioPTSNS = 0;
     [wcs.lock unlock];
     if (opus == NULL || len <= 0 || sr == 0 || ch == 0) {
         return 0;
     }
     *data = (unsigned char *)opus;
-    *length = len;
+    *byteLength = len;
     *sampleRate = sr;
     *channels = ch;
-    *durationNS = duration;
     *ptsNS = pts;
     return 1;
 }
+
