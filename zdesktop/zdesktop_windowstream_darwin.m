@@ -232,147 +232,13 @@ BOOL isChildProcessOfPID(pid_t childPID, pid_t parentPID) {
     struct kinfo_proc info;
     size_t length = sizeof(info);
     int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, childPID };
-    
+
     if (sysctl(mib, 4, &info, &length, NULL, 0) == 0 && length > 0) {
         return info.kp_eproc.e_ppid == parentPID;
     }
     return NO;
 }
 
-- (BOOL)startWithWindowTitle:(NSString *)winTitle
-                  appBundleID:(NSString *)appBundleID
-                 captureAudio:(int)captureAudio
-            cropRect:(CGRect)cropRect
-            destSize:(CGSize)destSize
-                        error:(NSString **)errorOut {
-    __block BOOL done = NO;
-    __block BOOL ok = NO;
-    __block NSString *startErr = nil;
-    _captureAudio = captureAudio;
-    [SCShareableContent getShareableContentExcludingDesktopWindows:true
-                                               onScreenWindowsOnly:true
-                                                 completionHandler:^(SCShareableContent * _Nullable shareableContent, NSError * _Nullable error) {
-        if (error != nil) {
-            startErr = [error localizedDescription];
-            done = YES;
-            return;
-        }
-        NSString *ferr = nil;
-        __block SCWindow *targetWindow = nil;
-        // 2. Locate the specific window by its title string
-        for (SCWindow *window in shareableContent.windows) {
-            if ([window.title containsString:@"Your Shaka Player Title"]) {
-                targetWindow = window;
-                break;
-            }
-        }
-        if (!targetWindow) {
-            startErr = [NSString stringWithFormat:@"Target Chrome window not found."];
-            done = YES;
-            return;
-        }
-        // 3. Identify the parent PID of the specific target window
-        pid_t targetPID = targetWindow.owningApplication.processID;
-        NSMutableArray<SCRunningApplication *> *isolatedApps = [NSMutableArray array];
-
-        // 4. Collect only Chrome processes that belong to this browser instance tree
-        for (SCRunningApplication *app in shareableContent.applications) {
-            BOOL isMainTargetBrowser = (app.processID == targetPID);
-            BOOL isAssociatedHelper = [app.applicationName containsString:@"Google Chrome Helper"] && isChildProcessOfPID(app.processID, targetPID);
-            if (isMainTargetBrowser || isAssociatedHelper) {
-                [isolatedApps addObject:app];
-            }
-        }
-        // 5. Build the ScreenCaptureKit content filter
-        SCDisplay *activeDisplay = shareableContent.displays.firstObject; // Default fallback
-        CGRect windowFrame = targetWindow.frame;
-        CGPoint windowCenter = CGPointMake(CGRectGetMidX(windowFrame), CGRectGetMidY(windowFrame));
-
-        for (SCDisplay *display in shareableContent.displays) {
-            CGRect displayFrame = display.frame;
-            if (CGRectContainsPoint(displayFrame, windowCenter)) {
-                activeDisplay = display;
-                break;
-            }
-        }
-        SCContentFilter *filter = [[SCContentFilter alloc] initWithDisplay:activeDisplay
-                                                 includingApplications:isolatedApps
-                                                      exceptingWindows:@[]];
-
-        if (filter == nil) {
-            startErr = ferr;
-            done = YES;
-            return;
-        }
-        SCStreamConfiguration *config = [[[SCStreamConfiguration alloc] init] autorelease];
-        config.capturesAudio = true; //(captureAudio != 0);
-        // config.excludesCurrentProcessAudio = YES;
-        config.showsCursor = NO;
-        config.preservesAspectRatio = YES;
-        config.captureResolution = SCCaptureResolutionBest;
-        BOOL hasCrop = cropRect.size.width > 0 && cropRect.size.height > 0;
-        BOOL hasDestSize = destSize.width > 0 && destSize.height > 0;
-        if (hasCrop) {
-            config.sourceRect = cropRect;
-        }
-        if (hasDestSize) {
-            config.width = (size_t)destSize.width;
-            config.height = (size_t)destSize.height;
-        } else if (hasCrop) {
-            config.width = NSWidth(cropRect) * filter.pointPixelScale;
-            config.height = NSHeight(cropRect) * filter.pointPixelScale;
-        } else {
-            config.width = NSWidth(filter.contentRect) * filter.pointPixelScale;
-            config.height = NSHeight(filter.contentRect) * filter.pointPixelScale;
-        }
-        config.pixelFormat = kCVPixelFormatType_32BGRA;
-        config.minimumFrameInterval = CMTimeMake(1, 30);
-        config.sampleRate = 48000;
-        config.channelCount = 2;
-
-        NSError *addOutErr = nil;
-        if (![self.stream addStreamOutput:self type:SCStreamOutputTypeScreen sampleHandlerQueue:self.outputQueue error:&addOutErr]) {
-            startErr = [addOutErr localizedDescription];
-            done = YES;
-            return;
-        }
-        if (captureAudio != 0) {
-            NSError *addAudioErr = nil;
-            if (![self.stream addStreamOutput:self type:SCStreamOutputTypeAudio sampleHandlerQueue:self.outputQueue error:&addAudioErr]) {
-                startErr = [addAudioErr localizedDescription];
-                done = YES;
-                return;
-            }
-        }
-
-        [self.stream startCaptureWithCompletionHandler:^(NSError * _Nullable serr) {
-            if (serr != nil) {
-                startErr = [serr localizedDescription];
-                done = YES;
-                return;
-            }
-            self.running = YES;
-            ok = YES;
-            done = YES;
-        }];
-    }];
-
-    int waited = 0;
-    while (!done && waited < 2500) {
-        usleep(1000);
-        waited++;
-    }
-    if (!done) {
-        *errorOut = @"timeout waiting for stream start";
-        return NO;
-    }
-    if (!ok) {
-        *errorOut = startErr;
-        return NO;
-    }
-    return YES;
-}
-/*
 - (BOOL)startWithWindowTitle:(NSString *)winTitle
                   appBundleID:(NSString *)appBundleID
                  captureAudio:(int)captureAudio
@@ -470,7 +336,7 @@ BOOL isChildProcessOfPID(pid_t childPID, pid_t parentPID) {
     }
     return YES;
 }
-*/
+
 - (void)stop {
     if (!_running && _stream == nil && _vtSession == nil && _opusConverter == NULL) {
         return;
@@ -552,7 +418,9 @@ BOOL isChildProcessOfPID(pid_t childPID, pid_t parentPID) {
         return;
     }
     double rmsPCM16 = rmsPCM16ForData(data);
-    NSLog(@"storePCM16Audio rms=%f bytes=%lu rate=%d channels=%d ptsNS=%lld", rmsPCM16, (unsigned long)[data length], sampleRate, channels, ptsNS);
+    if (rmsPCM16 != 0) {
+        NSLog(@"storePCM16Audio rms=%f bytes=%lu rate=%d channels=%d ptsNS=%lld", rmsPCM16, (unsigned long)[data length], sampleRate, channels, ptsNS);
+    }
     int len = (int)[data length];
     void *newBuf = malloc(len);
     if (newBuf == NULL) {
@@ -1005,16 +873,6 @@ int isWindowCaptureStreamRunning(void *stream) {
     return wcs.running ? 1 : 0;
 }
 
-void *startWindowCaptureStream(const char *winTitle, const char *appBundleID, int captureAudio, char *err, int errLen) {
-    return startWindowCaptureStreamWithCropAndDestSize(winTitle,
-                                                       appBundleID,
-                                                       captureAudio,
-                                                       CGRectZero,
-                                                       CGSizeZero,
-                                                       err,
-                                                       errLen);
-}
-
 void *startWindowCaptureStreamWithCropAndDestSize(const char *winTitle,
                                                   const char *appBundleID,
                                                   int captureAudio,
@@ -1033,11 +891,11 @@ void *startWindowCaptureStreamWithCropAndDestSize(const char *winTitle,
     WindowCaptureStream *wcs = [[WindowCaptureStream alloc] init];
     NSString *startErr = nil;
     if (![wcs startWithWindowTitle:sTitle
-                        appBundleID:sAppID
-                       captureAudio:captureAudio
+                       appBundleID:sAppID
+                      captureAudio:captureAudio
                           cropRect:cropRect
                           destSize:destSize
-                              error:&startErr]) {
+                             error:&startErr]) {
         if (startErr != nil && err != NULL && errLen > 0) {
             [startErr getCString:err maxLength:errLen encoding:NSUTF8StringEncoding];
         }
