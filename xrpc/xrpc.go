@@ -75,7 +75,7 @@ func NewRPC() *RPC {
 }
 
 func (ci *ConnectInfo[C]) ConnectIfNeeded(id string, connectFunc func(id string) (*C, error)) error {
-	if ci.connection != nil {
+	if ci.connection != nil || connectFunc == nil {
 		return nil
 	}
 	if time.Since(ci.lastConnectTry).Seconds() < ci.currentBackoffSecs {
@@ -261,6 +261,7 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, time
 	c, has := r.clients.Get(pipeID)
 	var err error
 	cp.ClientInfo.ClientID = pipeID
+	// zlog.Warn("RPC Call to pipeID:", pipeID, "method:", fullMethod, "has client:", has, c != nil)
 	if has && c != nil {
 		now := time.Now()
 		for c.connection == nil && c.lastConnectTry.IsZero() && time.Since(now) <= time.Millisecond*300 {
