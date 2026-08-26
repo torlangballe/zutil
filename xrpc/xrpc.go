@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"runtime"
 	"strings"
 	"time"
 
@@ -196,11 +197,13 @@ func (r *RPC) MakeClient(address, pipeID string, port int) (*zwebsocket.Client, 
 		return result
 	}
 	zlog.Info("RPC.MakeClient connecting to", address, port, "pipeID:", pipeID, "handler:", handler != nil)
-	if port != 0 {
-		address = strings.Replace(address, "/", fmt.Sprintf(":%d/", port), 1)
-	}
 	var err error
-	address = "ws://" + address
+	if address[0] != '/' || runtime.GOOS != "js" {
+		if port != 0 {
+			address = strings.Replace(address, "/", fmt.Sprintf(":%d/", port), 1)
+		}
+		address = "ws://" + address
+	}
 	client, err = zwebsocket.NewClient(pipeID, address, handler)
 	if err != nil {
 		r.handleClientError(pipeID, err)
@@ -344,7 +347,7 @@ func SetupSimpleClient(port int, address, clientID string) {
 	MainRPC = rpc
 	zlog.Info("SetupSimpleClient:", clientID, port, address)
 	rpc.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
-		a := zstr.Concat("/", address, "/xrpc/")
+		a := zstr.Concat("/", address, "zrpc/")
 		zlog.Warn("SetupSimpleClient Connect:", clientID, port, a)
 		c, err := rpc.MakeClient(a, clientID, port)
 		if err != nil {
