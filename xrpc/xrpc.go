@@ -54,7 +54,7 @@ type Callable interface {
 	Call(method string, args any, resultPtr any, timeoutSecs ...float64) error
 }
 
-const TempDataMethod = "xrpc-tempdata"
+const TempDataMethod = "zrpc-tempdata"
 
 var (
 	MainRPC      *RPC
