@@ -477,3 +477,11 @@ func SplitFunc[S any](slice []S, isFunc func(s S) bool) (is, isnt []S) {
 	}
 	return is, isnt
 }
+
+// SortBoolsLess is a convenience function for use with sort.Slice, returning true if a < b, false if a > b, and same=true if equal.
+func SortBoolsLess(a, b bool) (less, same bool) {
+	if a == b {
+		return false, true
+	}
+	return !a, false
+}
