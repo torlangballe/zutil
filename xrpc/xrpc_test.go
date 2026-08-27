@@ -193,14 +193,14 @@ func makeRPC(t *testing.T, port int, executor *znamedfuncs.Executor) {
 			clientSend++
 		}
 		if rand.IntN(50) == 20 {
-			for _, s := range serverRPC.servers {
+			serverRPC.servers.ForAll(func(id string, s *ConnectInfo[zwebsocket.Server]) {
 				if s.connection == nil {
-					continue
+					return
 				}
 				zlog.Warn("Storm", port, "closing server")
 				s.connection.Close()
 				s.connection = nil
-			}
+			})
 		}
 		if rand.IntN(50) == 30 {
 			zlog.Warn("Storm", port, "closing client")
