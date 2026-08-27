@@ -72,7 +72,10 @@ func StartPrometheusHandling() {
 	// )
 
 	// router.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
-	go http.ListenAndServe(fmt.Sprint(":", port), router)
+	go func() {
+		err := http.ListenAndServe(fmt.Sprint(":", port), router)
+		zlog.OnError("Prometheus ListenAndServe error", err)
+	}()
 }
 
 func NewCounterVec(name, help string, labelNames ...string) *CounterVec {
