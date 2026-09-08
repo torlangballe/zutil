@@ -119,7 +119,7 @@ func Labelize(view zview.View, slabel, id string, minLabelWidth float64, alignme
 			return true
 		})
 	}
-	label = makeLabelizeLabel(title, id, zgeo.Right)
+	label = makeLabelizeLabel(title, id, zgeo.Left)
 	label.SetFont(font)
 	label.SetColor(zstyle.DefaultFGColor().WithOpacity(0.8))
 	label.SetPressWithModifierToClipboard(zkeyboard.ModifierAlt)
