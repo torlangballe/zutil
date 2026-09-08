@@ -488,9 +488,15 @@ func (v *WebRTCView) startPlayback() error {
 	if err != nil {
 		return fmt.Errorf("createOffer failed: %w", err)
 	}
+	if v.pc.IsNull() {
+		return errors.New("startPlayback: aborting, pc is nil [1]")
+	}
 	_, err = zdom.ResolveInPlace(v.pc.Call("setLocalDescription", offer))
 	if err != nil {
 		return fmt.Errorf("setLocalDescription failed: %w", err)
+	}
+	if v.pc.IsNull() {
+		return errors.New("startPlayback: aborting, pc is nil [2]")
 	}
 
 	offerURL := zfile.JoinPathParts(v.BaseURL, v.OfferPath)
@@ -518,6 +524,9 @@ func (v *WebRTCView) startPlayback() error {
 	_, err = zdom.ResolveInPlace(v.pc.Call("setRemoteDescription", answerObj))
 	if err != nil {
 		return fmt.Errorf("setRemoteDescription failed: %w", err)
+	}
+	if v.pc.IsNull() {
+		return errors.New("startPlayback: aborting, pc is nil [3]")
 	}
 	v.ensureVideoPlaying("after-remote-description")
 	err = v.waitForInitialVideo(initialVideoTimeoutMs)
@@ -549,7 +558,7 @@ func (v *WebRTCView) RepeatSampleLoudness(frequency time.Duration, got func(volu
 		return
 	}
 	v.sampleTimer.Set(frequency.Seconds(), false, func() bool {
-		if v.pc.IsUndefined() || v.pc.IsNull() {
+		if !v.pc.Truthy() {
 			return true
 		}
 		stats, err := zdom.ResolveInPlace(v.pc.Call("getStats"))
