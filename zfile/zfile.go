@@ -576,34 +576,38 @@ func ReadLastLine(fpath string, pos int64) (line string, startpos, newpos int64,
 	return
 }
 
-// PeriodicFileBackup checks if *filepath* is larger than maxMB megabytes
+// PeriodicFileBackupAndTruncate checks if *filepath* is larger than maxMB megabytes
 // every *checkHours*. If so, the file is moved to a file in the  same directory
 // with a suffix before extension. "path/file_suffix.log".
-func PeriodicFileBackup(filepath, suffixForOld string, maxMB int) {
-	ztimer.RepeatNow(60*10, func() bool {
-		over := Size(filepath) >= int64(maxMB*1024*1024)
-		zlog.Info("🟩PeriodicFileBackup", filepath, true, zwords.GetStorageSizeString(Size(filepath), "", 1))
-		if over {
-			dir, _, stub, ext := Split(filepath)
-			newPath := dir + stub + suffixForOld + ext
-			err := os.Remove(newPath)
-			if err != nil && !errors.Is(err, os.ErrNotExist) {
-				fmt.Println(err, "remove old", filepath, newPath)
-				return true
-			}
-			err = CopyFile(newPath, filepath)
-			if err != nil {
-				fmt.Println(err, "copy to file backup", filepath, newPath)
-				return true
-			}
-			err = os.Truncate(filepath, 0)
-			if err != nil {
-				fmt.Println(err, "remove old file backup", filepath, newPath)
-				return true
-			}
-		}
-		return true
+func PeriodicFileBackupAndTruncate(filepath, suffixForOld string, maxMB int) {
+	ztimer.RepeatForever(60*10, func() {
+		FileBackupAndTruncate(filepath, suffixForOld, maxMB)
 	})
+}
+
+func FileBackupAndTruncate(filepath, suffixForOld string, maxMB int) {
+	over := Size(filepath) >= int64(maxMB*1024*1024)
+	zlog.Info("PeriodicFileBackupAndTruncate", filepath, true, zwords.GetStorageSizeString(Size(filepath), "", 1))
+	if !over {
+		return
+	}
+	dir, _, stub, ext := Split(filepath)
+	newPath := dir + stub + suffixForOld + ext
+	err := os.Remove(newPath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		fmt.Println(err, "remove old", filepath, newPath)
+		return
+	}
+	err = CopyFile(newPath, filepath)
+	if err != nil {
+		fmt.Println(err, "copy to file backup", filepath, newPath)
+		return
+	}
+	err = os.Truncate(filepath, 0)
+	if err != nil {
+		fmt.Println(err, "remove old file backup", filepath, newPath)
+		return
+	}
 }
 
 func DeleteOldInSubFolders(dir string, sleep time.Duration, before time.Time, deleteRatio float32, progress func(p float32, count, total int)) error {
