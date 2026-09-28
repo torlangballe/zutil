@@ -310,8 +310,16 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, time
 			r.handleClientError(pipeID, err)
 			return err
 		}
+		if len(rpJson) == 0 {
+			return zlog.NewError("Received empty response from client pipe:", pipeID, "method:", fullMethod)
+		}
 	} else if exchangeWithServerFunc != nil {
 		rpJson, err = exchangeWithServerFunc(r, pipeID, cpJson)
+		if len(rpJson) == 0 {
+			return zlog.NewError("Received empty response from server pipe:", pipeID, "method:", fullMethod, "err:", err)
+		}
+	} else {
+		return zlog.NewError("No connection available for pipe:", pipeID, "method:", fullMethod)
 	}
 	if err != nil {
 		r.handleServerConnectionError(pipeID, err)
@@ -321,7 +329,7 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, time
 	err = json.Unmarshal(rpJson, &rp)
 	zlog.Info(xRPCLog, "RPC Call to pipeID:", pipeID, "method:", fullMethod, "args:", in, "got result json:", string(rpJson), "err:", err)
 	if err != nil {
-		return zlog.NewError(err, "unmarshal RP failed json:"+string(rpJson))
+		return zlog.NewError(err, "unmarshal RP failed json: '"+string(rpJson)+"' pipe:", pipeID, "method:", fullMethod, "args:", in)
 	}
 	c, has = r.clients.Get(pipeID) // let's get it again in case it was removed
 	if has && c != nil {
