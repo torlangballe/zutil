@@ -39,7 +39,7 @@ func NewServer(path string, port int, handler func(id string, data []byte, err e
 	router := http.NewServeMux()
 	// router.Handle(path, websocket.Handler(s.handleSocketRequest))
 	router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		zlog.Info("Got WebSocket connection request from", r.RemoteAddr, "path", r.URL.Path)
+		zlog.Info("NewServer: Got WebSocket connection request from", r.RemoteAddr, "path", r.URL.Path)
 		websocket.Handler(s.handleSocketRequest).ServeHTTP(w, r)
 	})
 	zlog.Info("Starting WebSocket server on path", path, "port", port)
@@ -131,7 +131,11 @@ func (s *Server) ExchangeWithID(id string, msg []byte) ([]byte, error) {
 }
 
 func (s *Server) handleSocketRequest(conn *websocket.Conn) {
-	zlog.Info("Got WebSocket connection request from", conn.RemoteAddr())
+	if conn == nil {
+		zlog.Error("Server: WebSocket connection request is nil")
+		return
+	}
+	zlog.Info("Server: Got WebSocket connection request from", conn.RemoteAddr())
 	var token string
 	req := conn.Request()
 	id := req.Header.Get(IDHeader)

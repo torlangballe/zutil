@@ -98,6 +98,9 @@ func (b *base) Exchange(msg []byte) ([]byte, error) {
 		case r := <-ch:
 			data := r.msg
 			outErr = r.err
+			if len(data) == 0 {
+				zlog.Error("zws.Exchange: received empty response for message:", zstr.Head(string(msg), 70))
+			}
 			return data, outErr
 		case <-time.After(b.Timeout):
 			outErr = fmt.Errorf("WebSocket exchange %w: %s", TimeoutError, zstr.Head(string(msg), 500))
