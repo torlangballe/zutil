@@ -81,10 +81,9 @@ func errToStr(err error, title, desc string) string {
 func (t *Templater) Preprocess(m *MarkdownConverter, markdownText, title string) string {
 	// zlog.Assert(Cache != nil, "cache")
 	var buf bytes.Buffer
-	funcMap := template.FuncMap{
-		// "tex": t.processTex,
-		// "dot": t.processDot,
-	}
+	funcMap := m.FuncMap
+	// "tex": t.processTex,
+	// "dot": t.processDot,
 
 	template, err := template.New(title).Funcs(funcMap).Parse(markdownText)
 	if err != nil {

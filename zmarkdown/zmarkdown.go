@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"text/template"
 
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/page"
@@ -47,6 +48,7 @@ type MarkdownConverter struct {
 	DarkMode        bool
 	AbsolutePrefix  string
 	HeaderMD        string
+	FuncMap         template.FuncMap
 }
 
 func pdfGrabber(w io.Writer, url string) chromedp.Tasks {
