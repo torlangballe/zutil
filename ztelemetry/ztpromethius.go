@@ -47,7 +47,7 @@ func IsRunning() bool {
 
 func StartPrometheusHandling() {
 	registry = prometheus.NewRegistry()
-	port := PrometheusPort.Get()
+	port := PrometheusPort
 	if port == 0 {
 		zlog.Info("Prometheus: No port")
 		return
@@ -85,6 +85,7 @@ func NewCounterVec(name, help string, labelNames ...string) *CounterVec {
 		Name: name,
 		Help: help,
 	}, labelNames)
+	addMetricType("Counter", name, help, labelNames...)
 	return &c
 }
 
@@ -102,6 +103,7 @@ func NewGaugeVec(name, help string, labelNames ...string) *GaugeVec {
 		Name: name,
 		Help: help,
 	}, labelNames)
+	addMetricType("Gauge", name, help, labelNames...)
 	return &g
 }
 
@@ -122,6 +124,7 @@ func NewHistogramVec(name string, buckets []float64, help string, labelNames ...
 			Buckets: buckets,
 			Help:    help,
 		}, labelNames)
+	addMetricType("Histogram", name, help, labelNames...)
 	return &h
 }
 
@@ -141,6 +144,7 @@ func NewSummaryVec(name string, help string, labelNames ...string) *SummaryVec {
 			Name: name,
 			Help: help,
 		}, labelNames)
+	addMetricType("Summary", name, help, labelNames...)
 	return &s
 }
 
