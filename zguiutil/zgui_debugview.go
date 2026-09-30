@@ -21,7 +21,6 @@ import (
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zgraphana"
 	"github.com/torlangballe/zutil/zhttp"
-	"github.com/torlangballe/zutil/zkeyvalue"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/ztimer"
 )
@@ -110,7 +109,7 @@ func makeFrame(in *zcontainer.StackView, name string) (frame, header *zcontainer
 	return frame, header
 }
 
-func NewDebugView(urlStub string, otherIPs map[string]string, serverName string, prometheusPortOpt *zkeyvalue.Option[int]) *DebugView {
+func NewDebugView(urlStub string, otherIPs map[string]string, serverName string) *DebugView {
 	v := &DebugView{}
 	v.SetMarginS(zgeo.SizeD(10, 10))
 	v.Init(v, true, "debug-view")
@@ -135,7 +134,6 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string,
 	AddKVOptionToGrid(grid, zgraphana.APIKey)
 	AddKVOptionToGrid(grid, zgraphana.URLPrefix)
 	AddKVOptionToGrid(grid, zgraphana.DashboardUID)
-	AddKVOptionToGrid(grid, prometheusPortOpt)
 	link := zlabel.NewLink("dashboard", "", true)
 	header.Add(link, zgeo.CenterRight)
 	timer := ztimer.RepeatForeverNow(1, func() {
@@ -159,8 +157,8 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string,
 	return v
 }
 
-func PresentDebugView(urlStub string, otherIPs map[string]string, serverName string, prometheusPortOpt *zkeyvalue.Option[int]) {
-	v := NewDebugView(urlStub, otherIPs, serverName, prometheusPortOpt)
+func PresentDebugView(urlStub string, otherIPs map[string]string, serverName string) {
+	v := NewDebugView(urlStub, otherIPs, serverName)
 	att := zpresent.AttributesDefault()
 	att.Modal = true
 	att.ModalCloseOnOutsidePress = true
