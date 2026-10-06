@@ -42,28 +42,40 @@ func SetupSignalHandler(terminatingFunc func(signal os.Signal)) {
 	}()
 }
 
-func handleCPUProfileDownload(w http.ResponseWriter, req *http.Request) {
-	var data []byte
+func StartCPUProfileDownload() *bytes.Buffer {
+	buf := bytes.NewBuffer(nil)
+	err := rpprof.StartCPUProfile(buf)
+	if err != nil {
+		fmt.Println("StartCPUProfileDownload start cpu profile:", err)
+		return nil
+	}
+	return buf
+}
 
+func StopCPUProfileDownload(buf *bytes.Buffer) []byte {
+	rpprof.StopCPUProfile()
+	data, err := io.ReadAll(buf)
+	if err != nil {
+		fmt.Println("StopCPUProfileDownload read:", err)
+		return nil
+	}
+	return data
+}
+
+func handleCPUProfileDownload(w http.ResponseWriter, req *http.Request) {
 	secs, _ := strconv.Atoi(req.URL.Query().Get("secs"))
 	if secs == 0 {
 		secs = 10
 	}
-	buf := bytes.NewBuffer(data)
+	buf := StartCPUProfileDownload()
 	err := rpprof.StartCPUProfile(buf)
 	if err != nil {
 		fmt.Println("handleCPUProfileDownload start cpu profile:", err)
 		return
 	}
 	time.Sleep(time.Second * time.Duration(secs))
-	rpprof.StopCPUProfile()
-
-	n, err := io.Copy(w, buf)
-	if err != nil {
-		fmt.Println("handleCPUProfileDownload copy:", n, err)
-		return
-	}
-	// fmt.Println("handleProfileDownload", secs, n)
+	data := StopCPUProfileDownload(buf)
+	w.Write(data)
 }
 
 func SetProfilingHandler(router *mux.Router) {
