@@ -319,7 +319,9 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, time
 			return zlog.NewError("Received empty response from server pipe:", pipeID, "method:", fullMethod, "err:", err)
 		}
 	} else {
-		return zlog.NewError("No connection available for pipe:", pipeID, "method:", fullMethod)
+		err = zlog.NewError("No connection available for pipe:", pipeID, "method:", fullMethod, "clients:", zlog.Full(r.clients))
+		r.handleClientError(pipeID, err)
+		return err
 	}
 	if err != nil {
 		r.handleServerConnectionError(pipeID, err)
