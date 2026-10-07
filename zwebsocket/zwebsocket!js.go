@@ -157,7 +157,7 @@ func (b *base) readForever() {
 			continue
 		}
 		if num < 0 {
-			zlog.Error("Received message with return but no channel waiting:", num)
+			zlog.Error("Received message with return but no channel waiting [2]:", num)
 			continue
 		}
 		// otherwise, it's a new incoming message, handle and reply

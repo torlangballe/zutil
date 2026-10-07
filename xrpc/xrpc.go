@@ -67,8 +67,8 @@ var (
 
 func NewRPC() *RPC {
 	r := &RPC{}
-	r.clients = zcache.NewExpiringMap[string, *ConnectInfo[zwebsocket.Client]](60 * 60)
-	r.servers = zcache.NewExpiringMap[string, *ConnectInfo[zwebsocket.Server]](60 * 60)
+	r.clients = zcache.NewExpiringMap[string, *ConnectInfo[zwebsocket.Client]](60 * 60 * 24 * 365 * 10) // let's make is huge for now and see if expiring isn't necessary
+	r.servers = zcache.NewExpiringMap[string, *ConnectInfo[zwebsocket.Server]](60 * 60 * 24 * 365 * 10)
 	r.connectRepeater = ztimer.NewRepeater()
 	r.targetID = rand.Int63()
 	r.waitForStart = zprocess.NewOnceWait()
@@ -319,7 +319,7 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, time
 			return zlog.NewError("Received empty response from server pipe:", pipeID, "method:", fullMethod, "err:", err)
 		}
 	} else {
-		err = zlog.NewError("No connection available for pipe:", pipeID, "method:", fullMethod, "clients:", zlog.Full(r.clients))
+		err = zlog.NewError("No connection available for pipe:", pipeID, "method:", fullMethod, "clients:", r.clients.Count(), "servers:", r.servers.Count())
 		r.handleClientError(pipeID, err)
 		return err
 	}

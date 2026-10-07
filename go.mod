@@ -1,6 +1,6 @@
 module github.com/torlangballe/zutil
 
-go 1.26
+go 1.25
 
 replace github.com/torlangballe/zui => ../zui
 
