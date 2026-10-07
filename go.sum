@@ -6,6 +6,8 @@ github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b h1:5Ci5wpOL75rYF6RQGRo
 github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b/go.mod h1:obBQGGIFbbv9KWg92Qu9UHeD94JXmHD1jovY/z6I3O8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
+github.com/blacktop/go-termimg v0.1.25 h1:qwlmow5AMJfQB8oy/+uMWty2bYG0LhQx5yrBZETbk9o=
+github.com/blacktop/go-termimg v0.1.25/go.mod h1:SpU/O59RTjDAUA0Esj+dIzHEKixewFV49XNYHmukKQQ=
 github.com/blacktop/go-termimg v0.1.26 h1:rEsnPhs1o6fziOrz7lsRZU/m2xDgSURQYpS5paxHwV8=
 github.com/blacktop/go-termimg v0.1.26/go.mod h1:SpU/O59RTjDAUA0Esj+dIzHEKixewFV49XNYHmukKQQ=
 github.com/bramvdbogaerde/go-scp v1.6.0 h1:lDh0lUuz1dbIhJqlKLwWT7tzIRONCp1Mtx3pgQVaLQo=
