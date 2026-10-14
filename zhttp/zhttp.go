@@ -156,8 +156,8 @@ func SendBody(surl string, params Parameters, send, receive any) (*http.Response
 				} else {
 					if params.XMLRequest {
 						bout, err = xml.MarshalIndent(send, "  ", "  ")
-						// xmlHeader := []byte(xml.Header) // this is <?xml version="1.0" encoding="UTF-8"?> Not needed to be valid XML
-						// bout = append(xmlHeader, bout...)
+						// xmlHeader := `<?xml version="1.0" encoding="UTF-8" standalone="no"?>`
+						bout = append([]byte(xml.Header+"\n"), bout...)
 					} else {
 						bout, err = json.Marshal(send)
 					}
