@@ -6,7 +6,7 @@ replace github.com/torlangballe/zui => ../zui
 
 require (
 	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc
-	github.com/blacktop/go-termimg v0.1.25
+	github.com/blacktop/go-termimg v0.1.26
 	github.com/bramvdbogaerde/go-scp v1.6.0
 	github.com/chromedp/cdproto v0.0.0-20250803210736-d308e07a266d
 	github.com/chromedp/chromedp v0.14.2
