@@ -21,23 +21,13 @@ import (
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zgraphana"
 	"github.com/torlangballe/zutil/zhttp"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zrest"
 	"github.com/torlangballe/zutil/ztimer"
 )
 
 type DebugView struct {
 	zcontainer.StackView
-}
-
-func doProfiling(ptype string) []byte {
-	out := bytes.NewBuffer([]byte{})
-	prof := pprof.Lookup(ptype)
-	prof.WriteTo(out, 0)
-	o := out.Bytes()
-	if ptype == "profile" {
-		pprof.StopCPUProfile()
-	}
-	return o
 }
 
 func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zlabel.Label, *zwidgets.ActivityView) {
@@ -64,15 +54,15 @@ func addRow(in *zcontainer.StackView, name, ptype string) (*zbutton.Button, *zla
 	return button, label, activity
 }
 
-func addGUIProfileRow(in *zcontainer.StackView, name, ptype string) {
+func addGUIRow(in *zcontainer.StackView, name, ptype string) {
 	button, _, _ := addRow(in, name, ptype)
-	if ptype == "" {
-		ptype = name
-	}
 	button.SetPressedHandler("", zkeyboard.ModifierNone, func() {
-		data := doProfiling(ptype)
+		out := bytes.NewBuffer([]byte{})
+		prof := pprof.Lookup(ptype)
+		prof.WriteTo(out, 0)
+		data := out.Bytes()
 		uri := zhttp.MakeDataURL(data, "application/octet-stream")
-		zview.DownloadURI(uri, name)
+		zview.DownloadURI(uri, ptype)
 	})
 }
 
@@ -86,7 +76,7 @@ func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 		u.Host = ip
 		surl = u.String()
 	}
-	surl += zrest.AppURLPrefix + zdebug.ProfilingURLPrefix + name // must be here and not in closure below!
+	surl += zrest.AppURLPrefix + zdebug.ProfilingURLPrefix + ptype // must be here and not in closure below!
 	button.SetToolTip(surl)
 	button.SetPressedHandler("", zkeyboard.ModifierAlt, func() {
 		str := "curl " + surl + " > " + name + " && go tool pprof -web " + name
@@ -98,6 +88,7 @@ func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 			activity.Start()
 			ztimer.StartIn(10, activity.Stop)
 		}
+		zlog.Info("Download", surl, name)
 		go zview.DownloadURI(surl, name)
 	})
 }
@@ -114,7 +105,7 @@ func NewDebugView(urlStub string, otherIPs map[string]string, serverName string)
 	v.SetMarginS(zgeo.SizeD(10, 10))
 	v.Init(v, true, "debug-view")
 	frame, _ := makeFrame(&v.StackView, "gui")
-	addGUIProfileRow(frame, "gui-heap", "heap")
+	addGUIRow(frame, "gui-heap", "heap")
 	frame, _ = makeFrame(&v.StackView, "manager")
 	for _, name := range zdebug.AllProfileTypes {
 		addDownloadRow(frame, "", name, name)
