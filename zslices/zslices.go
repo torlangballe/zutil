@@ -88,6 +88,14 @@ func RValAddAtEnd(slicePtrVal, add reflect.Value) int {
 	return slicePtrVal.Elem().Len() - 1
 }
 
+// MakeEmptySliceOfElement returns an empty []T as an reflect.Value, where T is the type of element.
+func MakeEmptyRValSliceOfElement(element reflect.Value) reflect.Value {
+	s := reflect.MakeSlice(reflect.SliceOf(element.Type()), 0, 0)
+	n := reflect.New(s.Type()).Elem()
+	n.Set(s)
+	return n
+}
+
 func Behead(slice any) {
 	RemoveAt(slice, 0)
 }
