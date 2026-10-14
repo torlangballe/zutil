@@ -39,7 +39,7 @@ func NewServer(path string, port int, handler func(id string, data []byte, err e
 	router := http.NewServeMux()
 	// router.Handle(path, websocket.Handler(s.handleSocketRequest))
 	router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		zlog.Info("NewServer: Got WebSocket connection request from", r.RemoteAddr, "path", r.URL.Path)
+		zlog.Info("NewServer: Got WebSocket connection request from:", r.RemoteAddr, "path", r.URL.Path)
 		websocket.Handler(s.handleSocketRequest).ServeHTTP(w, r)
 	})
 	zlog.Info("Starting WebSocket server on path", path, "port", port)
@@ -64,7 +64,7 @@ func NewServerWithRouter(path string, router *mux.Router, handler func(id string
 		Handler:   websocket.Handler(s.handleSocketRequest),
 	}
 
-	zlog.Info("Starting WebSocket server on path", path)
+	zlog.Info("Starting WebSocket server on path", zlog.Pointer(s), path)
 	router.Handle(path, &wsServer)
 	// router.Handle(path, websocket.Handler(s.handleSocketRequest))
 	time.Sleep(time.Millisecond * 50) // Give ListenAndServe time to start
@@ -94,7 +94,7 @@ func (s *Server) RemoveConnection(id string) {
 }
 
 func (s *Server) setClientToServer(id, path string, conn *websocket.Conn) *ClientToServer {
-	zlog.Info("ws.server.setClientToServer", id, path, conn.RemoteAddr())
+	zlog.Info("ws.server.setClientToServer", id, path, conn.Request().RequestURI, conn.Request().RemoteAddr, conn.IsClientConn(), zlog.Pointer(s))
 	s.Connections = slices.DeleteFunc(s.Connections, func(c *ClientToServer) bool {
 		return c.ID == id
 	})
@@ -135,7 +135,12 @@ func (s *Server) handleSocketRequest(conn *websocket.Conn) {
 		zlog.Error("Server: WebSocket connection request is nil")
 		return
 	}
-	zlog.Info("Server: Got WebSocket connection request from", conn.RemoteAddr())
+	zlog.Info("handleSocketRequest:", zlog.Pointer(s), conn.IsClientConn())
+	var origin string
+	if conn.Config().Origin != nil {
+		origin = conn.Config().Origin.String()
+	}
+	zlog.Info("Server: Got WebSocket connection request from", conn.Request().RemoteAddr, origin, "path", conn.Request().URL)
 	var token string
 	req := conn.Request()
 	id := req.Header.Get(IDHeader)
