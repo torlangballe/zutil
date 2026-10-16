@@ -22,6 +22,7 @@ import (
 	"github.com/torlangballe/zutil/zfloat"
 	"github.com/torlangballe/zutil/zgeo"
 	"github.com/torlangballe/zutil/zint"
+	"github.com/torlangballe/zutil/zlog"
 	"github.com/torlangballe/zutil/zmath"
 	"github.com/torlangballe/zutil/ztimer"
 )
@@ -173,7 +174,7 @@ var DefaultFrameStyling = zstyle.Styling{
 	StrokeColor:   zstyle.DefaultFGColor().WithOpacity(0.5),
 	Corner:        5,
 	StrokeIsInset: zbool.True,
-	Margin:        zgeo.RectFromXY2(8, 13, -8, -8),
+	Margin:        zgeo.RectFromXY2(8, 3, -10, -3),
 }
 
 var DefaultFrameTitleStyling = zstyle.Styling{
@@ -181,22 +182,22 @@ var DefaultFrameTitleStyling = zstyle.Styling{
 	Font:    *zgeo.FontNice(zgeo.FontDefaultSize, zgeo.FontStyleBoldItalic),
 }
 
-func MakeStackATitledFrame(stack *zcontainer.StackView, title string, titleOnFrame bool, styling, titleStyling zstyle.Styling) (header *zcontainer.StackView) {
-	// zlog.Info("MakeStackATitledFrame", stack.Hierarchy(), title)
+func MakeStackATitledFrame(stack *zcontainer.StackView, title string, wantHeader, titleOnFrame bool, styling, titleStyling zstyle.Styling) (header *zcontainer.StackView) {
 	s := DefaultFrameStyling.MergeWith(styling)
 	fs := s
 	fs.Font = zgeo.Font{}
 	zstyle.SetStyling(stack, fs)
-	if title != "" {
+	if wantHeader {
 		header = zcontainer.StackViewHor(FrameHeaderName)
 		header.SetSpacing(2)
-		h := -8.0
+		// h := -8.0
+		h := 0.0
 		if titleOnFrame {
 			h = -(s.Margin.Min().Y + zgeo.FontDefaultSize - 4)
 			header.SetCorner(4)
 			header.SetBGColor(zgeo.ColorWhite)
 		}
-		stack.AddAdvanced(header, zgeo.TopLeft|zgeo.HorExpand, zgeo.RectFromXY2(0, h, 0, 0), zgeo.SizeNull, 0, false).NotInGrid = true
+		stack.AddAdvanced(header, zgeo.TopLeft|zgeo.HorExpand, zgeo.RectFromXY2(0, h, 6, 0), zgeo.SizeNull, 0, false).NotInGrid = true
 		label := zlabel.New(title)
 		label.SetObjectName("title")
 		label.SetMaxCalculateWidth(400)

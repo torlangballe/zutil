@@ -95,7 +95,7 @@ func addDownloadRow(in *zcontainer.StackView, ip, name, ptype string) {
 
 func makeFrame(in *zcontainer.StackView, name string) (frame, header *zcontainer.StackView) {
 	frame = zcontainer.StackViewVert("other")
-	header = MakeStackATitledFrame(frame, name, false, DefaultFrameStyling, DefaultFrameTitleStyling)
+	header = MakeStackATitledFrame(frame, name, true, false, DefaultFrameStyling, DefaultFrameTitleStyling)
 	in.Add(frame, zgeo.CenterLeft|zgeo.HorExpand)
 	return frame, header
 }
