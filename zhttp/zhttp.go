@@ -49,6 +49,7 @@ type Parameters struct {
 	Headers                      map[string]string
 	SkipVerifyCertificate        bool
 	PrintBody                    bool
+	DryRun                       bool // Don't send anything, just get it ready and maybe print
 	ShowCURLCall                 bool
 	Args                         map[string]string
 	TimeoutSecs                  float64
@@ -374,6 +375,9 @@ func GetResponse(surl string, params Parameters) (resp *http.Response, err error
 	if err != nil {
 		return
 	}
+	if params.DryRun {
+		return nil, nil
+	}
 	return GetResponseFromReqClient(params, req, client)
 }
 
@@ -392,6 +396,9 @@ func GetResponseAndIPAddress(surl string, params Parameters) (resp *http.Respons
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 	if err != nil {
 		return
+	}
+	if params.DryRun {
+		return nil, "", "", nil
 	}
 	resp, err = GetResponseFromReqClient(params, req, client)
 	return resp, *fip, *tip, err
@@ -485,6 +492,9 @@ func SendBytesOrFromReader(surl string, params Parameters) (resp *http.Response,
 	req, client, err := MakeRequest(surl, params)
 	if err != nil {
 		return
+	}
+	if params.DryRun {
+		return nil, 0, nil
 	}
 	resp, err = GetResponseFromReqClient(params, req, client)
 	if err != nil {
