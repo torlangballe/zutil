@@ -221,6 +221,7 @@ func AddLabeledViewToGrid(grid *zcontainer.GridView, title string, view zview.Vi
 // It starts disabled if not empty, and handles changes to views emptiness.
 func CreateLockIconForView(view zview.View) zview.View {
 	label := zlabel.New("🔒")
+	label.SetObjectName("$lock")
 	locked := true
 	to, _ := view.(ztext.TextOwner)
 	if to != nil && to.Text() == "" {
