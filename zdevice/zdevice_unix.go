@@ -143,7 +143,7 @@ func Model() string {
 			zlog.Fatal("get model", err)
 			return ""
 		}
-		return model
+		return strings.TrimSpace(model)
 	}
 	return "Server"
 }

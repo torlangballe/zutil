@@ -44,6 +44,10 @@ func IsBrowser() bool {
 	return true
 }
 
+func Model() string {
+	return "js"
+}
+
 func WasmBrowser() BrowserType {
 	switch getUserAgentInfo().Name {
 	case ua.Chrome:
