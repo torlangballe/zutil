@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/torlangballe/zutil/zbytes"
+	"github.com/torlangballe/zutil/zdevice"
 	"github.com/torlangballe/zutil/zdict"
 	"github.com/torlangballe/zutil/zerrors"
 	"github.com/torlangballe/zutil/zlog"
@@ -64,6 +65,7 @@ type Parameters struct {
 	SSLKeyPath                   string
 	UserName                     string
 	Password                     string
+	UserAgent                    string
 	Reader                       io.Reader
 	GetErrorFromBody             bool
 	NoClientCache                bool // this creates a new client in MakeRequest(). You might need to call client.CloseIdleConnections() to avoid Keep-Alive requests qccumulating
@@ -74,6 +76,7 @@ const DefaultTimeoutSeconds = 15
 
 var (
 	SetTelemetryForRedirectFunc func(surl string, secs float64)
+	DefaultUserAgent            = fmt.Sprintf("btech-qtt/1.0 (%v %s %s)", zdevice.OS(), zdevice.Architecture(), zdevice.Model())
 )
 
 func MakeParameters() Parameters {
@@ -315,15 +318,21 @@ func MakeRequest(surl string, params Parameters) (request *http.Request, client 
 	if params.UserName != "" && params.Password != "" {
 		request.SetBasicAuth(params.UserName, params.Password)
 	}
-	if params.ContentType != "" {
-		params.Headers["Content-Type"] = params.ContentType
-	}
 	if params.Headers != nil {
 		for k, v := range params.Headers {
 			request.Header.Set(k, v)
 		}
 	}
-	// zlog.Info("ContentType:", params.ContentType, request.Header)
+	var ua string
+	if params.UserAgent != "" {
+		ua = params.UserAgent
+	} else {
+		ua = DefaultUserAgent
+	}
+	request.Header.Set("User-Agent", ua)
+	if params.ContentType != "" {
+		request.Header.Set("Content-Type", params.ContentType)
+	}
 	return request, client, err
 }
 
