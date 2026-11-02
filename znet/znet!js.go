@@ -30,6 +30,8 @@ import (
 	"github.com/torlangballe/zutil/zmap"
 	"github.com/torlangballe/zutil/zprocess"
 	"github.com/torlangballe/zutil/zstr"
+	"golang.org/x/crypto/acme"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 type ZNetCalls struct{}
@@ -208,11 +210,6 @@ func copyIO(src, dest net.Conn) {
 	io.Copy(src, dest)
 }
 
-// var certManager = autocert.Manager{
-// 	Prompt: autocert.AcceptTOS,
-// 	Cache:  autocert.DirCache("certs"),
-// }
-
 func ShowGenerateTLSCertificatesCommands(certName string) {
 	os.Mkdir("certs", 0775|os.ModeDir)
 	// Key considerations for algorithm "RSA" ≥ 2048-bit
@@ -225,8 +222,9 @@ func ShowGenerateTLSCertificatesCommands(certName string) {
 }
 
 type HTTPServer struct {
-	Server      *http.Server
-	doneChannel chan bool
+	Server          *http.Server
+	doneChannel     chan bool
+	challengeServer *http.Server // port 80 ACME HTTP-01 challenge/redirect server, if using autocert
 }
 
 func ServeHTTPInBackground(address string, certificatesStubPath string, handler http.Handler) (server *HTTPServer, certificateExpires time.Time) {
@@ -252,16 +250,11 @@ func ServeHTTPInBackground(address string, certificatesStubPath string, handler 
 		}
 	}
 	stack := zdebug.CallingStackString()
-	s := &HTTPServer{}
-	s.Server = &http.Server{Addr: address}
-	s.Server.Handler = handler
-	s.Server.ReadTimeout = 60 * time.Second
-	s.Server.WriteTimeout = 60 * time.Second
+	s := newHTTPServer(address, handler)
 	s.Server.TLSConfig = &tls.Config{
 		InsecureSkipVerify: true,
 		// ClientAuth: tls.RequireAndVerifyClientCert, -- this was to test if clients need certificates
 	}
-	s.doneChannel = make(chan bool, 100)
 	var fCRT, fKey string
 	if certificatesStubPath != "" {
 		fCRT = certificatesStubPath + ".crt"
@@ -278,24 +271,82 @@ func ServeHTTPInBackground(address string, certificatesStubPath string, handler 
 			}
 		}
 	}
-	go func() {
+	s.serveInBackground(stack, certificatesStubPath, func() error {
 		if certificatesStubPath != "" {
-			err = s.Server.ListenAndServeTLS(fCRT, fKey)
-		} else {
-			err = s.Server.ListenAndServe()
+			return s.Server.ListenAndServeTLS(fCRT, fKey)
 		}
+		return s.Server.ListenAndServe()
+	})
+	return s, certificateExpires
+}
+
+type AutoCertOptions struct {
+	Domains  []string // Public DNS names that resolve to this host. Exact match, no wildcards.
+	CacheDir string   // Account key and certificates are stored here. Must persist across restarts, or Let's Encrypt rate limits are hit.
+	Email    string   // Optional: Let's Encrypt sends expiry/problem notices here.
+	Staging  bool     // Use Let's Encrypt staging server while testing, to avoid production rate limits.
+}
+
+// ServeAutoCertHTTPSInBackground serves https with certificates automatically fetched and renewed from Let's Encrypt.
+// Port 443 must be reachable from the internet for the TLS-ALPN-01 challenge.
+// It also serves port 80 for the HTTP-01 challenge, redirecting other requests to https.
+func ServeAutoCertHTTPSInBackground(address string, opts AutoCertOptions, handler http.Handler) *HTTPServer {
+	host, sport, err := net.SplitHostPort(address)
+	if err == nil && sport == "" {
+		address = host + ":443"
+	}
+	m := &autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(opts.Domains...),
+		Cache:      autocert.DirCache(opts.CacheDir),
+		Email:      opts.Email,
+	}
+	if opts.Staging {
+		m.Client = &acme.Client{DirectoryURL: "https://acme-staging-v02.api.letsencrypt.org/directory"}
+	}
+	stack := zdebug.CallingStackString()
+	s := newHTTPServer(address, handler)
+	s.Server.TLSConfig = m.TLSConfig()
+	s.challengeServer = &http.Server{Addr: ":80", Handler: m.HTTPHandler(nil)}
+	go func() {
+		err := s.challengeServer.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			zlog.Error("autocert http challenge server:", err)
+		}
+	}()
+	s.serveInBackground(stack, "autocert", func() error {
+		return s.Server.ListenAndServeTLS("", "")
+	})
+	return s
+}
+
+func newHTTPServer(address string, handler http.Handler) *HTTPServer {
+	s := &HTTPServer{}
+	s.Server = &http.Server{Addr: address}
+	s.Server.Handler = handler
+	s.Server.ReadTimeout = 60 * time.Second
+	s.Server.WriteTimeout = 60 * time.Second
+	s.doneChannel = make(chan bool, 100)
+	return s
+}
+
+func (s *HTTPServer) serveInBackground(stack, info string, serve func() error) {
+	go func() {
+		err := serve()
 		if err != http.ErrServerClosed {
 			if err != nil {
-				zlog.Error("serve http listen err:", address, certificatesStubPath, stack, err)
+				zlog.Error("serve http listen err:", s.Server.Addr, info, stack, err)
 				os.Exit(-1)
 			}
 		}
 		s.doneChannel <- true
 	}()
-	return s, certificateExpires
 }
 
 func (s *HTTPServer) Shutdown(wait bool) error {
+	if s.challengeServer != nil {
+		s.challengeServer.Shutdown(context.TODO())
+	}
 	err := s.Server.Shutdown(context.TODO())
 	if err != nil {
 		return err
