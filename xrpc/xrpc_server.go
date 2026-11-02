@@ -9,7 +9,7 @@ import (
 	"github.com/torlangballe/zutil/zwebsocket"
 )
 
-func (r *RPC) MakeServer(path string, port int, router *mux.Router) (*zwebsocket.Server, error) {
+func (r *RPC) MakeServer(path string, port int, ssl bool, router *mux.Router) (*zwebsocket.Server, error) {
 	handler := func(id string, msg []byte, err error) []byte {
 		// zlog.Info("RPC server got message from websocket connection", id, len(msg), err)
 		if err != nil {
@@ -24,9 +24,9 @@ func (r *RPC) MakeServer(path string, port int, router *mux.Router) (*zwebsocket
 		zlog.OnError(err, "RPC server call execute error", msg)
 		return result
 	}
-	address := "ws://" + path
+	address := zwebsocket.Prefix(ssl) + path
 	address = path
-	zlog.Info("Starting RPC server on", address, "with port", port)
+	zlog.Info("Starting RPC server on", address, "with port", port, router != nil)
 	if router != nil {
 		return zwebsocket.NewServerWithRouter(address, router, handler)
 	}

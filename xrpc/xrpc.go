@@ -168,7 +168,7 @@ func (r *RPC) handleClientError(pipeID string, err error) {
 
 // MakeClient creates a new client connection to the given URL. If port is not 0, it overrides the port in the URL with the given port.
 // Note that you clients are normally made with AddClient() that uses ConnectIfNeeded() and r.ConnectClientFunc to actually create a client.
-func (r *RPC) MakeClient(address, pipeID string, port int) (*zwebsocket.Client, error) {
+func (r *RPC) MakeClient(address, pipeID string, port int, ssl bool) (*zwebsocket.Client, error) {
 	// zlog.Info("RPC.MakeClient:", surl, pipeID, port)
 	var client *zwebsocket.Client
 	handler := func(msg []byte, err error) []byte {
@@ -202,7 +202,8 @@ func (r *RPC) MakeClient(address, pipeID string, port int) (*zwebsocket.Client, 
 		if port != 0 {
 			address = strings.Replace(address, "/", fmt.Sprintf(":%d/", port), 1)
 		}
-		address = "ws://" + address
+		pre := zwebsocket.Prefix(ssl)
+		address = pre + address
 	}
 	client, err = zwebsocket.NewClient(pipeID, address, handler)
 	if err != nil {
@@ -352,14 +353,14 @@ func (r *RPC) Call(pipeID string, fullMethod string, in any, resultPtr any, time
 	return nil
 }
 
-func SetupSimpleClient(port int, address, clientID string) {
+func SetupSimpleClient(port int, ssl bool, address, clientID string) {
 	rpc := NewRPC()
 	MainRPC = rpc
 	zlog.Info("SetupSimpleClient:", clientID, port, address)
 	rpc.ConnectClientFunc = func(clientID string) (*zwebsocket.Client, error) {
 		a := zstr.Concat("/", address, "zrpc/")
 		zlog.Warn("SetupSimpleClient Connect:", clientID, port, a)
-		c, err := rpc.MakeClient(a, clientID, port)
+		c, err := rpc.MakeClient(a, clientID, port, ssl)
 		if err != nil {
 			zlog.OnError(err, "NewClient")
 			return nil, err
