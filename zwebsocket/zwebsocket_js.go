@@ -51,6 +51,7 @@ func NewClient(id, url string, handler func(data []byte, err error) []byte) (*Cl
 
 func (c *Client) open() error {
 	c.socketJS = zdom.New("WebSocket", c.url)
+	zlog.Info("WS.NewClient:", c.url)
 	c.socketJS.Set("binaryType", "arraybuffer")
 	c.socketJS.Set("onopen", js.FuncOf(func(this js.Value, args []js.Value) any {
 		c.isOpen = true

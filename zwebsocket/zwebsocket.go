@@ -20,3 +20,10 @@ func (e *Exchangers) ExchangeWithID(id string, msg []byte) ([]byte, error) {
 	}
 	return exchanger.Exchange(msg)
 }
+
+func Prefix(ssl bool) string {
+	if ssl {
+		return "wss://"
+	}
+	return "ws://"
+}
