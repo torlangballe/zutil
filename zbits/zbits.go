@@ -20,6 +20,10 @@ func ChangeBits[N zint.Integer](all *N, mask N, on bool) {
 	}
 }
 
+func HasAll[N zint.Integer](bits *N, mask N) bool {
+	return (*bits & mask) == mask
+}
+
 func IntFromBits(data []byte, bits, startFromEnd int) int {
 	up := zint.Max(0, startFromEnd-bits)
 	mask := uint16((1<<bits - 1) << up)
