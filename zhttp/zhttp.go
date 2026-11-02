@@ -881,6 +881,22 @@ func MakeDataURL(data []byte, mime string) string {
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data)
 }
 
+func DataURLToBytes(s string) ([]byte, error) {
+	rest, ok := strings.CutPrefix(s, "data:")
+	if !ok {
+		return nil, errors.New("not a data URL")
+	}
+	meta, data, ok := strings.Cut(rest, ",")
+	if !ok {
+		return nil, errors.New("malformed data URL: missing comma")
+	}
+	if strings.HasSuffix(meta, ";base64") {
+		return base64.StdEncoding.DecodeString(data)
+	}
+	u, err := url.PathUnescape(data)
+	return []byte(u), err
+}
+
 func StringStartsWithHTTPX(str string) bool {
 	return strings.HasPrefix(str, "http:") || strings.HasPrefix(str, "https:")
 }
