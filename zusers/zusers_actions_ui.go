@@ -52,7 +52,7 @@ func NewActionsIcon() *zimageview.ImageView {
 		)
 		return items
 	}
-	actionMenu.Build(actions, nil)
+	actionMenu.Build(actions)
 	return actions
 }
 
