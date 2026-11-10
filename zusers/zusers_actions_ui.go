@@ -11,14 +11,14 @@ import (
 	"github.com/torlangballe/zutil/zgeo"
 )
 
-func NewActionsIcon() *zimageview.ImageView {
+func NewActionsIcon() *zimageview.XImageView {
 	const (
 		change = "change"
 		logout = "logout"
 	)
-	actions := zimageview.NewWithCachedPath("images/zcore/head-dark.png", zgeo.SizeD(18, 18))
-	actions.MixColorForDarkMode = zgeo.ColorGray
+	actions := zimageview.XNew("user", "images/zcore/head-dark.png", zgeo.SizeD(18, 18))
 	actions.DownsampleImages = true
+	actions.SetDefaultLightenAmountForMode()
 	actionMenu := zmenu.NewMenuedOwner()
 	actionMenu.CreateItemsFunc = func() []zmenu.MenuedOItem {
 		if CurrentUser.UserID == 0 {
