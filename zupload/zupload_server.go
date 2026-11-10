@@ -117,6 +117,7 @@ func handleUpload(w http.ResponseWriter, req *http.Request) {
 	if authenticator != nil {
 		valid, _ := authenticator.IsTokenValid(ztoken, req)
 		if !valid {
+			zlog.Info("Upload: token not valid:", "'"+ztoken+"'", req.RemoteAddr, req.Header.Get("User-Agent"), req.URL.String())
 			zrest.ReturnAndPrintError(w, req, http.StatusUnauthorized)
 			return
 		}

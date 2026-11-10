@@ -245,7 +245,6 @@ func (v *UploadView) CallHTTUpload(up UploadPayload, data []byte) {
 	if AuthTokenFunc != nil {
 		params.Headers["X-Token"] = AuthTokenFunc()
 	}
-	// zlog.Info("CallHTTUpload:", AuthTokenFunc != nil, params.Headers["X-Token"])
 	params.TimeoutSecs = float64(UploadTimeoutMinutes) * 60
 	// params.PrintBody = true
 	surl := zapp.DownloadPathPrefix + "zupload"
