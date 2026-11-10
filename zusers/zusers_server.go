@@ -72,14 +72,14 @@ func GetUserSessionForToken(token string, us *UserSession, req *http.Request) er
 	}
 	usession, err := MainServer.GetUserSessionForToken(token)
 	if err != nil {
-		if authenticator != nil {
-			valid, _ := authenticator.IsTokenValid("", req) // Authenticates with Request instead??
-			if valid {
-				*us = usession
-				return nil
-			}
+		if authenticator == nil || req == nil {
+			return err
 		}
-		return err
+		valid, _ := authenticator.IsTokenValid("", req) // Authenticates with Request instead??
+		if valid {
+			*us = usession
+			return nil
+		}
 	}
 	*us = usession
 	return nil
